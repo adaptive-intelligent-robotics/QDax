@@ -141,7 +141,7 @@ def process_args():
                       default='info',
                       choices=['fatal', 'error', 'warning', 'info', 'debug'])
   parser.add_argument('--seed', default=0, type=int)
-  parser.add_argument('--batch-size', default=2048, type=int)
+  parser.add_argument('--batch_size', default=2048, type=int)
   parser.add_argument('--num-epochs', default=None, type=int)
   parser.add_argument('--num-evaluations', default=None, type=int)
   parser.add_argument('--episode-length', default=100, type=int)
