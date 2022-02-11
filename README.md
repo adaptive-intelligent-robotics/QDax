@@ -56,7 +56,7 @@ where:
 Some things to note beforehand is that JAX relies on a functional programming paradigm. 
 We will try as much as possible to maintain this programming style.
 
-The main file used is `qdbrax/training/qd.py`. 
+The main file used is `qdax/training/qd.py`. 
 This file contains the main `train` function which consists of the entire QD loop and supporting functions.
 - Inputs: The `train` function takes as input the task, emitter and hyperparameters. 
 - Functions: The main functions used by `train` are also declared in this file. 
@@ -66,7 +66,7 @@ In terms of QD, this determines the loop performed at each generation:
   (1) Selection (from archive) and Variation to generate solutions to be evaluated defined by the `emitter_fn`,
   (2) Evaluation 
   and (3) Archive Update defined by (`eval_and_add_fn`). 
-The first part of the `train` function calls `init_phase_fn` which initializes the archive using random policies.
+The first part of the `train` function is the `init_phase_fn` which initializes the archive using random policies.
 - Flow: `train` first calls `init_phase_fn` and then `_es_one_epoch` for a defined number of generations or evaluations.
 
 
