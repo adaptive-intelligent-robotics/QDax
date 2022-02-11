@@ -39,13 +39,10 @@ CUDA_VISIBLE_DEVICES=0 python3 run_comparison_batch_sizes.py --env_name walker -
 CUDA_VISIBLE_DEVICES="0,1" python3 run_comparison_batch_sizes.py --env_name walker --grid_shape 30 30 -n 5
 ```
 
-<<<<<<< HEAD
-### How to run analysis and see plots
+### Analysis and Plotting Tools
 
-=======
-### Analysis and Ploting Tools
 Expname is the name of the directories of the experiments (it will look for directory that start with that string. Results is the directory containing all the results folders.
->>>>>>> 3e786643a20ed30814f820e5db7f69539dc37d44
+
 ```
 python3 analysis/plot_metrics.py --exp-name qdax_training --results ./qdax_walker_fixednumevals/ --attribute population_size --save figure.png
 ```
