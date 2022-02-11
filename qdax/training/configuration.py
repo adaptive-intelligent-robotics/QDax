@@ -19,7 +19,7 @@ class Configuration:
   min_bd: float  # Assume  each BD dimension has same bounds
   max_bd: float
   grid_shape: tuple
-  max_devices_per_host: Optional[int] = None,
+  max_devices_per_host: Optional[int] = None
 
   def save_to_json(self,
                    folder: str = os.curdir,
