@@ -73,4 +73,14 @@ key, key_emitter, key_es_eval = jax.random.split(training_state.key, 3)
 - `key` is saved as the new training_state.key for the next epoch.
 And the training_state is returned as an output of this function.
 
+## Contributors
+
+QDax is currently developed and maintained by the [AIRL Lab](https://www.imperial.ac.uk/adaptive-intelligent-robotics/):
+
+- [Bryan Lim](https://limbryan.github.io/)
+- [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
+- [Luca Grillotti](https://scholar.google.com/citations?user=gY9CmssAAAAJ&hl=fr&oi=sra)
+- [Antoine Cully](https://www.imperial.ac.uk/people/a.cully)
+
+
 
