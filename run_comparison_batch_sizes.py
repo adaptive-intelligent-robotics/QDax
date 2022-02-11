@@ -11,7 +11,6 @@ from absl import logging
 
 from brax.envs import wrappers
 from brax.envs.env import Env
-from brax.experimental.composer import register_default_components
 from qdax.envs.unidirectional_envs import ant, walker, hopper, halfcheetah, humanoid
 from qdax.envs.omnidirectional_envs import ant as ant_omni
 from qdax.envs.omnidirectional_envs import humanoid as humanoid_omni
@@ -19,8 +18,6 @@ from qdax.tasks import BraxTask
 from qdax.training import qd, emitters
 from qdax.training.configuration import Configuration
 
-register_default_components()  # this registers standard components like ant, ground and singleton block
-# see https://github.com/google/brax/blob/main/brax/experimental/composer/components/__init__.py#L43
 
 QD_PARAMS = dict()
 

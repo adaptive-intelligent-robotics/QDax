@@ -1,5 +1,5 @@
 absl-py==1.0.0
-jax[cuda11_cudnn82] == 0.2.26 -f https://storage.googleapis.com/jax-releases/jax_releases.html
+jax==0.2.26
 brax==0.0.10
 gym == 0.15.4
 numpy == 1.19.5

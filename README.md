@@ -4,19 +4,31 @@ QDax is a tool to accelerate Quality-Diveristy (QD) algorithms through hardware 
 QDax paper: https://arxiv.org/abs/2202.01258 
 
 ## Installation
+
+### Dependencies
+
+In particular, QDax relies on the [JAX](https://github.com/google/jax) and [brax](https://github.com/google/brax) libraries. 
+To install all dependencies, you can run the following command:
+```bash
+pip install -r requirements.txt
 ```
-pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
+
+### Installing QDax
+
+```bash
+pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git
 ```
 
 ## How to run code
+
 There are two ways to do this.
-1. Colab Notebooks (has visualization included) - reccomended (to also avoid needing to download dependencies and configure environment)
+1. Colab Notebooks (has visualization included) - recommended (to also avoid needing to download dependencies and configure environment)
 Open the notebook qd_run in the notebooks directory and run the notebook according the walkthrough instructions.
 
 2. Locally
 A singularity folder is provided to easily install everything in a container. If you use singularity image or install the dependencies locally, you can run a single exeperiment using for example: 
 ```
-python run_qd.py --env_name walker --grid_shape 30 30 --batch_size 2048
+python run_qd.py --env_name walker --grid_shape 30 30 --batch_size 2048 --num-evaluations 1000000
 ```
 Alternatively, to run experiments that compare the effect of batch sizes, use command below. For example, to run the experiments on the walker environment (which has a 2-d BD) with a grid shape of (30,30) with 5 replications. 
 ```
@@ -45,9 +57,9 @@ The main file used is `qdbrax/training/qd.py`. This file contains the main `trai
 key = jax.random.PRNGKey(seed)
 key, key_model, key_env = jax.random.split(key, 3)
 ```
-- key is for training_state.key
-- key_model is for policy_model.init
-- key_env is for environment initialisations (although in our deterministic case we do not really use this)
+- `key` is for training_state.key
+- `key_model` is for policy_model.init
+- `key_env` is for environment initialisations (although in our deterministic case we do not really use this)
 
 From the flow of the program we perform an init_phase first. The init_phase function uses the training_state.key and outputs the updated training_state (with a new key) after performing the initialization (initailization of archive by evaluating random policies).
 
@@ -55,10 +67,10 @@ After this we depend on the training_state.key in es_one epoch to be managed. In
 ```
 key, key_emitter, key_es_eval = jax.random.split(training_state.key, 3)
 ```
-- key_selection passed into selection function
-- key_petr is passed into mutation function (iso_dd)
-- key_es_eval is passed into eval_and_add
-- key is saved as the new training_state.key for the next epoch
+- `key_selection` passed into selection function
+- `key_petr` is passed into mutation function (iso_dd)
+- `key_es_eval` is passed into eval_and_add
+- `key` is saved as the new training_state.key for the next epoch.
 And the training_state is returned as an output of this function.
 
 
