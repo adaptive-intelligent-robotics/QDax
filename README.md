@@ -1,13 +1,17 @@
-# qd-brax
-Some QD baselines written in Jax using Brax environments. Experimenting using Brax.
+# QDax: Accelerated Quality-Diversity
+QDax is a tool to accelerate Quality-Diveristy (QD) algorithms through hardware accelerators and massive parallelism. 
 
-Author: Bryan Lim
-Email: bwl116@ic.ac.uk
+QDax paper: https://arxiv.org/abs/2202.01258 
+
+## Installation
+```
+pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
+```
 
 ## How to run code
 There are two ways to do this.
-1. Colab Notebooks (has visualization included) - reccomended (to also avoid needing to download dependencies)
-Open the notebook qd_run in the notebooks directory and just run the notebook.
+1. Colab Notebooks (has visualization included) - reccomended (to also avoid needing to download dependencies and configure environment)
+Open the notebook qd_run in the notebooks directory and run the notebook according the walkthrough instructions.
 
 2. Locally
 A singularity folder is provided to easily install everything in a container. If you use singularity image or install the dependencies locally, you can run a single exeperiment using for example: 
