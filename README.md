@@ -56,11 +56,10 @@ where:
 Some things to note beforehand is that JAX relies on a functional programming paradigm. 
 We will try as much as possible to maintain this programming style.
 
-<<<<<<< HEAD
 The main file used is `qdbrax/training/qd.py`. 
 This file contains the main `train` function which consists of the entire QD loop and supporting functions.
-- INPUTS: The `train` function takes as input the task, emitter and hyperparameters. 
-- FUNCTIONS: The main functions used by `train` are also declared in this file. 
+- Inputs: The `train` function takes as input the task, emitter and hyperparameters. 
+- Functions: The main functions used by `train` are also declared in this file. 
 Working in top_down importance in terms of how the code works. 
 The key function here is the `_es_one_epoch` function. 
 In terms of QD, this determines the loop performed at each generation: 
@@ -68,14 +67,8 @@ In terms of QD, this determines the loop performed at each generation:
   (2) Evaluation 
   and (3) Archive Update defined by (`eval_and_add_fn`). 
 The first part of the `train` function calls `init_phase_fn` which initializes the archive using random policies.
-- ORDER: `train` first calls `init_phase_fn` and then `_es_one_epoch` for a defined number of generations or evaluations.
-=======
-The main file used is `qdax/training/qd.py`. This file contains the main `train` function which consists of the entire QD loop and supporting functions.
-- Inputs: The `train` function takes as input the task, emitter and hyperparameters. 
-- Functions: The main functions used by `train` are also declared in this file. Working in top_down importance in terms of how the code works. The key function here is the `_es_one_epoch` function. In terms of QD, this determines the loop performed at each generation: Selection (from archive) and Variation to generate solutions to be evaluated defined by the `emitter_fn`, Evaluation and Archive Update defined by (`eval_and_add_fn`). The first part of the `train` function is the `init_phase_fn` which initializes the archive using random policies.
-- Flow: `train` first calls `init_phase_fn` and then `_es_one_epoch` for defined number of generations or evaluations.
+- Flow: `train` first calls `init_phase_fn` and then `_es_one_epoch` for a defined number of generations or evaluations.
 
->>>>>>> 3e786643a20ed30814f820e5db7f69539dc37d44
 
 ## Notes
 ### Key Management
