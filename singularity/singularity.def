@@ -34,7 +34,7 @@ From: airl_env_cuda_20211217.sif
    pip3 install --upgrade pip
    pip3 install -r requirements.txt
    
-   mkdir -p /git/sferes2/exp/qd-brax
+   mkdir -p /git/sferes2/exp/qdax
 
    #==================================================================================
    exit 0 #NOTFORFINAL - the lines below this "exit" will be executed only when building the final image
@@ -57,7 +57,7 @@ From: airl_env_cuda_20211217.sif
 
     ################# Creating results folder ########################
     CURPATH=$(pwd)
-    cd /git/sferes2/exp/qd-brax
+    cd /git/sferes2/exp/qdax
     DIRNAME=results
     PATHNAME=$(date +%Y-%m-%d_%H_%M_%S)_$$
 
@@ -68,7 +68,7 @@ From: airl_env_cuda_20211217.sif
     echo tmp_dir is $tmp_dir
 
     ####################### Run program ####################
-    cd /git/sferes2/exp/qd-brax
+    cd /git/sferes2/exp/qdax
     command="time python3 run_comparison_batch_sizes.py $@ -d ${tmp_dir}"
     bash -c "$command"
     

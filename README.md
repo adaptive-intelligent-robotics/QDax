@@ -40,31 +40,6 @@ The main file used is `qdbrax/training/qd.py`. This file contains the main `trai
 - ORDER: `train` first calls `init_phase_fn` and then `_es_one_epoch` for defined number of generations or evaluations.
 
 ## Notes
-### Environments
-#### Resets and Auto-resets
-QD should not work using auto-resets as we need the policy/individual to be representative of one episode. To handle this, we turn off the auto-resets and run the episode to the end. We kill the solution entirely and discard it completely if any of the termination conditions are hit (i.e. falling below a certain z-value).
-Another approach might be to use the BD of the timestep right before termination (this is what is done in ME-ES implementation). This approach is also implemented and is used by default.
-
-Technical Implementation: To avoid/stop using the AutoResetWrapper of the brax environments, we can set auto_reset=False when creating the environment. However, we then have to manually reset the environments as nothing else resets the environments for you. 
-- This was implemented by placing the resets inside the run_es_eval function. 
-- To do this we jit another reset_fn which is not a vmapped (i.e. a non-batch reset_fn) and use this in the run_es_eval
-
-#### ME implementation details to account for difficult environments to init policies
-Some environments are very difficult (i.e. humanoid) to initialize the ME algorihtm. The initial random policies all fall down and hit the termination condition. For more difficult environments, even the initial generations find it difficult to complete an episode wihtout termination. To overcome this, we implement ME by considering all individuals even if they fall/or have termination. We consider the BD and fitness before termination for all such indiviudals. Because a survive reward is included. 
-
-Tehnical Implementation: This is implemented by outputting a done trajectory vector and checking the index of the timestep in which the done condition (termination) was first hit. With this index, we can then get the observation trajectory up to this timestep to get the BDs right before termination. For fitness, we could also do the same and sum the rewards at every step up till the termination index to get the correspoding fitness. However, the current implementation does NOT save the entire reward trajectory and implements a more ES type implementation in which reward is just summed in one variable called cumulative_reward. So currently, the check is done in the env itself, where we introduce a new class property called self.done which is set to False by default and at reset. This class property is then set to true at the first instance of a done/termination condition. The reward for each step is then decided based on this class property. Hence, the main loop code keeps its same structure and just ocnitnues summing the rewards as usual.
-
-
-#### Ant env
-Order of observations are:
-1. pos - root (x,y,z) or (z)
-2. rot - root (w,x,y,z) - 4
-3. pos - joints (n_dof) 
-4. vel - root (x,y,z) - 3
-5. angvel - root (x,y,z) - 4
-6. vel - joints (n_dof)
-7. cfrc - TODO: TO UNDERSTAND WHAT THE DIMENSIONS ACTUALLY ARE HERE
-
 ### Key Management
 ```
 key = jax.random.PRNGKey(seed)
@@ -78,8 +53,6 @@ From the flow of the program we perform an init_phase first. The init_phase func
 
 After this we depend on the training_state.key in es_one epoch to be managed. In the es_one_epoch(training_state):
 ```
-key, key_selection, key_petr, key_es_eval = jax.random.split(training_state.key, 4)
-# NEW UPDATE: more general
 key, key_emitter, key_es_eval = jax.random.split(training_state.key, 3)
 ```
 - key_selection passed into selection function
