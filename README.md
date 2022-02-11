@@ -75,7 +75,7 @@ And the training_state is returned as an output of this function.
 
 ## Contributors
 
-QDax is currently developed and maintained by the [AIRL Lab](https://www.imperial.ac.uk/adaptive-intelligent-robotics/):
+QDax is currently developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/):
 
 - [Bryan Lim](https://limbryan.github.io/)
 - [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
