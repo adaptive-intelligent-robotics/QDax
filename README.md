@@ -46,9 +46,13 @@ python3 analysis/plot_metrics.py --exp-name qdax_training --results ./qdax_walke
 Some things to note beforehand is that JAX relies on a functional programming paradigm. We will try as much as possible to maintain this programming style.
 
 The main file used is `qdax/training/qd.py`. This file contains the main `train` function which consists of the entire QD loop and supporting functions.
-- Inputs: The `train` function takes as input the task, emitter and hyperparameters. 
+- Inputs: The `train` function takes as input the task, emitter_fn and hyperparameters. 
 - Functions: The main functions used by `train` are also declared in this file. Working in top_down importance in terms of how the code works. The key function here is the `_es_one_epoch` function. In terms of QD, this determines the loop performed at each generation: Selection (from archive) and Variation to generate solutions to be evaluated defined by the `emitter_fn`, Evaluation and Archive Update defined by (`eval_and_add_fn`). The first part of the `train` function is the `init_phase_fn` which initializes the archive using random policies.
 - Flow: `train` first calls `init_phase_fn` and then `_es_one_epoch` for defined number of generations or evaluations.
+
+Users can extend this framework with extensions of QD algorithms such as different optimizers/emitters and introducing new tasks. This can be done by:
+1. **Emitter Function:** The emitter function is responsible for generating solutions to be evaluated. Within the commonly known "ask and tell" framework in evolution strategies, the emitter function is analogous to the "ask" function. However, the difference in QD algorihtms is the interaction with the repertoire. A few common mutation based emitters have been implemented. These examples can be found [here](https://github.com/adaptive-intelligent-robotics/QDax/tree/main/qdax/training/emitters_simple)
+2. **Tasks:** An example of the task structure can be found [here](https://github.com/adaptive-intelligent-robotics/QDax/blob/main/qdax/tasks.py). This file refers to the BraxTask which uses the [Brax](https://github.com/google/brax) environments. 
 
 
 ## Notes
@@ -72,6 +76,10 @@ key, key_emitter, key_es_eval = jax.random.split(training_state.key, 3)
 - `key_es_eval` is passed into eval_and_add
 - `key` is saved as the new training_state.key for the next epoch.
 And the training_state is returned as an output of this function.
+
+## Related Projects
+- [EvoJax: Hardware-Accelerated Neuroevolution](https://github.com/google/evojax). EvoJAX is a scalable, general purpose, hardware-accelerated neuroevolution toolkit. [Paper](https://arxiv.org/abs/2202.05008)
+
 
 ## Contributors
 
