@@ -18,7 +18,7 @@ def get_all_folders_results(path_results_folder):
     return [
         path_folder
         for path_folder in os.listdir(path_results_folder)
-        if path_folder.startswith("qdbrax_training_")
+        if path_folder.startswith("qdax_training_")
     ]
 
 
