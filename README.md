@@ -1,13 +1,13 @@
 # QDax: Accelerated Quality-Diversity
-QDax is a tool to accelerate Quality-Diveristy (QD) algorithms through hardware accelerators and massive parallelism. 
+QDax is a tool to accelerate Quality-Diveristy (QD) algorithms through hardware accelerators and massive parallelism.
 
-QDax paper: https://arxiv.org/abs/2202.01258 
+QDax paper: https://arxiv.org/abs/2202.01258
 
 ## Installation
 
 ### Dependencies
 
-In particular, QDax relies on the [JAX](https://github.com/google/jax) and [brax](https://github.com/google/brax) libraries. 
+In particular, QDax relies on the [JAX](https://github.com/google/jax) and [brax](https://github.com/google/brax) libraries.
 To install all dependencies, you can run the following command:
 ```bash
 pip install -r requirements.txt
@@ -21,18 +21,18 @@ pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git
 
 ## Examples
 
-There are two ways to run QDax: 
+There are two ways to run QDax:
 1. Colab Notebooks (has visualization included) - recommended (to also avoid needing to download dependencies and configure environment)
 Open the notebook [notebook](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/Run_QDax_Example_Notebook.ipynb) in the notebooks directory and run it according the walkthrough instructions.
 
-2. Locally - A singularity folder is provided to easily install everything in a container. 
-If you use singularity image or install the dependencies locally, you can run a single experiment using for example: 
+2. Locally - A singularity folder is provided to easily install everything in a container.
+If you use singularity image or install the dependencies locally, you can run a single experiment using for example:
 
 ```
 python run_qd.py --env_name walker --grid_shape 30 30 --batch_size 2048 --num-evaluations 1000000
 ```
 Alternatively, to run experiments that compare the effect of batch sizes, use command below.
-For example, to run the experiments on the walker environment (which has a 2-dimensional BD) with a grid shape of (30,30) with 5 replications. 
+For example, to run the experiments on the walker environment (which has a 2-dimensional BD) with a grid shape of (30,30) with 5 replications.
 ```
 python3 run_comparison_batch_sizes.py --env_name walker --grid_shape 30 30 -n 5
 CUDA_VISIBLE_DEVICES=0 python3 run_comparison_batch_sizes.py --env_name walker --grid_shape 30 30 -n 5
@@ -53,25 +53,25 @@ where:
 
 
 ## Code Structure (for developers)
-Some things to note beforehand is that JAX relies on a functional programming paradigm. 
+Some things to note beforehand is that JAX relies on a functional programming paradigm.
 We will try as much as possible to maintain this programming style.
 
-The main file used is `qdax/training/qd.py`. 
+The main file used is `qdax/training/qd.py`.
 This file contains the main `train` function which consists of the entire QD loop and supporting functions.
-- Inputs: The `train` function takes as input the task, emitter and hyperparameters. 
-- Functions: The main functions used by `train` are also declared in this file. 
-Working in top_down importance in terms of how the code works. 
-The key function is the `_es_one_epoch` function. 
-In terms of QD, this determines the loop performed at each generation: 
+- Inputs: The `train` function takes as input the task, emitter and hyperparameters.
+- Functions: The main functions used by `train` are also declared in this file.
+Working in top_down importance in terms of how the code works.
+The key function is the `_es_one_epoch` function.
+In terms of QD, this determines the loop performed at each generation:
   (1) Selection (from archive) and Variation to generate solutions to be evaluated defined by the `emitter_fn`,
-  (2) Evaluation 
-  and (3) Archive Update defined by (`eval_and_add_fn`). 
+  (2) Evaluation
+  and (3) Archive Update defined by (`eval_and_add_fn`).
 The first part of the `train` function is the `init_phase_fn` which initializes the archive using random policies.
 - Flow: `train` first calls `init_phase_fn` and then `_es_one_epoch` for a defined number of generations or evaluations.
 
 Users can extend this framework with extensions of QD algorithms such as different optimizers/emitters and introducing new tasks. This can be done by:
 1. **Emitter Function:** The emitter function is responsible for generating solutions to be evaluated. Within the commonly known "ask and tell" framework in evolution strategies, the emitter function is analogous to the "ask" function. However, the difference in QD algorihtms is the interaction with the repertoire. A few common mutation based emitters have been implemented. These examples can be found [here](https://github.com/adaptive-intelligent-robotics/QDax/tree/main/qdax/training/emitters_simple)
-2. **Tasks:** An example of the task structure can be found [here](https://github.com/adaptive-intelligent-robotics/QDax/blob/main/qdax/tasks.py). This file refers to the BraxTask which uses the [Brax](https://github.com/google/brax) environments. 
+2. **Tasks:** An example of the task structure can be found [here](https://github.com/adaptive-intelligent-robotics/QDax/blob/main/qdax/tasks.py). This file refers to the BraxTask which uses the [Brax](https://github.com/google/brax) environments.
 
 
 ## Notes
@@ -84,10 +84,10 @@ key, key_model, key_env = jax.random.split(key, 3)
 - `key_model` is for policy_model.init
 - `key_env` is for environment initialisations (although in our deterministic case we do not really use this)
 
-From the flow of the program, we perform an `init_phase` first. 
+From the flow of the program, we perform an `init_phase` first.
 The `init_phase` function uses the `training_state.key` and outputs the updated `training_state` (with a new key) after performing the initialization (initialization of archive by evaluating random policies).
 
-After this, we depend on the `training_state.key` in `es_one_epoch` to be managed. 
+After this, we depend on the `training_state.key` in `es_one_epoch` to be managed.
 In the `es_one_epoch(training_state)`:
 ```
 key, key_emitter, key_es_eval = jax.random.split(training_state.key, 3)
@@ -110,6 +110,3 @@ QDax is currently developed and maintained by the [Adaptive & Intelligent Roboti
 - [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
 - [Luca Grillotti](https://scholar.google.com/citations?user=gY9CmssAAAAJ&hl=fr&oi=sra)
 - [Antoine Cully](https://www.imperial.ac.uk/people/a.cully)
-
-
-

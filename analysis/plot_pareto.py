@@ -1,7 +1,7 @@
+import argparse
 import operator
 from collections import OrderedDict
 
-import argparse
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +18,7 @@ from analysis.data_loaders import DataLoader
 def generate_figure(path_save, attribute_comparison_name, data_collector_all_variants):
     sorting_attributes_fn = int
 
-    plt.style.use('classic')
+    plt.style.use("classic")
     plt.clf()
     plt.cla()
     plt.close()
@@ -53,7 +53,7 @@ def generate_figure(path_save, attribute_comparison_name, data_collector_all_var
     )
     env_name = list(env_name_per_variant_dict.values())[0]
     grid_shape = list(grid_shape_per_variant_dict.values())[0]
-    entire_title_plot = 'Env: ' + str(env_name) + '  Grid shape: ' + str(grid_shape)
+    entire_title_plot = "Env: " + str(env_name) + "  Grid shape: " + str(grid_shape)
     fig.suptitle(entire_title_plot)
 
     # Gettings medians of full training time per variant:
@@ -63,14 +63,22 @@ def generate_figure(path_save, attribute_comparison_name, data_collector_all_var
     )
     median_final_qd_scores = data_collector_all_variants.map_and_reduce(
         map_fn=toolz.compose(
-            lambda array_np: array_np.flatten()[-1],  # 3. Flattening previously obtained array and getting last value
-            lambda df: df[DataLoader.QD_SCORE].to_numpy(),  # 2. Getting QD_Score and converting it to a numpy array
-            operator.attrgetter("metrics_df"),  # 1. Getting metrics_df attribute of DataCollectionOneReplication
+            lambda array_np: array_np.flatten()[
+                -1
+            ],  # 3. Flattening previously obtained array and getting last value
+            lambda df: df[
+                DataLoader.QD_SCORE
+            ].to_numpy(),  # 2. Getting QD_Score and converting it to a numpy array
+            operator.attrgetter(
+                "metrics_df"
+            ),  # 1. Getting metrics_df attribute of DataCollectionOneReplication
         ),
         reduce_fn=toolz.compose(
-            lambda x: np.median(x, axis=0),  # 5. Getting median value of that list of QD scores
+            lambda x: np.median(
+                x, axis=0
+            ),  # 5. Getting median value of that list of QD scores
             list,  # 4. For each variant, Converting all values of replications into a list (of final QD scores)
-        )
+        ),
     )
     print("full training time: ", medians_full_training_time_dict)
     print("median_final_qd_score: ", median_final_qd_scores)
@@ -90,22 +98,28 @@ def generate_figure(path_save, attribute_comparison_name, data_collector_all_var
     attribute_legend_per_variant_ordered = OrderedDict(
         sorted(
             attribute_legend_per_variant.items(),
-            key=lambda key_value_pair: sorting_attributes_fn(key_value_pair[1])
+            key=lambda key_value_pair: sorting_attributes_fn(key_value_pair[1]),
         )
     )
     my_cmap = ListedColormap(sns.color_palette("colorblind").as_hex())
 
     dict_colors_per_variant = {
         variant_folder: my_cmap.colors[index_variant]
-        for index_variant, variant_folder in enumerate(attribute_legend_per_variant_ordered)
+        for index_variant, variant_folder in enumerate(
+            attribute_legend_per_variant_ordered
+        )
     }
 
     # MAIN PLOTTTING #
-    for index_variant, variant_folder in enumerate(attribute_legend_per_variant_ordered):
-        ax1.scatter(medians_full_training_time_dict[variant_folder],
-                    median_final_qd_scores[variant_folder],
-                    color=dict_colors_per_variant[variant_folder],
-                    zorder=index_variant * 2 + 22, )
+    for index_variant, variant_folder in enumerate(
+        attribute_legend_per_variant_ordered
+    ):
+        ax1.scatter(
+            medians_full_training_time_dict[variant_folder],
+            median_final_qd_scores[variant_folder],
+            color=dict_colors_per_variant[variant_folder],
+            zorder=index_variant * 2 + 22,
+        )
         ax1.set_ylabel("Final QD Score")
         ax1.set_xlabel("Runtime")
 
@@ -113,16 +127,26 @@ def generate_figure(path_save, attribute_comparison_name, data_collector_all_var
     ax1.grid()
 
     legend_elements = [
-        Line2D([0], [0], marker='o', color='w', markerfacecolor=dict_colors_per_variant[variant], markersize=13)
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=dict_colors_per_variant[variant],
+            markersize=13,
+        )
         for variant in attribute_legend_per_variant_ordered
     ]
 
-    fig.legend(legend_elements, list(attribute_legend_per_variant_ordered.values()),
-               bbox_to_anchor=(0.5, -0.02),
-               ncol=4,
-               loc="upper center",
-               frameon=False,
-               title=attribute_comparison_name)
+    fig.legend(
+        legend_elements,
+        list(attribute_legend_per_variant_ordered.values()),
+        bbox_to_anchor=(0.5, -0.02),
+        ncol=4,
+        loc="upper center",
+        frameon=False,
+        title=attribute_comparison_name,
+    )
 
     # SAVING OR SHOWING PLOT #
     if path_save:
@@ -138,11 +162,18 @@ def generate_figure(path_save, attribute_comparison_name, data_collector_all_var
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", type=str, help="where to load the results from")
-    parser.add_argument('-s', '--save', help="where to save the results")
-    parser.add_argument('--exp-name', type=str)
-    parser.add_argument('--attribute', default="population_size",
-                        help="which attribute to consider for comparison in config files")
-    parser.add_argument('--data-loader', default='qdax', choices=DataLoader.get_dataloader_from_name_dict().keys())
+    parser.add_argument("-s", "--save", help="where to save the results")
+    parser.add_argument("--exp-name", type=str)
+    parser.add_argument(
+        "--attribute",
+        default="population_size",
+        help="which attribute to consider for comparison in config files",
+    )
+    parser.add_argument(
+        "--data-loader",
+        default="qdax",
+        choices=DataLoader.get_dataloader_from_name_dict().keys(),
+    )
 
     return parser.parse_args()
 
@@ -150,13 +181,17 @@ def get_args():
 def main():
     args = get_args()
     data_loader = DataLoader.get_dataloader_from_name_dict()[args.data_loader]
-    data_collector_all_variants = data_collectors.DataCollectionAllVariants(data_loader=data_loader,
-                                                                            main_result_folder=args.results,
-                                                                            experiment_name=args.exp_name)
+    data_collector_all_variants = data_collectors.DataCollectionAllVariants(
+        data_loader=data_loader,
+        main_result_folder=args.results,
+        experiment_name=args.exp_name,
+    )
 
-    generate_figure(path_save=args.save,
-                    attribute_comparison_name=args.attribute,
-                    data_collector_all_variants=data_collector_all_variants)
+    generate_figure(
+        path_save=args.save,
+        attribute_comparison_name=args.attribute,
+        data_collector_all_variants=data_collector_all_variants,
+    )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
+import argparse
 import os
 from typing import Dict, List
 
-import argparse
 from qdax.training.configuration import Configuration
 
 CONFIGURATION_FILE_NAME = "configuration.json"
@@ -35,7 +35,9 @@ def get_configurations_per_folder(all_folders_results):
     }
 
 
-def _search_existing_configuration(all_configurations_per_folder, groups_same_configuration, configuration):
+def _search_existing_configuration(
+    all_configurations_per_folder, groups_same_configuration, configuration
+):
     for folder in groups_same_configuration:
         other_configuration = all_configurations_per_folder[folder]
         if other_configuration == configuration:
@@ -43,14 +45,16 @@ def _search_existing_configuration(all_configurations_per_folder, groups_same_co
     return None
 
 
-def get_groups_same_configurations(configurations_per_folder: Dict[str, Configuration]) -> Dict[str, List[str]]:
+def get_groups_same_configurations(
+    configurations_per_folder: Dict[str, Configuration]
+) -> Dict[str, List[str]]:
     groups_same_configuration = dict()
 
     for folder_result_path, configuration in configurations_per_folder.items():
 
-        folder_configuration = _search_existing_configuration(configurations_per_folder,
-                                                              groups_same_configuration,
-                                                              configuration)
+        folder_configuration = _search_existing_configuration(
+            configurations_per_folder, groups_same_configuration, configuration
+        )
 
         if folder_configuration is not None:
             groups_same_configuration[folder_configuration].append(folder_configuration)
@@ -65,9 +69,11 @@ def main():
     path_results_folder = args.results
     all_folders_results = get_all_folders_results(path_results_folder)
     configurations_per_folder = get_configurations_per_folder(all_folders_results)
-    groups_same_configuration = get_groups_same_configurations(configurations_per_folder)
+    groups_same_configuration = get_groups_same_configurations(
+        configurations_per_folder
+    )
     print(groups_same_configuration)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

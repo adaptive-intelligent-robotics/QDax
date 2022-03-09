@@ -1,4 +1,5 @@
 from functools import partial
+
 import jax
 import jax.numpy as jnp
 
@@ -17,14 +18,12 @@ def vector_quantize(points, codebook):
     assignment = jax.vmap(
         lambda point: jnp.argmin(jax.vmap(jnp.linalg.norm)(codebook - point))
     )(points)
-    distns = jax.vmap(jnp.linalg.norm)(codebook[assignment,:] - points)
+    distns = jax.vmap(jnp.linalg.norm)(codebook[assignment, :] - points)
     return assignment, distns
-
 
 
 @partial(jax.jit, static_argnums=(2,))
 def kmeans_run(key, points, k, thresh=1e-5):
-
     def improve_centroids(val):
         prev_centroids, prev_distn, _ = val
         assignment, distortions = vector_quantize(points, prev_centroids)
@@ -35,20 +34,23 @@ def kmeans_run(key, points, k, thresh=1e-5):
         counts = (
             (assignment[jnp.newaxis, :] == jnp.arange(k)[:, jnp.newaxis])
             .sum(axis=1, keepdims=True)
-            .clip(a_min=1.)  # clip to change 0/0 later to 0/1
+            .clip(a_min=1.0)  # clip to change 0/0 later to 0/1
         )
 
         # Sum over points in a centroid by zeroing others out
-        new_centroids = jnp.sum(
-            jnp.where(
-                # axes: (data points, clusters, data dimension)
-                assignment[:, jnp.newaxis, jnp.newaxis] \
+        new_centroids = (
+            jnp.sum(
+                jnp.where(
+                    # axes: (data points, clusters, data dimension)
+                    assignment[:, jnp.newaxis, jnp.newaxis]
                     == jnp.arange(k)[jnp.newaxis, :, jnp.newaxis],
-                points[:, jnp.newaxis, :],
-                0.,
-            ),
-            axis=0,
-        ) / counts
+                    points[:, jnp.newaxis, :],
+                    0.0,
+                ),
+                axis=0,
+            )
+            / counts
+        )
 
         return new_centroids, jnp.mean(distortions), prev_distn
 
@@ -63,7 +65,8 @@ def kmeans_run(key, points, k, thresh=1e-5):
     )
     return centroids, distortion
 
-@partial(jax.jit, static_argnums=(2,3))
+
+@partial(jax.jit, static_argnums=(2, 3))
 def kmeans(key, points, k, restarts, **kwargs):
     all_centroids, all_distortions = jax.vmap(
         lambda key: kmeans_run(key, points, k, **kwargs)
@@ -71,16 +74,20 @@ def kmeans(key, points, k, restarts, **kwargs):
     i = jnp.argmin(all_distortions)
     return all_centroids[i], all_distortions[i]
 
-def cvt(n_niches, k1, k2):
-  samples = 25000 # number of samples data points used to generate cetnroids (assumption here is tha BD is between - 0 and 1)
-  dim = 2 # number of BD dimensions
-  n_niches = n_niches
-  x = jax.random.uniform(k1, shape=(samples, dim)) # data samples in sampled unifromly based on bounds of BD space
-  print("Data sameples shape: ", x.shape)
 
-  centroids, distortions = kmeans(k2, x, n_niches, restarts=1)
-  print("Centroids shape: ",centroids.shape)
-  return centroids
+def cvt(n_niches, k1, k2):
+    samples = 25000  # number of samples data points used to generate cetnroids (assumption here is tha BD is between - 0 and 1)
+    dim = 2  # number of BD dimensions
+    n_niches = n_niches
+    x = jax.random.uniform(
+        k1, shape=(samples, dim)
+    )  # data samples in sampled unifromly based on bounds of BD space
+    print("Data sameples shape: ", x.shape)
+
+    centroids, distortions = kmeans(k2, x, n_niches, restarts=1)
+    print("Centroids shape: ", centroids.shape)
+    return centroids
+
 
 def test_main():
     k1, k2 = jax.random.split(jax.random.PRNGKey(8), 2)

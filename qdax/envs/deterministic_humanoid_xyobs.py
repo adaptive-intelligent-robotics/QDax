@@ -5,128 +5,147 @@ from brax.physics import bodies
 
 
 class Humanoid(env.Env):
-  """Fitness is velocity in the +x direction - get XY position as well of CoM."""
+    """Fitness is velocity in the +x direction - get XY position as well of CoM."""
 
-  def __init__(self, **kwargs):
-    super().__init__(_SYSTEM_CONFIG, **kwargs)
-    body = bodies.Body(self.sys.config)
-    body = jp.take(body, body.idx[:-1])  # skip the floor body
-    self.mass = body.mass.reshape(-1, 1)
-    self.inertia = body.inertia
-    self.done = False
+    def __init__(self, **kwargs):
+        super().__init__(_SYSTEM_CONFIG, **kwargs)
+        body = bodies.Body(self.sys.config)
+        body = jp.take(body, body.idx[:-1])  # skip the floor body
+        self.mass = body.mass.reshape(-1, 1)
+        self.inertia = body.inertia
+        self.done = False
 
-  def reset(self, rng: jp.ndarray) -> env.State:
-    """Resets the environment to an initial state."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    qpos = self.sys.default_angle() #+ jp.random_uniform(rng1, (self.sys.num_joint_dof,), -.01, .01)
-    qvel = jp.zeros((self.sys.num_joint_dof,)) #jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.01, .01)
-    qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-    info = self.sys.info(qp)
-    obs = self._get_obs(qp, info, jp.zeros(self.action_size))
-    self.done = False
-    reward, done, zero = jp.zeros(3)
-    metrics = {
-        'reward_linvel': zero,
-        'reward_quadctrl': zero,
-        'reward_alive': zero,
-        'reward_impact': zero
-    }
-    return env.State(qp, obs, reward, done, metrics)
+    def reset(self, rng: jp.ndarray) -> env.State:
+        """Resets the environment to an initial state."""
+        rng, rng1, rng2 = jp.random_split(rng, 3)
+        qpos = (
+            self.sys.default_angle()
+        )  # + jp.random_uniform(rng1, (self.sys.num_joint_dof,), -.01, .01)
+        qvel = jp.zeros(
+            (self.sys.num_joint_dof,)
+        )  # jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.01, .01)
+        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        info = self.sys.info(qp)
+        obs = self._get_obs(qp, info, jp.zeros(self.action_size))
+        self.done = False
+        reward, done, zero = jp.zeros(3)
+        metrics = {
+            "reward_linvel": zero,
+            "reward_quadctrl": zero,
+            "reward_alive": zero,
+            "reward_impact": zero,
+        }
+        return env.State(qp, obs, reward, done, metrics)
 
-  def step(self, state: env.State, action: jp.ndarray) -> env.State:
-    """Run one timestep of the environment's dynamics."""
-    qp, info = self.sys.step(state.qp, action)
-    obs = self._get_obs(qp, info, action)
+    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+        """Run one timestep of the environment's dynamics."""
+        qp, info = self.sys.step(state.qp, action)
+        obs = self._get_obs(qp, info, action)
 
-    pos_before = state.qp.pos[:-1]  # ignore floor at last index
-    pos_after = qp.pos[:-1]  # ignore floor at last index
-    com_before = jp.sum(pos_before * self.mass, axis=0) / jp.sum(self.mass)
-    com_after = jp.sum(pos_after * self.mass, axis=0) / jp.sum(self.mass)
-    lin_vel_cost = 1.25 * (com_after[0] - com_before[0]) / self.sys.config.dt
-    quad_ctrl_cost = .01 * jp.sum(jp.square(action))
-    # can ignore contact cost, see: https://github.com/openai/gym/issues/1541
-    quad_impact_cost = jp.float32(0)
-    alive_bonus = jp.float32(5)
+        pos_before = state.qp.pos[:-1]  # ignore floor at last index
+        pos_after = qp.pos[:-1]  # ignore floor at last index
+        com_before = jp.sum(pos_before * self.mass, axis=0) / jp.sum(self.mass)
+        com_after = jp.sum(pos_after * self.mass, axis=0) / jp.sum(self.mass)
+        lin_vel_cost = 1.25 * (com_after[0] - com_before[0]) / self.sys.config.dt
+        quad_ctrl_cost = 0.01 * jp.sum(jp.square(action))
+        # can ignore contact cost, see: https://github.com/openai/gym/issues/1541
+        quad_impact_cost = jp.float32(0)
+        alive_bonus = jp.float32(5)
 
+        done = jp.where(qp.pos[0, 2] < 0.65, jp.float32(1), jp.float32(0))
+        done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
 
-    done = jp.where(qp.pos[0, 2] < 0.65, jp.float32(1), jp.float32(0))
-    done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
+        self.done = jp.where((done == 1), True, self.done)
+        reward = jp.where(
+            self.done,
+            jp.float32(-5),
+            lin_vel_cost - quad_ctrl_cost - quad_impact_cost + alive_bonus,
+        )
 
-    self.done = jp.where((done == 1), True, self.done)
-    reward = jp.where(self.done, jp.float32(-5),lin_vel_cost - quad_ctrl_cost - quad_impact_cost + alive_bonus)
+        state.metrics.update(
+            reward_linvel=lin_vel_cost,
+            reward_quadctrl=quad_ctrl_cost,
+            reward_alive=alive_bonus,
+            reward_impact=quad_impact_cost,
+        )
 
-    state.metrics.update(
-        reward_linvel=lin_vel_cost,
-        reward_quadctrl=quad_ctrl_cost,
-        reward_alive=alive_bonus,
-        reward_impact=quad_impact_cost)
+        return state.replace(qp=qp, obs=obs, reward=reward, done=done)
 
-    return state.replace(qp=qp, obs=obs, reward=reward, done=done)
+    def _get_obs(self, qp: brax.QP, info: brax.Info, action: jp.ndarray) -> jp.ndarray:
+        """Observe humanoid body position, velocities, and angles."""
+        # some pre-processing to pull joint angles and velocities
+        joint_1d_angle, joint_1d_vel = self.sys.joints[0].angle_vel(qp)
+        joint_2d_angle, joint_2d_vel = self.sys.joints[1].angle_vel(qp)
+        joint_3d_angle, joint_3d_vel = self.sys.joints[2].angle_vel(qp)
 
-  def _get_obs(self, qp: brax.QP, info: brax.Info,
-               action: jp.ndarray) -> jp.ndarray:
-    """Observe humanoid body position, velocities, and angles."""
-    # some pre-processing to pull joint angles and velocities
-    joint_1d_angle, joint_1d_vel = self.sys.joints[0].angle_vel(qp)
-    joint_2d_angle, joint_2d_vel = self.sys.joints[1].angle_vel(qp)
-    joint_3d_angle, joint_3d_vel = self.sys.joints[2].angle_vel(qp)
+        # qpos:
+        # X, Y, Z of the torso (3,)
+        # orientation of the torso as quaternion (4,)
+        # joint angles (8,)
+        qpos = [
+            qp.pos[0, :],
+            qp.rot[0],
+            joint_1d_angle[0],
+            joint_2d_angle[0],
+            joint_2d_angle[1],
+            joint_3d_angle[0],
+            joint_3d_angle[1],
+            joint_3d_angle[2],
+        ]
 
-    # qpos:
-    # X, Y, Z of the torso (3,)
-    # orientation of the torso as quaternion (4,)
-    # joint angles (8,)
-    qpos = [
-        qp.pos[0, :], qp.rot[0], joint_1d_angle[0], joint_2d_angle[0],
-        joint_2d_angle[1], joint_3d_angle[0], joint_3d_angle[1],
-        joint_3d_angle[2]
-    ]
+        # qvel:
+        # velocity of the torso (3,)
+        # angular velocity of the torso (3,)
+        # joint angle velocities (8,)
+        qvel = [
+            qp.vel[0],
+            qp.ang[0],
+            joint_1d_vel[0],
+            joint_2d_vel[0],
+            joint_2d_vel[1],
+            joint_3d_vel[0],
+            joint_3d_vel[1],
+            joint_3d_vel[2],
+        ]
 
-    # qvel:
-    # velocity of the torso (3,)
-    # angular velocity of the torso (3,)
-    # joint angle velocities (8,)
-    qvel = [
-        qp.vel[0], qp.ang[0], joint_1d_vel[0], joint_2d_vel[0], joint_2d_vel[1],
-        joint_3d_vel[0], joint_3d_vel[1], joint_3d_vel[2]
-    ]
+        # actuator forces
+        qfrc_actuator = []
+        for act in self.sys.actuators:
+            torque = jp.take(action, act.act_index)
+            torque = torque.reshape(torque.shape[:-2] + (-1,))
+            torque *= jp.repeat(act.strength, act.act_index.shape[-1])
+            qfrc_actuator.append(torque)
 
-    # actuator forces
-    qfrc_actuator = []
-    for act in self.sys.actuators:
-      torque = jp.take(action, act.act_index)
-      torque = torque.reshape(torque.shape[:-2] + (-1,))
-      torque *= jp.repeat(act.strength, act.act_index.shape[-1])
-      qfrc_actuator.append(torque)
+        # external contact forces:
+        # delta velocity (3,), delta ang (3,) * num bodies in the system
+        cfrc_ext = [info.contact.vel, info.contact.ang]
+        # flatten bottom dimension
+        cfrc_ext = [x.reshape(x.shape[:-2] + (-1,)) for x in cfrc_ext]
 
-    # external contact forces:
-    # delta velocity (3,), delta ang (3,) * num bodies in the system
-    cfrc_ext = [info.contact.vel, info.contact.ang]
-    # flatten bottom dimension
-    cfrc_ext = [x.reshape(x.shape[:-2] + (-1,)) for x in cfrc_ext]
+        # center of mass obs:
+        body_pos = qp.pos[:-1]  # ignore floor at last index
+        body_vel = qp.vel[:-1]  # ignore floor at last index
 
-    # center of mass obs:
-    body_pos = qp.pos[:-1]  # ignore floor at last index
-    body_vel = qp.vel[:-1]  # ignore floor at last index
+        com_vec = jp.sum(body_pos * self.mass, axis=0) / jp.sum(self.mass)
+        com_vel = body_vel * self.mass / jp.sum(self.mass)
 
-    com_vec = jp.sum(body_pos * self.mass, axis=0) / jp.sum(self.mass)
-    com_vel = body_vel * self.mass / jp.sum(self.mass)
+        v_outer = jp.vmap(lambda a: jp.outer(a, a))
+        v_cross = jp.vmap(jp.cross)
 
-    v_outer = jp.vmap(lambda a: jp.outer(a, a))
-    v_cross = jp.vmap(jp.cross)
+        disp_vec = body_pos - com_vec
+        com_inert = self.inertia + self.mass.reshape((11, 1, 1)) * (
+            (jp.norm(disp_vec, axis=1) ** 2.0).reshape((11, 1, 1))
+            * jp.stack([jp.eye(3)] * 11)
+            - v_outer(disp_vec)
+        )
 
-    disp_vec = body_pos - com_vec
-    com_inert = self.inertia + self.mass.reshape(
-        (11, 1, 1)) * ((jp.norm(disp_vec, axis=1)**2.).reshape(
-            (11, 1, 1)) * jp.stack([jp.eye(3)] * 11) - v_outer(disp_vec))
+        cinert = [com_inert.reshape(-1)]
 
-    cinert = [com_inert.reshape(-1)]
+        square_disp = (1e-7 + (jp.norm(disp_vec, axis=1) ** 2.0)).reshape((11, 1))
+        com_angular_vel = v_cross(disp_vec, body_vel) / square_disp
+        cvel = [com_vel.reshape(-1), com_angular_vel.reshape(-1)]
 
-    square_disp = (1e-7 + (jp.norm(disp_vec, axis=1)**2.)).reshape((11, 1))
-    com_angular_vel = (v_cross(disp_vec, body_vel) / square_disp)
-    cvel = [com_vel.reshape(-1), com_angular_vel.reshape(-1)]
-
-    return jp.concatenate(qpos + qvel + cinert + cvel + qfrc_actuator +
-                          cfrc_ext)
+        return jp.concatenate(qpos + qvel + cinert + cvel + qfrc_actuator + cfrc_ext)
 
 
 _SYSTEM_CONFIG = """

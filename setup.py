@@ -1,15 +1,14 @@
-from setuptools import setup
-from setuptools import find_packages
+from setuptools import find_packages, setup
 
 setup(
-    name='qdax',
-    version='0.0.1',
+    name="qdax",
+    version="0.0.1",
     packages=find_packages(),
-    url='https://github.com/adaptive-intelligent-robotics/QDax',
-    license='',
-    author='Bryan Lim',
-    author_email='',
-    description='',
+    url="https://github.com/adaptive-intelligent-robotics/QDax",
+    license="",
+    author="Bryan Lim",
+    author_email="",
+    description="",
     install_requires=[
         "absl-py==1.0.0",
         "jax==0.2.26",
@@ -22,5 +21,5 @@ setup(
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
-   ],
+    ],
 )

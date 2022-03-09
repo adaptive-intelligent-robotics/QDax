@@ -1,66 +1,70 @@
 """Trains a halfcheetah to run in the +x direction."""
 
-import jax.numpy as jnp
 import brax
+import jax.numpy as jnp
 from brax import jumpy as jp
-from brax.envs import env
-from brax.envs import halfcheetah
+from brax.envs import env, halfcheetah
+
 
 class Halfcheetah(env.Env):
-  """Trains a halfcheetah to run in the +x direction."""
+    """Trains a halfcheetah to run in the +x direction."""
 
-  def __init__(self, **kwargs):
-    super().__init__(_SYSTEM_CONFIG, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(_SYSTEM_CONFIG, **kwargs)
 
-  def reset(self, rng: jp.ndarray) -> env.State:
-    """Resets the environment to an initial state."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    qpos = self.sys.default_angle() #+ jp.random_uniform(rng1, (self.sys.num_joint_dof,), -.1, .1)
-    qvel = jp.zeros((self.sys.num_joint_dof,)) #jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.1, .1)
-    qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-    info = self.sys.info(qp)
-    obs = self._get_obs(qp, info)
-    reward, done, zero = jp.zeros(3)
-    metrics = {
-        'reward_ctrl_cost': zero,
-        'reward_forward': zero,
-    }
-    return env.State(qp, obs, reward, done, metrics)
+    def reset(self, rng: jp.ndarray) -> env.State:
+        """Resets the environment to an initial state."""
+        rng, rng1, rng2 = jp.random_split(rng, 3)
+        qpos = (
+            self.sys.default_angle()
+        )  # + jp.random_uniform(rng1, (self.sys.num_joint_dof,), -.1, .1)
+        qvel = jp.zeros(
+            (self.sys.num_joint_dof,)
+        )  # jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.1, .1)
+        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        info = self.sys.info(qp)
+        obs = self._get_obs(qp, info)
+        reward, done, zero = jp.zeros(3)
+        metrics = {
+            "reward_ctrl_cost": zero,
+            "reward_forward": zero,
+        }
+        return env.State(qp, obs, reward, done, metrics)
 
-  def step(self, state: env.State, action: jp.ndarray) -> env.State:
-    """Run one timestep of the environment's dynamics."""
-    qp, info = self.sys.step(state.qp, action)
-    obs = self._get_obs(qp, info)
+    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+        """Run one timestep of the environment's dynamics."""
+        qp, info = self.sys.step(state.qp, action)
+        obs = self._get_obs(qp, info)
 
-    x_before = state.qp.pos[0, 0]
-    x_after = qp.pos[0, 0]
-    forward_reward = (x_after - x_before) / self.sys.config.dt
-    ctrl_cost = -.1 * jp.sum(jp.square(action))
-    reward = forward_reward + ctrl_cost
-    state.metrics.update(
-        reward_ctrl_cost=ctrl_cost, reward_forward=forward_reward)
+        x_before = state.qp.pos[0, 0]
+        x_after = qp.pos[0, 0]
+        forward_reward = (x_after - x_before) / self.sys.config.dt
+        ctrl_cost = -0.1 * jp.sum(jp.square(action))
+        reward = forward_reward + ctrl_cost
+        state.metrics.update(reward_ctrl_cost=ctrl_cost, reward_forward=forward_reward)
 
-    return state.replace(qp=qp, obs=obs, reward=reward)
+        return state.replace(qp=qp, obs=obs, reward=reward)
 
-  def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
-    """Observe halfcheetah body position and velocities."""
-    # some pre-processing to pull joint angles and velocities
-    (joint_angle,), (joint_vel,) = self.sys.joints[0].angle_vel(qp)
+    def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
+        """Observe halfcheetah body position and velocities."""
+        # some pre-processing to pull joint angles and velocities
+        (joint_angle,), (joint_vel,) = self.sys.joints[0].angle_vel(qp)
 
-    # qpos:
-    # Z of the torso (1,)
-    # orientation of the torso as quaternion (4,)
-    # joint angles (8,)
-    xpos = jnp.asarray([qp.pos[0, 0]])
-    qpos = [xpos, qp.pos[0, 2:], qp.rot[0], joint_angle]
+        # qpos:
+        # Z of the torso (1,)
+        # orientation of the torso as quaternion (4,)
+        # joint angles (8,)
+        xpos = jnp.asarray([qp.pos[0, 0]])
+        qpos = [xpos, qp.pos[0, 2:], qp.rot[0], joint_angle]
 
-    # qvel:
-    # velcotiy of the torso (3,)
-    # angular velocity of the torso (3,)
-    # joint angle velocities (8,)
-    qvel = [qp.vel[0], qp.ang[0], joint_vel]
+        # qvel:
+        # velcotiy of the torso (3,)
+        # angular velocity of the torso (3,)
+        # joint angle velocities (8,)
+        qvel = [qp.vel[0], qp.ang[0], joint_vel]
 
-    return jp.concatenate(qpos + qvel)
+        return jp.concatenate(qpos + qvel)
+
 
 _SYSTEM_CONFIG = """
 bodies {

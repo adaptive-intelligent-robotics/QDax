@@ -3,13 +3,13 @@ import os
 from typing import Union
 
 import numpy as np
-from qdax.stats.timings import Timings as TimingsQDAX
-from qdax.training.configuration import Configuration as ConfigurationQDAX
 
 from analysis import data_reader as data_reader
 from analysis import saving_loading_utils
 from analysis.configuration import Configuration as ConfigurationQDBaselines
 from analysis.timings import Timings as TimingsQDBaselines
+from qdax.stats.timings import Timings as TimingsQDAX
+from qdax.training.configuration import Configuration as ConfigurationQDAX
 
 
 class DataLoader(metaclass=abc.ABCMeta):
@@ -68,12 +68,13 @@ class DataLoader(metaclass=abc.ABCMeta):
     @classmethod
     def get_timings(cls, path_replication) -> Union[TimingsQDAX, TimingsQDBaselines]:
         timings_pkl_path = cls.get_timings_pkl_path(path_replication)
-        timings_obj = saving_loading_utils.load_dataclass(path_file_to_load=timings_pkl_path)
+        timings_obj = saving_loading_utils.load_dataclass(
+            path_file_to_load=timings_pkl_path
+        )
         return timings_obj
 
 
 class DataLoaderQDAX(DataLoader):
-
     @classmethod
     def load_json(cls, path_json) -> ConfigurationQDAX:
         return ConfigurationQDAX.load_from_json(path_json)
@@ -85,7 +86,9 @@ class DataLoaderQDAX(DataLoader):
             cls.TRAINING_STATE_FILE_NAME,
         )
 
-        training_data = data_reader.load_training_state(path_training_state)  # type: TrainingState
+        training_data = data_reader.load_training_state(
+            path_training_state
+        )  # type: TrainingState
         scores = training_data.metrics.scores
 
         return scores
@@ -106,7 +109,6 @@ class DataLoaderQDAX(DataLoader):
 
 
 class DataLoaderPyMAPElites(DataLoader):
-
     @classmethod
     def load_json(cls, path_json) -> ConfigurationQDBaselines:
         return ConfigurationQDBaselines.load_from_json(path_json)
@@ -128,7 +130,9 @@ class DataLoaderPyMAPElites(DataLoader):
         index_best_fit = 4
         index_qd_score = 3
 
-        scores_array = all_logs_array[:, (index_epoch, index_archive_size, index_best_fit, index_qd_score)]
+        scores_array = all_logs_array[
+            :, (index_epoch, index_archive_size, index_best_fit, index_qd_score)
+        ]
 
         return scores_array
 
@@ -169,7 +173,9 @@ class DataLoaderPyRibs(DataLoader):
         index_best_fit = 4
         index_qd_score = 3
 
-        scores_array = all_logs_array[:, (index_epoch, index_archive_size, index_best_fit, index_qd_score)]
+        scores_array = all_logs_array[
+            :, (index_epoch, index_archive_size, index_best_fit, index_qd_score)
+        ]
 
         return scores_array
 

@@ -3,28 +3,32 @@ import scipy.stats as stats
 from statsmodels.stats.multicomp import MultiComparison
 
 
-def generate_p_values_log_files(df,
-                                gen,
-                                environment,
-                                list_metrics,
-                                path_file="p-values.log",
-                                comparison_on_metric="name_variant",
-                                ):
-    df = df[df['environment'] == environment]
+def generate_p_values_log_files(
+    df,
+    gen,
+    environment,
+    list_metrics,
+    path_file="p-values.log",
+    comparison_on_metric="name_variant",
+):
+    df = df[df["environment"] == environment]
     if gen:
-        df = df[df['gen'] == gen]
+        df = df[df["gen"] == gen]
 
     df = df[~df[comparison_on_metric].isnull()]
 
     if not df.empty:
 
-        with open(path_file, 'w') as f:
+        with open(path_file, "w") as f:
 
             for metric in list_metrics:
                 print(df[metric], list(df[comparison_on_metric]))
                 MultiComp = MultiComparison(df[metric], df[comparison_on_metric])
                 MultiComp.decimal_tvalues = 10
-                comp = MultiComp.allpairtest(stats.ranksums, method='Holm', )
+                comp = MultiComp.allpairtest(
+                    stats.ranksums,
+                    method="Holm",
+                )
                 print(f"------ {metric} -------")
                 print(comp[0])
                 print(f"=======================")
@@ -43,7 +47,8 @@ def generate_p_values_log_files(df,
 def main():
     # df = pd.read_csv("/Users/looka/git/sferes2/exp/aurora/analysis/paper/dataframes/df.csv")
     df_hexapod_suppl_obs = pd.read_csv(
-        "/Users/looka/git/sferes2/exp/aurora/analysis/paper/p_02_analysis_learned_behavioural_space/data_obs_hexapod/df_hexapod_camera_vertical_processed.csv")
+        "/Users/looka/git/sferes2/exp/aurora/analysis/paper/p_02_analysis_learned_behavioural_space/data_obs_hexapod/df_hexapod_camera_vertical_processed.csv"
+    )
 
     # for exp in [
     #     maze_experiments.MAZE_AURORA_SURPRISE_10_COLORS,
@@ -105,11 +110,17 @@ def main():
         "aurora_uniform_10_psat",
     ]
     df_hexapod_suppl_obs = df_hexapod_suppl_obs[
-        df_hexapod_suppl_obs["name_variant"].isin(list_algorithms_hexa_diversity)]
+        df_hexapod_suppl_obs["name_variant"].isin(list_algorithms_hexa_diversity)
+    ]
 
-    generate_p_values_log_files(df_hexapod_suppl_obs, gen=15000, environment="hexapod_camera_vertical",
-                                list_metrics=["angle_coverage"], path_file="p-values-diversity-hexa.log")
+    generate_p_values_log_files(
+        df_hexapod_suppl_obs,
+        gen=15000,
+        environment="hexapod_camera_vertical",
+        list_metrics=["angle_coverage"],
+        path_file="p-values-diversity-hexa.log",
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

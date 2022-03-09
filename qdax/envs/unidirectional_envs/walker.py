@@ -1,14 +1,16 @@
-import jax.numpy as jnp
 import brax
+import jax.numpy as jnp
 from brax import jumpy as jp
 from brax.envs import env
+
 from qdax.envs.deterministic_walker import DetWalker2d
+
 
 class QDUniWalker(DetWalker2d):
     def reset(self, rng: jp.ndarray) -> env.State:
         state = super().reset(rng)
-        state.info['contact_cum'] = jp.zeros((8))
-        state.info['bd'] = jp.zeros((2))
+        state.info["contact_cum"] = jp.zeros((8))
+        state.info["bd"] = jp.zeros((2))
         return state
 
     def step(self, state: env.State, action: jp.ndarray) -> env.State:
@@ -18,11 +20,13 @@ class QDUniWalker(DetWalker2d):
         obs = self._get_obs(qp)
 
         contact = self._get_contact(info)
-        contact_cum = state.info['contact_cum'] + contact
-        bd = contact_cum/state.info['steps']
+        contact_cum = state.info["contact_cum"] + contact
+        bd = contact_cum / state.info["steps"]
         state.info["contact_cum"] = contact_cum
-        state.info["bd"] = jnp.array([bd[3], bd[6]]) # BD is only for the contact of the foot and the floor
-        
+        state.info["bd"] = jnp.array(
+            [bd[3], bd[6]]
+        )  # BD is only for the contact of the foot and the floor
+
         # Ignore the floor at last index.
         pos_before = state.qp.pos[:-1]
         pos_after = qp.pos[:-1]
@@ -51,10 +55,10 @@ class QDUniWalker(DetWalker2d):
         state.metrics.update(
             reward_forward=forward_reward,
             reward_ctrl=-ctrl_cost,
-            reward_healthy=healthy_reward)
+            reward_healthy=healthy_reward,
+        )
         return state.replace(qp=qp, obs=obs, reward=reward, done=done)
 
     def _get_contact(self, info):
         contact = jp.sum(jp.square(jp.clip(info.contact.vel, -1, 1)), axis=1) != 0
         return contact
-

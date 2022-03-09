@@ -26,23 +26,23 @@ From: airl_env_cuda_20211217.sif
    #wget https://golang.org/dl/go1.17.3.linux-amd64.tar.gz
    #rm -rf /usr/local/go && tar -C /usr/local -xzf go1.17.3.linux-amd64.tar.gz
    #export PATH=$PATH:/usr/local/go/bin
-   
+
    #go get -u github.com/google/pprof
 
    # installing all necessary python libraries
    cd /workspace
    pip3 install --upgrade pip
    pip3 install -r requirements.txt
-   
+
    mkdir -p /git/sferes2/exp/qdax
 
    #==================================================================================
    exit 0 #NOTFORFINAL - the lines below this "exit" will be executed only when building the final image
    #==================================================================================
    cd /git/sferes2/exp/
-   
+
    #CLONEHERE
-   
+
 %runscript
     ############## Starting a VNC server ##################
     ## Sleep random duration between 0 and 90 seconds, to prevent 2 vnc-servers from starting at the same time on the same host.
@@ -71,9 +71,9 @@ From: airl_env_cuda_20211217.sif
     cd /git/sferes2/exp/qdax
     command="time python3 run_comparison_batch_sizes.py $@ -d ${tmp_dir}"
     bash -c "$command"
-    
-    
-    
+
+
+
 
 
 
@@ -95,4 +95,4 @@ From: airl_env_cuda_20211217.sif
 
 
 %help
-    This is the development and running environment of the flex qd 
+    This is the development and running environment of the flex qd
