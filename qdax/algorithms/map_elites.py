@@ -8,6 +8,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.lax import scan
+from sklearn.cluster import KMeans
+
 from qdax.algorithms.types import (
     Centroids,
     Descriptors,
@@ -19,7 +21,6 @@ from qdax.algorithms.types import (
     RNGKey,
     Scores,
 )
-from sklearn.cluster import KMeans
 
 
 def compute_cvt_centroids(

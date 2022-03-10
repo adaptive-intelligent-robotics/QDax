@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.algorithms.types import Genotypes, RNGKey
 
 

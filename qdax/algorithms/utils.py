@@ -6,6 +6,7 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 from brax.envs import State as EnvState
+
 from qdax.algorithms.types import Params, RNGKey, Transition
 
 

@@ -2,6 +2,7 @@ import functools
 from typing import Callable, Optional
 
 import brax
+
 from qdax.algorithms.brax_envs.exploration_wrappers import MazeWrapper, TrapWrapper
 from qdax.algorithms.brax_envs.locomotion_wrappers import (
     FeetContactWrapper,
