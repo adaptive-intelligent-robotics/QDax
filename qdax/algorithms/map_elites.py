@@ -244,46 +244,22 @@ jax.tree_util.register_pytree_node(
 )
 
 
-@dataclasses.dataclass
-class MAPElitesConfig:
-    """Configuration for QDPG Algorithm"""
-
-    env_name: str = "pointmaze"
-    seed: int = 0
-    env_batch_size: int = 100
-    num_iterations: int = 100
-    episode_length: int = 200
-    num_centroids: int = 1000
-    num_init_cvt_samples: int = 50000
-    proportion_mutation: float = 0.5
-    mutation_percentage: float = 0.1
-    mutation_eta: float = 0.05
-    mutation_minval: float = -1.0
-    mutation_maxval: float = 1.0
-    crossover_iso_sigma: float = 0.005
-    crossover_line_sigma: float = 0.05
-    policy_hidden_layer_sizes: Sequence[int] = dataclasses.field(default_factory=list)
-    # others
-    log_period: int = 10
-    _alg_name: str = "MAP-Elites"
-
-
 class MAPElites:
     """Core elements of the MAP-Elites algorithm."""
 
     def __init__(
         self,
-        config: MAPElitesConfig,
         scoring_function: Callable[[Genotypes], Tuple[Fitness, Descriptors]],
         crossover_function: Callable[
             [Genotypes, Genotypes, RNGKey], Tuple[Genotypes, RNGKey]
         ],
         mutation_function: Callable[[Genotypes, RNGKey], Tuple[Genotypes, RNGKey]],
+        crossover_percentage: float,
     ):
-        self._config = config
         self._scoring_function = scoring_function
         self._crossover_function = crossover_function
         self._mutation_function = mutation_function
+        self._crossover_percentage = crossover_percentage
 
     @partial(jax.jit, static_argnames=("self",))
     def init_fn(
@@ -313,11 +289,9 @@ class MAPElites:
 
         return grid
 
-    @partial(jax.jit, static_argnames=("self", "proportion_mutation", "batch_size"))
+    @partial(jax.jit, static_argnames=("self", "batch_size"))
     def update_fn(
-        self,
-        grid: MapElitesGrid,
-        random_key: RNGKey,
+        self, grid: MapElitesGrid, random_key: RNGKey, batch_size: int
     ) -> Tuple[MapElitesGrid, RNGKey]:
         """
         Performs one iteration of the MAP-Elites algorithm.
@@ -325,23 +299,26 @@ class MAPElites:
         2. The copies are mutated and crossed-over
         3. The obtained offsprings are scored and then added to the archive.
         """
-        # prepare sampling sizes
-        mutation_batch_size = int(
-            self._config.proportion_mutation * self._config.env_batch_size
-        )
-        crossover_batch_size = self._config.env_batch_size - mutation_batch_size
+        n_crossover = int(batch_size * self._crossover_percentage)
+        n_mutation = batch_size - n_crossover
 
-        # sample and apply crossover
-        x1, random_key = grid.sample_in_grid(random_key, crossover_batch_size)
-        x2, random_key = grid.sample_in_grid(random_key, crossover_batch_size)
-        x_crossover, random_key = self._crossover_function(x1, x2, random_key)
+        if n_crossover > 0:
+            x1, random_key = grid.sample_in_grid(random_key, n_crossover)
+            x2, random_key = grid.sample_in_grid(random_key, n_crossover)
 
-        # sample and apply mutation
-        x1, random_key = grid.sample_in_grid(random_key, mutation_batch_size)
-        x_mutation, random_key = self._mutation_function(x1, random_key)
+            x_crossover, random_key = self._crossover_function(x1, x2, random_key)
 
-        # gather genotypes, score and update grid
-        genotypes = jnp.concatenate([x_crossover, x_mutation], axis=0)
+        if n_mutation > 0:
+            x1, random_key = grid.sample_in_grid(random_key, n_mutation)
+            x_mutation, random_key = self._mutation_function(x1, random_key)
+
+        if n_crossover == 0:
+            genotypes = x_mutation
+        elif n_mutation == 0:
+            genotypes = x_crossover
+        else:
+            genotypes = jnp.concatenate([x_crossover, x_mutation], axis=0)
+
         fitnesses, descriptors = self._scoring_function(genotypes)
         grid = grid.add_in_grid(genotypes, descriptors, fitnesses)
 

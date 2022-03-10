@@ -2,6 +2,7 @@
 See: https://arxiv.org/abs/1504.04909
 """
 
+import dataclasses
 import logging
 import os
 import time
@@ -9,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, Sequence, Tuple
 
 import brax
 import flax
@@ -19,12 +20,7 @@ from brax.envs.env import State as EnvState
 from jax.config import config
 from jax.flatten_util import ravel_pytree
 from qdax.algorithms import brax_envs
-from qdax.algorithms.map_elites import (
-    MAPElites,
-    MAPElitesConfig,
-    QDMetrics,
-    compute_cvt_centroids,
-)
+from qdax.algorithms.map_elites import MAPElites, QDMetrics, compute_cvt_centroids
 from qdax.algorithms.mutation_operators import (
     isoline_crossover_function,
     polynomial_mutation_function,
@@ -156,23 +152,35 @@ def scoring_function(
     return fitnesses, descriptors
 
 
+@dataclass
+class ExpConfig:
+    """Configuration from this experiment script"""
+
+    env_name: str = "walker2d_uni"
+    seed: int = 0
+    batch_size: int = 1000
+    num_iterations: int = 50
+    episode_length: int = 200
+    num_centroids: int = 50
+    num_init_cvt_samples: int = 50000
+    crossover_percentage: float = 0.5
+    policy_hidden_layer_sizes: Sequence[int] = dataclasses.field(default_factory=list)
+    # others
+    log_period: int = 10
+    _alg_name: str = "MAP-Elites"
+
+
 if __name__ == "__main__":
 
-    alg_config = MAPElitesConfig(
-        env_name="walker2d_uni",
+    config = ExpConfig(
+        env_name="pointmaze",
         seed=0,
-        env_batch_size=2000,
+        batch_size=1000,
         num_iterations=1000,
         episode_length=200,
         num_centroids=1000,
         num_init_cvt_samples=50000,
-        proportion_mutation=0.5,
-        mutation_percentage=0.1,
-        mutation_eta=0.05,
-        mutation_minval=-1.0,
-        mutation_maxval=1.0,
-        crossover_iso_sigma=0.005,
-        crossover_line_sigma=0.05,
+        crossover_percentage=0.5,
         policy_hidden_layer_sizes=[64, 64],
         # others
         log_period=10,
@@ -188,9 +196,9 @@ if __name__ == "__main__":
         current_dir
         + "/"
         + "exp_outputs/"
-        + alg_config._alg_name
+        + config._alg_name
         + "/"
-        + alg_config.env_name
+        + config.env_name
         + "/"
         + exp_date
         + "/"
@@ -218,14 +226,14 @@ if __name__ == "__main__":
     # Define components of the algorithm
 
     # Init environment
-    env_name = alg_config.env_name
+    env_name = config.env_name
     env = brax_envs.create(env_name)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(alg_config.seed)
+    random_key = jax.random.PRNGKey(config.seed)
 
     # Init policy network
-    policy_layer_sizes = alg_config.policy_hidden_layer_sizes + [env.action_size]
+    policy_layer_sizes = config.policy_hidden_layer_sizes + [env.action_size]
     policy_network = MLP(
         layer_sizes=policy_layer_sizes,
         kernel_init=jax.nn.initializers.lecun_uniform(),
@@ -235,8 +243,8 @@ if __name__ == "__main__":
 
     # Init population of policies - and reconstruction function
     random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey, num=alg_config.env_batch_size)
-    fake_batch = jnp.zeros(shape=(alg_config.env_batch_size, env.observation_size))
+    keys = jax.random.split(subkey, num=config.batch_size)
+    fake_batch = jnp.zeros(shape=(config.batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
     init_flatten_variables = jax.vmap(flatten_policy_variables)(init_variables)
     _, policy_recontruction_fn = ravel_pytree(
@@ -265,7 +273,7 @@ if __name__ == "__main__":
         partial(
             scoring_function,
             init_state=init_state,
-            episode_length=alg_config.episode_length,
+            episode_length=config.episode_length,
             random_key=random_key,
             play_step_fn=play_step_fn,
             behavior_descriptor_extractor=env_bd_extractor[env_name],
@@ -276,27 +284,27 @@ if __name__ == "__main__":
     mutation_fn = jax.jit(
         partial(
             polynomial_mutation_function,
-            proportion_to_mutate=alg_config.mutation_percentage,
-            eta=alg_config.mutation_eta,
-            minval=alg_config.mutation_minval,
-            maxval=alg_config.mutation_maxval,
+            proportion_to_mutate=0.1,
+            eta=0.05,
+            minval=-1.0,
+            maxval=1.0,
         )
     )
 
     crossover_fn = partial(
         isoline_crossover_function,
-        iso_sigma=alg_config.crossover_iso_sigma,
-        line_sigma=alg_config.crossover_line_sigma,
+        iso_sigma=0.005,
+        line_sigma=0.05,
     )
 
     # Beginning of the algorithm
 
     # create the mapelites instance
     mapelites = MAPElites(
-        config=alg_config,
         scoring_function=scoring_fn,
         crossover_function=crossover_fn,
         mutation_function=mutation_fn,
+        crossover_percentage=config.crossover_percentage,
     )
 
     # compute the centroids
@@ -305,8 +313,8 @@ if __name__ == "__main__":
     init_time = time.time()
     centroids = compute_cvt_centroids(
         num_descriptors=env.behavior_descriptor_length,
-        num_init_cvt_samples=alg_config.num_init_cvt_samples,
-        num_centroids=alg_config.num_centroids,
+        num_init_cvt_samples=config.num_init_cvt_samples,
+        num_centroids=config.num_centroids,
         minval=minval,
         maxval=maxval,
     )
@@ -321,11 +329,13 @@ if __name__ == "__main__":
     )
     init_function = jax.jit(init_function)
 
+    update_fn = partial(mapelites.update_fn, batch_size=config.batch_size)
+
     @jax.jit
     def iteration_fn(carry, unused):
         # iterate over grid
         grid, rkey = carry
-        (grid, rkey,) = mapelites.update_fn(
+        (grid, rkey,) = update_fn(
             grid,
             rkey,
         )
@@ -352,15 +362,15 @@ if __name__ == "__main__":
     total_training_time = 0
 
     # Main loop
-    num_loop_iterations = alg_config.num_iterations // alg_config.log_period
+    num_loop_iterations = config.num_iterations // config.log_period
     for iteration in range(num_loop_iterations):
 
         logger.warning(
             f"--- Iteration indice : {iteration} out of {num_loop_iterations} ---"
         )
         logger.warning(
-            f"--- Iteration number : {iteration * alg_config.log_period}"
-            f" out of {num_loop_iterations * alg_config.log_period}---"
+            f"--- Iteration number : {iteration * config.log_period}"
+            f" out of {num_loop_iterations * config.log_period}---"
         )
 
         start_time = time.time()
@@ -371,16 +381,14 @@ if __name__ == "__main__":
                 random_key,
             ),
             (),
-            length=alg_config.log_period,
+            length=config.log_period,
         )
         time_duration = time.time() - start_time
         total_training_time += time_duration
 
         # update nb steps estimation
         current_step_estimation += (
-            alg_config.env_batch_size
-            * alg_config.episode_length
-            * alg_config.log_period
+            config.batch_size * config.episode_length * config.log_period
         )
 
         logger.warning(
