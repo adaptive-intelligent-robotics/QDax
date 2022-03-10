@@ -16,7 +16,6 @@ import jax
 import jax.numpy as jnp
 from absl import logging
 from brax.training import distribution, networks
-
 from qdax.qd_utils import grid_archive
 from qdax.stats.metrics import Metrics
 from qdax.stats.saving_loading_utils import make_results_folder
