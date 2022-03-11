@@ -157,12 +157,12 @@ def scoring_function(
 class ExpConfig:
     """Configuration from this experiment script"""
 
-    env_name: str = "walker2d_uni"
+    env_name: str = "pointmaze"
     seed: int = 0
     batch_size: int = 1000
-    num_iterations: int = 50
+    num_iterations: int = 100
     episode_length: int = 200
-    num_centroids: int = 50
+    num_centroids: int = 1000
     num_init_cvt_samples: int = 50000
     crossover_percentage: float = 0.5
     policy_hidden_layer_sizes: Sequence[int] = dataclasses.field(default_factory=list)
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         env_name="pointmaze",
         seed=0,
         batch_size=1000,
-        num_iterations=1000,
+        num_iterations=100,
         episode_length=200,
         num_centroids=1000,
         num_init_cvt_samples=50000,
