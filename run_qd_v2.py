@@ -14,7 +14,7 @@ from brax.training import distribution, networks
 import jax
 import jax.numpy as jnp
 
-from qdax.tasks import BraxTask
+from qdax import brax_envs
 from qdax.training.configuration import Configuration
 from qdax.training import qd, qd_v2, emitters
 from qdax.training.emitters_simple.iso_dd_emitter import iso_dd_emitter, create_iso_dd_fn
@@ -156,7 +156,7 @@ def main(parsed_arguments):
 
   # makes evaluation fully deterministic
   key = jax.random.PRNGKey(configuration.seed)
-  key, env_key = jax.random.split(key)
+  key, env_key, score_key = jax.random.split(key, 3)
   reset_fn = jax.jit(env.reset)
   init_state = reset_fn(env_key)
 
@@ -178,7 +178,7 @@ def main(parsed_arguments):
             scoring_function,
             init_state=init_state,
             episode_length=configuration.episode_length,
-            random_key=random_key,
+            random_key=score_key,
             play_step_fn=play_step_fn,
             behavior_descriptor_extractor=env_bd_extractor[env_name],
         )

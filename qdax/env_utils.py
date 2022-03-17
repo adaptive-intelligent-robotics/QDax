@@ -20,11 +20,10 @@ from qdax.types import (
     StateDescriptor,
 )
 
-@staticmethod
+
 def training_inference(policy_model, params, obs):
     return policy_model.apply(params, obs)
 
-@staticmethod
 def get_deterministic_actions(parameters):
     loc, scale = jnp.split(parameters, 2, axis=-1)
     act = jnp.tanh(loc)
@@ -44,10 +43,10 @@ class Transition:
 
 def play_step(
     env_state: EnvState,
-    policy_model,
     policy_params: Params,
     random_key: RNGKey,
     env: brax.envs.Env,
+    policy_model: Any,
 ) -> Tuple[EnvState, Params, RNGKey, Transition]:
     """Play an environment step and return the updated state and the transition."""
 

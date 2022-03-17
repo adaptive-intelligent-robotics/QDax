@@ -76,7 +76,7 @@ def _eval_and_add(scoring_fn,
   # first_done = jnp.apply_along_axis(jnp.nonzero, 2, done, size=1, fill_value=-1)[0].ravel()
   # first_done -= 1 # this is to account for the auto-reset. we want the observation before it fell down
 
-  dead = jnp.zeros(pparams.shape[0])
+  dead = jnp.zeros(bds.shape[0])
   #dead = jnp.where(first_done>=-1,True,False) # if you want to kill individuals that don't survive to the end of the episode
 
   # # get fitness when first done
@@ -111,7 +111,7 @@ def _init_phase(get_random_parameters_fn,
   pparams = get_random_parameters_fn(training_state, population_size, key_model)
   logging.debug("Time Random Init: %s ", time.time() - init_start_t)
 
-  repertoire, state = eval_and_add_fn(training_state, pparams, key_eval)
+  repertoire, state = eval_and_add_fn(training_state=training_state, pparams=pparams, key=key_eval)
   metrics = update_metrics_fn(training_state.metrics, 0, repertoire)
 
   return TrainingState(key=key, repertoire=repertoire, metrics=metrics, state=state)
@@ -134,7 +134,7 @@ def _es_one_epoch(emitter_fn,
   logging.debug("Time Selection and Mutation: %s ", time.time() - sel_mut_start_t)
 
   # EVALUATION #
-  repertoire, state = eval_and_add_fn(training_state, pparams, key_es_eval)
+  repertoire, state = eval_and_add_fn(training_state=training_state, pparams=pparams, key=key_es_eval)
   logging.debug("ES Epoch Time: %s",time.time()-epoch_start_t)
 
   # UPDATE METRICS #
