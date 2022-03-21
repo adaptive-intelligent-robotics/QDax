@@ -1,14 +1,10 @@
-import pickle
-import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, List
 
 import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flax import struct
-from jax import grad, jit, vmap
-from sklearn.neighbors import KDTree
+from jax import jit
 
 Array = Any
 
@@ -70,7 +66,8 @@ class Repertoire:
         )
         # Checking Conditions for fitness function
         current_fitness = repertoire.fitness.ravel().at[bd_indexes].get()
-        # Checking if fitness function is nan or not, since nan means we do not have an individual yet
+        # Checking if fitness function is nan or not, since nan means we do not have
+        # an individual yet
         current_fitness_nan = jnp.isnan(current_fitness)
         # Checking if fitness that we have is better than the one we observed
         better_fitness = current_fitness < eval_scores_filtered
@@ -82,7 +79,8 @@ class Repertoire:
         # We Apply the Mask to remove dead individuals
         to_be_added = jnp.where(dead, False, to_be_added)
 
-        # Every Individual that is not valid will be assigned index 100000 because we cannot cut our arrays. Jit needs to know the size of the array.
+        # Every Individual that is not valid will be assigned index 100000 because we
+        # cannot cut our arrays. Jit needs to know the size of the array.
         # When adding, every individual will be clipped and sent to the same location
         mult_to_be_added = jnp.where(to_be_added, 1, 100000)
 
@@ -93,10 +91,9 @@ class Repertoire:
         for i, weight in enumerate(jax.tree_leaves(pop_p)):
             leaf = jax.tree_leaves(repertoire.archive)[i].at[bd_insertion].set(weight)
             leaves.append(leaf)
+
         # replacing grid with new leaves that have the updated weights
         new_archive = jax.tree_unflatten(jax.tree_structure(repertoire.archive), leaves)
-        unraveled_indices = jnp.unravel_index(bd_insertion, repertoire.fitness.shape)
-        # new_fitness = repertoire.fitness.at[jnp.unravel_index(bd_insertion, repertoire.fitness.shape)].set(eval_scores,mode='clip')
 
         new_fitness = jnp.reshape(
             repertoire.fitness.ravel().at[bd_insertion].set(eval_scores),
@@ -111,6 +108,7 @@ class Repertoire:
         )
 
 
+# Does not seem to be used
 class GridJaxArchive:
     def __init__(self, policy_params, max=3.0, min=-3.0, grid_shape=(100, 100)):
         self.grid_shape = grid_shape  # grid shape

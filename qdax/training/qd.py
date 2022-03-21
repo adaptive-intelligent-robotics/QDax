@@ -16,7 +16,6 @@ import jax
 import jax.numpy as jnp
 from absl import logging
 from brax.training import distribution, networks
-
 from qdax.qd_utils import grid_archive
 from qdax.stats.metrics import Metrics
 from qdax.stats.saving_loading_utils import make_results_folder
@@ -88,7 +87,9 @@ def _eval_and_add(
     first_done = jnp.apply_along_axis(jnp.nonzero, 2, done, size=1, fill_value=-1)[
         0
     ].ravel()
-    first_done -= 1  # this is to account for the auto-reset. we want the observation before it fell down
+
+    # this is to account for the auto-reset. we want the observation before it fell down
+    first_done -= 1
 
     # get fitness when first done
     eval_scores = jnp.take_along_axis(
