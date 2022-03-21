@@ -24,7 +24,7 @@ from qdax.stats.saving_loading_utils import make_results_folder
 from qdax.stats.timings import Timings
 from qdax.stats.training_state import TrainingState
 from qdax.training.configuration import Configuration
-
+from qdax.types import RNGKey
 # print('Jax devices: ',jax.devices())
 
 Array = Any
@@ -44,11 +44,11 @@ def _update_metrics(log_frequency: int,
   return Metrics(scores=scores, archives=archives)
 
 
-def _eval_and_add(scoring_fn,
-                  add_to_archive_fn,
-                  training_state: TrainingState,
-                  pparams,
-                  key):
+def _eval_and_add(training_state: TrainingState,
+                  pparams: Any,
+                  key: RNGKey,
+                  scoring_fn,
+                  add_to_archive_fn):
 
   key, key_es_eval = jax.random.split(key, 2)
 

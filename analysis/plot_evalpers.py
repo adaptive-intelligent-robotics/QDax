@@ -75,7 +75,7 @@ def get_relevant_data(data_collector_all_variants, attribute_comparison_name, so
     return batch_size_list, medians_evalps, quantile_1_evalps, quantile_3_evalps, medians_full_runtime, quantile_1_full_runtime, quantile_3_full_runtime
 
 
-def generate_figure(path_save, attribute_comparison_name, data_collector_all_variants, data_collector_all_variants_2, data_collector_all_variants_3):
+def generate_figure(path_save, attribute_comparison_name, data_collector_all_variants,): # data_collector_all_variants_2, data_collector_all_variants_3):
     sorting_attributes_fn = int
 
     plt.style.use('classic')
@@ -112,6 +112,7 @@ def generate_figure(path_save, attribute_comparison_name, data_collector_all_var
         ),
         )
 
+    print(env_name_per_variant_dict.values())
     env_name = list(env_name_per_variant_dict.values())[0]
     grid_shape = list(grid_shape_per_variant_dict.values())[0]
     entire_title_plot = 'Env: ' + str(env_name) + '  Grid shape: ' + str(grid_shape)
@@ -151,8 +152,8 @@ def generate_figure(path_save, attribute_comparison_name, data_collector_all_var
     #ax1.set_xticks(ticks=x_ticks, labels=batch_size_list) 
     ax1.set_ylabel("Average Eval/s")
     ax1.set_xlabel("Batch Size")
-    #ax1.set_yscale('log') 
-    #ax1.set_xscale('log') 
+    ax1.set_yscale('log') 
+    ax1.set_xscale('log') 
     ax1.grid()
 
     #ax2.set_xticks(ticks=x_ticks, labels=batch_size_list)
@@ -209,23 +210,23 @@ def main():
     pyme_data_loader = DataLoader.get_dataloader_from_name_dict()['pymapelites']
 
     qdax_data_collector_all_variants = data_collectors.DataCollectionAllVariants(data_loader=qdax_data_loader,
-                                                                            main_result_folder="./ant_omni_timetest/",#"./results/2021-12-14_21_09_06_660105_fAL/", #args.results,
+                                                                            main_result_folder=args.results,#"./results/2021-12-14_21_09_06_660105_fAL/", #args.results,
                                                                             experiment_name='qdax_training')#args.exp_name)
 
-    pyribs_data_collector_all_variants = data_collectors.DataCollectionAllVariants(data_loader=pyribs_data_loader,
-                                                                            main_result_folder="./walker_pyribs_hpc_results/2021-12-17_18_17_25_16_0Pp/", #"./walker_pyribs_hpc_results/2021-12-16_18_10_35_15_ON5/",
-                                                                            experiment_name='pyribs_training')#args.exp_name)
+    # pyribs_data_collector_all_variants = data_collectors.DataCollectionAllVariants(data_loader=pyribs_data_loader,
+    #                                                                         main_result_folder="./walker_pyribs_hpc_results/2021-12-17_18_17_25_16_0Pp/", #"./walker_pyribs_hpc_results/2021-12-16_18_10_35_15_ON5/",
+    #                                                                         experiment_name='pyribs_training')#args.exp_name)
 
-    pyme_data_collector_all_variants = data_collectors.DataCollectionAllVariants(data_loader=pyme_data_loader,
-                                                                            main_result_folder= "./walker_pyme_hpc_results/2021-12-17_01_08_14_15_7EO/", #"./walker_pyribs_hpc_results/2021-12-16_18_10_35_15_ON5/",
-                                                                            experiment_name='pymapelites_training')#args.exp_name)
+    # pyme_data_collector_all_variants = data_collectors.DataCollectionAllVariants(data_loader=pyme_data_loader,
+    #                                                                         main_result_folder= "./walker_pyme_hpc_results/2021-12-17_01_08_14_15_7EO/", #"./walker_pyribs_hpc_results/2021-12-16_18_10_35_15_ON5/",
+    #                                                                         experiment_name='pymapelites_training')#args.exp_name)
 
 
     generate_figure(path_save=args.save,
                     attribute_comparison_name=args.attribute,
-                    data_collector_all_variants=qdax_data_collector_all_variants, 
-                    data_collector_all_variants_2=pyribs_data_collector_all_variants,
-                    data_collector_all_variants_3=pyme_data_collector_all_variants,)
+                    data_collector_all_variants=qdax_data_collector_all_variants,) 
+                    # data_collector_all_variants_2=pyribs_data_collector_all_variants,
+                    # data_collector_all_variants_3=pyme_data_collector_all_variants,)
 
 if __name__ == "__main__":
     main()

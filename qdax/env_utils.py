@@ -1,5 +1,6 @@
+import functools
 from functools import partial
-from typing import Any, Callable, Optional, Sequence, Tuple
+from typing import Any, Callable, Optional, Sequence, Tuple, Dict
 
 import jax
 import jax.numpy as jnp
@@ -101,3 +102,102 @@ def generate_unroll(
         length=episode_length,
     )
     return state, transitions
+
+
+
+def init_run_eval(env_fn,
+                  action_repeat: int,
+                  batch_size: int,
+                  episode_length: int = 1000,
+                  seed: int = 0):
+    """Initialize run_eval."""
+    key_eval = jax.random.PRNGKey(seed=seed)
+    core_eval_env = env_fn(
+        action_repeat=action_repeat,
+        batch_size=batch_size,
+        episode_length=episode_length)
+    jit_env_reset = jax.jit(core_eval_env.reset)
+    jit_env_step = jax.jit(core_eval_env.step)
+    first_state = jit_env_reset(key_eval)
+    return core_eval_env, first_state, jit_env_step, jit_env_reset, key_eval
+
+def jit_run_eval(env_fn,
+                 inference_fn,
+                 action_repeat: int,
+                 batch_size: int,
+                 episode_length: int = 1000,
+                 seed: int = 0):
+    """JIT run_eval."""
+    core_eval_env, eval_first_state, eval_step_fn, jit_env_reset_fn, key_eval = init_run_eval(
+        env_fn=env_fn,
+        seed=seed,
+        action_repeat=action_repeat,
+        batch_size=batch_size,
+        episode_length=episode_length)
+    jit_inference_fn = jax.jit(inference_fn)
+
+    def do_one_step_eval(carry, unused_target_t):
+        state, params, key = carry
+        key, key_sample = jax.random.split(key)
+        actions = jit_inference_fn(params, state.core.obs, key_sample)
+        nstate = eval_step_fn(state, actions)
+        transition = Transition(
+            obs=state.obs,
+            next_obs=nstate.obs,
+            rewards=nstate.reward,
+            dones=nstate.done,
+            actions=actions,
+            state_desc=state.info["state_descriptor"],
+        )
+        return (nstate, params, key), (nstate.core, transition)
+
+    @jax.jit
+    def jit_run_eval_fn(state, key, params):
+        (final_state, _, key), (states, transitions) = jax.lax.scan(
+            do_one_step_eval, (state, params, key), (),
+            length=episode_length // action_repeat)
+        return final_state, key, states, transitions
+
+    return core_eval_env, eval_first_state, key_eval, jit_run_eval_fn, jit_env_reset_fn
+
+
+
+def rollout_env(
+    params: Dict[str, Dict[str, jnp.ndarray]],
+    env_fn,
+    inference_fn,
+    batch_size: int = 0,
+    seed: int = 0,
+    reset_args: Tuple[Any] = (),
+    step_args: Tuple[Any] = (),
+    step_fn_name: str = 'step',
+):
+    """Visualize environment."""
+    rng = jax.random.PRNGKey(seed=seed)
+    rng, reset_key = jax.random.split(rng)
+    env = env_fn(batch_size=batch_size)
+    inference_fn = inference_fn or functools.partial(
+        training_utils.zero_fn, action_size=env.action_size)
+    jit_env_reset = jax.jit(env.reset)
+    jit_env_step = jax.jit(getattr(env, step_fn_name))
+    jit_inference_fn = jax.jit(inference_fn)
+    states = []
+    state = jit_env_reset(reset_key, *reset_args)
+    while not jnp.all(state.done):
+        states.append(state)
+        tmp_key, rng = jax.random.split(rng)
+        act = jit_inference_fn(params, state.obs, tmp_key)
+        next_state = jit_env_step(state, act, *step_args)
+
+        transition = Transition(
+            obs=state.obs,
+            next_obs=next_state.obs,
+            rewards=next_state.reward,
+            dones=next_state.done,
+            actions=act,
+            state_desc=state.info["state_descriptor"],
+        )
+
+    states.append(next_state)
+
+    return env, states
