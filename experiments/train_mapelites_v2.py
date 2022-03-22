@@ -68,7 +68,7 @@ def play_step(
 ) -> Tuple[EnvState, Params, RNGKey, Transition]:
     """Play an environment step and return the updated state and the transition."""
 
-    actions = policy_network.apply(policy_params, env_state.obs)
+    actions = jax.vmap(policy_network.apply)(policy_params, env_state.obs)
 
     next_state = env.step(env_state, actions)
 
@@ -94,8 +94,11 @@ def get_final_xy_position(data: Transition, mask: jnp.ndarray) -> Descriptors:
     mask = jnp.expand_dims(mask, axis=-1)
 
     # Get behavior descriptor
-    last_index = jnp.int32(jnp.sum(1.0 - mask, axis=1)) - 1
-    descriptors = jax.vmap(lambda x, y: x[y])(data.state_desc, last_index)
+    last_index = jnp.int32(jnp.sum(1.0 - mask, axis=0)) - 1
+
+    descriptors = jax.vmap(lambda x, y: x[y], in_axes=(1, 0))(
+        data.state_desc, last_index
+    )
 
     return descriptors.squeeze()
 
@@ -110,8 +113,8 @@ def get_feet_contact_proportion(data: Transition, mask: jnp.ndarray) -> Descript
     mask = jnp.expand_dims(mask, axis=-1)
 
     # Get behavior descriptor
-    descriptors = jnp.sum(data.state_desc * (1.0 - mask), axis=1)
-    descriptors = descriptors / jnp.sum(1.0 - mask, axis=1)
+    descriptors = jnp.sum(data.state_desc * (1.0 - mask), axis=0)
+    descriptors = descriptors / jnp.sum(1.0 - mask, axis=0)
 
     return descriptors
 
@@ -136,17 +139,16 @@ def scoring_function(
         key=random_key,
     )
 
-    _final_state, data = jax.vmap(unroll_fn, in_axes=(None, 0))(
-        init_state, policies_params
-    )
+    _final_state, data = unroll_fn(init_state, policies_params)
 
     # create a mask to extract data properly
-    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
-    mask = jnp.roll(is_done, 1, axis=1)
-    mask = mask.at[:, 0].set(0)
+    is_done = jnp.clip(jnp.cumsum(data.dones, axis=0), 0, 1)
+    mask = jnp.roll(is_done, 1, axis=0)
+    mask = mask.at[0, :].set(0)
 
     # Scores
-    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
+    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=0)
+
     descriptors = behavior_descriptor_extractor(data, mask)
 
     return fitnesses, descriptors
@@ -227,7 +229,7 @@ if __name__ == "__main__":
 
     # Init environment
     env_name = config.env_name
-    env = brax_envs.create(env_name)
+    env = brax_envs.create(env_name, batch_size=config.batch_size)
 
     # Init a random key
     random_key = jax.random.PRNGKey(config.seed)
