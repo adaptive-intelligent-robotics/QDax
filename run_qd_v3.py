@@ -18,7 +18,7 @@ from qdax import brax_envs
 from qdax.training.configuration import Configuration
 from qdax.training import qd, qd_v2, emitters
 from qdax.training.emitters_simple.iso_dd_emitter import iso_dd_emitter, create_iso_dd_fn
-from qdax.env_utils import play_step, generate_unroll, Transition
+from qdax.env_utils import play_step_vec, generate_unroll, Transition
 from qdax.types import (
     RNGKey,
 )
@@ -42,7 +42,7 @@ def generate_individual_model(observation_size, action_size):
     [64, 64, parametric_action_distribution.param_size],
     observation_size,
   )
-
+  
 def scoring_function(
     pparams,
     init_state: brax.envs.State,
@@ -51,11 +51,7 @@ def scoring_function(
     play_step_fn: Callable,
     behavior_descriptor_extractor: Callable,
 ):
-
-    # if we want it to be stochastic - take reset_fn as input here - already present in the main
-    # use jitted reset fn to initialize a new batch of states wiht a vmap
-    # env_keys = jax.random.split(random_key, population_size)
-    # init_state = jax.vmap(reset_fn(env_keys))
+    """Evaluate policies contained in flatten_variables in parallel"""
 
     # Perform rollouts with each policy
     unroll_fn = partial(
@@ -65,33 +61,24 @@ def scoring_function(
         key=random_key,
     )
 
-    # IF USING PMAP
-    # pparams_device = jax.tree_map(
-    #   lambda x: jnp.reshape(x, [local_devices_to_use, -1] + list(x.shape[1:])
-    #                        ), pparams)
-    # data shape [batch_size, episode_length, data_dim]
-    _final_state, data = jax.vmap(unroll_fn, in_axes=(None, 0))(
-        init_state, pparams
-    )
+    _final_state, data = unroll_fn(init_state, pparams)
 
     # create a mask to extract data properly
-    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
-    mask = jnp.roll(is_done, 1, axis=1)
-    mask = mask.at[:, 0].set(0)
+    is_done = jnp.clip(jnp.cumsum(data.dones, axis=0), 0, 1)
+    mask = jnp.roll(is_done, 1, axis=0)
+    mask = mask.at[0, :].set(0)
 
     # Scores
-    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1) #(batch_size,)
-    descriptors = behavior_descriptor_extractor(data, mask) #(batch_size, bd_dim)
-
+    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=0)
+    descriptors = behavior_descriptor_extractor(data, mask)
     # Dones
-    dones = data.dones #(batch_size,)
+    dones = data.dones #(batch_size,) --> this is swapped to be (100,2048) - needs to be swapped back
 
     print(fitnesses.shape)
     print(descriptors.shape)
     print(dones.shape)
 
     return fitnesses, descriptors, dones, _final_state
-
 
 def get_final_xy_position(data: Transition, mask: jnp.ndarray):
     """Compute final xy positon.
@@ -102,11 +89,13 @@ def get_final_xy_position(data: Transition, mask: jnp.ndarray):
     mask = jnp.expand_dims(mask, axis=-1)
 
     # Get behavior descriptor
-    last_index = jnp.int32(jnp.sum(1.0 - mask, axis=1)) - 1
-    descriptors = jax.vmap(lambda x, y: x[y])(data.state_desc, last_index)
+    last_index = jnp.int32(jnp.sum(1.0 - mask, axis=0)) - 1
+
+    descriptors = jax.vmap(lambda x, y: x[y], in_axes=(1, 0))(
+        data.state_desc, last_index
+    )
 
     return descriptors.squeeze()
-
 
 def main(parsed_arguments):
   results_saving_folder = parsed_arguments.directory
@@ -164,7 +153,7 @@ def main(parsed_arguments):
 
   # create environment
   env_name = configuration.env_name
-  env = brax_envs.create(env_name, episode_length=configuration.episode_length)
+  env = brax_envs.create(env_name, episode_length=configuration.episode_length, batch_size=configuration.population_size)
   # makes evaluation fully deterministic
   reset_fn = jax.jit(env.reset)
   init_state = reset_fn(env_key)
@@ -173,7 +162,7 @@ def main(parsed_arguments):
   policy_model = generate_individual_model(observation_size=env.observation_size, action_size=env.action_size)
 
   # create play step function
-  play_step_fn = jax.jit(partial(play_step, env=env, policy_model=policy_model))
+  play_step_fn = jax.jit(partial(play_step_vec, env=env, policy_model=policy_model))
 
   # create get descriptor function
   env_bd_extractor = {
