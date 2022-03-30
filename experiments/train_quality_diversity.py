@@ -1,33 +1,42 @@
-# Author: Bryan Lim
-# Email: bwl116@ic.ac.uk
-#
-"""
-Quality-Diversity Evolution Strategy training.
-"""
-# TO USE MULTIPLE CPUs
-# import os
-# os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=16'
-
+"""Script to define and launch a quality diversity evolution strategy on a Brax environment."""
+import argparse
 import functools
+import os
 import time
-from typing import Any, Callable, Dict, Optional
 
 import jax
 import jax.numpy as jnp
 from absl import logging
-from brax.training import distribution, networks
-
+from qdax.algorithms.quality_diversity import (
+    QualityDiversityES,
+    make_params_and_inference_fn,
+)
 from qdax.qd_utils import grid_archive
 from qdax.stats.metrics import Metrics
 from qdax.stats.saving_loading_utils import make_results_folder
 from qdax.stats.timings import Timings
 from qdax.stats.training_state import TrainingState
 from qdax.tasks import BraxTask
+from qdax.training import emitters
 from qdax.training.configuration import Configuration
 
-# print('Jax devices: ',jax.devices())
+# see https://github.com/google/brax/blob/main/brax/experimental/composer/components/__init__.py#L43
 
-Array = Any
+
+QD_PARAMS = dict()
+
+
+def get_num_epochs_and_evaluations(num_epochs, num_evaluations, population_size):
+    if num_epochs is not None:
+        num_evaluations = num_epochs * population_size
+        return num_epochs, num_evaluations
+    elif num_evaluations is not None:
+        num_epochs = (num_evaluations // population_size) + 1
+        return num_epochs, num_evaluations
+    else:
+        raise ValueError(
+            "One of the 2 following variables should be defined: num_epochs or num_evaluations"
+        )
 
 
 def _update_metrics(
@@ -46,142 +55,89 @@ def _update_metrics(
     return Metrics(scores=scores, archives=archives)
 
 
-def _eval_and_add(
-    local_devices_to_use,
-    evaluation_task_fn,
-    population_size,
-    get_bd_fn,
-    add_to_archive_fn,
-    training_state: TrainingState,
-    pparams,
-    key,
-):
-    key, key_es_eval = jax.random.split(key, 2)
-    pparams_device = jax.tree_map(
-        lambda x: jnp.reshape(x, [local_devices_to_use, -1] + list(x.shape[1:])),
-        pparams,
+def main(parsed_arguments):
+    results_saving_folder = parsed_arguments.directory
+
+    if not os.path.exists(results_saving_folder):
+        raise FileNotFoundError(f"Folder {results_saving_folder} not found.")
+
+    levels = {
+        "fatal": logging.FATAL,
+        "error": logging.ERROR,
+        "warning": logging.WARNING,
+        "info": logging.INFO,
+        "debug": logging.DEBUG,
+    }
+
+    logging.set_verbosity(levels[parsed_arguments.log_level])
+
+    population_size = parsed_arguments.batch_size
+
+    local_device_count = jax.local_device_count()
+    local_devices_to_use = local_device_count
+    process_count = jax.process_count()
+
+    brax_task = BraxTask(
+        env_name=args.env_name,
+        episode_length=args.episode_length,
+        action_repeat=1,
+        num_envs=population_size,
+        local_devices_to_use=local_devices_to_use,
+        process_count=process_count,
     )
 
-    # run evaluations - evaluate params
-    eval_start_t = time.time()
-
-    prun_es_eval = jax.pmap(evaluation_task_fn, in_axes=(0, 0, None))
-    eval_scores, obs, state, done, bd, reward_trajectory = prun_es_eval(
-        training_state.state, pparams_device, key_es_eval
+    num_epochs, num_evaluations = get_num_epochs_and_evaluations(
+        num_epochs=parsed_arguments.num_epochs,
+        num_evaluations=parsed_arguments.num_evaluations,
+        population_size=parsed_arguments.batch_size,
     )
 
-    logging.debug("Time Evaluation: %s ", time.time() - eval_start_t)
-
-    obs = jnp.transpose(obs, axes=(1, 0, 2, 3))
-    obs = jnp.reshape(obs, [1, obs.shape[0], -1, obs.shape[-1]])
-    bd = jnp.transpose(bd, axes=(1, 0, 2, 3))
-    bd = jnp.reshape(bd, [1, bd.shape[0], -1, bd.shape[-1]])
-    eval_scores = jnp.reshape(eval_scores, (population_size, -1)).ravel()
-    reward_trajectory = jnp.transpose(reward_trajectory, axes=(0, 2, 1))
-    reward_trajectory = jnp.reshape(
-        reward_trajectory, [1, -1, reward_trajectory.shape[-1]]
+    logging.info(
+        f"Options:\n"
+        f"\t Log_level:{parsed_arguments.log_level}\n"
+        f"\t Seed: {parsed_arguments.seed}\n"
+        f"\t Batch_size:{parsed_arguments.batch_size}\n"
+        f"\t Num_epochs:{num_epochs}\n"
+        f"\t Num_evaluations:{num_evaluations}\n"
+        f"\t Episode_length:{parsed_arguments.episode_length}\n"
+        f"\t Log_frequency:{parsed_arguments.log_frequency}\n"
     )
 
-    dead = jnp.zeros(population_size)
-    done = jnp.transpose(done, axes=(0, 2, 1))
-    done = jnp.reshape(done, [1, -1, done.shape[-1]])
-    first_done = jnp.apply_along_axis(jnp.nonzero, 2, done, size=1, fill_value=-1)[
-        0
-    ].ravel()
-
-    # this is to account for the auto-reset. we want the observation before it fell down
-    first_done -= 1
-
-    # get fitness when first done
-    eval_scores = jnp.take_along_axis(
-        reward_trajectory, first_done.reshape(1, len(first_done), 1), axis=2
-    ).ravel()
-
-    # get descriptor when first done
-    # bds = get_bd(obs,first_done)
-    bds = get_bd_fn(bd, first_done)
-    bds = jnp.transpose(bds)  # jnp.reshape(bds,(population_size, -1))
-
-    # Update archive
-    update_archive_start_t = time.time()
-    repertoire = add_to_archive_fn(
-        repertoire=training_state.repertoire,
-        pop_p=pparams,
-        bds=bds,
-        eval_scores=eval_scores,
-        dead=dead,
+    configuration = Configuration(
+        args.env_name,
+        num_epochs,
+        parsed_arguments.episode_length,
+        action_repeat=1,
+        population_size=parsed_arguments.batch_size,
+        seed=parsed_arguments.seed,
+        log_frequency=parsed_arguments.log_frequency,
+        qd_params=QD_PARAMS,
+        min_bd=0.0,
+        max_bd=1.0,
+        grid_shape=tuple(parsed_arguments.grid_shape),
+        max_devices_per_host=None,
     )
-    logging.debug("Time took for Adding: %s ", time.time() - update_archive_start_t)
 
-    return repertoire, state
+    emitter_fn = emitters.get_emitter_iso_line_dd(
+        population_size=population_size,
+        iso_sigma=0.005,
+        line_sigma=0.05,
+    )
 
+    task = brax_task
+    emitter_fn = emitter_fn
+    configuration = configuration
+    progress_fn = None
+    experiment_name = parsed_arguments.exp_name
+    result_path = results_saving_folder
 
-def _init_phase(
-    get_random_parameters_fn,
-    population_size,
-    eval_and_add_fn,
-    update_metrics_fn,
-    training_state: TrainingState,
-):
+    # copy paste train function
 
-    logging.info(" Initialisation with random policies")
-    init_start_t = time.time()
-    key, key_model, key_eval = jax.random.split(training_state.key, 3)
-    pparams = get_random_parameters_fn(training_state, population_size, key_model)
-    logging.debug("Time Random Init: %s ", time.time() - init_start_t)
-
-    repertoire, state = eval_and_add_fn(training_state, pparams, key_eval)
-    metrics = update_metrics_fn(training_state.metrics, 0, repertoire)
-
-    return TrainingState(key=key, repertoire=repertoire, metrics=metrics, state=state)
-
-
-def _es_one_epoch(
-    emitter_fn,
-    eval_and_add_fn,
-    update_metrics_fn,
-    epoch: int,
-    training_state: TrainingState,
-):
-    epoch_start_t = time.time()
-
-    # generate keys for emmitter and evaluations
-    key, key_emitter, key_es_eval = jax.random.split(training_state.key, 3)
-
-    # EMITTER: SELECTION AND MUTATION #
-    sel_mut_start_t = time.time()
-    pparams = emitter_fn(training_state.repertoire, key_emitter)
-    logging.debug("Time Selection and Mutation: %s ", time.time() - sel_mut_start_t)
-
-    # EVALUATION #
-    repertoire, state = eval_and_add_fn(training_state, pparams, key_es_eval)
-    logging.debug("ES Epoch Time: %s", time.time() - epoch_start_t)
-
-    # UPDATE METRICS #
-    # metrics = jax.lax.cond((epoch+1)%log_frequency == 0 , update_metrics, lambda x:x[0], (training_state.metrics, epoch//log_frequency+1, repertoire))
-    logging.debug("ES Start metrics:")
-    metrics = update_metrics_fn(training_state.metrics, epoch, repertoire)
-    logging.debug("ES Metrics Time: %s", time.time() - epoch_start_t)
-
-    return TrainingState(key=key, repertoire=repertoire, metrics=metrics, state=state)
-
-
-def train(
-    configuration: Configuration,
-    task: BraxTask,
-    emitter_fn,
-    experiment_name: str,
-    result_path: str,
-    progress_fn: Optional[Callable[[int, Dict[str, Any]], None]] = None,
-):
     num_epochs = configuration.num_epochs
-    episode_length = configuration.episode_length
-    action_repeat = configuration.action_repeat
     max_devices_per_host = configuration.max_devices_per_host
     population_size = configuration.population_size
     seed = configuration.seed
     log_frequency = configuration.log_frequency
-    qd_params = configuration.qd_params
 
     timings = Timings(log_frequency=log_frequency, num_epochs=num_epochs)
     start_t = time.time()
@@ -256,10 +212,13 @@ def train(
         log_frequency,
     )
 
+    # Define the Quality Diversity instance
+    qdes = QualityDiversityES()
+
     # ============ ENVIRONMENT EVAL FUNCTIONS AND ARCHIVE ADDITION ============#
     eval_and_add_fn = jax.jit(
         functools.partial(
-            _eval_and_add,
+            qdes._eval_and_add,
             local_devices_to_use,
             task.eval,
             population_size,
@@ -270,7 +229,7 @@ def train(
 
     # ========== INIT REPERTOIRE BY RANDOM POLICIES =============== #
     init_phase_fn = functools.partial(
-        _init_phase,
+        qdes._init_phase,
         task.get_random_parameters,
         population_size,
         eval_and_add_fn,
@@ -280,7 +239,7 @@ def train(
     # ========== ONE GENERATION/EPOCH OF ALGORITHM FN ===============#
     es_one_epoch_fn = jax.jit(
         functools.partial(
-            _es_one_epoch,
+            qdes._es_one_epoch,
             emitter_fn,
             eval_and_add_fn,
             update_metrics_fn,
@@ -364,38 +323,67 @@ def train(
     return training_state, inference
 
 
-"""
-The output layer here outputs parameters of the action distribution. I.e. parameters of the gaussian distibution for each action dimension
-the output dim is the size of the number of params of the distribution.
-"""
+#### util functions before launching main
 
 
-def make_es_model(parametric_action_distribution, obs_size):
-    return networks.make_model(
-        [64, 64, parametric_action_distribution.param_size], obs_size
+def check_validity_args(parser: argparse.ArgumentParser, parsed_arguments):
+    num_epochs = parsed_arguments.num_epochs
+    num_evaluations = parsed_arguments.num_evaluations
+
+    if num_epochs is None and num_evaluations is None:
+        parser.error(
+            "One (and only one) of the following arguments should be set: --num-epochs or --num-evaluations"
+        )
+    elif num_epochs is not None and num_evaluations is not None:
+        parser.error(
+            "One (and only one) of the following arguments should be set: --num-epochs or --num-evaluations"
+        )
+
+
+def process_args():
+    """Read and interpret command line arguments."""
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument(
+        "--log-level",
+        default="info",
+        choices=["fatal", "error", "warning", "info", "debug"],
     )
-
-
-# mean of the action distribution only
-def get_deterministic_actions(parameters):
-    loc, scale = jnp.split(parameters, 2, axis=-1)
-    act = jnp.tanh(loc)
-    return act
-
-
-def make_params_and_inference_fn(observation_size, action_size):
-    """Creates params and inference function for the ES agent."""
-    parametric_action_distribution = distribution.NormalTanhDistribution(
-        event_size=action_size
+    parser.add_argument("--seed", default=0, type=int)
+    parser.add_argument("--batch_size", default=2048, type=int)
+    parser.add_argument("--num-epochs", default=None, type=int)
+    parser.add_argument("--num-evaluations", default=None, type=int)
+    parser.add_argument("--episode-length", default=100, type=int)
+    parser.add_argument("--log-frequency", default=1, type=int)
+    parser.add_argument("--exp-name", type=str, default="qdax_training")
+    parser.add_argument("-d", "--directory", type=str, default=os.curdir)
+    parser.add_argument(
+        "--env_name",
+        type=str,
+        required=True,
+        choices=[
+            "ant",
+            "hopper",
+            "walker",
+            "halfcheetah",
+            "humanoid",
+            "ant_omni",
+            "humanoid_omni",
+        ],
     )
-    policy_model = make_es_model(parametric_action_distribution, observation_size)
+    parser.add_argument(
+        "--grid_shape", nargs="+", type=int, required=True
+    )  # specify approrpiate grid_shape for env
 
-    def inference_fn(params, obs, key=None):
-        policy_params = params
-        # action = parametric_action_distribution.sample(policy_model.apply(policy_params, obs), key)
-        logits = policy_model.apply(policy_params, obs)
-        action = get_deterministic_actions(logits)
-        return action
+    parsed_arguments = parser.parse_args()
 
-    # params =  policy_model.init(jax.random.PRNGKey(0))
-    return inference_fn
+    check_validity_args(parser, parsed_arguments)
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    try:
+        args = process_args()
+        main(args)
+    except Exception as e:
+        logging.fatal(e, exc_info=True)
