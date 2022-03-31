@@ -1,29 +1,52 @@
-"""Script to define and launch a quality diversity evolution strategy on a Brax environment."""
 import argparse
 import functools
 import os
 import time
+from functools import partial
+from typing import Callable, Optional
 
+import brax
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 from absl import logging
+from brax.training import distribution, networks
+from qdax import brax_envs
 from qdax.algorithms.quality_diversity import (
     QualityDiversityES,
     make_params_and_inference_fn,
 )
-from qdax.qd_utils import grid_archive
+from qdax.env_utils import Transition, generate_unroll, play_step
+from qdax.qd_utils.grid_repertoire import GridRepertoire
 from qdax.stats.metrics import Metrics
 from qdax.stats.saving_loading_utils import make_results_folder
 from qdax.stats.timings import Timings
 from qdax.stats.training_state import TrainingState
-from qdax.tasks import BraxTask
-from qdax.training import emitters
+from qdax.training import emitters, qd, qd_v2
 from qdax.training.configuration import Configuration
-
-# see https://github.com/google/brax/blob/main/brax/experimental/composer/components/__init__.py#L43
-
+from qdax.training.emitters_simple.iso_dd_emitter import (
+    create_iso_dd_fn,
+    iso_dd_emitter,
+)
+from qdax.types import RNGKey
 
 QD_PARAMS = dict()
+
+
+def _update_metrics(
+    log_frequency: int,
+    metrics: Metrics,
+    epoch: int,
+    repertoire: GridRepertoire,
+):
+
+    index = jnp.ceil(epoch / log_frequency).astype(int)
+    scores = metrics.scores.at[index, 0].set(epoch)
+    scores = scores.at[index, 1].set(repertoire.num_indivs)
+    scores = scores.at[index, 2].set(jnp.nanmax(repertoire.fitness))
+    scores = scores.at[index, 3].set(jnp.nansum(repertoire.fitness))
+    archives = metrics.archives.at[index, :, :].set(repertoire.fitness)
+    return Metrics(scores=scores, archives=archives)
 
 
 def get_num_epochs_and_evaluations(num_epochs, num_evaluations, population_size):
@@ -39,20 +62,88 @@ def get_num_epochs_and_evaluations(num_epochs, num_evaluations, population_size)
         )
 
 
-def _update_metrics(
-    log_frequency: int,
-    metrics: Metrics,
-    epoch: int,
-    repertoire: grid_archive.Repertoire,
+def generate_individual_model(observation_size, action_size):
+    parametric_action_distribution = distribution.NormalTanhDistribution(
+        event_size=action_size
+    )
+    return networks.make_model(
+        [64, 64, parametric_action_distribution.param_size],
+        observation_size,
+    )
+
+
+def get_random_parameters(
+    policy_model, training_state: TrainingState, population_size: int, key_model
+):
+    t = time.time()
+    key_model_batch = jax.random.split(key_model, population_size)
+    policy_params_fun = jax.vmap(policy_model.init)
+    pparams = policy_params_fun(key_model_batch)
+    logging.info("Init policies  %s ", time.time() - t)
+    return pparams
+
+
+def scoring_function(
+    pparams,
+    init_state: brax.envs.State,
+    episode_length: int,
+    random_key: RNGKey,
+    play_step_fn: Callable,
+    behavior_descriptor_extractor: Callable,
 ):
 
-    index = jnp.ceil(epoch / log_frequency).astype(int)
-    scores = metrics.scores.at[index, 0].set(epoch)
-    scores = scores.at[index, 1].set(repertoire.num_indivs)
-    scores = scores.at[index, 2].set(jnp.nanmax(repertoire.fitness))
-    scores = scores.at[index, 3].set(jnp.nansum(repertoire.fitness))
-    archives = metrics.archives.at[index, :, :].set(repertoire.fitness)
-    return Metrics(scores=scores, archives=archives)
+    # if we want it to be stochastic - take reset_fn as input here - already present in the main
+    # use jitted reset fn to initialize a new batch of states wiht a vmap
+    # env_keys = jax.random.split(random_key, population_size)
+    # init_state = jax.vmap(reset_fn(env_keys))
+
+    # Perform rollouts with each policy
+    unroll_fn = partial(
+        generate_unroll,
+        episode_length=episode_length,
+        play_step_fn=play_step_fn,
+        key=random_key,
+    )
+
+    # IF USING PMAP
+    # pparams_device = jax.tree_map(
+    #   lambda x: jnp.reshape(x, [local_devices_to_use, -1] + list(x.shape[1:])
+    #                        ), pparams)
+    # data shape [batch_size, episode_length, data_dim]
+    _final_state, data = jax.vmap(unroll_fn, in_axes=(None, 0))(init_state, pparams)
+
+    # create a mask to extract data properly
+    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
+    mask = jnp.roll(is_done, 1, axis=1)
+    mask = mask.at[:, 0].set(0)
+
+    # Scores
+    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)  # (batch_size,)
+    descriptors = behavior_descriptor_extractor(data, mask)  # (batch_size, bd_dim)
+
+    # Dones
+    dones = data.dones  # (batch_size,)
+
+    print(fitnesses.shape)
+    print(descriptors.shape)
+    print(dones.shape)
+
+    return fitnesses, descriptors, dones, _final_state
+
+
+def get_final_xy_position(data: Transition, mask: jnp.ndarray):
+    """Compute final xy positon.
+    This function suppose that state descriptor is the xy position, as it
+    just select the final one of the state descriptors given.
+    """
+    # reshape mask for bd extraction
+    mask = jnp.expand_dims(mask, axis=-1)
+
+    # Get behavior descriptor
+    last_index = jnp.int32(jnp.sum(1.0 - mask, axis=1)) - 1
+    descriptors = jax.vmap(lambda x, y: x[y])(data.state_desc, last_index)
+
+    return descriptors.squeeze()
 
 
 def main(parsed_arguments):
@@ -77,19 +168,24 @@ def main(parsed_arguments):
     local_devices_to_use = local_device_count
     process_count = jax.process_count()
 
-    brax_task = BraxTask(
-        env_name=args.env_name,
-        episode_length=args.episode_length,
-        action_repeat=1,
-        num_envs=population_size,
-        local_devices_to_use=local_devices_to_use,
-        process_count=process_count,
-    )
-
     num_epochs, num_evaluations = get_num_epochs_and_evaluations(
         num_epochs=parsed_arguments.num_epochs,
         num_evaluations=parsed_arguments.num_evaluations,
         population_size=parsed_arguments.batch_size,
+    )
+    configuration = Configuration(
+        env_name=args.env_name,
+        num_epochs=num_epochs,
+        episode_length=parsed_arguments.episode_length,
+        action_repeat=1,
+        population_size=parsed_arguments.batch_size,
+        seed=parsed_arguments.seed,
+        log_frequency=parsed_arguments.log_frequency,
+        qd_params=QD_PARAMS,
+        min_bd=-15.0,
+        max_bd=15.0,
+        grid_shape=tuple(parsed_arguments.grid_shape),
+        max_devices_per_host=None,
     )
 
     logging.info(
@@ -103,35 +199,49 @@ def main(parsed_arguments):
         f"\t Log_frequency:{parsed_arguments.log_frequency}\n"
     )
 
-    configuration = Configuration(
-        args.env_name,
-        num_epochs,
-        parsed_arguments.episode_length,
-        action_repeat=1,
-        population_size=parsed_arguments.batch_size,
-        seed=parsed_arguments.seed,
-        log_frequency=parsed_arguments.log_frequency,
-        qd_params=QD_PARAMS,
-        min_bd=0.0,
-        max_bd=1.0,
-        grid_shape=tuple(parsed_arguments.grid_shape),
-        max_devices_per_host=None,
+    emitter_fn = partial(
+        iso_dd_emitter, population_size=population_size, iso_sigma=0.01, line_sigma=0.1
     )
 
-    emitter_fn = emitters.get_emitter_iso_line_dd(
-        population_size=population_size,
-        iso_sigma=0.005,
-        line_sigma=0.05,
+    key = jax.random.PRNGKey(configuration.seed)
+    key, env_key, score_key = jax.random.split(key, 3)
+
+    # create environment
+    env_name = configuration.env_name
+    env = brax_envs.create(env_name, episode_length=configuration.episode_length)
+
+    # makes evaluation fully deterministic
+    reset_fn = jax.jit(env.reset)
+    init_state = reset_fn(env_key)
+
+    # define policy
+    policy_model = generate_individual_model(
+        observation_size=env.observation_size, action_size=env.action_size
     )
 
-    task = brax_task
-    emitter_fn = emitter_fn
-    configuration = configuration
+    # create play step function
+    play_step_fn = jax.jit(partial(play_step, env=env, policy_model=policy_model))
+
+    # create get descriptor function
+    env_bd_extractor = {
+        "pointmaze": get_final_xy_position,
+        "ant_omni": get_final_xy_position,
+    }
+
+    # create scoring function
+    scoring_fn = jax.jit(
+        partial(
+            scoring_function,
+            init_state=init_state,
+            episode_length=configuration.episode_length,
+            random_key=score_key,
+            play_step_fn=play_step_fn,
+            behavior_descriptor_extractor=env_bd_extractor[env_name],
+        )
+    )
+
+    # beginning of the previous train function
     progress_fn = None
-    experiment_name = parsed_arguments.exp_name
-    result_path = results_saving_folder
-
-    # copy paste train function
 
     num_epochs = configuration.num_epochs
     max_devices_per_host = configuration.max_devices_per_host
@@ -142,6 +252,7 @@ def main(parsed_arguments):
     timings = Timings(log_frequency=log_frequency, num_epochs=num_epochs)
     start_t = time.time()
     framework_t = time.time()
+
     # INIT FRAMEWORK #
     # Initialization of env parameters and devices #
     num_envs = population_size  #
@@ -166,11 +277,10 @@ def main(parsed_arguments):
         num_envs // local_devices_to_use // process_count,
     )
 
-    # Initialize keys for random processes - need to handle for jax.
+    # Initialize keys for random processes - need to handle for jax
+    # key for main training state, policy model init and train environment
     key = jax.random.PRNGKey(seed)
-    key, key_model, key_env = jax.random.split(
-        key, 3
-    )  # key for main training state, policy model init and train environment
+    key, key_model = jax.random.split(key)
 
     timings.init_framework = time.time() - framework_t
 
@@ -178,82 +288,56 @@ def main(parsed_arguments):
     env_t = (
         time.time()
     )  # NOTE: this timing doesnt work anymore at the moment - environment is initialized outside the train_fn
-
-    key_envs = jax.random.split(key_env, local_devices_to_use)
-    first_state = task.reset_fn_batch(key_envs)
-
     logging.info("Initialize env time: %s ", time.time() - env_t)
     timings.init_env = time.time() - env_t
-
-    # Initialize model/policy #
-    policy_t = time.time()
-    # Initialize the output action distribution. action_size*2 (mean and std of a gaussian policy)
-    # parametric_action_distribution = distribution.NormalTanhDistribution(
-    #     event_size=core_env.action_size)
-    # obs_size = core_env.observation_size
-    # policy_model = make_es_model(parametric_action_distribution, obs_size)
-    policy_model = task.policy_model
-
-    # Initialize policy params - one set of params only
-    policy_params = policy_model.init(key_model)
 
     # Initialize archive
     min_bd = configuration.min_bd
     max_bd = configuration.max_bd
     grid_shape = configuration.grid_shape
 
-    repertoire = grid_archive.Repertoire.create(
+    # Init policy params
+    policy_params = policy_model.init(key_model)
+
+    # create repertoire
+    repertoire = GridRepertoire.create(
         policy_params, min=min_bd, max=max_bd, grid_shape=grid_shape
     )
 
-    # ============= METRICS UPDATE FN ============ #
-    update_metrics_fn = functools.partial(
-        _update_metrics,
-        log_frequency,
-    )
-
-    # Define the Quality Diversity instance
-    qdes = QualityDiversityES()
-
-    # ============ ENVIRONMENT EVAL FUNCTIONS AND ARCHIVE ADDITION ============#
-    eval_and_add_fn = jax.jit(
+    # fucntion to manage metrics
+    update_metrics_fn = jax.jit(
         functools.partial(
-            qdes._eval_and_add,
-            local_devices_to_use,
-            task.eval,
-            population_size,
-            task.get_bd,
-            jax.jit(repertoire.add_to_archive),
+            _update_metrics,
+            log_frequency,
         )
     )
 
-    # ========== INIT REPERTOIRE BY RANDOM POLICIES =============== #
-    init_phase_fn = functools.partial(
-        qdes._init_phase,
-        task.get_random_parameters,
-        population_size,
-        eval_and_add_fn,
-        update_metrics_fn,
+    # init qdes instance
+    qdes = QualityDiversityES(
+        scoring_fn=scoring_fn, update_metrics_fn=update_metrics_fn
     )
 
-    # ========== ONE GENERATION/EPOCH OF ALGORITHM FN ===============#
+    # init repertoire with random policies
+    get_random_params_fn = functools.partial(get_random_parameters, policy_model)
+    init_phase_fn = functools.partial(
+        qdes._init_phase,
+        get_random_params_fn,
+        population_size,
+    )
+
+    # one epoch of the algorithm
     es_one_epoch_fn = jax.jit(
         functools.partial(
             qdes._es_one_epoch,
             emitter_fn,
-            eval_and_add_fn,
-            update_metrics_fn,
         )
     )
 
-    key_debug = jax.random.PRNGKey(seed + 777)
-    timings.init_policies = time.time() - policy_t
-
-    # ================= MAIN QD ALGORITHM LOOP =================== #
+    # main loop
     logging.info("######### START QD ALGORITHM ############")
     qd_t = time.time()
 
-    # INIT TRAINING STATE #
+    # init training state
     training_state = TrainingState(
         key=key,
         repertoire=repertoire,
@@ -262,14 +346,14 @@ def main(parsed_arguments):
             num_epochs=num_epochs,
             grid_shape=repertoire.grid_shape,
         ),
-        state=first_state,
+        state=init_state,
     )
-    # INIT REPERTOIRE #
+    # init repertoire
     training_state = init_phase_fn(training_state)
     timings.init_QD = time.time() - qd_t
 
     logging.info("Starting Main QD Loop")
-    # training_state = jax.lax.fori_loop(1, num_epochs+1, es_one_epoch_fn, training_state) # epoch 0 is random init ## seems to crash with large batch size on highend GPUs (e.g. RTX A6000)
+
     for i in range(1, num_epochs + 1):
         epoch_t = time.time()
         training_state = es_one_epoch_fn(i, training_state)
@@ -297,8 +381,10 @@ def main(parsed_arguments):
         training_state.metrics.scores,
     )
 
-    # ===== SAVE RESULTS AND CONFIGS ==== #
-    res_dir = make_results_folder(result_path, experiment_name, configuration)
+    # save results and configs
+    res_dir = make_results_folder(
+        results_saving_folder, parsed_arguments.exp_name, configuration
+    )
     logging.info("Saving results in %s ", res_dir)
     configuration.save_to_json(folder=res_dir)
     timings.save(folder=res_dir)
@@ -316,14 +402,12 @@ def main(parsed_arguments):
         )
         progress_fn(metrics, training_state.repertoire)
 
-    inference = make_params_and_inference_fn(
-        task.core_env.observation_size, task.core_env.action_size
-    )
+    inference = make_params_and_inference_fn(env.observation_size, env.action_size)
 
     return training_state, inference
 
 
-#### util functions before launching main
+# Function necessary to launch this script - handle args
 
 
 def check_validity_args(parser: argparse.ArgumentParser, parsed_arguments):
@@ -360,16 +444,7 @@ def process_args():
         "--env_name",
         type=str,
         required=True,
-        choices=[
-            "ant",
-            "hopper",
-            "walker",
-            "halfcheetah",
-            "humanoid",
-            "ant_omni",
-            "humanoid_omni",
-        ],
-    )
+    )  # choices=['ant', 'hopper', 'walker', 'halfcheetah', 'humanoid', 'ant_omni', 'humanoid_omni'])
     parser.add_argument(
         "--grid_shape", nargs="+", type=int, required=True
     )  # specify approrpiate grid_shape for env

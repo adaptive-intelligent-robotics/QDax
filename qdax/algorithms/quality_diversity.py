@@ -1,10 +1,13 @@
 import logging
 import time
+from functools import partial
+from typing import Any, Callable
 
 import jax
 import jax.numpy as jnp
 from brax.training import distribution, networks
 from qdax.stats.training_state import TrainingState
+from qdax.types import RNGKey
 
 """
 The output layer here outputs parameters of the action distribution. I.e. parameters of the gaussian distibution for each action dimension
@@ -44,70 +47,28 @@ def make_params_and_inference_fn(observation_size, action_size):
 
 
 class QualityDiversityES:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, scoring_fn: Callable, update_metrics_fn: Callable) -> None:
+        self._scoring_fn = scoring_fn
+        self._update_metrics_fn = update_metrics_fn
 
+    @partial(jax.jit, static_argnames=("self"))
     def _eval_and_add(
         self,
-        local_devices_to_use,
-        evaluation_task_fn,
-        population_size,
-        get_bd_fn,
-        add_to_archive_fn,
         training_state: TrainingState,
-        pparams,
-        key,
+        pparams: Any,
     ):
-        key, key_es_eval = jax.random.split(key, 2)
-        pparams_device = jax.tree_map(
-            lambda x: jnp.reshape(x, [local_devices_to_use, -1] + list(x.shape[1:])),
-            pparams,
-        )
 
         # run evaluations - evaluate params
         eval_start_t = time.time()
-
-        prun_es_eval = jax.pmap(evaluation_task_fn, in_axes=(0, 0, None))
-        eval_scores, obs, state, done, bd, reward_trajectory = prun_es_eval(
-            training_state.state, pparams_device, key_es_eval
-        )
+        eval_scores, bds, _dones, state = self._scoring_fn(pparams)
 
         logging.debug("Time Evaluation: %s ", time.time() - eval_start_t)
 
-        obs = jnp.transpose(obs, axes=(1, 0, 2, 3))
-        obs = jnp.reshape(obs, [1, obs.shape[0], -1, obs.shape[-1]])
-        bd = jnp.transpose(bd, axes=(1, 0, 2, 3))
-        bd = jnp.reshape(bd, [1, bd.shape[0], -1, bd.shape[-1]])
-        eval_scores = jnp.reshape(eval_scores, (population_size, -1)).ravel()
-        reward_trajectory = jnp.transpose(reward_trajectory, axes=(0, 2, 1))
-        reward_trajectory = jnp.reshape(
-            reward_trajectory, [1, -1, reward_trajectory.shape[-1]]
-        )
-
-        dead = jnp.zeros(population_size)
-        done = jnp.transpose(done, axes=(0, 2, 1))
-        done = jnp.reshape(done, [1, -1, done.shape[-1]])
-        first_done = jnp.apply_along_axis(jnp.nonzero, 2, done, size=1, fill_value=-1)[
-            0
-        ].ravel()
-
-        # this is to account for the auto-reset. we want the observation before it fell down
-        first_done -= 1
-
-        # get fitness when first done
-        eval_scores = jnp.take_along_axis(
-            reward_trajectory, first_done.reshape(1, len(first_done), 1), axis=2
-        ).ravel()
-
-        # get descriptor when first done
-        # bds = get_bd(obs,first_done)
-        bds = get_bd_fn(bd, first_done)
-        bds = jnp.transpose(bds)  # jnp.reshape(bds,(population_size, -1))
+        dead = jnp.zeros(bds.shape[0])
 
         # Update archive
         update_archive_start_t = time.time()
-        repertoire = add_to_archive_fn(
-            repertoire=training_state.repertoire,
+        repertoire = training_state.repertoire.add_to_archive(
             pop_p=pparams,
             bds=bds,
             eval_scores=eval_scores,
@@ -121,50 +82,50 @@ class QualityDiversityES:
         self,
         get_random_parameters_fn,
         population_size,
-        eval_and_add_fn,
-        update_metrics_fn,
         training_state: TrainingState,
     ):
 
         logging.info(" Initialisation with random policies")
         init_start_t = time.time()
-        key, key_model, key_eval = jax.random.split(training_state.key, 3)
+        key, key_model = jax.random.split(training_state.key)
         pparams = get_random_parameters_fn(training_state, population_size, key_model)
         logging.debug("Time Random Init: %s ", time.time() - init_start_t)
 
-        repertoire, state = eval_and_add_fn(training_state, pparams, key_eval)
-        metrics = update_metrics_fn(training_state.metrics, 0, repertoire)
+        repertoire, state = self._eval_and_add(
+            training_state=training_state, pparams=pparams
+        )
+        metrics = self._update_metrics_fn(training_state.metrics, 0, repertoire)
 
         return TrainingState(
             key=key, repertoire=repertoire, metrics=metrics, state=state
         )
 
+    @partial(jax.jit, static_argnames=("self", "emitter_fn"))
     def _es_one_epoch(
         self,
         emitter_fn,
-        eval_and_add_fn,
-        update_metrics_fn,
         epoch: int,
         training_state: TrainingState,
     ):
         epoch_start_t = time.time()
 
         # generate keys for emmitter and evaluations
-        key, key_emitter, key_es_eval = jax.random.split(training_state.key, 3)
+        key, key_emitter = jax.random.split(training_state.key)
 
-        # EMITTER: SELECTION AND MUTATION #
+        # emitter: selection and mutation
         sel_mut_start_t = time.time()
         pparams = emitter_fn(training_state.repertoire, key_emitter)
         logging.debug("Time Selection and Mutation: %s ", time.time() - sel_mut_start_t)
 
-        # EVALUATION #
-        repertoire, state = eval_and_add_fn(training_state, pparams, key_es_eval)
+        # evaluation
+        repertoire, state = self._eval_and_add(
+            training_state=training_state, pparams=pparams
+        )
         logging.debug("ES Epoch Time: %s", time.time() - epoch_start_t)
 
-        # UPDATE METRICS #
-        # metrics = jax.lax.cond((epoch+1)%log_frequency == 0 , update_metrics, lambda x:x[0], (training_state.metrics, epoch//log_frequency+1, repertoire))
+        # update metrics
         logging.debug("ES Start metrics:")
-        metrics = update_metrics_fn(training_state.metrics, epoch, repertoire)
+        metrics = self._update_metrics_fn(training_state.metrics, epoch, repertoire)
         logging.debug("ES Metrics Time: %s", time.time() - epoch_start_t)
 
         return TrainingState(
