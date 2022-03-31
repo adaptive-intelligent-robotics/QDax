@@ -25,6 +25,12 @@ from qdax.types import (
 def training_inference(policy_model, params, obs):
     return policy_model.apply(params, obs)
 
+training_inference_vec = jax.vmap(
+        lambda *args: training_inference(*args),
+        in_axes=(None, 0, 0),
+        out_axes=0,
+    )
+
 def get_deterministic_actions(parameters):
     loc, scale = jnp.split(parameters, 2, axis=-1)
     act = jnp.tanh(loc)
@@ -102,6 +108,44 @@ def generate_unroll(
         length=episode_length,
     )
     return state, transitions
+
+
+# Define util functions
+def play_step_vec(
+    env_state: EnvState,
+    policy_params: Params,
+    random_key: RNGKey,
+    env: brax.envs.Env,
+    policy_model: Any,
+) -> Tuple[EnvState, Params, RNGKey, Transition]:
+    """Play an environment step and return the updated state and the transition."""
+
+    logits = training_inference_vec(policy_model, policy_params, env_state.obs)
+    # actions = parametric_action_distribution.sample(logits, key_sample)
+    actions = get_deterministic_actions(logits)
+    #actions = policy_model.apply(policy_params, env_state.obs)
+
+    # this env state is already parallel
+    next_state = env.step(env_state, actions)
+
+    transition = Transition(
+        obs=env_state.obs,
+        next_obs=next_state.obs,
+        rewards=next_state.reward,
+        dones=next_state.done,
+        actions=actions,
+        state_desc=env_state.info["state_descriptor"],
+    )
+
+    return next_state, policy_params, random_key, transition
+
+
+
+
+
+
+
+
 
 
 
