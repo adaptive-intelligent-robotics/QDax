@@ -3,13 +3,13 @@ from typing import Callable, Optional
 
 import brax
 
-from qdax.algorithms.brax_envs.exploration_wrappers import MazeWrapper, TrapWrapper
-from qdax.algorithms.brax_envs.locomotion_wrappers import (
+from qdax.brax_envs.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.brax_envs.locomotion_wrappers import (
     FeetContactWrapper,
     NoForwardRewardWrapper,
     XYPositionWrapper,
 )
-from qdax.algorithms.brax_envs.pointmaze import PointMaze
+from qdax.brax_envs.pointmaze import PointMaze
 
 _parl_envs = {
     "pointmaze": PointMaze,

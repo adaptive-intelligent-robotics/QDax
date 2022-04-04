@@ -19,7 +19,7 @@ import jax.numpy as jnp
 from brax.envs.env import State as EnvState
 from jax.config import config
 from jax.flatten_util import ravel_pytree
-from qdax.algorithms import brax_envs
+from qdax import brax_envs
 from qdax.algorithms.map_elites import MAPElites, QDMetrics, compute_cvt_centroids
 from qdax.algorithms.mutation_operators import (
     isoline_crossover_function,
