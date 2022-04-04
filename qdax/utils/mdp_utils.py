@@ -69,17 +69,17 @@ def generate_unroll(
     return state, transitions
 
 
-@partial(jax.jit, static_argnames=("env", "policy_network"))
+@partial(jax.jit, static_argnames=("env", "policy_apply_fn"))
 def play_step(
     env_state: EnvState,
     policy_params: Params,
     random_key: RNGKey,
     env: brax.envs.Env,
-    policy_network: flax.linen.Module
+    policy_apply_fn: Callable,
 ) -> Tuple[EnvState, Params, RNGKey, Transition]:
     """Play an environment step and return the updated state and the transition."""
 
-    actions = policy_network.apply(policy_params, env_state.obs)
+    actions = policy_apply_fn(policy_params, env_state.obs)
     next_state = env.step(env_state, actions)
 
     transition = Transition(
@@ -99,6 +99,7 @@ def play_step(
     static_argnames=(
         "episode_length",
         "env",
+        "policy_apply_fn",
         "behavior_descriptor_extractor",
     ),
 )
@@ -108,7 +109,7 @@ def scoring_function(
     episode_length: int,
     random_key: RNGKey,
     env: brax.envs.Env,
-    policy_network: flax.linen.Module,
+    policy_apply_fn: Callable,
     behavior_descriptor_extractor: Callable[[Transition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor]:
     """Evaluate policies contained in flatten_variables in parallel
@@ -122,7 +123,7 @@ def scoring_function(
     time-consuming. If pure stochasticity is needed for a use case, please open
     an issue.
     """
-    play_step_fn = partial(play_step, env=env, policy_network=policy_network)
+    play_step_fn = partial(play_step, env=env, policy_apply_fn=policy_apply_fn)
 
     # Perform rollouts with each policy
     unroll_fn = partial(
