@@ -97,7 +97,6 @@ def play_step(
 @partial(
     jax.jit,
     static_argnames=(
-        "init_states",
         "episode_length",
         "env",
         "policy_network",
