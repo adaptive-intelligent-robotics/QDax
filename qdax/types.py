@@ -9,19 +9,15 @@ Observation = NewType("Observation", jnp.ndarray)
 Action = NewType("Action", jnp.ndarray)
 Reward = NewType("Reward", jnp.ndarray)
 Done = NewType("Done", jnp.ndarray)
-EnvState = NewType("Env_State", Any)
-
-# Controller types
+EnvState = NewType("EnvState", Any)
 Params = NewType("Params", Any)
+
+# Evolution types
 StateDescriptor = NewType("StateDescriptor", jnp.ndarray)
-
-Scores = NewType("Scores", jnp.ndarray)
 Fitness = NewType("Fitness", jnp.ndarray)
-Genotypes = NewType("Genotypes", jnp.ndarray)
-Descriptors = NewType("Descriptors", jnp.ndarray)
-
-# MAP Elites types
-Centroids = NewType("Centroids", jnp.ndarray)
+Genotype = NewType("Genotypes", jnp.ndarray)
+Descriptor = NewType("Descriptors", jnp.ndarray)
+Centroid = NewType("Centroids", jnp.ndarray)
 EmitterState = tree.StructureKV[str, jnp.ndarray]
 
 # Others
