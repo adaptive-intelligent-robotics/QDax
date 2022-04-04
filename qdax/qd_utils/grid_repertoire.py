@@ -1,16 +1,16 @@
+from functools import partial
 from typing import Any, List
 
 import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax import jit
 
 Array = Any
 
 
 @flax.struct.dataclass
-class Repertoire:
+class GridRepertoire:
     archive: List
     fitness: Array
     bd: Array
@@ -41,23 +41,23 @@ class Repertoire:
             archive, fitness, bd, grid_shape, min, max, num_indivs, indiv_indices
         )
 
-    @staticmethod
-    def binning(normed, shape):
+    @jax.jit
+    def binning(self, normed, shape):
         return tuple(jnp.multiply(normed, shape - 1).astype(int))
 
-    @staticmethod
-    def add_to_archive(repertoire, pop_p, bds, eval_scores, dead):
+    @jax.jit
+    def add_to_archive(self, pop_p, bds, eval_scores, dead):
 
-        normalized_bds = (bds - repertoire.min) / (
-            repertoire.max - repertoire.min
+        normalized_bds = (bds - self.min) / (
+            self.max - self.min
         )  # Normlalized BD should be between zero and 1
-        bd_cells = jit(jax.vmap(Repertoire.binning, in_axes=(0, None), out_axes=0))(
-            normalized_bds, repertoire.grid_shape
+        bd_cells = jax.vmap(self.binning, in_axes=(0, None), out_axes=0)(
+            normalized_bds, self.grid_shape
         )
         # print(bd_cells)
-        bd_indexes = jnp.ravel_multi_index(bd_cells, repertoire.bd.shape, mode="clip")
+        bd_indexes = jnp.ravel_multi_index(bd_cells, self.bd.shape, mode="clip")
         maximum_fitness = jax.ops.segment_max(
-            eval_scores, bd_indexes, num_segments=repertoire.fitness.ravel().shape[0]
+            eval_scores, bd_indexes, num_segments=self.fitness.ravel().shape[0]
         )
         eval_scores_filtered = jnp.where(
             maximum_fitness.at[bd_indexes].get() == eval_scores,
@@ -65,7 +65,7 @@ class Repertoire:
             np.iinfo(np.int32).min,
         )
         # Checking Conditions for fitness function
-        current_fitness = repertoire.fitness.ravel().at[bd_indexes].get()
+        current_fitness = self.fitness.ravel().at[bd_indexes].get()
         # Checking if fitness function is nan or not, since nan means we do not have
         # an individual yet
         current_fitness_nan = jnp.isnan(current_fitness)
@@ -89,20 +89,20 @@ class Repertoire:
         # Adding individuals indivs to grid
         leaves = []
         for i, weight in enumerate(jax.tree_leaves(pop_p)):
-            leaf = jax.tree_leaves(repertoire.archive)[i].at[bd_insertion].set(weight)
+            leaf = jax.tree_leaves(self.archive)[i].at[bd_insertion].set(weight)
             leaves.append(leaf)
 
         # replacing grid with new leaves that have the updated weights
-        new_archive = jax.tree_unflatten(jax.tree_structure(repertoire.archive), leaves)
+        new_archive = jax.tree_unflatten(jax.tree_structure(self.archive), leaves)
 
         new_fitness = jnp.reshape(
-            repertoire.fitness.ravel().at[bd_insertion].set(eval_scores),
-            repertoire.fitness.shape,
+            self.fitness.ravel().at[bd_insertion].set(eval_scores),
+            self.fitness.shape,
         )
-        # print(repertoire.fitness)
+        # print(self.fitness)
         num_indivs = (jnp.where(~jnp.isnan(new_fitness), 1, 0)).sum()
 
         # returning this to make it jit friendly
-        return repertoire.replace(
+        return self.replace(
             archive=new_archive, fitness=new_fitness, num_indivs=num_indivs
         )
