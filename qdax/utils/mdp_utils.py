@@ -98,7 +98,8 @@ def play_step(
     jax.jit,
     static_argnames=(
         "episode_length",
-        "play_step_fn",
+        "env",
+        "policy_network",
         "behavior_descriptor_extractor",
     ),
 )
