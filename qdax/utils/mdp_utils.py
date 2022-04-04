@@ -134,7 +134,7 @@ def scoring_function(
 
     _final_state, data = jax.vmap(unroll_fn)(init_states, policies_params)
 
-    # create a mask to extract data properly
+    # Create a mask to extract data properly
     is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
     mask = jnp.roll(is_done, 1, axis=1)
     mask = mask.at[:, 0].set(0)
