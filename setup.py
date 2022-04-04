@@ -11,8 +11,9 @@ setup(
     description="",
     install_requires=[
         "absl-py==1.0.0",
-        "jax==0.2.26",
-        "brax==0.0.10",
+        "jax==0.3.2",
+        "flax==0.4.1",
+        "brax==0.0.12",
         "gym>=0.15",
         "numpy>=1.19",
         "scikit-learn>=1.0",
