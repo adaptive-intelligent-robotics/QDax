@@ -69,17 +69,17 @@ def generate_unroll(
     return state, transitions
 
 
-@partial(jax.jit, static_argnames=("env", "policy_apply_fn"))
+@partial(jax.jit, static_argnames=("env", "policy_network"))
 def play_step(
     env_state: EnvState,
     policy_params: Params,
     random_key: RNGKey,
     env: brax.envs.Env,
-    policy_apply_fn: Callable,
+    policy_network: flax.linen.Module,
 ) -> Tuple[EnvState, Params, RNGKey, Transition]:
     """Play an environment step and return the updated state and the transition."""
 
-    actions = policy_apply_fn(policy_params, env_state.obs)
+    actions = policy_network.apply(policy_params, env_state.obs)
     next_state = env.step(env_state, actions)
 
     transition = Transition(
@@ -98,8 +98,7 @@ def play_step(
     jax.jit,
     static_argnames=(
         "episode_length",
-        "env",
-        "policy_apply_fn",
+        "play_step_fn",
         "behavior_descriptor_extractor",
     ),
 )
@@ -108,22 +107,23 @@ def scoring_function(
     init_states: brax.envs.State,
     episode_length: int,
     random_key: RNGKey,
-    env: brax.envs.Env,
-    policy_apply_fn: Callable,
+    play_step_fn: Callable[
+        [EnvState, Params, RNGKey, brax.envs.Env],
+        Tuple[EnvState, Params, RNGKey, Transition],
+    ],
     behavior_descriptor_extractor: Callable[[Transition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor]:
     """Evaluate policies contained in flatten_variables in parallel
 
     This rollout is only determinist when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarily
+    If the init states are fixed but different, as a policy is not necessarly
     evaluated with the same environment everytime, this won't be determinist.
 
     When the init states, this is not purely stochastic. This choice was made
-    for performance reason, as the reset function of brax envs is quite
-    time-consuming. If pure stochasticity is needed for a use case, please open
+    for performance reason, as the reset function of brax envs is quite time
+    consuming. If pure stochasticity is needed for a use case, please open
     an issue.
     """
-    play_step_fn = partial(play_step, env=env, policy_apply_fn=policy_apply_fn)
 
     # Perform rollouts with each policy
     unroll_fn = partial(
@@ -135,7 +135,7 @@ def scoring_function(
 
     _final_state, data = jax.vmap(unroll_fn)(init_states, policies_params)
 
-    # Create a mask to extract data properly
+    # create a mask to extract data properly
     is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
     mask = jnp.roll(is_done, 1, axis=1)
     mask = mask.at[:, 0].set(0)
