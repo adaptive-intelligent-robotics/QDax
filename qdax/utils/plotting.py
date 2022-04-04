@@ -180,6 +180,8 @@ def plot_2d_map_elites_grid(
     ax.set_aspect("equal")
     if save_to_path is not None:
         fig.savefig(save_to_path)
-    plt.close(fig)
+
+    if ax is None:
+        plt.close(fig)
 
     return ax

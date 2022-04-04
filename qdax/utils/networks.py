@@ -23,6 +23,8 @@ class MLP(nn.Module):
             if i != len(self.layer_sizes) - 1:
                 hidden = nn.Dense(
                     hidden_size,
+                    # name=f"hidden_{i}", with this version of flax, changing the name
+                    # changes the initialization
                     kernel_init=self.kernel_init,
                     use_bias=self.bias,
                 )(hidden)
@@ -36,6 +38,7 @@ class MLP(nn.Module):
 
                 hidden = nn.Dense(
                     hidden_size,
+                    # name=f"hidden_{i}",
                     kernel_init=kernel_init,
                     use_bias=self.bias,
                 )(hidden)
