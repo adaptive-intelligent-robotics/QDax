@@ -99,7 +99,6 @@ def play_step(
     static_argnames=(
         "episode_length",
         "env",
-        "policy_network",
         "behavior_descriptor_extractor",
     ),
 )
