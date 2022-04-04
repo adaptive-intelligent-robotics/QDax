@@ -107,23 +107,22 @@ def scoring_function(
     init_states: brax.envs.State,
     episode_length: int,
     random_key: RNGKey,
-    play_step_fn: Callable[
-        [EnvState, Params, RNGKey, brax.envs.Env],
-        Tuple[EnvState, Params, RNGKey, Transition],
-    ],
+    env: brax.envs.Env,
+    policy_network: flax.linen.Module,
     behavior_descriptor_extractor: Callable[[Transition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor]:
     """Evaluate policies contained in flatten_variables in parallel
 
     This rollout is only determinist when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarly
+    If the init states are fixed but different, as a policy is not necessarily
     evaluated with the same environment everytime, this won't be determinist.
 
     When the init states, this is not purely stochastic. This choice was made
-    for performance reason, as the reset function of brax envs is quite time
-    consuming. If pure stochasticity is needed for a use case, please open
+    for performance reason, as the reset function of brax envs is quite
+    time-consuming. If pure stochasticity is needed for a use case, please open
     an issue.
     """
+    play_step_fn = partial(play_step, env=env, policy_network=policy_network)
 
     # Perform rollouts with each policy
     unroll_fn = partial(
