@@ -84,7 +84,7 @@ def polynomial_mutation_function(
         Assumed to be of shape (batch_size, genotype_dim)
 
         proportion_to_mutate (float): proportion of variables to mutate in
-        each genotype (must be in [0, 1]).
+            each genotype (must be in [0, 1]).
         eta (float): scaling parameter, the larger the more spread the new
         values will be.
         minval (float): minimum value to clip the genotypes.
@@ -179,6 +179,9 @@ def isoline_crossover_function(
 ) -> Tuple[Genotype, RNGKey]:
     """
     Iso+Line-DD Crossover Operator [1] over a set of pairs of genotypes
+    [1] Vassiliades, Vassilis, and Jean-Baptiste Mouret. "Discovering the elite
+    hypervolume by leveraging interspecies correlation." Proceedings of the Genetic and
+    Evolutionary Computation Conference. 2018.
 
     Parameters:
         x1 (Genotypes): first batch of genotypes
@@ -192,10 +195,6 @@ def isoline_crossover_function(
     Returns:
         x (Genotypes): new genotypes
         random_key (RNGKey): new RNG key
-
-    [1] Vassiliades, Vassilis, and Jean-Baptiste Mouret. "Discovering the elite
-    hypervolume by leveraging interspecies correlation." Proceedings of the Genetic and
-    Evolutionary Computation Conference. 2018.
     """
 
     key, subkey1, subkey2 = jax.random.split(random_key, num=3)

@@ -364,9 +364,9 @@ class MAPElites:
         CVT or Euclidean mapping.
 
         Args:
-        init_genotypes: initial genotypes, pytree in which leaves
-            have shape (batch_size, num_features)
-        centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            init_genotypes: initial genotypes, pytree in which leaves
+                have shape (batch_size, num_features)
+            centroids: tesselation centroids of shape (batch_size, num_descriptors)
 
         Returns:
             an initialized MAP-Elite repertoire

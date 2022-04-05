@@ -113,7 +113,8 @@ def scoring_function(
     ],
     behavior_descriptor_extractor: Callable[[Transition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor]:
-    """Evaluate policies contained in flatten_variables in parallel
+    """
+    Evaluate policies contained in flatten_variables in parallel
 
     This rollout is only determinist when all the init states are the same.
     If the init states are fixed but different, as a policy is not necessarly
