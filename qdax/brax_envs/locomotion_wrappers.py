@@ -2,10 +2,14 @@ from typing import List, Optional, Sequence, Tuple
 
 import jax.numpy as jnp
 from brax import jumpy as jp
-from brax.envs import State, env
+from brax.envs import Env, State, Wrapper
 from brax.physics import config_pb2
 from brax.physics.base import QP, Info
 from brax.physics.system import System
+
+from qdax.brax_envs.utils_wrappers import QDEnv
+
+# TODO: add clipping option in the XYWrapper
 
 FEET_NAMES = {
     "ant": ["$ Body 4", "$ Body 7", "$ Body 10", "$ Body 13"],
@@ -38,7 +42,7 @@ class QDSystem(System):
         return qp, info
 
 
-class FeetContactWrapper(env.Wrapper):
+class FeetContactWrapper(QDEnv):
     """Wraps gym environments to add the feet contact data.
 
     Utilisation is simple: create an environment with Brax, pass
@@ -76,20 +80,25 @@ class FeetContactWrapper(env.Wrapper):
 
     """
 
-    def __init__(self, env: env.Env, env_name):
+    def __init__(self, env: Env, env_name: str):
+
         if env_name not in FEET_NAMES.keys():
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
-        super().__init__(env)
-        if hasattr(self.unwrapped, "sys"):
-            self.unwrapped.sys = QDSystem(self.unwrapped.sys.config)
+
+        super().__init__(config=None)
+
+        self.env = env
         self._env_name = env_name
+        if hasattr(self.env, "sys"):
+            self.env.sys = QDSystem(self.env.sys.config)
+
         self._feet_contact_idx = jp.array(
             [env.sys.body.index.get(name) for name in FEET_NAMES[env_name]]
         )
 
     @property
     def state_descriptor_length(self) -> int:
-        return 2
+        return self.behavior_descriptor_length
 
     @property
     def state_descriptor_name(self) -> int:
@@ -128,6 +137,11 @@ class FeetContactWrapper(env.Wrapper):
         contacts = info.contact.vel
         return jp.any(contacts[self._feet_contact_idx], axis=1).astype(jp.float32)
 
+    def __getattr__(self, name):
+        if name == "__setstate__":
+            raise AttributeError(name)
+        return getattr(self.env, name)
+
 
 # name of the center of gravity
 COG_NAMES = {
@@ -139,7 +153,7 @@ COG_NAMES = {
 }
 
 
-class XYPositionWrapper(env.Wrapper):
+class XYPositionWrapper(QDEnv):
     """Wraps gym environments to add the position data.
 
     Utilisation is simple: create an environment with Brax, pass
@@ -185,19 +199,28 @@ class XYPositionWrapper(env.Wrapper):
 
     def __init__(
         self,
-        env: env.Env,
+        env: Env,
         env_name: str,
-        minval: Optional[List] = jnp.ones((2,)) * (-jnp.inf),
-        maxval: Optional[List] = jnp.ones((2,)) * jnp.inf,
+        minval: Optional[List] = None,
+        maxval: Optional[List] = None,
     ):
         if env_name not in COG_NAMES.keys():
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
-        super().__init__(env)
+
+        super().__init__(config=None)
+
+        self.env = env
         self._env_name = env_name
-        if hasattr(self.unwrapped, "sys"):
-            self._cog_idx = self.unwrapped.sys.body.index[COG_NAMES[env_name]]
+        if hasattr(self.env, "sys"):
+            self._cog_idx = self.env.sys.body.index[COG_NAMES[env_name]]
         else:
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
+
+        if minval is None:
+            minval = jnp.ones((2,)) * (-jnp.inf)
+
+        if maxval is None:
+            maxval = jnp.ones((2,)) * jnp.inf
 
         if len(minval) == 2 and len(maxval) == 2:
             self._minval = jnp.array(minval)
@@ -212,19 +235,19 @@ class XYPositionWrapper(env.Wrapper):
         return 2
 
     @property
-    def state_descriptor_name(self) -> int:
+    def state_descriptor_name(self) -> str:
         return "xy_position"
 
     @property
-    def state_descriptor_limits(self) -> Tuple[List, List]:
-        return (self._minval, self._maxval)
+    def state_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+        return self._minval, self._maxval
 
     @property
-    def behavior_descriptor_length(self) -> Tuple[List, List]:
+    def behavior_descriptor_length(self) -> int:
         return self.state_descriptor_length
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List, List]:
+    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
         return self.state_descriptor_limits
 
     @property
@@ -246,6 +269,11 @@ class XYPositionWrapper(env.Wrapper):
         )
         return state
 
+    def __getattr__(self, name):
+        if name == "__setstate__":
+            raise AttributeError(name)
+        return getattr(self.env, name)
+
 
 # name of the forward/velocity reward
 FORWARD_REWARD_NAMES = {
@@ -257,7 +285,7 @@ FORWARD_REWARD_NAMES = {
 }
 
 
-class NoForwardRewardWrapper(env.Wrapper):
+class NoForwardRewardWrapper(Wrapper):
     """Wraps gym environments to remove forward reward.
 
     Utilisation is simple: create an environment with Brax, pass
@@ -281,7 +309,7 @@ class NoForwardRewardWrapper(env.Wrapper):
             state = qd_env.step(state, action)
     """
 
-    def __init__(self, env: env.Env, env_name):
+    def __init__(self, env: Env, env_name):
         if env_name not in FORWARD_REWARD_NAMES.keys():
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
         super().__init__(env)

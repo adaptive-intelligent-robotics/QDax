@@ -1,4 +1,5 @@
-from typing import Optional
+import functools
+from typing import Callable, Optional, Union
 
 import brax
 
@@ -13,10 +14,10 @@ from qdax.brax_envs.locomotion_wrappers import (
     XYPositionWrapper,
 )
 from qdax.brax_envs.pointmaze import PointMaze
-from qdax.brax_envs.utils_wrappers import StateDescriptorResetWrapper
+from qdax.brax_envs.utils_wrappers import QDEnv, StateDescriptorResetWrapper
 
-# experimentally determinate offset (except for antmaze)
-# should be efficient to have only positive rewards but no guarantee
+# experimentally determinated offset (except for antmaze)
+# should be effecient to have only positive rewards but no guarantee
 reward_offset = {
     "pointmaze": 2.3431,
     "anttrap": 3.38,
@@ -100,7 +101,7 @@ def create(
     batch_size: Optional[int] = None,
     eval_metrics: bool = False,
     **kwargs,
-) -> brax.envs.Env:
+) -> Union[brax.envs.Env, QDEnv]:
     """Creates an Env with a specified brax system.
     Please use namespace to avoid confusion between this function and
     brax.envs.create.
@@ -134,3 +135,11 @@ def create(
     if eval_metrics:
         env = brax.envs.wrappers.EvalWrapper(env)
     return env
+
+
+def create_fn(env_name: str, **kwargs) -> Callable[..., brax.envs.Env]:
+    """Returns a function that when called, creates an Env.
+    Please use namespace to avoid confusion between this function and
+    brax.envs.create_fn.
+    """
+    return functools.partial(create, env_name, **kwargs)
