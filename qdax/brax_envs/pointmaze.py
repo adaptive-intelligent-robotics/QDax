@@ -11,7 +11,7 @@ class PointMaze(env.Env):
     the PointMaze.
 
     In order to stay in the Brax API, I will use a fake QP
-    at several moment of the implementation. This enable to
+    at several moment of the implementation. This enables to
     use the brax.envs.env.State from Brax. To avoid this,
     it would be good to ask Brax to enlarge a bit their API
     for environments that are not physically simulated.
