@@ -83,19 +83,19 @@ class PointMaze(env.Env):
         return 2
 
     @property
-    def state_descriptor_name(self) -> int:
+    def state_descriptor_name(self) -> str:
         return "xy_position"
 
     @property
-    def state_descriptor_limits(self) -> Tuple[List, List]:
-        return ([self._x_min, self._y_min], [self._x_max, self._y_max])
+    def state_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+        return [self._x_min, self._y_min], [self._x_max, self._y_max]
 
     @property
-    def behavior_descriptor_length(self) -> Tuple[List, List]:
+    def behavior_descriptor_length(self) -> int:
         return self.state_descriptor_length
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List, List]:
+    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
         return self.state_descriptor_limits
 
     @property
