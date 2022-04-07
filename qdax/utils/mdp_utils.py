@@ -23,14 +23,256 @@ from qdax.types import (
 
 @flax.struct.dataclass
 class Transition:
-    """Stores data corresponding to a transition in an env."""
+    """Stores data corresponding to a transition collected by a classic RL algorithm."""
 
     obs: Observation
     next_obs: Observation
     rewards: Reward
     dones: Done
+    truncations: jnp.ndarray  # Indicates if an episode has reached max time step
     actions: Action
+
+    @property
+    def observation_dim(self) -> int:
+        """
+        Returns:
+            the dimension of the observation
+        """
+        return self.obs.shape[-1]
+
+    @property
+    def action_dim(self) -> int:
+        """
+        Returns:
+            the dimension of the action
+        """
+        return self.actions.shape[-1]
+
+    @property
+    def flatten_dim(self) -> int:
+        """
+        Returns:
+            the dimension of the transition once flattened.
+
+        """
+        flatten_dim = 2 * self.observation_dim + self.action_dim + 3
+        return flatten_dim
+
+    def flatten(self) -> jnp.ndarray:
+        """
+        Returns:
+            a jnp.ndarray that corresponds to the flattened transition.
+        """
+        flatten_transition = jnp.concatenate(
+            [
+                self.obs,
+                self.next_obs,
+                jnp.expand_dims(self.rewards, axis=-1),
+                jnp.expand_dims(self.dones, axis=-1),
+                jnp.expand_dims(self.truncations, axis=-1),
+                self.actions,
+            ],
+            axis=-1,
+        )
+        return flatten_transition
+
+    @classmethod
+    def from_flatten(
+        cls,
+        flattened_transition: jnp.ndarray,
+        transition: "Transition",
+    ) -> "Transition":
+        """
+        Creates a transition from a flattened transition in a jnp.ndarray.
+
+        Args:
+            flattened_transition: flattened transition in a jnp.ndarray of shape
+                (batch_size, flatten_dim)
+            transition: a transition object (might be a dummy one) to
+                get the dimensions right
+
+        Returns:
+            a Transition object
+        """
+        obs_dim = transition.observation_dim
+        action_dim = transition.action_dim
+        obs = flattened_transition[:, :obs_dim]
+        next_obs = flattened_transition[:, obs_dim : (2 * obs_dim)]
+        rewards = jnp.ravel(flattened_transition[:, (2 * obs_dim) : (2 * obs_dim + 1)])
+        dones = jnp.ravel(
+            flattened_transition[:, (2 * obs_dim + 1) : (2 * obs_dim + 2)]
+        )
+        truncations = jnp.ravel(
+            flattened_transition[:, (2 * obs_dim + 2) : (2 * obs_dim + 3)]
+        )
+        actions = flattened_transition[
+            :, (2 * obs_dim + 3) : (2 * obs_dim + 3 + action_dim)
+        ]
+        return cls(
+            obs=obs,
+            next_obs=next_obs,
+            rewards=rewards,
+            dones=dones,
+            truncations=truncations,
+            actions=actions,
+        )
+
+    @classmethod
+    def init_dummy(cls, observation_dim: int, action_dim: int) -> "Transition":
+        """
+        Initialize a dummy transition that then can be passed to constructors to get
+        all shapes right.
+
+        Args:
+            observation_dim: observation dimension
+            action_dim: action dimension
+
+        Returns:
+            a dummy transition
+        """
+        dummy_transition = Transition(
+            obs=jnp.zeros(shape=(1, observation_dim)),
+            next_obs=jnp.zeros(shape=(1, observation_dim)),
+            rewards=jnp.zeros(shape=(1,)),
+            dones=jnp.zeros(shape=(1,)),
+            truncations=jnp.zeros(shape=(1,)),
+            actions=jnp.zeros(shape=(1, action_dim)),
+        )
+        return dummy_transition
+
+
+@flax.struct.dataclass
+class QDTransition(Transition):
+    """Stores data corresponding to a transition collected by a QD algorithm."""
+
     state_desc: StateDescriptor
+    next_state_desc: StateDescriptor
+
+    @property
+    def state_descriptor_dim(self) -> int:
+        """
+        Returns:
+            the dimension of the state descriptors.
+
+        """
+        return self.state_desc.shape[-1]
+
+    @property
+    def flatten_dim(self) -> int:
+        """
+        Returns:
+            the dimension of the transition once flattened.
+
+        """
+        flatten_dim = (
+            2 * self.observation_dim
+            + self.action_dim
+            + 3
+            + 2 * self.state_descriptor_dim
+        )
+        return flatten_dim
+
+    def flatten(self) -> jnp.ndarray:
+        """
+        Returns:
+            a jnp.ndarray that corresponds to the flattened transition.
+        """
+        flatten_transition = jnp.concatenate(
+            [
+                self.obs,
+                self.next_obs,
+                jnp.expand_dims(self.rewards, axis=-1),
+                jnp.expand_dims(self.dones, axis=-1),
+                jnp.expand_dims(self.truncations, axis=-1),
+                self.actions,
+                self.state_desc,
+                self.next_state_desc,
+            ],
+            axis=-1,
+        )
+        return flatten_transition
+
+    @classmethod
+    def from_flatten(
+        cls,
+        flattened_transition: jnp.ndarray,
+        transition: "QDTransition",
+    ) -> "QDTransition":
+        """
+        Creates a transition from a flattened transition in a jnp.ndarray.
+
+        Args:
+            flattened_transition: flattened transition in a jnp.ndarray of shape
+                (batch_size, flatten_dim)
+            transition: a transition object (might be a dummy one) to
+                get the dimensions right
+
+        Returns:
+            a Transition object
+        """
+        obs_dim = transition.observation_dim
+        action_dim = transition.action_dim
+        desc_dim = transition.state_descriptor_dim
+
+        obs = flattened_transition[:, :obs_dim]
+        next_obs = flattened_transition[:, obs_dim : (2 * obs_dim)]
+        rewards = jnp.ravel(flattened_transition[:, (2 * obs_dim) : (2 * obs_dim + 1)])
+        dones = jnp.ravel(
+            flattened_transition[:, (2 * obs_dim + 1) : (2 * obs_dim + 2)]
+        )
+        truncations = jnp.ravel(
+            flattened_transition[:, (2 * obs_dim + 2) : (2 * obs_dim + 3)]
+        )
+        actions = flattened_transition[
+            :, (2 * obs_dim + 3) : (2 * obs_dim + 3 + action_dim)
+        ]
+        state_desc = flattened_transition[
+            :,
+            (2 * obs_dim + 3 + action_dim) : (2 * obs_dim + 3 + action_dim + desc_dim),
+        ]
+        next_state_desc = flattened_transition[
+            :,
+            (2 * obs_dim + 3 + action_dim + desc_dim) : (
+                2 * obs_dim + 3 + action_dim + 2 * desc_dim
+            ),
+        ]
+        return cls(
+            obs=obs,
+            next_obs=next_obs,
+            rewards=rewards,
+            dones=dones,
+            truncations=truncations,
+            actions=actions,
+            state_desc=state_desc,
+            next_state_desc=next_state_desc,
+        )
+
+    @classmethod
+    def init_dummy(
+        cls, observation_dim: int, action_dim: int, descriptor_dim: int
+    ) -> "QDTransition":
+        """
+        Initialize a dummy transition that then can be passed to constructors to get
+        all shapes right.
+
+        Args:
+            observation_dim: observation dimension
+            action_dim: action dimension
+
+        Returns:
+            a dummy transition
+        """
+        dummy_transition = QDTransition(
+            obs=jnp.zeros(shape=(1, observation_dim)),
+            next_obs=jnp.zeros(shape=(1, observation_dim)),
+            rewards=jnp.zeros(shape=(1,)),
+            dones=jnp.zeros(shape=(1,)),
+            truncations=jnp.zeros(shape=(1,)),
+            actions=jnp.zeros(shape=(1, action_dim)),
+            state_desc=jnp.zeros(shape=(1, descriptor_dim)),
+            next_state_desc=jnp.zeros(shape=(1, descriptor_dim)),
+        )
+        return dummy_transition
 
 
 @partial(jax.jit, static_argnames=("play_step_fn", "episode_length"))

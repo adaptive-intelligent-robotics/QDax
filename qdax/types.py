@@ -1,25 +1,26 @@
 """Defines some types used in PaRL"""
-from typing import Any, NewType
+from typing import Any, Union
 
 import jax.numpy as jnp
 import tree
+from typing_extensions import TypeAlias
 
 # MDP types
-Observation = NewType("Observation", jnp.ndarray)
-Action = NewType("Action", jnp.ndarray)
-Reward = NewType("Reward", jnp.ndarray)
-Done = NewType("Done", jnp.ndarray)
-EnvState = NewType("EnvState", Any)
-Params = NewType("Params", Any)
+Observation: TypeAlias = jnp.ndarray
+Action: TypeAlias = jnp.ndarray
+Reward: TypeAlias = jnp.ndarray
+Done: TypeAlias = jnp.ndarray
+EnvState: TypeAlias = jnp.ndarray
+Params: TypeAlias = jnp.ndarray
 
 # Evolution types
-StateDescriptor = NewType("StateDescriptor", jnp.ndarray)
-Fitness = NewType("Fitness", jnp.ndarray)
-Genotype = NewType("Genotypes", jnp.ndarray)
-Descriptor = NewType("Descriptors", jnp.ndarray)
-Centroid = NewType("Centroids", jnp.ndarray)
-EmitterState = tree.StructureKV[str, jnp.ndarray]
+StateDescriptor: TypeAlias = jnp.ndarray
+Fitness: TypeAlias = jnp.ndarray
+Genotype: TypeAlias = jnp.ndarray
+Descriptor: TypeAlias = jnp.ndarray
+Centroid: TypeAlias = jnp.ndarray
+EmitterState: TypeAlias = tree.StructureKV[str, jnp.ndarray]
 
 # Others
-RNGKey = NewType("RNGKey", jnp.ndarray)
-Metrics = tree.StructureKV[str, jnp.ndarray]
+RNGKey: TypeAlias = Union[Any, jnp.ndarray]
+Metrics: TypeAlias = tree.StructureKV[str, jnp.ndarray]
