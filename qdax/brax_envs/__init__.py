@@ -16,8 +16,8 @@ from qdax.brax_envs.locomotion_wrappers import (
 from qdax.brax_envs.pointmaze import PointMaze
 from qdax.brax_envs.utils_wrappers import QDEnv, StateDescriptorResetWrapper
 
-# experimentally determinated offset (except for antmaze)
-# should be effecient to have only positive rewards but no guarantee
+# experimentally determinate offset (except for antmaze)
+# should be efficient to have only positive rewards but no guarantee
 reward_offset = {
     "pointmaze": 2.3431,
     "anttrap": 3.38,
