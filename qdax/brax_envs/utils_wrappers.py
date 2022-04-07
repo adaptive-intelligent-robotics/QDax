@@ -111,7 +111,7 @@ class StateDescriptorResetWrapper(QDWrapper):
         def where_done(x, y):
             done = state.done
             if done.shape:
-                done = jp.reshape(done, [x.shape[0]] + [1] * (len(x.shape) - 1))
+                done = jp.reshape(done, tuple([x.shape[0]] + [1] * (len(x.shape) - 1)))
             return jp.where(done, x, y)
 
         state.info["state_descriptor"] = where_done(

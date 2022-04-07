@@ -9,8 +9,6 @@ from brax.physics.system import System
 
 from qdax.brax_envs.utils_wrappers import QDEnv
 
-# TODO: add clipping option in the XYWrapper
-
 FEET_NAMES = {
     "ant": ["$ Body 4", "$ Body 7", "$ Body 10", "$ Body 13"],
     "halfcheetah": ["ffoot", "bfoot"],
@@ -101,7 +99,7 @@ class FeetContactWrapper(QDEnv):
         return self.behavior_descriptor_length
 
     @property
-    def state_descriptor_name(self) -> int:
+    def state_descriptor_name(self) -> str:
         return "feet_contact"
 
     @property
@@ -113,9 +111,9 @@ class FeetContactWrapper(QDEnv):
         return len(self._feet_contact_idx)
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List, List]:
+    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
         bd_length = self.behavior_descriptor_length
-        return (jnp.zeros((bd_length,)), jnp.ones((bd_length,)))
+        return [0.0] * bd_length, [1.0] * bd_length
 
     @property
     def name(self) -> str:

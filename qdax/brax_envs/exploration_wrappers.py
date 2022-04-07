@@ -8,10 +8,6 @@ from google.protobuf import text_format
 
 from qdax.brax_envs.locomotion_wrappers import COG_NAMES
 
-# TODO:
-# - in maze, suppose to divide x/y position by 45 (should i add -22.5 as well)
-# - in trap, it is not divided in the original implem, should we do it here?
-
 # config of the body of the trap following Brax's config style
 TRAP_CONFIG = """bodies {
     name: "Trap"

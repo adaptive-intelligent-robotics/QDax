@@ -69,31 +69,6 @@ def generate_unroll(
     return state, transitions
 
 
-@partial(jax.jit, static_argnames=("env", "policy_network"))
-def play_step(
-    env_state: EnvState,
-    policy_params: Params,
-    random_key: RNGKey,
-    env: brax.envs.Env,
-    policy_network: flax.linen.Module,
-) -> Tuple[EnvState, Params, RNGKey, Transition]:
-    """Play an environment step and return the updated state and the transition."""
-
-    actions = policy_network.apply(policy_params, env_state.obs)
-    next_state = env.step(env_state, actions)
-
-    transition = Transition(
-        obs=env_state.obs,
-        next_obs=next_state.obs,
-        rewards=next_state.reward,
-        dones=next_state.done,
-        actions=actions,
-        state_desc=env_state.info["state_descriptor"],
-    )
-
-    return next_state, policy_params, random_key, transition
-
-
 @partial(
     jax.jit,
     static_argnames=(
