@@ -1,8 +1,28 @@
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, Tuple
 
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+
+
+class QModule(nn.Module):
+    """Q Module."""
+
+    hidden_layer_sizes: Tuple[int, ...]
+    n_critics: int = 2
+
+    @nn.compact
+    def __call__(self, obs: jnp.ndarray, actions: jnp.ndarray):
+        hidden = jnp.concatenate([obs, actions], axis=-1)
+        res = []
+        for _ in range(self.n_critics):
+            q = MLP(
+                layer_sizes=self.hidden_layer_sizes + (1,),
+                activation=nn.relu,
+                kernel_init=jax.nn.initializers.lecun_uniform(),
+            )(hidden)
+            res.append(q)
+        return jnp.concatenate(res, axis=-1)
 
 
 class MLP(nn.Module):
