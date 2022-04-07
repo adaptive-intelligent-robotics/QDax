@@ -1,5 +1,5 @@
 """Defines some types used in PaRL"""
-from typing import Any, Union
+from typing import Any, Mapping, Union
 
 import jax.numpy as jnp
 import tree
@@ -11,7 +11,7 @@ Action: TypeAlias = jnp.ndarray
 Reward: TypeAlias = jnp.ndarray
 Done: TypeAlias = jnp.ndarray
 EnvState: TypeAlias = jnp.ndarray
-Params: TypeAlias = jnp.ndarray
+Params: TypeAlias = Union[jnp.ndarray, Mapping[str, Mapping[str, Any]]]
 
 # Evolution types
 StateDescriptor: TypeAlias = jnp.ndarray
