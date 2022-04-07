@@ -16,7 +16,7 @@ Params: TypeAlias = Union[jnp.ndarray, Mapping[str, Mapping[str, Any]]]
 # Evolution types
 StateDescriptor: TypeAlias = jnp.ndarray
 Fitness: TypeAlias = jnp.ndarray
-Genotype: TypeAlias = jnp.ndarray
+Genotype: TypeAlias = Any
 Descriptor: TypeAlias = jnp.ndarray
 Centroid: TypeAlias = jnp.ndarray
 EmitterState: TypeAlias = tree.StructureKV[str, jnp.ndarray]
