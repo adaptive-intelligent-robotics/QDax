@@ -14,7 +14,7 @@ class QDOmniHumanoid(DetHumanoid):
         qp, info = self.sys.step(state.qp, action)
         obs = self._get_obs(qp, info, action)
 
-        state.info['bd'] = state.qp.pos[0,0:2] # BD is the x-y position which is the first two dimensions of pos
+        state.info['bd'] = qp.pos[0,0:2] # BD is the x-y position which is the first two dimensions of pos
 
         pos_before = state.qp.pos[:-1]  # ignore floor at last index
         pos_after = qp.pos[:-1]  # ignore floor at last index
