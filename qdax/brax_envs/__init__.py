@@ -2,15 +2,15 @@ import functools
 from typing import Any, Callable, List, Optional, Union
 
 import brax
-from parl.brax_envs.exploration_wrappers import MazeWrapper, TrapWrapper
-from parl.brax_envs.locomotion_wrappers import (
+from qdax.brax_envs.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.brax_envs.locomotion_wrappers import (
     FeetContactWrapper,
     NoForwardRewardWrapper,
     XYPositionWrapper,
 )
-from parl.brax_envs.pointmaze import PointMaze
-from parl.brax_envs.utils_wrappers import QDEnv, StateDescriptorResetWrapper
-from parl.utils.bd_extractors import get_feet_contact_proportion, get_final_xy_position
+from qdax.brax_envs.pointmaze import PointMaze
+from qdax.brax_envs.utils_wrappers import QDEnv, StateDescriptorResetWrapper
+from qdax.utils.bd_extractors import get_feet_contact_proportion, get_final_xy_position
 
 # experimentally determinated offset (except for antmaze)
 # should be effecient to have only positive rewards but no guarantee
@@ -42,11 +42,11 @@ behavior_descriptor_extractor = {
     "walker2d_uni": get_feet_contact_proportion,
 }
 
-_parl_envs = {
+_qdax_envs = {
     "pointmaze": PointMaze,
 }
 
-_parl_custom_envs = {
+_qdax_custom_envs = {
     "anttrap": {
         "env": "ant",
         "wrappers": [XYPositionWrapper, TrapWrapper],
@@ -103,7 +103,7 @@ def create(
     auto_reset: bool = True,
     batch_size: Optional[int] = None,
     eval_metrics: bool = False,
-    parl_wrappers_kwargs: Optional[List] = None,
+    qdax_wrappers_kwargs: Optional[List] = None,
     **kwargs: Any,
 ) -> Union[brax.envs.Env, QDEnv]:
     """Creates an Env with a specified brax system.
@@ -113,18 +113,18 @@ def create(
 
     if env_name in brax.envs._envs.keys():
         env = brax.envs._envs[env_name](legacy_spring=True, **kwargs)
-    elif env_name in _parl_envs.keys():
-        env = _parl_envs[env_name](**kwargs)
-    elif env_name in _parl_custom_envs.keys():
-        base_env_name = _parl_custom_envs[env_name]["env"]
+    elif env_name in _qdax_envs.keys():
+        env = _qdax_envs[env_name](**kwargs)
+    elif env_name in _qdax_custom_envs.keys():
+        base_env_name = _qdax_custom_envs[env_name]["env"]
         env = brax.envs._envs[base_env_name](legacy_spring=True, **kwargs)
 
-        # roll with parl wrappers
-        wrappers = _parl_custom_envs[env_name]["wrappers"]
-        if parl_wrappers_kwargs is None:
-            kwargs_list = _parl_custom_envs[env_name]["kwargs"]
+        # roll with qdax wrappers
+        wrappers = _qdax_custom_envs[env_name]["wrappers"]
+        if qdax_wrappers_kwargs is None:
+            kwargs_list = _qdax_custom_envs[env_name]["kwargs"]
         else:
-            kwargs_list = parl_wrappers_kwargs
+            kwargs_list = qdax_wrappers_kwargs
 
         for wrapper, kwargs in zip(wrappers, kwargs_list):  # type: ignore
             env = wrapper(env, base_env_name, **kwargs)  # type: ignore
@@ -137,7 +137,7 @@ def create(
         env = brax.envs.wrappers.VectorWrapper(env, batch_size)
     if auto_reset:
         env = brax.envs.wrappers.AutoResetWrapper(env)
-        if env_name in _parl_custom_envs.keys():
+        if env_name in _qdax_custom_envs.keys():
             env = StateDescriptorResetWrapper(env)
     if eval_metrics:
         env = brax.envs.wrappers.EvalWrapper(env)
