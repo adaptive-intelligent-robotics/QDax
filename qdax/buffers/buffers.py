@@ -6,8 +6,9 @@ import flax
 import jax
 import jax.numpy as jnp
 from flax import struct
-from qdax.types import Action, Done, Observation, Reward, RNGKey, StateDescriptor
 from typing_extensions import TypeAlias
+
+from qdax.types import Action, Done, Observation, Reward, RNGKey, StateDescriptor
 
 
 class Transition(flax.struct.PyTreeNode):

@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+
 from qdax.buffers.buffers import QDTransition
 from qdax.types import Descriptor
 
