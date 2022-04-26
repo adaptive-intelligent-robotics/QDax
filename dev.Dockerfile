@@ -54,8 +54,7 @@ COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements-dev.txt /tmp/requirements-dev.txt
 
 RUN pip3 --no-cache-dir install -r /tmp/requirements.txt \
-    jaxlib==0.1.75+cuda11.cudnn805 -f https://storage.googleapis.com/jax-releases/jax_releases.html \
-    torch==1.10.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html \
+    jaxlib==0.3.2+cuda11.cudnn805 -f https://storage.googleapis.com/jax-releases/jax_releases.html \
     -r /tmp/requirements-dev.txt \
     && rm -rf /tmp/*
 

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 from brax import jumpy as jp
 from brax.envs.env import Env, State
@@ -17,7 +17,7 @@ class QDEnv(Env):
 
     @property
     @abstractmethod
-    def state_descriptor_name(self) -> int:
+    def state_descriptor_name(self) -> str:
         pass
 
     @property
@@ -56,18 +56,18 @@ class QDWrapper(QDEnv):
 
     @property
     def observation_size(self) -> int:
-        return self.env.observation_size
+        return self.env.observation_size  # type: ignore
 
     @property
     def action_size(self) -> int:
-        return self.env.action_size
+        return self.env.action_size  # type: ignore
 
     @property
     def state_descriptor_length(self) -> int:
         return self.env.state_descriptor_length
 
     @property
-    def state_descriptor_name(self) -> int:
+    def state_descriptor_name(self) -> str:
         return self.env.state_descriptor_name
 
     @property
@@ -90,7 +90,7 @@ class QDWrapper(QDEnv):
     def unwrapped(self) -> Env:
         return self.env.unwrapped
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if name == "__setstate__":
             raise AttributeError(name)
         return getattr(self.env, name)
@@ -108,7 +108,7 @@ class StateDescriptorResetWrapper(QDWrapper):
 
         state = self.env.step(state, action)
 
-        def where_done(x, y):
+        def where_done(x: jp.ndarray, y: jp.ndarray) -> jp.ndarray:
             done = state.done
             if done.shape:
                 done = jp.reshape(done, tuple([x.shape[0]] + [1] * (len(x.shape) - 1)))

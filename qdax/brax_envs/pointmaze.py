@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import brax
 from brax import jumpy as jp
@@ -11,7 +11,7 @@ class PointMaze(env.Env):
     the PointMaze.
 
     In order to stay in the Brax API, I will use a fake QP
-    at several moment of the implementation. This enables to
+    at several moment of the implementation. This enable to
     use the brax.envs.env.State from Brax. To avoid this,
     it would be good to ask Brax to enlarge a bit their API
     for environments that are not physically simulated.
@@ -19,19 +19,19 @@ class PointMaze(env.Env):
 
     def __init__(
         self,
-        scale_action_space: int = 10,
-        x_min: int = -1,
-        x_max: int = 1,
-        y_min: int = -1,
-        y_max: int = 1,
+        scale_action_space: float = 10,
+        x_min: float = -1,
+        x_max: float = 1,
+        y_min: float = -1,
+        y_max: float = 1,
         zone_width: float = 0.1,
         zone_width_offset_from_x_min: float = 0.5,
         zone_height_offset_from_y_max: float = -0.2,
         wall_width_ratio: float = 0.75,
         upper_wall_height_offset: float = 0.2,
         lower_wall_height_offset: float = -0.5,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
 
         super().__init__(None, **kwargs)
 
@@ -114,7 +114,7 @@ class PointMaze(env.Env):
         fake_qp = brax.QP.zero()
         # init reward, metrics and infos
         reward, done = jp.zeros(2)
-        metrics = {}
+        metrics: Dict = {}
         # managing state descriptor by our own
         info_init = {"steps": 0, "state_descriptor": obs_init}
         return env.State(fake_qp, obs_init, reward, done, metrics, info_init)
@@ -142,8 +142,8 @@ class PointMaze(env.Env):
         y_pos = self._collision_upper_wall(y_pos, y_pos_old, x_pos, x_pos_old)
 
         # take into account border walls
-        x_pos = jp.clip(x_pos, self._x_min, self._x_max)
-        y_pos = jp.clip(y_pos, self._y_min, self._y_max)
+        x_pos = jp.clip(x_pos, jp.array(self._x_min), jp.array(self._x_max))
+        y_pos = jp.clip(y_pos, jp.array(self._y_min), jp.array(self._y_max))
 
         reward = -jp.norm(
             jp.array([x_pos - self.zone_width_offset, y_pos - self.zone_height_offset])
@@ -151,7 +151,11 @@ class PointMaze(env.Env):
         # determine if zone was reached
         in_zone = self._in_zone(x_pos, y_pos)
 
-        done = jp.where(in_zone, x=jp.float32(1), y=jp.float32(0))
+        done = jp.where(
+            jp.array(in_zone),
+            x=jp.array(1.0),
+            y=jp.array(0.0),
+        )
 
         new_obs = jp.array([x_pos, y_pos])
         # update steps
@@ -159,9 +163,9 @@ class PointMaze(env.Env):
         # update state descriptor
         state.info["state_descriptor"] = new_obs
         # update the state
-        return state.replace(obs=new_obs, reward=reward, done=done)
+        return state.replace(obs=new_obs, reward=reward, done=done)  # type: ignore
 
-    def _in_zone(self, x_pos, y_pos):
+    def _in_zone(self, x_pos: jp.ndarray, y_pos: jp.ndarray) -> Union[bool, jp.ndarray]:
         """Determine if the point reached the goal area."""
         zone_center_width, zone_center_height = (
             self.zone_width_offset,
@@ -176,7 +180,13 @@ class PointMaze(env.Env):
 
         return condition_1 & condition_2 & condition_3 & condition_4
 
-    def _collision_lower_wall(self, y_pos, y_pos_old, x_pos, x_pos_old):
+    def _collision_lower_wall(
+        self,
+        y_pos: jp.ndarray,
+        y_pos_old: jp.ndarray,
+        x_pos: jp.ndarray,
+        x_pos_old: jp.ndarray,
+    ) -> jp.ndarray:
         """Manage potential collisions with the walls."""
 
         # global conditions on the x axis contacts
@@ -193,7 +203,7 @@ class PointMaze(env.Env):
             y_axis_down_contact_condition_1
             & y_axis_down_contact_condition_2
             & x_axis_contact_condition,
-            x=self.lower_wall_height_offset,
+            x=jp.array(self.lower_wall_height_offset),
             y=y_pos,
         )
 
@@ -211,13 +221,19 @@ class PointMaze(env.Env):
             & y_axis_up_contact_condition_2
             & y_axis_up_contact_condition_3
             & x_axis_contact_condition,
-            x=self.lower_wall_height_offset + self.wallheight,
+            x=jp.array(self.lower_wall_height_offset + self.wallheight),
             y=new_y_pos,
         )
 
         return new_y_pos
 
-    def _collision_upper_wall(self, y_pos, y_pos_old, x_pos, x_pos_old):
+    def _collision_upper_wall(
+        self,
+        y_pos: jp.ndarray,
+        y_pos_old: jp.ndarray,
+        x_pos: jp.ndarray,
+        x_pos_old: jp.ndarray,
+    ) -> jp.ndarray:
         """Manage potential collisions with the walls."""
 
         # global conditions on the x axis contacts
@@ -238,7 +254,7 @@ class PointMaze(env.Env):
             y_axis_up_contact_condition_1
             & y_axis_up_contact_condition_2
             & x_axis_contact_condition,
-            x=self.upper_wall_height_offset + self.wallheight,
+            x=jp.array(self.upper_wall_height_offset + self.wallheight),
             y=y_pos,
         )
 
@@ -252,7 +268,7 @@ class PointMaze(env.Env):
             & y_axis_down_contact_condition_2
             & y_axis_down_contact_condition_3
             & x_axis_contact_condition,
-            x=self.upper_wall_height_offset,
+            x=jp.array(self.upper_wall_height_offset),
             y=new_y_pos,
         )
 

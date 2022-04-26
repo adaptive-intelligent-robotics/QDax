@@ -1,12 +1,15 @@
 """Core components of the MAP-Elites algorithm."""
+from __future__ import annotations
+
 import math
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax.flatten_util import ravel_pytree
 from sklearn.cluster import KMeans
 
 from qdax.types import (
@@ -17,6 +20,7 @@ from qdax.types import (
     Genotype,
     Metrics,
     RNGKey,
+    Transition,
 )
 
 
@@ -24,8 +28,8 @@ def compute_cvt_centroids(
     num_descriptors: int,
     num_init_cvt_samples: int,
     num_centroids: int,
-    minval: float,
-    maxval: float,
+    minval: Union[float, List[float]],
+    maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
     """
     Compute centroids for CVT tesselation.
@@ -90,7 +94,9 @@ def compute_euclidean_centroids(
     return centroids
 
 
-def get_cells_indices(batch_of_descriptors: jnp.ndarray, centroids: jnp.ndarray):
+def get_cells_indices(
+    batch_of_descriptors: jnp.ndarray, centroids: jnp.ndarray
+) -> jnp.ndarray:
     """
     Returns the array of cells indices for a batch of descriptors
     given the centroids of the grid.
@@ -105,7 +111,9 @@ def get_cells_indices(batch_of_descriptors: jnp.ndarray, centroids: jnp.ndarray)
             in the batch with shape (batch_size,)
     """
 
-    def _get_cells_indices(descriptors: jnp.ndarray, centroids: jnp.ndarray):
+    def _get_cells_indices(
+        descriptors: jnp.ndarray, centroids: jnp.ndarray
+    ) -> jnp.ndarray:
         """
         set_of_descriptors of shape (1, num_descriptors)
         centroids of shape (num_centroids, num_descriptors)
@@ -118,8 +126,7 @@ def get_cells_indices(batch_of_descriptors: jnp.ndarray, centroids: jnp.ndarray)
     return func(batch_of_descriptors)
 
 
-@flax.struct.dataclass
-class MapElitesRepertoire:
+class MapElitesRepertoire(flax.struct.PyTreeNode):
     """
     Class for the repertoire in Map Elites.
 
@@ -141,27 +148,48 @@ class MapElitesRepertoire:
     fitnesses: Fitness
     descriptors: Descriptor
     centroids: Centroid
+    discard_dead: bool = False
 
-    def save(self, path="./"):
-        """
-        Save the grid on disk in the form of .npy files.
+    def save(self, path: str = "./") -> None:
+        """Saves the grid on disk in the form of .npy files.
 
-        TODO: update genotypes saving
+        Flattens the genotypes to store it with .npy format. Supposes that
+        a user will have access to the reconstruction function when loading
+        the genotypes.
+
+        Args:
+            path: Path where the data will be saved. Defaults to "./".
         """
-        jnp.save(path + "genotypes.npy", self.genotypes)
+
+        def flatten_genotype(genotype: Genotype) -> jnp.ndarray:
+            flatten_genotype, _ = ravel_pytree(genotype)
+            return flatten_genotype
+
+        # flatten all the genotypes
+        flat_genotypes = jax.vmap(flatten_genotype)(self.genotypes)
+
+        # save data
+        jnp.save(path + "genotypes.npy", flat_genotypes)
         jnp.save(path + "fitnesses.npy", self.fitnesses)
         jnp.save(path + "descriptors.npy", self.descriptors)
         jnp.save(path + "centroids.npy", self.centroids)
 
-    # TODO: might need to be modified
     @classmethod
-    def load(cls, path="./"):
-        """Load a MAP Elites Grid
-        TODO: update genotypes loading
+    def load(cls, reconstruction_fn: Callable, path: str = "./") -> MapElitesRepertoire:
+        """Loads a MAP Elites Grid.
 
+        Args:
+            reconstruction_fn: Function to reconstruct a PyTree
+                from a flat array.
+            path: Path where the data is saved. Defaults to "./".
+
+        Returns:
+            A MAP Elites Repertoire.
         """
 
-        genotypes = jnp.load(path + "genotypes.npy")
+        flat_genotypes = jnp.load(path + "genotypes.npy")
+        genotypes = jax.vmap(reconstruction_fn)(flat_genotypes)
+
         fitnesses = jnp.load(path + "fitnesses.npy")
         descriptors = jnp.load(path + "descriptors.npy")
         centroids = jnp.load(path + "centroids.npy")
@@ -204,7 +232,8 @@ class MapElitesRepertoire:
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
-    ) -> "MapElitesRepertoire":
+        deaths: Optional[jnp.ndarray] = None,
+    ) -> MapElitesRepertoire:
         """
         Add a batch of elements to the repertoire.
 
@@ -220,6 +249,13 @@ class MapElitesRepertoire:
         Returns:
             The updated MAP-Elites repertoire.
         """
+        if deaths is None or self.discard_dead is False:
+            deaths = jnp.zeros_like(batch_of_fitnesses)
+
+        # if an individual is dead, put it's fitness to -inf
+        # doing this right now avoid to filter genotypes that had a smaller
+        # fitness than a dead individual
+        batch_of_fitnesses = jnp.where(deaths, x=-jnp.inf, y=batch_of_fitnesses)
 
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
@@ -268,60 +304,63 @@ class MapElitesRepertoire:
             batch_of_descriptors.squeeze()
         )
 
-        return self.replace(
+        return MapElitesRepertoire(
             genotypes=new_grid_genotypes,
             fitnesses=new_fitnesses.squeeze(),
             descriptors=new_descriptors.squeeze(),
+            centroids=self.centroids,
         )
 
+    @classmethod
+    def init(
+        cls,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        centroids: Centroid,
+        discard_dead: bool = False,
+    ) -> MapElitesRepertoire:
+        """
+        Initialize a Map-Elites repertoire with an initial population of genotypes.
+        Requires the definition of centroids that can be computed with any method
+        such as CVT or Euclidean mapping.
 
-@jax.jit
-def init_map_elites_repertoire(
-    genotypes: Genotype,
-    fitnesses: Fitness,
-    descriptors: Descriptor,
-    centroids: Centroid,
-) -> MapElitesRepertoire:
-    """
-    Initialize a Map-Elites repertoire with an initial population of genotypes. Requires
-    the definition of centroids that can be computed with any method such as
-    CVT or Euclidean mapping.
+        Note: this function has been kept outside of the object MapElites, so it can
+        be called easily called from other modules.
 
-    Note: this function has been kept outside of the object MapElites, so it can
-    be called easily called from other modules.
+        Args:
+            genotypes: initial genotypes, pytree in which leaves
+                have shape (batch_size, num_features)
+            fitnesses: fitness of the initial genotypes of shape (batch_size,)
+            descriptors: descriptors of the initial genotypes
+                of shape (batch_size, num_descriptors)
+            centroids: tesselation centroids of shape (batch_size, num_descriptors)
 
-    Args:
-        genotypes: initial genotypes, pytree in which leaves
-            have shape (batch_size, num_features)
-        fitnesses: fitness of the initial genotypes of shape (batch_size,)
-        descriptors: descriptors of the initial genotypes
-            of shape (batch_size, num_descriptors)
-        centroids: tesselation centroids of shape (batch_size, num_descriptors)
+        Returns:
+            an initialized MAP-Elite repertoire
+        """
 
-    Returns:
-        an initialized MAP-Elite repertoire
-    """
+        # Initialize grid with default values
+        num_centroids = centroids.shape[0]
+        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_genotypes = jax.tree_map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
+            genotypes,
+        )
+        default_descriptors = jnp.zeros(shape=(num_centroids, centroids.shape[-1]))
 
-    # Initialize grid with default values
-    num_centroids = centroids.shape[0]
-    default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-    default_genotypes = jax.tree_map(
-        lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
-        genotypes,
-    )
-    default_descriptors = jnp.zeros(shape=(num_centroids, centroids.shape[-1]))
+        repertoire = MapElitesRepertoire(
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            descriptors=default_descriptors,
+            centroids=centroids,
+            discard_dead=discard_dead,
+        )
 
-    repertoire = MapElitesRepertoire(
-        genotypes=default_genotypes,
-        fitnesses=default_fitnesses,
-        descriptors=default_descriptors,
-        centroids=centroids,
-    )
+        # Add initial values to the grid
+        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
 
-    # Add initial values to the grid
-    repertoire = repertoire.add(genotypes, descriptors, fitnesses)
-
-    return repertoire
+        return new_repertoire  # type: ignore
 
 
 class MAPElites:
@@ -341,45 +380,59 @@ class MAPElites:
 
     def __init__(
         self,
-        scoring_function: Callable[[Genotype], Tuple[Fitness, Descriptor]],
-        emitter_function: Callable[
+        scoring_function: Callable[
+            [Genotype],
+            Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, Transition]]],
+        ],
+        emit_fn: Callable[
             [MapElitesRepertoire, EmitterState, RNGKey],
             Tuple[Genotype, EmitterState, RNGKey],
         ],
+        emitter_state_update_fn: Callable[[EmitterState], EmitterState],
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
-    ):
+        discard_dead: bool = False,
+    ) -> None:
         self._scoring_function = scoring_function
-        self._emitter_function = emitter_function
+        self._emit_fn = emit_fn
+        self._emitter_state_update_fn = emitter_state_update_fn
         self._metrics_function = metrics_function
+        self._discard_dead = discard_dead
 
     @partial(jax.jit, static_argnames=("self",))
     def init_fn(
         self,
         init_genotypes: Genotype,
         centroids: Centroid,
-    ) -> MapElitesRepertoire:
+        emitter_state: EmitterState,
+    ) -> Tuple[MapElitesRepertoire, EmitterState]:
         """
         Initialize a Map-Elites grid with an initial population of genotypes. Requires
         the definition of centroids that can be computed with any method such as
         CVT or Euclidean mapping.
 
         Args:
-            init_genotypes: initial genotypes, pytree in which leaves
-                have shape (batch_size, num_features)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
+        init_genotypes: initial genotypes, pytree in which leaves
+            have shape (batch_size, num_features)
+        centroids: tesselation centroids of shape (batch_size, num_descriptors)
 
         Returns:
             an initialized MAP-Elite repertoire
         """
-        init_fitnesses, init_descriptors = self._scoring_function(init_genotypes)
+        fitnesses, descriptors, scoring_extras = self._scoring_function(init_genotypes)
 
-        grid = init_map_elites_repertoire(
+        repertoire = MapElitesRepertoire.init(
             genotypes=init_genotypes,
-            fitnesses=init_fitnesses,
-            descriptors=init_descriptors,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
             centroids=centroids,
+            discard_dead=self._discard_dead,
         )
-        return grid
+
+        scores = {"fitnesses": fitnesses, "descriptors": descriptors, **scoring_extras}
+
+        # update emitter state
+        emitter_state = self._emitter_state_update_fn(emitter_state, **scores)
+        return repertoire, emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def update_fn(
@@ -405,12 +458,24 @@ class MAPElites:
             metrics about the updated repertoire
             a new jax PRNG key
         """
-
-        genotypes, emitter_state, random_key = self._emitter_function(
+        # generate offsprings with the emitter
+        genotypes, emitter_state, random_key = self._emit_fn(
             repertoire, emitter_state, random_key
         )
-        fitnesses, descriptors = self._scoring_function(genotypes)
-        repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+        # scores the offsprings
+        fitnesses, descriptors, scoring_extras = self._scoring_function(genotypes)
+
+        # get deaths out of the extras - None if not given
+        deaths = scoring_extras.get("deaths")
+
+        # add genotypes in the repertoire
+        repertoire = repertoire.add(genotypes, descriptors, fitnesses, deaths)
+
+        # update emitter state after scoring is made
+        scores = {"fitnesses": fitnesses, "descriptors": descriptors, **scoring_extras}
+        emitter_state = self._emitter_state_update_fn(emitter_state, **scores)
+
+        # update the metrics
         metrics = self._metrics_function(repertoire)
 
         return repertoire, emitter_state, metrics, random_key
