@@ -1,4 +1,4 @@
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 import jax.numpy as jnp
 from brax import jumpy as jp
@@ -8,6 +8,8 @@ from brax.physics.base import QP, Info
 from brax.physics.system import System
 
 from qdax.brax_envs.utils_wrappers import QDEnv
+
+# TODO: add clipping option in the XYWrapper
 
 FEET_NAMES = {
     "ant": ["$ Body 4", "$ Body 7", "$ Body 10", "$ Body 13"],
@@ -111,9 +113,9 @@ class FeetContactWrapper(QDEnv):
         return len(self._feet_contact_idx)
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def behavior_descriptor_limits(self) -> Tuple[List, List]:
         bd_length = self.behavior_descriptor_length
-        return [0.0] * bd_length, [1.0] * bd_length
+        return (jnp.zeros((bd_length,)), jnp.ones((bd_length,)))
 
     @property
     def name(self) -> str:
@@ -131,11 +133,15 @@ class FeetContactWrapper(QDEnv):
         state.info["state_descriptor"] = self._get_feet_contact(self.env.sys.aux_info)
         return state
 
-    def _get_feet_contact(self, info: Info):
+    def _get_feet_contact(self, info: Info) -> jp.ndarray:
         contacts = info.contact.vel
         return jp.any(contacts[self._feet_contact_idx], axis=1).astype(jp.float32)
 
-    def __getattr__(self, name):
+    @property
+    def unwrapped(self) -> Env:
+        return self.env.unwrapped
+
+    def __getattr__(self, name: str) -> Any:
         if name == "__setstate__":
             raise AttributeError(name)
         return getattr(self.env, name)
@@ -199,8 +205,8 @@ class XYPositionWrapper(QDEnv):
         self,
         env: Env,
         env_name: str,
-        minval: Optional[List] = None,
-        maxval: Optional[List] = None,
+        minval: Optional[List[float]] = None,
+        maxval: Optional[List[float]] = None,
     ):
         if env_name not in COG_NAMES.keys():
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
@@ -267,7 +273,11 @@ class XYPositionWrapper(QDEnv):
         )
         return state
 
-    def __getattr__(self, name):
+    @property
+    def unwrapped(self) -> Env:
+        return self.env.unwrapped
+
+    def __getattr__(self, name: str) -> Any:
         if name == "__setstate__":
             raise AttributeError(name)
         return getattr(self.env, name)
@@ -307,7 +317,7 @@ class NoForwardRewardWrapper(Wrapper):
             state = qd_env.step(state, action)
     """
 
-    def __init__(self, env: Env, env_name):
+    def __init__(self, env: Env, env_name: str) -> None:
         if env_name not in FORWARD_REWARD_NAMES.keys():
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
         super().__init__(env)
@@ -322,4 +332,4 @@ class NoForwardRewardWrapper(Wrapper):
         state = self.env.step(state, action)
         # update the reward (remove forward_reward)
         new_reward = state.reward - state.metrics[self._fd_reward_field]
-        return state.replace(reward=new_reward)
+        return state.replace(reward=new_reward)  # type: ignore

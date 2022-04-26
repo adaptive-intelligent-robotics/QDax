@@ -4,7 +4,7 @@ import brax
 import jax.numpy as jnp
 from brax import jumpy as jp
 from brax.envs import State, env
-from google.protobuf import text_format
+from google.protobuf import text_format  # type: ignore
 
 from qdax.brax_envs.locomotion_wrappers import COG_NAMES
 
@@ -143,7 +143,7 @@ class TrapWrapper(env.Wrapper):
 
     """
 
-    def __init__(self, env: env.Env, env_name):
+    def __init__(self, env: env.Env, env_name: str) -> None:
         if (
             env_name not in ENV_SYSTEM_CONFIG.keys()
             or env_name not in COG_NAMES.keys()
@@ -178,7 +178,7 @@ class TrapWrapper(env.Wrapper):
         """The size of the observation vector returned in step and reset."""
         rng = jp.random_prngkey(0)
         reset_state = self.reset(rng)
-        return reset_state.obs.shape[-1]
+        return int(reset_state.obs.shape[-1])
 
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
@@ -187,7 +187,7 @@ class TrapWrapper(env.Wrapper):
         # normalise
         xy_pos = (xy_pos - self._substract) / self._divide
         new_obs = jp.concatenate([xy_pos, state.obs])
-        return state.replace(obs=new_obs)
+        return state.replace(obs=new_obs)  # type: ignore
 
     def step(self, state: State, action: jp.ndarray) -> State:
         state = self.env.step(state, action)
@@ -196,7 +196,7 @@ class TrapWrapper(env.Wrapper):
         # normalise
         xy_pos = (xy_pos - self._substract) / self._divide
         new_obs = jp.concatenate([xy_pos, state.obs])
-        return state.replace(obs=new_obs)
+        return state.replace(obs=new_obs)  # type: ignore
 
 
 # maze body part
@@ -361,7 +361,7 @@ class MazeWrapper(env.Wrapper):
 
     """
 
-    def __init__(self, env: env.Env, env_name):
+    def __init__(self, env: env.Env, env_name: str) -> None:
         if (
             env_name not in ENV_SYSTEM_CONFIG.keys()
             or env_name not in COG_NAMES.keys()
@@ -395,7 +395,7 @@ class MazeWrapper(env.Wrapper):
         """The size of the observation vector returned in step and reset."""
         rng = jp.random_prngkey(0)
         reset_state = self.reset(rng)
-        return reset_state.obs.shape[-1]
+        return int(reset_state.obs.shape[-1])
 
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
@@ -407,7 +407,7 @@ class MazeWrapper(env.Wrapper):
         # add cog xy position to the observation - normalise
         cog_xy_position = (cog_xy_position - self._substract) / self._divide
         new_obs = jp.concatenate([cog_xy_position, state.obs])
-        return state.replace(obs=new_obs, reward=new_reward)
+        return state.replace(obs=new_obs, reward=new_reward)  # type: ignore
 
     def step(self, state: State, action: jp.ndarray) -> State:
         state = self.env.step(state, action)
@@ -421,6 +421,12 @@ class MazeWrapper(env.Wrapper):
         new_obs = jp.concatenate([cog_xy_position, state.obs])
         # brax ant suicides by jumping over a manually designed z threshold
         # this line avoid this by increasing the threshold
-        done = jp.where(state.qp.pos[0, 2] < 0.2, x=jp.float32(1), y=jp.float32(0))
-        done = jp.where(state.qp.pos[0, 2] > 5.0, x=jp.float32(1), y=done)
-        return state.replace(obs=new_obs, reward=new_reward, done=done)
+        done = jp.where(
+            state.qp.pos[0, 2] < 0.2,
+            x=jp.array(1, dtype=jp.float32),
+            y=jp.array(0, dtype=jp.float32),
+        )
+        done = jp.where(
+            state.qp.pos[0, 2] > 5.0, x=jp.array(1, dtype=jp.float32), y=done
+        )
+        return state.replace(obs=new_obs, reward=new_reward, done=done)  # type: ignore
