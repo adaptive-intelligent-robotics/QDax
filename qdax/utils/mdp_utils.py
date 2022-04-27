@@ -63,7 +63,7 @@ def scoring_function(
         Tuple[EnvState, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, Transition]]]:
+) -> Dict[str, Union[Fitness, Descriptor, jnp.ndarray, Transition]]:
     """Evaluate policies contained in flatten_variables in parallel
 
     This rollout is only deterministic when all the init states are the same.
@@ -98,11 +98,9 @@ def scoring_function(
     # did the individual die during the simulation
     deaths = jnp.zeros_like(fitnesses)
 
-    return (
-        fitnesses,
-        descriptors,
-        {
-            "deaths": deaths,
-            "transitions": data,
-        },
-    )
+    return {
+        "fitnesses": fitnesses,
+        "descriptors": descriptors,
+        "deaths": deaths,
+        "transitions": data,
+    }

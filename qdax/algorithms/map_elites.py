@@ -382,7 +382,7 @@ class MAPElites:
         self,
         scoring_function: Callable[
             [Genotype],
-            Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, Transition]]],
+            Dict[str, Union[Fitness, Descriptor, jnp.ndarray, Transition]],
         ],
         emit_fn: Callable[
             [MapElitesRepertoire, EmitterState, RNGKey],
@@ -418,17 +418,15 @@ class MAPElites:
         Returns:
             an initialized MAP-Elite repertoire
         """
-        fitnesses, descriptors, scoring_extras = self._scoring_function(init_genotypes)
+        scores = self._scoring_function(init_genotypes)
 
         repertoire = MapElitesRepertoire.init(
             genotypes=init_genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
+            fitnesses=scores["fitnesses"],
+            descriptors=scores["descriptors"],
             centroids=centroids,
             discard_dead=self._discard_dead,
         )
-
-        scores = {"fitnesses": fitnesses, "descriptors": descriptors, **scoring_extras}
 
         # update emitter state
         emitter_state = self._emitter_state_update_fn(emitter_state, **scores)
@@ -463,16 +461,17 @@ class MAPElites:
             repertoire, emitter_state, random_key
         )
         # scores the offsprings
-        fitnesses, descriptors, scoring_extras = self._scoring_function(genotypes)
+        scores = self._scoring_function(genotypes)
 
-        # get deaths out of the extras - None if not given
-        deaths = scoring_extras.get("deaths")
+        # get scores
+        descriptors = scores["descriptors"]
+        fitnesses = scores["fitnesses"]
+        deaths = scores.get("deaths")  # can be None
 
         # add genotypes in the repertoire
         repertoire = repertoire.add(genotypes, descriptors, fitnesses, deaths)
 
         # update emitter state after scoring is made
-        scores = {"fitnesses": fitnesses, "descriptors": descriptors, **scoring_extras}
         emitter_state = self._emitter_state_update_fn(emitter_state, **scores)
 
         # update the metrics
