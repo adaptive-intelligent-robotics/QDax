@@ -1,12 +1,12 @@
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 
 from qdax.algorithms.map_elites import MapElitesRepertoire
-from qdax.emitters.emitter import Emitter
-from qdax.types import EmitterState, Genotype, RNGKey
+from qdax.emitters.emitter import Emitter, EmitterState
+from qdax.types import Genotype, RNGKey
 
 
 class MixingEmitter(Emitter):
@@ -24,14 +24,14 @@ class MixingEmitter(Emitter):
 
     @partial(
         jax.jit,
-        static_argnames=("self"),
+        static_argnames=("self",),
     )
     def emit_fn(
         self,
         repertoire: MapElitesRepertoire,
-        emitter_state: EmitterState,
+        unused_emitter_state: Optional[EmitterState],
         random_key: RNGKey,
-    ) -> Tuple[Genotype, EmitterState, RNGKey]:
+    ) -> Tuple[Genotype, RNGKey]:
         """
         Emitter that performs both mutation and crossover. Two batches of
         crossover_percentage * batch_size genotypes are sampled in the repertoire,
@@ -44,12 +44,11 @@ class MixingEmitter(Emitter):
 
         Params:
             repertoire: the MAP-Elites repertoire to sample from
-            emitter_state: void
+            unused_emitter_state: void
             random_key: a jax PRNG random key
 
         Returns:
             a batch of offsprings
-            emitter_state: void
             a new jax PRNG key
         """
         n_crossover = int(self._batch_size * self._crossover_percentage)
@@ -76,4 +75,4 @@ class MixingEmitter(Emitter):
                 x_mutation,
             )
 
-        return genotypes, emitter_state, random_key
+        return genotypes, random_key

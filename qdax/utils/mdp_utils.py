@@ -63,8 +63,8 @@ def scoring_function(
         Tuple[EnvState, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Dict[str, Union[Fitness, Descriptor, jnp.ndarray, Transition]]:
-    """Evaluate policies contained in flatten_variables in parallel
+) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]]]:
+    """Evaluates policies contained in flatten_variables in parallel
 
     This rollout is only deterministic when all the init states are the same.
     If the init states are fixed but different, as a policy is not necessarly
@@ -72,8 +72,9 @@ def scoring_function(
 
     When the init states are different, this is not purely stochastic. This
     choice was made for performance reason, as the reset function of brax envs
-    is quite time consuming. If pure stochasticity is needed for a use case,
-    please open an issue.
+    is quite time consuming. If pure stochasticity of the environment is needed
+    for a use case, please open an issue.
+
     """
 
     # Perform rollouts with each policy
@@ -95,12 +96,10 @@ def scoring_function(
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
     descriptors = behavior_descriptor_extractor(data, mask)
 
-    # did the individual die during the simulation
-    deaths = jnp.zeros_like(fitnesses)
-
-    return {
-        "fitnesses": fitnesses,
-        "descriptors": descriptors,
-        "deaths": deaths,
-        "transitions": data,
-    }
+    return (
+        fitnesses,
+        descriptors,
+        {
+            "transitions": data,
+        },
+    )
