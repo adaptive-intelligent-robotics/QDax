@@ -9,6 +9,8 @@ dependencies:
 - jupyter
 - ipython
 - pip:
+    - --find-links https://storage.googleapis.com/jax-releases/jax_releases.html
+    - jaxlib==0.3.2
     - -r requirements.txt
     - -r requirements-dev.txt
     - -e .

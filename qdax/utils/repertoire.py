@@ -9,8 +9,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.flatten_util import ravel_pytree
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from sklearn.cluster import KMeans
+
+from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(
@@ -77,10 +78,12 @@ def compute_euclidean_centroids(
     if math.floor(sqrt_centroids) != sqrt_centroids:
         raise ValueError("Num centroids should be a squared number.")
 
-    linspace = jnp.linspace(minval, maxval, int(sqrt_centroids))
+    offset = 1 / (2 * int(sqrt_centroids))
+
+    linspace = jnp.linspace(offset, 1.0 - offset, int(sqrt_centroids))
     meshes = jnp.meshgrid(linspace, linspace, sparse=False)
     centroids = jnp.stack([jnp.ravel(meshes[0]), jnp.ravel(meshes[1])], axis=-1)
-    return centroids
+    return jnp.asarray(centroids) * (maxval - minval) + minval
 
 
 def get_cells_indices(
