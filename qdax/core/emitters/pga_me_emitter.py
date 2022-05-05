@@ -13,7 +13,7 @@ from jax.tree_util import tree_map
 from qdax.brax_envs.utils_wrappers import QDEnv
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.core.neuroevolution.buffers.buffers import FlatBuffer, QDTransition
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.flax_networks import QModule
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
@@ -52,7 +52,7 @@ class PGEmitterState(EmitterState):
     controllers_optimizer_state: optax.OptState
     target_critic_params: Params
     target_greedy_policy_params: Params
-    replay_buffer: FlatBuffer
+    replay_buffer: ReplayBuffer
     random_key: RNGKey
     steps: jnp.ndarray
 
@@ -145,7 +145,7 @@ class PGEmitter(Emitter):
             descriptor_dim=descriptor_size,
         )
 
-        replay_buffer = FlatBuffer.init(
+        replay_buffer = ReplayBuffer.init(
             buffer_size=self._config.replay_buffer_size, transition=dummy_transition
         )
 
