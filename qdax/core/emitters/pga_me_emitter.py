@@ -10,12 +10,12 @@ import optax
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from qdax.brax_envs.utils_wrappers import QDEnv
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
-from qdax.core.neuroevolution.networks.flax_networks import QModule
+from qdax.core.neuroevolution.networks.networks import QModule
+from qdax.environments.base_wrappers import QDEnv
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 
 
@@ -68,11 +68,11 @@ class PGEmitter(Emitter):
         config: PGAMEConfig,
         policy_network: nn.Module,
         env: QDEnv,
-        crossover_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
+        variation_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
     ) -> None:
         self._config = config
         self._env = env
-        self._crossover_fn = crossover_fn
+        self._crossover_fn = variation_fn
         self._policy_network = policy_network
 
         # Init Critics

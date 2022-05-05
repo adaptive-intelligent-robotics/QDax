@@ -4,12 +4,13 @@ from typing import Callable, Optional, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.algorithms.map_elites import MapElitesRepertoire
+from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Genotype, RNGKey
 
 
 class MixingEmitter(Emitter):
+    # TODO: see naming to take into account variations
     def __init__(
         self,
         mutation_fn: Callable[[Genotype, RNGKey], Tuple[Genotype, RNGKey]],
