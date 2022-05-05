@@ -2,17 +2,14 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple
 
 import jax
-import jax.numpy as jnp
-
 from chex import ArrayTree
 
-from qdax.core.neuroevolution.buffers.buffers import Transition
+from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
-from qdax.core.containers.repertoire import MapElitesRepertoire
 
 
 class MAPElites:

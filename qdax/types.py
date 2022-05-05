@@ -4,7 +4,6 @@ import jax
 import jax.numpy as jnp
 import tree
 from chex import ArrayTree
-from flax.struct import PyTreeNode
 from typing_extensions import TypeAlias
 
 # MDP types
