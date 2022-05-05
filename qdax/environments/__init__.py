@@ -11,7 +11,7 @@ from qdax.brax_envs.locomotion_wrappers import (
 )
 from qdax.brax_envs.pointmaze import PointMaze
 from qdax.brax_envs.utils_wrappers import QDEnv, StateDescriptorResetWrapper
-from qdax.utils.bd_extractors import get_feet_contact_proportion, get_final_xy_position
+from qdax.environments.bd_extractors import get_feet_contact_proportion, get_final_xy_position
 
 # experimentally determinated offset (except for antmaze)
 # should be effecient to have only positive rewards but no guarantee

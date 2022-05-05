@@ -11,12 +11,12 @@ from jax import numpy as jnp
 from jax.tree_util import tree_map
 
 from qdax.brax_envs.utils_wrappers import QDEnv
-from qdax.buffers.buffers import FlatBuffer, QDTransition
-from qdax.emitters.emitter import Emitter, EmitterState
-from qdax.losses.td3_loss import make_td3_loss_fn
-from qdax.networks.flax_networks import QModule
+from qdax.core.neuroevolution.buffers.buffers import FlatBuffer, QDTransition
+from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
+from qdax.core.neuroevolution.networks.flax_networks import QModule
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
-from qdax.utils.repertoire import MapElitesRepertoire
+from qdax.core.containers.repertoire import MapElitesRepertoire
 
 
 @dataclass

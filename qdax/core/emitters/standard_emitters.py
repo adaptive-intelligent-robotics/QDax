@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.algorithms.map_elites import MapElitesRepertoire
-from qdax.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Genotype, RNGKey
 
 

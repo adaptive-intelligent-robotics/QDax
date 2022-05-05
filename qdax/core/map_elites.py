@@ -7,10 +7,12 @@ from typing import Callable, Dict, Optional, Tuple, Union
 import jax
 import jax.numpy as jnp
 
-from qdax.buffers.buffers import Transition
-from qdax.emitters.emitter import Emitter, EmitterState
+from chex import ArrayTree
+
+from qdax.core.neuroevolution.buffers.buffers import Transition
+from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
-from qdax.utils.repertoire import MapElitesRepertoire
+from qdax.core.containers.repertoire import MapElitesRepertoire
 
 
 class MAPElites:
@@ -30,10 +32,7 @@ class MAPElites:
 
     def __init__(
         self,
-        scoring_function: Callable[
-            [Genotype],
-            Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, Transition]]],
-        ],
+        scoring_function: Callable[[Genotype], Tuple[Fitness, Descriptor, ArrayTree]],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
     ) -> None:

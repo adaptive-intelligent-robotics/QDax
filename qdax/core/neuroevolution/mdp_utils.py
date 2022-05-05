@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 from brax.envs import State as EnvState
 
-from qdax.buffers.buffers import QDTransition, Transition
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, Transition
 from qdax.types import Descriptor, Fitness, Genotype, Params, RNGKey
 
 
@@ -26,10 +26,10 @@ def generate_unroll(
         ],
     ],
 ) -> Tuple[EnvState, Transition]:
-    """Generates an episode according to the agent's policy, returns the final state of the
-    episode and the transitions of the episode.
+    """Generates an episode according to the agent's policy, returns the final state of
+    the episode and the transitions of the episode.
     """
-
+    # TODO: Return the key to stay consistent or remove it
     def _scannable_play_step_fn(
         carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
@@ -53,6 +53,7 @@ def generate_unroll(
         "behavior_descriptor_extractor",
     ),
 )
+# TODO: Return the key to stay consistent or remove it
 def scoring_function(
     policies_params: Genotype,
     init_states: brax.envs.State,
