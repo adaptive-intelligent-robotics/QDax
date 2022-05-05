@@ -55,8 +55,8 @@ def compute_cvt_centroids(
 def compute_euclidean_centroids(
     num_descriptors: int,
     num_centroids: int,
-    minval: float,
-    maxval: float,
+    minval: Union[float, List[float]],
+    maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
     """
     Compute centroids for square Euclidean tesselation.
@@ -83,6 +83,8 @@ def compute_euclidean_centroids(
     linspace = jnp.linspace(offset, 1.0 - offset, int(sqrt_centroids))
     meshes = jnp.meshgrid(linspace, linspace, sparse=False)
     centroids = jnp.stack([jnp.ravel(meshes[0]), jnp.ravel(meshes[1])], axis=-1)
+    minval = jnp.array(minval)
+    maxval = jnp.array(maxval)
     return jnp.asarray(centroids) * (maxval - minval) + minval
 
 
