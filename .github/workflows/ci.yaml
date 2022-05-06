@@ -11,6 +11,7 @@ jobs:
 
       - name: Install test requirements
         run: |
+          pip install --find-links https://storage.googleapis.com/jax-releases/jax_releases.html jaxlib==0.3.2
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
