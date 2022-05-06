@@ -4,11 +4,10 @@ from typing import Any, Dict
 import jax
 import jax.numpy as jnp
 import pytest
-
-from qdax import brax_envs
-from qdax.algorithms.map_elites import MAPElites
-from qdax.buffers.buffers import QDTransition
-from qdax.emitters.mutation_operators import isoline_crossover_function
+from qdax import environments
+from qdax.core.emitters.mutation_operators import isoline_crossover_function
+from qdax.core.map_elites import MAPElites
+from qdax.core.neuroevolution.buffers.buffers import QDTransition
 from qdax.emitters.standard_emitters import MixingEmitter
 from qdax.networks.flax_networks import MLP
 from qdax.utils.mdp_utils import scoring_function
@@ -28,7 +27,7 @@ def test_map_elites() -> None:
     max_bd = 1.0
 
     # Init environment
-    env = brax_envs.create(env_name)
+    env = environments.create(env_name)
 
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
@@ -82,7 +81,7 @@ def test_map_elites() -> None:
 
     # Prepare the scoring function
     random_key, subkey = jax.random.split(random_key)
-    bd_extraction_fn = brax_envs.behavior_descriptor_extractor[env_name]
+    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
     scoring_fn = functools.partial(
         scoring_function,
         init_states=init_states,
@@ -104,7 +103,7 @@ def test_map_elites() -> None:
     )
 
     # Get minimum reward value to make sure qd_score are positive
-    reward_offset = brax_envs.reward_offset[env_name]
+    reward_offset = environments.reward_offset[env_name]
 
     # Define a metrics function
     def metrics_fn(repertoire: MapElitesRepertoire) -> Dict:
