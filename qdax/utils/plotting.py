@@ -93,6 +93,8 @@ def plot_2d_map_elites_grid(
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
 ) -> Tuple[Figure, Axes]:
+
+    # TODO: check it and fix it if needed
     grid_empty = grid_fitness == -jnp.inf
     num_descriptors = centroids.shape[1]
     if num_descriptors != 2:

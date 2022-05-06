@@ -6,7 +6,6 @@ import flax
 import jax
 import jax.numpy as jnp
 from flax import struct
-from typing_extensions import TypeAlias
 
 from qdax.types import Action, Done, Observation, Reward, RNGKey, StateDescriptor
 
@@ -263,7 +262,7 @@ class QDTransition(Transition):
         return dummy_transition
 
 
-class FlatBuffer(flax.struct.PyTreeNode):
+class ReplayBuffer(flax.struct.PyTreeNode):
     """
     A replay buffer where transitions are flattened before being stored.
     Transitions are unflatenned on the fly when sampled in the buffer.
@@ -282,7 +281,7 @@ class FlatBuffer(flax.struct.PyTreeNode):
         cls,
         buffer_size: int,
         transition: Transition,
-    ) -> FlatBuffer:
+    ) -> ReplayBuffer:
         """
         The constructor of the buffer.
 
@@ -327,7 +326,7 @@ class FlatBuffer(flax.struct.PyTreeNode):
         return transitions
 
     @jax.jit
-    def insert(self, transitions: Transition) -> FlatBuffer:
+    def insert(self, transitions: Transition) -> ReplayBuffer:
         """
         Insert a batch of transitions in the replay buffer. The transitions are
         flattened before insertion.
@@ -361,7 +360,3 @@ class FlatBuffer(flax.struct.PyTreeNode):
         )
 
         return replay_buffer  # type: ignore
-
-
-# quick fix for types - anticipate TrajectoryBuffer
-ReplayBuffer: TypeAlias = FlatBuffer

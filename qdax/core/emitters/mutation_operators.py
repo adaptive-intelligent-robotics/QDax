@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from qdax.types import Genotype, RNGKey
 
 
-def _polynomial_mutation_function(
+def _polynomial_mutation(
     x: jnp.ndarray,
     random_key: RNGKey,
     proportion_to_mutate: float,
@@ -78,7 +78,7 @@ def _polynomial_mutation_function(
     return x
 
 
-def polynomial_mutation_function(
+def polynomial_mutation(
     x: Genotype,
     random_key: RNGKey,
     proportion_to_mutate: float,
@@ -109,7 +109,7 @@ def polynomial_mutation_function(
     batch_size = jax.tree_leaves(x)[0].shape[0]
     mutation_key = jax.random.split(subkey, num=batch_size)
     mutation_fn = partial(
-        _polynomial_mutation_function,
+        _polynomial_mutation,
         proportion_to_mutate=proportion_to_mutate,
         eta=eta,
         minval=minval,
@@ -120,7 +120,7 @@ def polynomial_mutation_function(
     return x, random_key
 
 
-def _polynomial_crossover_function(
+def _polynomial_crossover(
     x1: jnp.ndarray,
     x2: jnp.ndarray,
     random_key: RNGKey,
@@ -141,7 +141,7 @@ def _polynomial_crossover_function(
     return x
 
 
-def polynomial_crossover_function(
+def polynomial_crossover(
     x1: Genotype,
     x2: Genotype,
     random_key: RNGKey,
@@ -171,7 +171,7 @@ def polynomial_crossover_function(
     batch_size = jax.tree_leaves(x2)[0].shape[0]
     crossover_keys = jax.random.split(subkey, num=batch_size)
     crossover_fn = partial(
-        _polynomial_crossover_function,
+        _polynomial_crossover,
         proportion_var_to_change=proportion_var_to_change,
     )
     crossover_fn = jax.vmap(crossover_fn)
@@ -180,7 +180,7 @@ def polynomial_crossover_function(
     return x, random_key
 
 
-def isoline_crossover_function(
+def isoline_variation(
     x1: Genotype,
     x2: Genotype,
     random_key: RNGKey,
@@ -212,7 +212,7 @@ def isoline_crossover_function(
 
     key, subkey1, subkey2 = jax.random.split(random_key, num=3)
 
-    def _crossover_fn(x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+    def _variation_fn(x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
         iso_noise = jax.random.normal(subkey1, shape=x1.shape) * iso_sigma
         line_noise = jax.random.normal(subkey2, shape=x2.shape) * line_sigma
         x = (x1 + iso_noise) + line_noise * (x2 - x1)
@@ -222,6 +222,6 @@ def isoline_crossover_function(
             x = jnp.clip(x, minval, maxval)
         return x
 
-    x = jax.tree_map(lambda y1, y2: _crossover_fn(y1, y2), x1, x2)
+    x = jax.tree_map(lambda y1, y2: _variation_fn(y1, y2), x1, x2)
 
     return x, key

@@ -10,13 +10,13 @@ import optax
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from qdax.brax_envs.utils_wrappers import QDEnv
-from qdax.buffers.buffers import FlatBuffer, QDTransition
-from qdax.emitters.emitter import Emitter, EmitterState
-from qdax.losses.td3_loss import make_td3_loss_fn
-from qdax.networks.flax_networks import QModule
+from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
+from qdax.core.neuroevolution.networks.networks import QModule
+from qdax.environments.base_wrappers import QDEnv
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
-from qdax.utils.repertoire import MapElitesRepertoire
 
 
 @dataclass
@@ -52,7 +52,7 @@ class PGEmitterState(EmitterState):
     controllers_optimizer_state: optax.OptState
     target_critic_params: Params
     target_greedy_policy_params: Params
-    replay_buffer: FlatBuffer
+    replay_buffer: ReplayBuffer
     random_key: RNGKey
     steps: jnp.ndarray
 
@@ -68,11 +68,11 @@ class PGEmitter(Emitter):
         config: PGAMEConfig,
         policy_network: nn.Module,
         env: QDEnv,
-        crossover_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
+        variation_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
     ) -> None:
         self._config = config
         self._env = env
-        self._crossover_fn = crossover_fn
+        self._crossover_fn = variation_fn
         self._policy_network = policy_network
 
         # Init Critics
@@ -145,7 +145,7 @@ class PGEmitter(Emitter):
             descriptor_dim=descriptor_size,
         )
 
-        replay_buffer = FlatBuffer.init(
+        replay_buffer = ReplayBuffer.init(
             buffer_size=self._config.replay_buffer_size, transition=dummy_transition
         )
 

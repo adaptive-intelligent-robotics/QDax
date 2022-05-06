@@ -5,8 +5,8 @@ from typing import Optional, Tuple
 import jax
 from flax.struct import PyTreeNode
 
+from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
-from qdax.utils.repertoire import MapElitesRepertoire
 
 
 class EmitterState(PyTreeNode):
