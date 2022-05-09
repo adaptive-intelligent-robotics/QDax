@@ -67,8 +67,7 @@ jobs:
           file: dev.Dockerfile
           push: true
           # target: test-image
-          tags: 
-            - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/test:${{github.ref_name}}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/test:${{github.ref_name}}
           labels: ${{ steps.meta.outputs.labels }}
       # - name: Set up Docker Buildx
       #   id: buildx
