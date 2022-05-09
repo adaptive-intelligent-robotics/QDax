@@ -4,7 +4,6 @@ from typing import Optional, Tuple
 
 import jax
 from flax.struct import PyTreeNode
-
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
@@ -29,9 +28,9 @@ class EmitterState(PyTreeNode):
 
 
 class Emitter(ABC):
-    def init_fn(
+    def init(
         self, init_genotypes: Genotype, random_key: RNGKey
-    ) -> Optional[EmitterState]:
+    ) -> Tuple[Optional[EmitterState], RNGKey]:
         """Initialises the state of the emitter. Some emitters do
         not need a state, in which case, the value None can be
         outputted.
@@ -41,12 +40,12 @@ class Emitter(ABC):
             random_key: a random key to handle stochastic operations.
 
         Returns:
-            The initial emitter state.
+            The initial emitter state and a random key.
         """
-        return None
+        return None, random_key
 
     @abstractmethod
-    def emit_fn(
+    def emit(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: Optional[EmitterState],
@@ -71,7 +70,7 @@ class Emitter(ABC):
         jax.jit,
         static_argnames=("self",),
     )
-    def state_update_fn(
+    def state_update(
         self,
         emitter_state: Optional[EmitterState],
         genotypes: Genotype,

@@ -5,7 +5,6 @@ import brax
 import jax
 import jax.numpy as jnp
 from brax.envs import State as EnvState
-
 from qdax.core.neuroevolution.buffers.buffers import QDTransition, Transition
 from qdax.types import Descriptor, Fitness, Genotype, Params, RNGKey
 
@@ -14,7 +13,7 @@ from qdax.types import Descriptor, Fitness, Genotype, Params, RNGKey
 def generate_unroll(
     init_state: EnvState,
     policy_params: Params,
-    key: RNGKey,
+    random_key: RNGKey,
     episode_length: int,
     play_step_fn: Callable[
         [EnvState, Params, RNGKey],
@@ -28,8 +27,17 @@ def generate_unroll(
 ) -> Tuple[EnvState, Transition]:
     """Generates an episode according to the agent's policy, returns the final state of
     the episode and the transitions of the episode.
+
+    Args:
+        init_state: first state of the rollout.
+        policy_params: params of the individual.
+        random_key: random key for stochasiticity handling.
+        episode_length: length of the rollout.
+        play_step_fn: function describing how a step need to be taken.
+
+    Returns:
+        A new state, the experienced transition, a new key.
     """
-    # TODO: Return the key to stay consistent or remove it
     def _scannable_play_step_fn(
         carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
@@ -38,7 +46,7 @@ def generate_unroll(
 
     (state, _, _), transitions = jax.lax.scan(
         _scannable_play_step_fn,
-        (init_state, policy_params, key),
+        (init_state, policy_params, random_key),
         (),
         length=episode_length,
     )
@@ -53,7 +61,6 @@ def generate_unroll(
         "behavior_descriptor_extractor",
     ),
 )
-# TODO: Return the key to stay consistent or remove it
 def scoring_function(
     policies_params: Genotype,
     init_states: brax.envs.State,
@@ -64,7 +71,7 @@ def scoring_function(
         Tuple[EnvState, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]]]:
+) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
     """Evaluates policies contained in flatten_variables in parallel
 
     This rollout is only deterministic when all the init states are the same.
@@ -79,11 +86,12 @@ def scoring_function(
     """
 
     # Perform rollouts with each policy
+    random_key, subkey = jax.random.split(random_key)
     unroll_fn = partial(
         generate_unroll,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        key=random_key,
+        random_key=subkey,
     )
 
     _final_state, data = jax.vmap(unroll_fn)(init_states, policies_params)
@@ -103,4 +111,5 @@ def scoring_function(
         {
             "transitions": data,
         },
+        random_key
     )

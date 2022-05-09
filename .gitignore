@@ -1,67 +1,13 @@
-# Compiled source #
-###################
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
+# added elements
 
-# Packages #
-############
-# it's better to unpack these files and commit the raw source
-# git has its own built in compression methods
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-*.deb
-
-# Logs and databases #
-######################
-*.log
-*.sql
-*.sqlite
-*.dat
-*.npz
-*.nfs*
-*.csv
-*.pkl
-*.npy
-*.jb
-
-# OS generated files #
-######################
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-Icon?
-ehthumbs.db
-Thumbs.db
-desktop.ini
-@eaDir/
-
-# Singularity generated files #
-###############################
+# Singularity generated files
 *.simg
 *.sif
 *.swp
 tmp.def
 
-# Temporary files #
-##################
-*~
-*#
-*.pyc
 
-# Figures and Videos #
-######################
+# Figures and Videos
 *.pth
 *.png
 *.svg
@@ -69,28 +15,12 @@ tmp.def
 *.mp4
 *.gif
 
-# Virtual Environment #
-#######################
-venv/
-
-
-# IDE configuration files #
-###########################
+# IDE configuration file
 .idea/
 
-# Configuration Files #
-#######################
-*.json
+# Hydra outputs
+hydra_outputs/
 
-# Jupyter Notebooks #
-#####################
-**/.ipynb_checkpoints
-
-
-# Others #
-##########
-*.nsys-rep
-*.prof
 
 # Usual python .gitignore
 
@@ -232,6 +162,3 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-
-# Hydra outputs
-hydra_outputs/

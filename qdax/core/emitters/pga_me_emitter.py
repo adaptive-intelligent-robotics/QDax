@@ -9,14 +9,14 @@ import jax
 import optax
 from jax import numpy as jnp
 from jax.tree_util import tree_map
-
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.networks import QModule
 from qdax.environments.base_wrappers import QDEnv
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
+from qdax.types import (Descriptor, ExtraScores, Fitness, Genotype, Params,
+                        RNGKey)
 
 
 @dataclass
@@ -72,7 +72,7 @@ class PGEmitter(Emitter):
     ) -> None:
         self._config = config
         self._env = env
-        self._crossover_fn = variation_fn
+        self._variation_fn = variation_fn
         self._policy_network = policy_network
 
         # Init Critics
@@ -102,7 +102,7 @@ class PGEmitter(Emitter):
             learning_rate=self._config.policy_learning_rate
         )
 
-    def init_fn(self, init_genotypes: Genotype, random_key: RNGKey) -> PGEmitterState:
+    def init(self, init_genotypes: Genotype, random_key: RNGKey) -> Tuple[PGEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
@@ -110,7 +110,7 @@ class PGEmitter(Emitter):
             random_key: A random key.
 
         Returns:
-            The initial state of the PGEmitter.
+            The initial state of the PGEmitter, a new random key.
         """
 
         observation_size = self._env.observation_size
@@ -150,6 +150,7 @@ class PGEmitter(Emitter):
         )
 
         # Initial training state
+        random_key, subkey = jax.random.split(random_key)
         emitter_state = PGEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
@@ -158,18 +159,18 @@ class PGEmitter(Emitter):
             controllers_optimizer_state=controllers_optimizer_state,
             target_critic_params=target_critic_params,
             target_greedy_policy_params=target_greedy_policy_params,
-            random_key=random_key,
+            random_key=subkey,
             steps=jnp.array(0),
             replay_buffer=replay_buffer,
         )
 
-        return emitter_state
+        return emitter_state, random_key
 
     @partial(
         jax.jit,
         static_argnames=("self",),
     )
-    def emit_fn(
+    def emit(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: PGEmitterState,
@@ -194,7 +195,7 @@ class PGEmitter(Emitter):
         mutation_ga_batch_size = int(self._config.proportion_mutation_ga * batch_size)
         x1, random_key = repertoire.sample(random_key, mutation_ga_batch_size)
         x2, random_key = repertoire.sample(random_key, mutation_ga_batch_size)
-        x_mutation_ga, random_key = self._crossover_fn(x1, x2, random_key)
+        x_mutation_ga, random_key = self._variation_fn(x1, x2, random_key)
 
         # Mutation PG
         mutation_pg_batch_size = int(batch_size - mutation_ga_batch_size - 1)
@@ -221,7 +222,7 @@ class PGEmitter(Emitter):
         return genotypes, random_key
 
     @partial(jax.jit, static_argnames=("self",))
-    def state_update_fn(
+    def state_update(
         self,
         emitter_state: PGEmitterState,
         genotypes: Genotype,

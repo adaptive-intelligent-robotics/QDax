@@ -3,7 +3,6 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Genotype, RNGKey
@@ -27,7 +26,7 @@ class MixingEmitter(Emitter):
         jax.jit,
         static_argnames=("self",),
     )
-    def emit_fn(
+    def emit(
         self,
         repertoire: MapElitesRepertoire,
         unused_emitter_state: Optional[EmitterState],

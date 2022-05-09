@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from qdax import environments
-from qdax.core.emitters.mutation_operators import isoline_crossover_function
+from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffers import QDTransition
 from qdax.emitters.standard_emitters import MixingEmitter
@@ -82,7 +82,7 @@ def test_map_elites() -> None:
     # Prepare the scoring function
     random_key, subkey = jax.random.split(random_key)
     bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
-    scoring_fn = functools.partial(
+    scoring_function = functools.partial(
         scoring_function,
         init_states=init_states,
         episode_length=episode_length,
@@ -120,7 +120,7 @@ def test_map_elites() -> None:
 
     # Instantiate MAP-Elites
     map_elites = MAPElites(
-        scoring_function=scoring_fn,
+        scoring_function=scoring_function,
         emitter=mixing_emitter,
         metrics_function=metrics_fn,
     )

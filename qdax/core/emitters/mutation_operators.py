@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.types import Genotype, RNGKey
 
 
@@ -190,7 +189,7 @@ def isoline_variation(
     maxval: Optional[float] = None,
 ) -> Tuple[Genotype, RNGKey]:
     """
-    Iso+Line-DD Crossover Operator [1] over a set of pairs of genotypes
+    Iso+Line-DD Variation Operator [1] over a set of pairs of genotypes
 
     Parameters:
         x1 (Genotypes): first batch of genotypes

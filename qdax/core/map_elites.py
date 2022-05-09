@@ -6,7 +6,6 @@ from typing import Callable, Optional, Tuple
 
 import jax
 from chex import ArrayTree
-
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
@@ -29,7 +28,7 @@ class MAPElites:
 
     def __init__(
         self,
-        scoring_function: Callable[[Genotype], Tuple[Fitness, Descriptor, ArrayTree]],
+        scoring_function: Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ArrayTree, RNGKey]],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
     ) -> None:
@@ -38,7 +37,7 @@ class MAPElites:
         self._metrics_function = metrics_function
 
     @partial(jax.jit, static_argnames=("self",))
-    def init_fn(
+    def init(
         self,
         init_genotypes: Genotype,
         centroids: Centroid,
@@ -58,7 +57,7 @@ class MAPElites:
         Returns:
             an initialized MAP-Elite repertoire with the initial state of the emitter.
         """
-        fitnesses, descriptors, extra_scores = self._scoring_function(init_genotypes)
+        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(init_genotypes, random_key)
 
         repertoire = MapElitesRepertoire.init(
             genotypes=init_genotypes,
@@ -67,12 +66,12 @@ class MAPElites:
             centroids=centroids,
         )
         # get initial state of the emitter
-        emitter_state = self._emitter.init_fn(
+        emitter_state = self._emitter.init(
             init_genotypes=init_genotypes, random_key=random_key
         )
 
         # update emitter state
-        emitter_state = self._emitter.state_update_fn(
+        emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
             genotypes=init_genotypes,
             fitnesses=fitnesses,
@@ -83,7 +82,7 @@ class MAPElites:
         return repertoire, emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
-    def update_fn(
+    def update(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: Optional[EmitterState],
@@ -107,7 +106,7 @@ class MAPElites:
             a new jax PRNG key
         """
         # generate offsprings with the emitter
-        genotypes, random_key = self._emitter.emit_fn(
+        genotypes, random_key = self._emitter.emit(
             repertoire, emitter_state, random_key
         )
         # scores the offsprings
@@ -117,7 +116,7 @@ class MAPElites:
         repertoire = repertoire.add(genotypes, descriptors, fitnesses)
 
         # update emitter state after scoring is made
-        emitter_state = self._emitter.state_update_fn(
+        emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
             genotypes=genotypes,
             fitnesses=fitnesses,
