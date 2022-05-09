@@ -8,16 +8,24 @@ env:
 
 jobs:
   tests:
+    needs: [build]
     runs-on: ubuntu-latest
+    container:
+      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/test:${{github.ref_name}}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Install test requirements
-        run: |
-          pip install --find-links https://storage.googleapis.com/jax-releases/jax_releases.html jaxlib==0.3.2
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+      # - name: Install test requirements
+      #   run: |
+      #     # pip install --find-links https://storage.googleapis.com/jax-releases/jax_releases.html jaxlib==0.3.2
+      #     # pip install -r requirements.txt
+      #     # pip install -r requirements-dev.txt
+
 
       - name: Run pytests
         run: |
@@ -52,6 +60,16 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
 
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          file: dev.Dockerfile
+          push: true
+          # target: test-image
+          tags: 
+            - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/test:${{github.ref_name}}
+          labels: ${{ steps.meta.outputs.labels }}
       # - name: Set up Docker Buildx
       #   id: buildx
       #   uses: docker/setup-buildx-action@v2
