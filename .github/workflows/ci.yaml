@@ -4,14 +4,14 @@ on: push
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/qdax
 
 jobs:
   tests:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository }}/test:${{ github.ref_name }}
+      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.ref_name }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
