@@ -11,7 +11,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/test:${{github.ref_name}}
+      image: ghcr.io/${{ github.repository }}/test:${{ github.ref_name }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
