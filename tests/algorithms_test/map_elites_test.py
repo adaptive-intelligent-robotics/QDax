@@ -4,14 +4,15 @@ from typing import Any, Dict
 import jax
 import jax.numpy as jnp
 import pytest
+
 from qdax import environments
+from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
+from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffers import QDTransition
-from qdax.emitters.standard_emitters import MixingEmitter
-from qdax.networks.flax_networks import MLP
-from qdax.utils.mdp_utils import scoring_function
-from qdax.utils.repertoire import MapElitesRepertoire, compute_cvt_centroids
+from qdax.core.neuroevolution.mdp_utils import scoring_function
+from qdax.core.neuroevolution.networks.networks import MLP
 
 
 def test_map_elites() -> None:
@@ -92,13 +93,11 @@ def test_map_elites() -> None:
     )
 
     # Define emitter
-    crossover_fn = functools.partial(
-        isoline_crossover_function, iso_sigma=0.05, line_sigma=0.1
-    )
+    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
     mixing_emitter = MixingEmitter(
         mutation_fn=None,
-        crossover_fn=crossover_fn,
-        crossover_percentage=1.0,
+        variation_fn=variation_fn,
+        variation_percentage=1.0,
         batch_size=batch_size,
     )
 
@@ -135,14 +134,14 @@ def test_map_elites() -> None:
     )
 
     # Compute initial repertoire
-    repertoire, _ = map_elites.init_fn(init_variables, centroids, None)
+    repertoire, _ = map_elites.init(init_variables, centroids, None)
 
     # Prepare scan over map_elites update to perform several iterations at a time
     @jax.jit
     def update_scan_fn(carry: Any, unused: Any) -> Any:
         # iterate over grid
         repertoire, random_key = carry
-        (repertoire, _, metrics, random_key,) = map_elites.update_fn(
+        (repertoire, _, metrics, random_key,) = map_elites.update(
             repertoire,
             None,
             random_key,

@@ -3,21 +3,21 @@ from typing import Any, Callable, List, Optional, Union
 
 import brax
 
-from qdax.brax_envs.exploration_wrappers import MazeWrapper, TrapWrapper
-from qdax.brax_envs.locomotion_wrappers import (
-    FeetContactWrapper,
-    NoForwardRewardWrapper,
-    XYPositionWrapper,
-)
-from qdax.brax_envs.pointmaze import PointMaze
-from qdax.brax_envs.utils_wrappers import QDEnv, StateDescriptorResetWrapper
+from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
 from qdax.environments.bd_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )
+from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.environments.locomotion_wrappers import (
+    FeetContactWrapper,
+    NoForwardRewardWrapper,
+    XYPositionWrapper,
+)
+from qdax.environments.pointmaze import PointMaze
 
 # experimentally determinated offset (except for antmaze)
-# should be effecient to have only positive rewards but no guarantee
+# should be sufficient to have only positive rewards but no guarantee
 reward_offset = {
     "pointmaze": 2.3431,
     "anttrap": 3.38,

@@ -5,6 +5,7 @@ import brax
 import jax
 import jax.numpy as jnp
 from brax.envs import State as EnvState
+
 from qdax.core.neuroevolution.buffers.buffers import QDTransition, Transition
 from qdax.types import Descriptor, Fitness, Genotype, Params, RNGKey
 
@@ -36,8 +37,9 @@ def generate_unroll(
         play_step_fn: function describing how a step need to be taken.
 
     Returns:
-        A new state, the experienced transition, a new key.
+        A new state, the experienced transition.
     """
+
     def _scannable_play_step_fn(
         carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
@@ -111,5 +113,5 @@ def scoring_function(
         {
             "transitions": data,
         },
-        random_key
+        random_key,
     )

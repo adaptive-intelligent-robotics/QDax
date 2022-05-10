@@ -3,23 +3,23 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Genotype, RNGKey
 
 
 class MixingEmitter(Emitter):
-    # TODO: see naming to take into account variations
     def __init__(
         self,
         mutation_fn: Callable[[Genotype, RNGKey], Tuple[Genotype, RNGKey]],
-        crossover_fn: Callable[[Genotype, Genotype, RNGKey], Tuple[Genotype, RNGKey]],
-        crossover_percentage: float,
+        variation_fn: Callable[[Genotype, Genotype, RNGKey], Tuple[Genotype, RNGKey]],
+        variation_percentage: float,
         batch_size: int,
     ) -> None:
         self._mutation_fn = mutation_fn
-        self._crossover_fn = crossover_fn
-        self._crossover_percentage = crossover_percentage
+        self._variation_fn = variation_fn
+        self._variation_percentage = variation_percentage
         self._batch_size = batch_size
 
     @partial(
@@ -33,10 +33,10 @@ class MixingEmitter(Emitter):
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
-        Emitter that performs both mutation and crossover. Two batches of
-        crossover_percentage * batch_size genotypes are sampled in the repertoire,
+        Emitter that performs both mutation and variation. Two batches of
+        variation_percentage * batch_size genotypes are sampled in the repertoire,
         copied and cross-over to obtain new offsprings. One batch of
-        (1.0 - crossover_percentage) * batch_size genotypes are sampled in the
+        (1.0 - variation_percentage) * batch_size genotypes are sampled in the
         repertoire, copied and mutated.
 
         Note: this emitter has no state. A fake none state must be added
@@ -51,27 +51,27 @@ class MixingEmitter(Emitter):
             a batch of offsprings
             a new jax PRNG key
         """
-        n_crossover = int(self._batch_size * self._crossover_percentage)
-        n_mutation = self._batch_size - n_crossover
+        n_variation = int(self._batch_size * self._variation_percentage)
+        n_mutation = self._batch_size - n_variation
 
-        if n_crossover > 0:
-            x1, random_key = repertoire.sample(random_key, n_crossover)
-            x2, random_key = repertoire.sample(random_key, n_crossover)
+        if n_variation > 0:
+            x1, random_key = repertoire.sample(random_key, n_variation)
+            x2, random_key = repertoire.sample(random_key, n_variation)
 
-            x_crossover, random_key = self._crossover_fn(x1, x2, random_key)
+            x_variation, random_key = self._variation_fn(x1, x2, random_key)
 
         if n_mutation > 0:
             x1, random_key = repertoire.sample(random_key, n_mutation)
             x_mutation, random_key = self._mutation_fn(x1, random_key)
 
-        if n_crossover == 0:
+        if n_variation == 0:
             genotypes = x_mutation
         elif n_mutation == 0:
-            genotypes = x_crossover
+            genotypes = x_variation
         else:
             genotypes = jax.tree_map(
                 lambda x_1, x_2: jnp.concatenate([x_1, x_2], axis=0),
-                x_crossover,
+                x_variation,
                 x_mutation,
             )
 

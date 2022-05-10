@@ -6,6 +6,7 @@ from typing import Callable, Optional, Tuple
 
 import jax
 from chex import ArrayTree
+
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
@@ -28,7 +29,9 @@ class MAPElites:
 
     def __init__(
         self,
-        scoring_function: Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ArrayTree, RNGKey]],
+        scoring_function: Callable[
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ArrayTree, RNGKey]
+        ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
     ) -> None:
@@ -42,7 +45,7 @@ class MAPElites:
         init_genotypes: Genotype,
         centroids: Centroid,
         random_key: RNGKey,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState]]:
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
         """
         Initialize a Map-Elites grid with an initial population of genotypes. Requires
         the definition of centroids that can be computed with any method such as
@@ -57,7 +60,9 @@ class MAPElites:
         Returns:
             an initialized MAP-Elite repertoire with the initial state of the emitter.
         """
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(init_genotypes, random_key)
+        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
+            init_genotypes, random_key
+        )
 
         repertoire = MapElitesRepertoire.init(
             genotypes=init_genotypes,
@@ -66,7 +71,7 @@ class MAPElites:
             centroids=centroids,
         )
         # get initial state of the emitter
-        emitter_state = self._emitter.init(
+        emitter_state, random_key = self._emitter.init(
             init_genotypes=init_genotypes, random_key=random_key
         )
 
@@ -79,7 +84,7 @@ class MAPElites:
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state
+        return repertoire, emitter_state, random_key
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
@@ -110,7 +115,9 @@ class MAPElites:
             repertoire, emitter_state, random_key
         )
         # scores the offsprings
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes)
+        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
+            genotypes, random_key
+        )
 
         # add genotypes in the repertoire
         repertoire = repertoire.add(genotypes, descriptors, fitnesses)
