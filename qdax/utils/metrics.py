@@ -1,10 +1,45 @@
 from __future__ import annotations
 
-from typing import Dict
+import csv
+from typing import Dict, List
 
 from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import MapElitesRepertoire
+
+
+class CSVLogger:
+    """Logger to save metrics of an experiment in a csv file
+    during the training process.
+    """
+
+    def __init__(self, filename: str, header: List) -> None:
+        """Create the csv logger, create a file and write the
+        header.
+
+        Args:
+            filename: path to which the file will be saved.
+            header: header of the csv file.
+        """
+        self._filename = filename
+        self._file = open(self._filename, "w")
+        self._writer = csv.DictWriter(self._file, fieldnames=header)
+
+        # write the header
+        self._writer.writeheader()
+
+    def log(self, metrics: Dict[str, float]) -> None:
+        """Log new metrics to the csv file.
+
+        Args:
+            metrics: A dictionary containing the metrics that
+                need to be saved.
+        """
+        self._writer.writerow(metrics)
+
+    def close(self) -> None:
+        """Close the file."""
+        self._file.close()
 
 
 def default_qd_metrics(
