@@ -65,9 +65,9 @@ def generate_unroll(
 )
 def scoring_function(
     policies_params: Genotype,
+    random_key: RNGKey,
     init_states: brax.envs.State,
     episode_length: int,
-    random_key: RNGKey,
     play_step_fn: Callable[
         [EnvState, Params, RNGKey, brax.envs.Env],
         Tuple[EnvState, Params, RNGKey, QDTransition],

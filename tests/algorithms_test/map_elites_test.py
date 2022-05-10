@@ -81,13 +81,11 @@ def test_map_elites() -> None:
         return next_state, policy_params, random_key, transition
 
     # Prepare the scoring function
-    random_key, subkey = jax.random.split(random_key)
     bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
-    scoring_function = functools.partial(
+    scoring_fn = functools.partial(
         scoring_function,
         init_states=init_states,
         episode_length=episode_length,
-        random_key=random_key,
         play_step_fn=play_step_fn,
         behavior_descriptor_extractor=bd_extraction_fn,
     )
@@ -119,7 +117,7 @@ def test_map_elites() -> None:
 
     # Instantiate MAP-Elites
     map_elites = MAPElites(
-        scoring_function=scoring_function,
+        scoring_function=scoring_fn,
         emitter=mixing_emitter,
         metrics_function=metrics_fn,
     )
@@ -134,7 +132,7 @@ def test_map_elites() -> None:
     )
 
     # Compute initial repertoire
-    repertoire, _ = map_elites.init(init_variables, centroids, None)
+    repertoire, _, random_key = map_elites.init(init_variables, centroids, random_key)
 
     # Prepare scan over map_elites update to perform several iterations at a time
     @jax.jit
