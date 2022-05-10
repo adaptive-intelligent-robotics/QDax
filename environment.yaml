@@ -11,4 +11,3 @@ dependencies:
     - jaxlib==0.3.2
     - -r requirements.txt
     - -r requirements-dev.txt
-    - -e .
