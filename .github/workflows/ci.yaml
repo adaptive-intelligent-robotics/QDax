@@ -20,16 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      # - name: Install test requirements
-      #   run: |
-      #     # pip install --find-links https://storage.googleapis.com/jax-releases/jax_releases.html jaxlib==0.3.2
-      #     # pip install -r requirements.txt
-      #     # pip install -r requirements-dev.txt
-
-
       - name: Run pytests
         run: |
           pytest -vv tests
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -55,30 +49,25 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: dev.Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+#      - name: Build and push Docker image
+#        uses: docker/build-push-action@v3
+#        with:
+#          context: .
+#          file: dev.Dockerfile
+#          push: true
+#          tags: ${{ steps.meta.outputs.tags }}
+#          labels: ${{ steps.meta.outputs.labels }}
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
 
-      - name: Build and push Docker image
+      - name: Build and push test Docker image
         uses: docker/build-push-action@v3
         with:
           context: .
           file: dev.Dockerfile
           push: true
-          # target: test-image
+          target: test-image
           tags: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/test:${{github.ref_name}}"
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # - name: Build
-      #   run: |
-      #     #docker build --file dev.Dockerfile .
-      #     docker pull hello-world

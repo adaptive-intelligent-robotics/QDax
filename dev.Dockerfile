@@ -24,7 +24,6 @@ COPY --from=conda /opt/conda/envs/. /opt/conda/envs/
 COPY requirements-dev.txt ./
 
 RUN pip install -r requirements-dev.txt
-WORKDIR $APP_FOLDER
 
 
 
@@ -94,5 +93,11 @@ FROM cuda-image as run-image
 # The run-image (default) is the same as the dev-image with the some files directly
 # copied inside
 
-COPY experiments experiments
 COPY qdax qdax
+COPY setup.py ./
+
+RUN pip install .
+
+WORKDIR /
+
+CMD ["python"]
