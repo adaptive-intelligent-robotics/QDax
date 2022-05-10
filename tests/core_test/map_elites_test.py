@@ -4,6 +4,7 @@ from typing import Any, Dict
 import jax
 import jax.numpy as jnp
 import pytest
+
 from qdax import environments
 from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
@@ -12,7 +13,6 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffers import QDTransition
 from qdax.core.neuroevolution.mdp_utils import scoring_function
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.utils.metrics import CSVLogger
 
 
 def test_map_elites() -> None:

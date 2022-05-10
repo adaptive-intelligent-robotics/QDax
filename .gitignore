@@ -1,5 +1,8 @@
 # added elements
 
+last_repertoire
+*logs.csv
+
 # Singularity generated files
 *.simg
 *.sif
