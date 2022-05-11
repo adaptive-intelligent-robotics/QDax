@@ -1,3 +1,6 @@
+[![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
+
+
 # QDax: Accelerated Quality-Diversity
 QDax is a tool to accelerate Quality-Diveristy (QD) and neuro-evolution algorithms through hardware accelerators and massive parallelism. QDax has been developped as a research framework: it is flexible and easy to extend.
 

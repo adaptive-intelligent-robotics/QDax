@@ -1,7 +1,7 @@
 site_name: QDax docs
 site_description: QDax
 site_author: QDax Contributors
-site_url: https://instadeepai.github.io/QDax/
+site_url: https://qdax.readthedocs.io/
 site_dir: public
 repo_name: instadeepai/QDax
 repo_url: https://github.com/instadeepai/QDax
@@ -27,7 +27,7 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-  logo: img/parl-logo.png
+  #logo: img/parl-logo.png
   # favicon: img/parl-logo.png
   # icon:
   #   repo: fontawesome/brands/gitlab
@@ -103,10 +103,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Guides:
-      # - Launch experiments with Hydra: guides/hydra.md
-      # - Setup experiments on the infrastructure Ichor: guides/ichor.md
-      - Contributing: guides/CONTRIBUTING.md
-      # - Use the Makefile: guides/makefile.md
+    - Contributing: guides/CONTRIBUTING.md
   - Examples:
-      - MAPElites: notebooks/mapelites_example.ipynb
-      - PGAME: notebooks/pgame_example.ipynb
+    - MAPElites: notebooks/mapelites_example.ipynb
+    - PGAME: notebooks/pgame_example.ipynb
