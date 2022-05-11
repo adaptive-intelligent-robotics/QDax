@@ -3,7 +3,7 @@ site_description: QDax
 site_author: QDax Contributors
 site_url: https://instadeepai.github.io/QDax/
 site_dir: public
-repo_name: instadeep/parl
+repo_name: instadeepai/QDax
 repo_url: https://github.com/instadeepai/QDax
 strict: false
 
@@ -102,7 +102,7 @@ plugins:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Guides:
+  # - Guides:
       # - Launch experiments with Hydra: guides/hydra.md
       # - Setup experiments on the infrastructure Ichor: guides/ichor.md
       # - Contributing: guides/contributing.md
