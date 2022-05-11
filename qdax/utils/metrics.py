@@ -22,11 +22,11 @@ class CSVLogger:
             header: header of the csv file.
         """
         self._filename = filename
-        self._file = open(self._filename, "w")
-        self._writer = csv.DictWriter(self._file, fieldnames=header)
-
-        # write the header
-        self._writer.writeheader()
+        self._header = header
+        with open(self._filename, "w") as file:
+            writer = csv.DictWriter(file, fieldnames=self._header)
+            # write the header
+            writer.writeheader()
 
     def log(self, metrics: Dict[str, float]) -> None:
         """Log new metrics to the csv file.
@@ -35,11 +35,10 @@ class CSVLogger:
             metrics: A dictionary containing the metrics that
                 need to be saved.
         """
-        self._writer.writerow(metrics)
-
-    def close(self) -> None:
-        """Close the file."""
-        self._file.close()
+        with open(self._filename, "a") as file:
+            writer = csv.DictWriter(file, fieldnames=self._header)
+            # write new metrics in a raw
+            writer.writerow(metrics)
 
 
 def default_qd_metrics(

@@ -8,7 +8,7 @@ import pytest
 from qdax import environments
 from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
-from qdax.core.emitters.standard_emitters import MixingEmitter
+from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffers import QDTransition
 from qdax.core.neuroevolution.mdp_utils import scoring_function
@@ -16,8 +16,7 @@ from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import EnvState, Params, RNGKey
 
 
-def test_map_elites() -> None:
-    batch_size = 10
+def test_pgame_elites() -> None:
     env_name = "walker2d_uni"
     episode_length = 100
     num_iterations = 5
@@ -27,6 +26,25 @@ def test_map_elites() -> None:
     num_centroids = 50
     min_bd = 0.0
     max_bd = 1.0
+
+    # @title PGA-ME Emitter Definitions Fields
+    proportion_mutation_ga = 0.5
+
+    # TD3 params
+    env_batch_size = 10
+    replay_buffer_size = 100000
+    critic_hidden_layer_size = (64, 64)
+    critic_learning_rate = 3e-4
+    greedy_learning_rate = 3e-4
+    policy_learning_rate = 1e-3
+    noise_clip = 0.5
+    policy_noise = 0.2
+    discount = 0.99
+    reward_scaling = 1.0
+    transitions_batch_size = 32
+    soft_tau_update = 0.005
+    num_critic_training_steps = 5
+    num_pg_training_steps = 5
 
     # Init environment
     env = environments.create(env_name)
@@ -45,15 +63,9 @@ def test_map_elites() -> None:
 
     # Init population of controllers
     random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey, num=batch_size)
-    fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
+    keys = jax.random.split(subkey, num=env_batch_size)
+    fake_batch = jnp.zeros(shape=(env_batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
-
-    # Create the initial environment states
-    random_key, subkey = jax.random.split(random_key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    init_states = reset_fn(keys)
 
     # Define the fonction to play a step with the policy in the environment
     def play_step_fn(
@@ -81,30 +93,11 @@ def test_map_elites() -> None:
 
         return next_state, policy_params, random_key, transition
 
-    # Prepare the scoring function
-    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
-    scoring_fn = functools.partial(
-        scoring_function,
-        init_states=init_states,
-        episode_length=episode_length,
-        play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
-    )
-
-    # Define emitter
-    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
-    mixing_emitter = MixingEmitter(
-        mutation_fn=None,
-        variation_fn=variation_fn,
-        variation_percentage=1.0,
-        batch_size=batch_size,
-    )
-
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
 
     # Define a metrics function
-    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict:
+    def metrics_function(repertoire: MapElitesRepertoire) -> Dict:
 
         # Get metrics
         grid_empty = repertoire.fitnesses == -jnp.inf
@@ -116,11 +109,49 @@ def test_map_elites() -> None:
 
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    # Instantiate MAP-Elites
-    map_elites = MAPElites(
-        scoring_function=scoring_fn,
-        emitter=mixing_emitter,
-        metrics_function=metrics_fn,
+    # Define the PG-emitter config
+    pga_emitter_config = PGAMEConfig(
+        env_batch_size=env_batch_size,
+        batch_size=transitions_batch_size,
+        proportion_mutation_ga=proportion_mutation_ga,
+        critic_hidden_layer_size=critic_hidden_layer_size,
+        critic_learning_rate=critic_learning_rate,
+        greedy_learning_rate=greedy_learning_rate,
+        policy_learning_rate=policy_learning_rate,
+        noise_clip=noise_clip,
+        policy_noise=policy_noise,
+        discount=discount,
+        reward_scaling=reward_scaling,
+        replay_buffer_size=replay_buffer_size,
+        soft_tau_update=soft_tau_update,
+        num_critic_training_steps=num_critic_training_steps,
+        num_pg_training_steps=num_pg_training_steps,
+    )
+
+    # Get the emitter
+    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
+
+    pg_emitter = PGEmitter(
+        config=pga_emitter_config,
+        policy_network=policy_network,
+        env=env,
+        variation_fn=variation_fn,
+    )
+
+    # Create the initial environment states
+    random_key, subkey = jax.random.split(random_key)
+    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=env_batch_size, axis=0)
+    reset_fn = jax.jit(jax.vmap(env.reset))
+    init_states = reset_fn(keys)
+
+    # Prepare the scoring function
+    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    scoring_fn = functools.partial(
+        scoring_function,
+        init_states=init_states,
+        episode_length=episode_length,
+        play_step_fn=play_step_fn,
+        behavior_descriptor_extractor=bd_extraction_fn,
     )
 
     # Compute the centroids
@@ -132,32 +163,30 @@ def test_map_elites() -> None:
         maxval=max_bd,
     )
 
-    # Compute initial repertoire
-    repertoire, _, random_key = map_elites.init(init_variables, centroids, random_key)
+    # Instantiate MAP Elites
+    map_elites = MAPElites(
+        scoring_function=scoring_fn,
+        emitter=pg_emitter,
+        metrics_function=metrics_function,
+    )
 
-    # Prepare scan over map_elites update to perform several iterations at a time
+    repertoire, emitter_state, random_key = map_elites.init(
+        init_variables, centroids, random_key
+    )
+
     @jax.jit
     def update_scan_fn(carry: Any, unused: Any) -> Any:
         # iterate over grid
-        repertoire, random_key = carry
-        (repertoire, _, metrics, random_key,) = map_elites.update(
-            repertoire,
-            None,
-            random_key,
-        )
+        repertoire, emitter_state, metrics, random_key = map_elites.update(*carry)
 
-        return (repertoire, random_key), metrics
+        return (repertoire, emitter_state, random_key), metrics
 
     # Run the algorithm
-    (repertoire, random_key,), metrics = jax.lax.scan(
+    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
         update_scan_fn,
-        (repertoire, random_key),
+        (repertoire, emitter_state, random_key),
         (),
         length=num_iterations,
     )
 
     pytest.assume(repertoire is not None)
-
-
-if __name__ == "__main__":
-    test_map_elites()

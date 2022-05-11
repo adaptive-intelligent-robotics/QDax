@@ -16,8 +16,6 @@ def test_csv_logger() -> None:
     with pytest.raises(Exception):
         csv_logger.log(metrics)
 
-    csv_logger.close()
-
     file_exist = os.path.exists(file_location)
     pytest.assume(file_exist)
 

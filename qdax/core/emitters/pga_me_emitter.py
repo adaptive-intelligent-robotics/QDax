@@ -294,13 +294,14 @@ class PGEmitter(Emitter):
         """
 
         # Sample a batch of transitions in the buffer
-        key = emitter_state.random_key
-        key, subkey = jax.random.split(key)
+        random_key = emitter_state.random_key
         replay_buffer = emitter_state.replay_buffer
-        samples = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
+        samples, random_key = replay_buffer.sample(
+            random_key, sample_size=self._config.batch_size
+        )
 
         # Update Critic
-        key, subkey = jax.random.split(key)
+        random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
             emitter_state.critic_params,
             emitter_state.target_greedy_policy_params,
@@ -321,7 +322,7 @@ class PGEmitter(Emitter):
         )
 
         # Update greedy policy
-        key, subkey = jax.random.split(key)
+        random_key, subkey = jax.random.split(random_key)
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
             emitter_state.greedy_policy_params,
             emitter_state.critic_params,
@@ -353,7 +354,7 @@ class PGEmitter(Emitter):
             controllers_optimizer_state=emitter_state.controllers_optimizer_state,
             target_critic_params=target_critic_params,
             target_greedy_policy_params=target_greedy_policy_params,
-            random_key=key,
+            random_key=random_key,
             steps=emitter_state.steps + 1,
             replay_buffer=replay_buffer,
         )
@@ -415,10 +416,11 @@ class PGEmitter(Emitter):
         """
 
         # Sample a batch of transitions in the buffer
-        key = emitter_state.random_key
-        key, subkey = jax.random.split(key)
+        random_key = emitter_state.random_key
         replay_buffer = emitter_state.replay_buffer
-        samples = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
+        samples, random_key = replay_buffer.sample(
+            random_key, sample_size=self._config.batch_size
+        )
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
             controller_params,
             emitter_state.critic_params,
@@ -439,7 +441,7 @@ class PGEmitter(Emitter):
             controllers_optimizer_state=policy_optimizer_state,
             target_critic_params=emitter_state.target_critic_params,
             target_greedy_policy_params=emitter_state.target_greedy_policy_params,
-            random_key=key,
+            random_key=random_key,
             steps=emitter_state.steps,
             replay_buffer=replay_buffer,
         )
