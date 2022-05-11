@@ -1,0 +1,109 @@
+site_name: QDax docs
+site_description: QDax
+site_author: QDax Contributors
+site_url: https://instadeepai.github.io/QDax/
+site_dir: public
+repo_name: instadeep/parl
+repo_url: https://github.com/instadeepai/QDax
+strict: false
+
+
+theme:
+  name: material
+  language: en
+  palette:
+    # Light mode / dark mode
+    # We deliberately don't automatically use `media` to check a user's preferences. We default to light mode as
+    # (a) it looks more professional, and (b) is more obvious about the fact that it offers a dark mode (as there is a toggle).
+    - scheme: default
+      primary: white
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: black
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  logo: img/parl-logo.png
+  # favicon: img/parl-logo.png
+  # icon:
+  #   repo: fontawesome/brands/gitlab
+  features:
+    - navigation.tracking
+    - navigation.tabs
+    - toc.integrate
+
+
+markdown_extensions:
+  - admonition
+  - abbr
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid-experimental
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.tabbed:
+     alternate_style: true
+
+
+plugins:
+  - search
+  - autorefs  # Cross-links to headings
+  - git-revision-date
+  - mknotebooks  # enable Jupyter notebooks
+  - mkdocstrings:
+      handlers:
+        python:
+          docstring_style: google
+          selection:
+            inherited_members: true  # Allow looking up inherited methods
+            filters:
+              - '!^test'
+              - "!^_"  # exclude all members starting with _
+              - "^__init__$"  # but always include __init__ modules and methods
+          rendering:
+            show_source: false # don't include source code (too cumbersome)
+            members_order: source  # order methods according to their order of definition in the source code, not alphabetical order
+
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Guides:
+      # - Launch experiments with Hydra: guides/hydra.md
+      # - Setup experiments on the infrastructure Ichor: guides/ichor.md
+      # - Contributing: guides/contributing.md
+      # - Use the Makefile: guides/makefile.md
