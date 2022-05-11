@@ -71,6 +71,17 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build docs
+        run: |
+          pip install -r docs/requirements.txt
+          mkdocs serve
+
 #      - name: Build and push Docker image
 #        uses: docker/build-push-action@v3
 #        with:
