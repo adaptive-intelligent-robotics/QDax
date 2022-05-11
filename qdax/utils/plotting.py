@@ -92,7 +92,7 @@ def plot_2d_map_elites_grid(
     ax: Optional[plt.Axes] = None,
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
-) -> Tuple[Figure, Axes]:
+) -> Tuple[Optional[Figure], Axes]:
 
     # TODO: check it and fix it if needed
     grid_empty = grid_fitness == -jnp.inf
@@ -122,6 +122,7 @@ def plot_2d_map_elites_grid(
     mpl.rcParams.update(params)
 
     # create the plot object
+    fig = None
     if ax is None:
         fig, ax = plt.subplots(facecolor="white", edgecolor="white")
 
