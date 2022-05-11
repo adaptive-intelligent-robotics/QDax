@@ -71,17 +71,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Build docs
-        run: |
-          pip install -r docs/requirements.txt
-          mkdocs build --verbose
-
 #      - name: Build and push Docker image
 #        uses: docker/build-push-action@v3
 #        with:
@@ -104,3 +93,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build docs
+        run: |
+          pip install -r docs/requirements.txt
+          mkdocs build --verbose
