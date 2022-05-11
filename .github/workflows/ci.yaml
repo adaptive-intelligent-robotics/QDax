@@ -7,6 +7,23 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/qdax
 
 jobs:
+  style:
+    needs: [build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.ref_name }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Run pre-commits
+        run: |
+          pre-commit run --all-files
+
   tests:
     needs: [build]
     runs-on: ubuntu-latest
