@@ -80,7 +80,7 @@ jobs:
       - name: Build docs
         run: |
           pip install -r docs/requirements.txt
-          mkdocs serve
+          mkdocs build --verbose
 
 #      - name: Build and push Docker image
 #        uses: docker/build-push-action@v3
