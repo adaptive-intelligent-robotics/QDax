@@ -1,4 +1,6 @@
 [![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
+![pytest](https://github.com/instadeepai/QDax/actions/workflows/ci/badge.svg)
+
 
 
 # QDax: Accelerated Quality-Diversity
