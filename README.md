@@ -1,5 +1,6 @@
 [![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
 ![pytest](https://github.com/instadeepai/QDax/actions/workflows/ci.yaml/badge.svg?branch=2-instadeep-new-structure-suggestion)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/instadeepai/QDax/blob/2-instadeep-new-structure-suggestion/LICENSE)
 
 
 
