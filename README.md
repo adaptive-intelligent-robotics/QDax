@@ -1,5 +1,5 @@
 [![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
-![pytest](https://github.com/instadeepai/QDax/actions/workflows/ci/badge.svg)
+![pytest](https://github.com/instadeepai/QDax/actions/workflows/ci.yaml/badge.svg?branch=2-instadeep-new-structure-suggestion)
 
 
 
