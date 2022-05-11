@@ -25,7 +25,7 @@ jobs:
           pre-commit run --all-files isort
           pre-commit run --all-files black
           pre-commit run --all-files nbstripout
-          pre-commit run --all-files debug-statement
+          pre-commit run --all-files debug-statements
           pre-commit run --all-files check-ast
           pre-commit run --all-files check-merge-conflict
 
