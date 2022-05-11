@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from functools import partial
+from typing import Tuple
 
 import flax
 import jax
 import jax.numpy as jnp
 from flax import struct
-from typing_extensions import TypeAlias
 
 from qdax.types import Action, Done, Observation, Reward, RNGKey, StateDescriptor
 
@@ -263,7 +263,7 @@ class QDTransition(Transition):
         return dummy_transition
 
 
-class FlatBuffer(flax.struct.PyTreeNode):
+class ReplayBuffer(flax.struct.PyTreeNode):
     """
     A replay buffer where transitions are flattened before being stored.
     Transitions are unflatenned on the fly when sampled in the buffer.
@@ -282,7 +282,7 @@ class FlatBuffer(flax.struct.PyTreeNode):
         cls,
         buffer_size: int,
         transition: Transition,
-    ) -> FlatBuffer:
+    ) -> ReplayBuffer:
         """
         The constructor of the buffer.
 
@@ -312,22 +312,23 @@ class FlatBuffer(flax.struct.PyTreeNode):
         self,
         random_key: RNGKey,
         sample_size: int,
-    ) -> Transition:
+    ) -> Tuple[Transition, RNGKey]:
         """
         Sample a batch of transitions in the replay buffer.
         """
+        random_key, subkey = jax.random.split(random_key)
         idx = jax.random.randint(
-            random_key,
+            subkey,
             shape=(sample_size,),
             minval=0,
             maxval=self.current_size,
         )
         samples = jnp.take(self.data, idx, axis=0, mode="clip")
         transitions = self.transition.__class__.from_flatten(samples, self.transition)
-        return transitions
+        return transitions, random_key
 
     @jax.jit
-    def insert(self, transitions: Transition) -> FlatBuffer:
+    def insert(self, transitions: Transition) -> ReplayBuffer:
         """
         Insert a batch of transitions in the replay buffer. The transitions are
         flattened before insertion.
@@ -361,7 +362,3 @@ class FlatBuffer(flax.struct.PyTreeNode):
         )
 
         return replay_buffer  # type: ignore
-
-
-# quick fix for types - anticipate TrajectoryBuffer
-ReplayBuffer: TypeAlias = FlatBuffer

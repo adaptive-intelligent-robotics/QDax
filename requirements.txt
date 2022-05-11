@@ -2,7 +2,9 @@ absl-py==1.0.0
 brax==0.0.12
 flax==0.4.1
 gym == 0.15.4
+ipython
 jax==0.3.2
+jupyter
 numpy == 1.19.5
 scikit-learn==1.0.1
 scipy==1.7.3

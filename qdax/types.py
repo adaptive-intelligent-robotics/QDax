@@ -4,17 +4,7 @@ import jax
 import jax.numpy as jnp
 import tree
 from chex import ArrayTree
-from flax.struct import PyTreeNode
 from typing_extensions import TypeAlias
-
-
-class Transition(PyTreeNode):
-    pass
-
-
-class EmitterState(PyTreeNode):
-    pass
-
 
 # MDP types
 Observation: TypeAlias = jnp.ndarray
@@ -30,6 +20,8 @@ Fitness: TypeAlias = jnp.ndarray
 Genotype: TypeAlias = ArrayTree
 Descriptor: TypeAlias = jnp.ndarray
 Centroid: TypeAlias = jnp.ndarray
+
+ExtraScores: TypeAlias = ArrayTree
 
 # Others
 RNGKey: TypeAlias = jax.random.KeyArray

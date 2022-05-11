@@ -6,9 +6,9 @@ setup(
     packages=find_packages(),
     url="https://github.com/adaptive-intelligent-robotics/QDax",
     license="",
-    author="Bryan Lim",
+    author="Bryan Lim and InstaDeep Ltd",
     author_email="",
-    description="",
+    description="A Python Library for Quality Diversity and NeuroEvolution",
     install_requires=[
         "absl-py==1.0.0",
         "jax==0.3.2",

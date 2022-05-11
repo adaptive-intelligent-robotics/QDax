@@ -7,7 +7,7 @@ from brax.physics import config_pb2
 from brax.physics.base import QP, Info
 from brax.physics.system import System
 
-from qdax.brax_envs.utils_wrappers import QDEnv
+from qdax.environments.base_wrappers import QDEnv
 
 # TODO: add clipping option in the XYWrapper
 

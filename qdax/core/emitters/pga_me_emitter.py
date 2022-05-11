@@ -10,13 +10,13 @@ import optax
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from qdax.algorithms.map_elites import MapElitesRepertoire
-from qdax.brax_envs.utils_wrappers import QDEnv
-from qdax.buffers.buffers import FlatBuffer, QDTransition
-from qdax.emitters.emitter import Emitter
-from qdax.losses.td3_loss import make_td3_loss_fn
-from qdax.networks.flax_networks import QModule
-from qdax.types import EmitterState, Genotype, Params, RNGKey
+from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
+from qdax.core.neuroevolution.networks.networks import QModule
+from qdax.environments.base_wrappers import QDEnv
+from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 
 
 @dataclass
@@ -52,7 +52,7 @@ class PGEmitterState(EmitterState):
     controllers_optimizer_state: optax.OptState
     target_critic_params: Params
     target_greedy_policy_params: Params
-    replay_buffer: FlatBuffer
+    replay_buffer: ReplayBuffer
     random_key: RNGKey
     steps: jnp.ndarray
 
@@ -68,11 +68,11 @@ class PGEmitter(Emitter):
         config: PGAMEConfig,
         policy_network: nn.Module,
         env: QDEnv,
-        crossover_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
+        variation_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
     ) -> None:
         self._config = config
         self._env = env
-        self._crossover_fn = crossover_fn
+        self._variation_fn = variation_fn
         self._policy_network = policy_network
 
         # Init Critics
@@ -82,7 +82,7 @@ class PGEmitter(Emitter):
         self._critic_network = critic_network
 
         # Set up the losses and optimizers - return the opt states
-        policy_loss_fn, critic_loss_fn = make_td3_loss_fn(
+        self._policy_loss_fn, self._critic_loss_fn = make_td3_loss_fn(
             policy_fn=policy_network.apply,
             critic_fn=critic_network.apply,
             reward_scaling=self._config.reward_scaling,
@@ -90,9 +90,6 @@ class PGEmitter(Emitter):
             noise_clip=self._config.noise_clip,
             policy_noise=self._config.policy_noise,
         )
-
-        self._policy_loss_fn = policy_loss_fn
-        self._critic_loss_fn = critic_loss_fn
 
         # Init optimizers
         self._greedy_policy_optimizer = optax.adam(
@@ -105,7 +102,9 @@ class PGEmitter(Emitter):
             learning_rate=self._config.policy_learning_rate
         )
 
-    def init_fn(self, init_genotypes: Genotype, random_key: RNGKey) -> PGEmitterState:
+    def init(
+        self, init_genotypes: Genotype, random_key: RNGKey
+    ) -> Tuple[PGEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
@@ -113,7 +112,7 @@ class PGEmitter(Emitter):
             random_key: A random key.
 
         Returns:
-            The initial state of the PGEmitter.
+            The initial state of the PGEmitter, a new random key.
         """
 
         observation_size = self._env.observation_size
@@ -127,14 +126,10 @@ class PGEmitter(Emitter):
         critic_params = self._critic_network.init(
             subkey, obs=fake_obs, actions=fake_action
         )
-        target_critic_params = tree_map(lambda x: jnp.asarray(x.copy()), critic_params)
+        target_critic_params = tree_map(lambda x: x, critic_params)
 
-        greedy_policy_params = tree_map(
-            lambda x: jnp.asarray(x[0].copy()), init_genotypes
-        )
-        target_greedy_policy_params = tree_map(
-            lambda x: jnp.asarray(x[0].copy()), init_genotypes
-        )
+        greedy_policy_params = tree_map(lambda x: x[0], init_genotypes)
+        target_greedy_policy_params = tree_map(lambda x: x[0], init_genotypes)
 
         # Prepare init optimizer states
         critic_optimizer_state = self._critic_optimizer.init(critic_params)
@@ -152,12 +147,13 @@ class PGEmitter(Emitter):
             descriptor_dim=descriptor_size,
         )
 
-        replay_buffer = FlatBuffer.init(
+        replay_buffer = ReplayBuffer.init(
             buffer_size=self._config.replay_buffer_size, transition=dummy_transition
         )
 
         # Initial training state
-        training_state = PGEmitterState(
+        random_key, subkey = jax.random.split(random_key)
+        emitter_state = PGEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             greedy_policy_params=greedy_policy_params,
@@ -165,23 +161,23 @@ class PGEmitter(Emitter):
             controllers_optimizer_state=controllers_optimizer_state,
             target_critic_params=target_critic_params,
             target_greedy_policy_params=target_greedy_policy_params,
-            random_key=random_key,
+            random_key=subkey,
             steps=jnp.array(0),
             replay_buffer=replay_buffer,
         )
 
-        return training_state
+        return emitter_state, random_key
 
     @partial(
         jax.jit,
-        static_argnames=("self"),
+        static_argnames=("self",),
     )
-    def emit_fn(
+    def emit(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: PGEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, PGEmitterState, RNGKey]:
+    ) -> Tuple[Genotype, RNGKey]:
         """Do a single PGA-ME iteration: train critics and greedy policy,
         make mutations (evo and pg), score solution, fill replay buffer and insert back
         in the MAP-Elites grid.
@@ -197,26 +193,11 @@ class PGEmitter(Emitter):
 
         batch_size = self._config.env_batch_size
 
-        def scan_train_critics(
-            carry: PGEmitterState, unused: Any
-        ) -> Tuple[PGEmitterState, Any]:
-            emitter_state = carry
-            new_emitter_state = self._train_critics(emitter_state)
-            return new_emitter_state, ()
-
-        # Train critics
-        emitter_state, _ = jax.lax.scan(
-            scan_train_critics,
-            emitter_state,
-            (),
-            length=self._config.num_critic_training_steps,
-        )
-
         # Mutation evo
         mutation_ga_batch_size = int(self._config.proportion_mutation_ga * batch_size)
         x1, random_key = repertoire.sample(random_key, mutation_ga_batch_size)
         x2, random_key = repertoire.sample(random_key, mutation_ga_batch_size)
-        x_mutation_ga, random_key = self._crossover_fn(x1, x2, random_key)
+        x_mutation_ga, random_key = self._variation_fn(x1, x2, random_key)
 
         # Mutation PG
         mutation_pg_batch_size = int(batch_size - mutation_ga_batch_size - 1)
@@ -240,36 +221,61 @@ class PGEmitter(Emitter):
             greedy_policy_params,
         )
 
-        return genotypes, emitter_state, random_key
+        return genotypes, random_key
 
-    @partial(
-        jax.jit,
-        static_argnames=("self"),
-    )
-    def state_update_fn(
-        self, emitter_state: PGEmitterState, **kwargs: Any
+    @partial(jax.jit, static_argnames=("self",))
+    def state_update(
+        self,
+        emitter_state: PGEmitterState,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> PGEmitterState:
         """This function gives an opportunity to update the emitter state
         after the genotypes have been scored.
 
         Here it is used to fill the Replay Buffer with the transitions
-        from the scoring of the genotypes.
+        from the scoring of the genotypes, and then the training of the
+        critic/greedy happens. Hence the params of critic/greedy are updated,
+        as well as their optimizer states.
 
         Args:
             emitter_state: current emitter state.
+            genotypes: unused here - but compulsory in the signature.
+            fitnesses: unused here - but compulsory in the signature.
+            descriptors: unused here - but compulsory in the signature.
+            extra_scores: extra information coming from the scoring function,
+                this contains the transitions added to the replay buffer.
 
         Returns:
             New emitter state where the replay buffer has been filled with
             the new experienced transitions.
         """
         # get the transitions out of the dictionary
-        assert "transitions" in kwargs.keys(), "Missing transitions or wrong key"
-        transitions = kwargs["transitions"]
+        assert "transitions" in extra_scores.keys(), "Missing transitions or wrong key"
+        transitions = extra_scores["transitions"]
 
         # add transitions in the replay buffer
         replay_buffer = emitter_state.replay_buffer.insert(transitions)
+        emitter_state = emitter_state.replace(replay_buffer=replay_buffer)
 
-        return emitter_state.replace(replay_buffer=replay_buffer)  # type: ignore
+        def scan_train_critics(
+            carry: PGEmitterState, unused: Any
+        ) -> Tuple[PGEmitterState, Any]:
+            emitter_state = carry
+            new_emitter_state = self._train_critics(emitter_state)
+            return new_emitter_state, ()
+
+        # Train critics and greedy
+        emitter_state, _ = jax.lax.scan(
+            scan_train_critics,
+            emitter_state,
+            (),
+            length=self._config.num_critic_training_steps,
+        )
+
+        return emitter_state  # type: ignore
 
     @partial(jax.jit, static_argnames=("self",))
     def _train_critics(self, emitter_state: PGEmitterState) -> PGEmitterState:
@@ -288,13 +294,14 @@ class PGEmitter(Emitter):
         """
 
         # Sample a batch of transitions in the buffer
-        key = emitter_state.random_key
-        key, subkey = jax.random.split(key)
+        random_key = emitter_state.random_key
         replay_buffer = emitter_state.replay_buffer
-        samples = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
+        samples, random_key = replay_buffer.sample(
+            random_key, sample_size=self._config.batch_size
+        )
 
         # Update Critic
-        key, subkey = jax.random.split(key)
+        random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
             emitter_state.critic_params,
             emitter_state.target_greedy_policy_params,
@@ -315,7 +322,7 @@ class PGEmitter(Emitter):
         )
 
         # Update greedy policy
-        key, subkey = jax.random.split(key)
+        random_key, subkey = jax.random.split(random_key)
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
             emitter_state.greedy_policy_params,
             emitter_state.critic_params,
@@ -347,7 +354,7 @@ class PGEmitter(Emitter):
             controllers_optimizer_state=emitter_state.controllers_optimizer_state,
             target_critic_params=target_critic_params,
             target_greedy_policy_params=target_greedy_policy_params,
-            random_key=key,
+            random_key=random_key,
             steps=emitter_state.steps + 1,
             replay_buffer=replay_buffer,
         )
@@ -409,10 +416,11 @@ class PGEmitter(Emitter):
         """
 
         # Sample a batch of transitions in the buffer
-        key = emitter_state.random_key
-        key, subkey = jax.random.split(key)
+        random_key = emitter_state.random_key
         replay_buffer = emitter_state.replay_buffer
-        samples = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
+        samples, random_key = replay_buffer.sample(
+            random_key, sample_size=self._config.batch_size
+        )
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
             controller_params,
             emitter_state.critic_params,
@@ -433,7 +441,7 @@ class PGEmitter(Emitter):
             controllers_optimizer_state=policy_optimizer_state,
             target_critic_params=emitter_state.target_critic_params,
             target_greedy_policy_params=emitter_state.target_greedy_policy_params,
-            random_key=key,
+            random_key=random_key,
             steps=emitter_state.steps,
             replay_buffer=replay_buffer,
         )

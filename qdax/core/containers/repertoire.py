@@ -1,9 +1,8 @@
-"""Core components of the MAP-Elites algorithm."""
 from __future__ import annotations
 
 import math
 from functools import partial
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import flax
 import jax
@@ -12,16 +11,7 @@ import numpy as np
 from jax.flatten_util import ravel_pytree
 from sklearn.cluster import KMeans
 
-from qdax.types import (
-    Centroid,
-    Descriptor,
-    EmitterState,
-    Fitness,
-    Genotype,
-    Metrics,
-    RNGKey,
-    Transition,
-)
+from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(
@@ -65,8 +55,8 @@ def compute_cvt_centroids(
 def compute_euclidean_centroids(
     num_descriptors: int,
     num_centroids: int,
-    minval: float,
-    maxval: float,
+    minval: Union[float, List[float]],
+    maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
     """
     Compute centroids for square Euclidean tesselation.
@@ -88,10 +78,14 @@ def compute_euclidean_centroids(
     if math.floor(sqrt_centroids) != sqrt_centroids:
         raise ValueError("Num centroids should be a squared number.")
 
-    linspace = jnp.linspace(minval, maxval, int(sqrt_centroids))
+    offset = 1 / (2 * int(sqrt_centroids))
+
+    linspace = jnp.linspace(offset, 1.0 - offset, int(sqrt_centroids))
     meshes = jnp.meshgrid(linspace, linspace, sparse=False)
     centroids = jnp.stack([jnp.ravel(meshes[0]), jnp.ravel(meshes[1])], axis=-1)
-    return centroids
+    minval = jnp.array(minval)
+    maxval = jnp.array(maxval)
+    return jnp.asarray(centroids) * (maxval - minval) + minval
 
 
 def get_cells_indices(
@@ -148,7 +142,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
     fitnesses: Fitness
     descriptors: Descriptor
     centroids: Centroid
-    discard_dead: bool = False
 
     def save(self, path: str = "./") -> None:
         """Saves the grid on disk in the form of .npy files.
@@ -232,7 +225,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
-        deaths: Optional[jnp.ndarray] = None,
     ) -> MapElitesRepertoire:
         """
         Add a batch of elements to the repertoire.
@@ -249,13 +241,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         Returns:
             The updated MAP-Elites repertoire.
         """
-        if deaths is None or self.discard_dead is False:
-            deaths = jnp.zeros_like(batch_of_fitnesses)
-
-        # if an individual is dead, put it's fitness to -inf
-        # doing this right now avoid to filter genotypes that had a smaller
-        # fitness than a dead individual
-        batch_of_fitnesses = jnp.where(deaths, x=-jnp.inf, y=batch_of_fitnesses)
 
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
@@ -318,7 +303,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         fitnesses: Fitness,
         descriptors: Descriptor,
         centroids: Centroid,
-        discard_dead: bool = False,
     ) -> MapElitesRepertoire:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
@@ -354,128 +338,9 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
             centroids=centroids,
-            discard_dead=discard_dead,
         )
 
         # Add initial values to the grid
         new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
 
         return new_repertoire  # type: ignore
-
-
-class MAPElites:
-    """
-    Core elements of the MAP-Elites algorithm.
-
-    Args:
-        scoring_function: a function that takes a batch of genotypes and compute
-            their fitnesses and descriptors
-        emitter_function: an emitter function that takes the MAP-Elites repertoire,
-            sample elements in it, clone them and apply transformations to get a
-            new population ready to be evaluated. This function may also update an
-            internal state called emitter state.
-        metrics_function: a function that takes a MAP-Elites repertoire and compute
-            any useful metric to track its evolution
-    """
-
-    def __init__(
-        self,
-        scoring_function: Callable[
-            [Genotype],
-            Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, Transition]]],
-        ],
-        emit_fn: Callable[
-            [MapElitesRepertoire, EmitterState, RNGKey],
-            Tuple[Genotype, EmitterState, RNGKey],
-        ],
-        emitter_state_update_fn: Callable[[EmitterState], EmitterState],
-        metrics_function: Callable[[MapElitesRepertoire], Metrics],
-        discard_dead: bool = False,
-    ) -> None:
-        self._scoring_function = scoring_function
-        self._emit_fn = emit_fn
-        self._emitter_state_update_fn = emitter_state_update_fn
-        self._metrics_function = metrics_function
-        self._discard_dead = discard_dead
-
-    @partial(jax.jit, static_argnames=("self",))
-    def init_fn(
-        self,
-        init_genotypes: Genotype,
-        centroids: Centroid,
-        emitter_state: EmitterState,
-    ) -> Tuple[MapElitesRepertoire, EmitterState]:
-        """
-        Initialize a Map-Elites grid with an initial population of genotypes. Requires
-        the definition of centroids that can be computed with any method such as
-        CVT or Euclidean mapping.
-
-        Args:
-        init_genotypes: initial genotypes, pytree in which leaves
-            have shape (batch_size, num_features)
-        centroids: tesselation centroids of shape (batch_size, num_descriptors)
-
-        Returns:
-            an initialized MAP-Elite repertoire
-        """
-        fitnesses, descriptors, scoring_extras = self._scoring_function(init_genotypes)
-
-        repertoire = MapElitesRepertoire.init(
-            genotypes=init_genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-            discard_dead=self._discard_dead,
-        )
-
-        scores = {"fitnesses": fitnesses, "descriptors": descriptors, **scoring_extras}
-
-        # update emitter state
-        emitter_state = self._emitter_state_update_fn(emitter_state, **scores)
-        return repertoire, emitter_state
-
-    @partial(jax.jit, static_argnames=("self",))
-    def update_fn(
-        self,
-        repertoire: MapElitesRepertoire,
-        emitter_state: EmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[MapElitesRepertoire, EmitterState, Metrics, RNGKey]:
-        """
-        Performs one iteration of the MAP-Elites algorithm.
-        1. A batch of genotypes is sampled in the archive and the genotypes are copied.
-        2. The copies are mutated and crossed-over
-        3. The obtained offsprings are scored and then added to the archive.
-
-        Args:
-            repertoire: the MAP-Elites repertoire
-            emitter_state: state of the emitter
-            random_key: a jax PRNG random key
-
-        Results:
-            the updated MAP-Elites repertoire
-            the updated (if needed) emitter state
-            metrics about the updated repertoire
-            a new jax PRNG key
-        """
-        # generate offsprings with the emitter
-        genotypes, emitter_state, random_key = self._emit_fn(
-            repertoire, emitter_state, random_key
-        )
-        # scores the offsprings
-        fitnesses, descriptors, scoring_extras = self._scoring_function(genotypes)
-
-        # get deaths out of the extras - None if not given
-        deaths = scoring_extras.get("deaths")
-
-        # add genotypes in the repertoire
-        repertoire = repertoire.add(genotypes, descriptors, fitnesses, deaths)
-
-        # update emitter state after scoring is made
-        scores = {"fitnesses": fitnesses, "descriptors": descriptors, **scoring_extras}
-        emitter_state = self._emitter_state_update_fn(emitter_state, **scores)
-
-        # update the metrics
-        metrics = self._metrics_function(repertoire)
-
-        return repertoire, emitter_state, metrics, random_key
