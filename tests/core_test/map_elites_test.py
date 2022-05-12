@@ -4,9 +4,9 @@ from typing import Any, Dict, Tuple
 import jax
 import jax.numpy as jnp
 import pytest
-
 from qdax import environments
-from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
+from qdax.core.containers.repertoire import (MapElitesRepertoire,
+                                             compute_cvt_centroids)
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
@@ -39,7 +39,6 @@ def test_map_elites() -> None:
     policy_network = MLP(
         layer_sizes=policy_layer_sizes,
         kernel_init=jax.nn.initializers.lecun_uniform(),
-        kernel_init_final=jax.nn.initializers.uniform(1e-3),
         final_activation=jnp.tanh,
     )
 
