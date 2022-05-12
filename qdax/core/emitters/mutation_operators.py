@@ -210,9 +210,10 @@ def isoline_variation(
     Evolutionary Computation Conference. 2018.
     """
 
-    key, subkey1, subkey2 = jax.random.split(random_key, num=3)
-
-    def _variation_fn(x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+    def _variation_fn(
+        x1: jnp.ndarray, x2: jnp.ndarray, random_key: RNGKey
+    ) -> jnp.ndarray:
+        subkey1, subkey2 = jax.random.split(random_key)
         iso_noise = jax.random.normal(subkey1, shape=x1.shape) * iso_sigma
         line_noise = jax.random.normal(subkey2, shape=x2.shape) * line_sigma
         x = (x1 + iso_noise) + line_noise * (x2 - x1)
@@ -222,6 +223,13 @@ def isoline_variation(
             x = jnp.clip(x, minval, maxval)
         return x
 
-    x = jax.tree_map(lambda y1, y2: _variation_fn(y1, y2), x1, x2)
+    # create a tree with random keys
+    nb_leaves = len(jax.tree_leaves(x1))
+    random_key, subkey = jax.random.split(random_key)
+    subkeys = jax.random.split(subkey, num=nb_leaves)
+    keys_tree = jax.tree_unflatten(jax.tree_structure(x1), subkeys)
 
-    return x, key
+    # apply isolinedd to each branch of the tree
+    x = jax.tree_map(lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree)
+
+    return x, random_key
