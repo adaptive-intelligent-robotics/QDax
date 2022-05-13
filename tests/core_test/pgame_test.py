@@ -4,9 +4,9 @@ from typing import Any, Dict, Tuple
 import jax
 import jax.numpy as jnp
 import pytest
+
 from qdax import environments
-from qdax.core.containers.repertoire import (MapElitesRepertoire,
-                                             compute_cvt_centroids)
+from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGEmitter
 from qdax.core.map_elites import MAPElites
