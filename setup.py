@@ -1,11 +1,13 @@
 from setuptools import find_packages, setup
 
+from qdax import __version__
+
 setup(
     name="qdax",
-    version="0.0.1",
+    version=__version__,
     packages=find_packages(),
     url="https://github.com/adaptive-intelligent-robotics/QDax",
-    license="",
+    license="MIT",
     author="Bryan Lim and InstaDeep Ltd",
     author_email="",
     description="A Python Library for Quality Diversity and NeuroEvolution",
@@ -22,5 +24,16 @@ setup(
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
+    ],
+    keywords="Quality Diversity NeuroEvolution Reinforcement Learning JAX",
+    classifiers=[
+        "Development Status :: 2 - Pre-Alpha",
+        "Environment :: Console",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
 )

@@ -26,7 +26,7 @@ There are two options for installing the dependencies using either `docker` or `
 
     ```
     cd ..
-    export QDax_PATH=$(pwd)
+    export QDAX_PATH=$(pwd)
     ```
 
     and then mount QDax into your container:
@@ -89,7 +89,7 @@ There are two options for installing the dependencies using either `docker` or `
 
     1. Clone `qdax`
     ```zsh
-    git clone git@github.com:instadeepai/QDax.git
+    git clone git@github.com:adaptive-intelligent-robotics/QDax.git
     ```
 
     1. Create a conda environment with all required libraries
@@ -97,9 +97,6 @@ There are two options for installing the dependencies using either `docker` or `
         cd QDax
         conda env create -f environment.yaml
         ```
-
-        !!! hint "Save time, use the Makefile"
-            These 4 first steps can be skipped by simply calling `make init_conda_env`
 
     2. Activate the environment and manually install the package qdax
         ```zsh

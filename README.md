@@ -53,9 +53,19 @@ Issues and contributions are welcome. Please this the [documentation]() to see h
 
 ## Contributors
 
-QDax is currently developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/):
+QDax is currently developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/):
 
+From AIRL:
 - [Bryan Lim](https://limbryan.github.io/)
 - [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
 - [Luca Grillotti](https://scholar.google.com/citations?user=gY9CmssAAAAJ&hl=fr&oi=sra)
 - [Antoine Cully](https://www.imperial.ac.uk/people/a.cully)
+
+From InstaDeep:
+- [Felix Chalumeau](https://www.linkedin.com/in/f%C3%A9lix-chalumeau-083457172/)
+- [Thomas Pierrot](https://scholar.google.fr/citations?user=0zBiyNUAAAAJ&hl=en)
+- [Raphaël Boige](https://www.linkedin.com/in/raphaelboige/)
+- [Valentin Macé](https://www.linkedin.com/in/valentinmace/)
+- [Arthur Flajolet](https://scholar.google.com/citations?user=YYwquKkAAAAJ&hl=en)
+- [Guillaume Richard](https://scholar.google.com/citations?user=viOjnmQAAAAJ&hl=fr)
+- [Rémi Debette](https://www.linkedin.com/in/remidebette/)

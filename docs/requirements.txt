@@ -1,4 +1,4 @@
-jinja2==3.0.3 #necessary to fix the CI (see https://forums.docker.com/t/jinja-mkdocs-issue-breaks-docker101tutorial/122671)
+jinja2==3.0.3 # necessary to fix the CI (see https://forums.docker.com/t/jinja-mkdocs-issue-breaks-docker101tutorial/122671)
 livereload==2.6.3
 mkdocs==1.2.3
 mkdocs-autorefs==0.3.1
