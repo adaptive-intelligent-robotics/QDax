@@ -53,7 +53,7 @@ Issues and contributions are welcome. Please this the [documentation]() to see h
 
 ## Contributors
 
-QDax is currently developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/):
+QDax is currently developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/). Thank you to all the contributors from both teams!
 
 From AIRL:
 
@@ -67,10 +67,17 @@ From AIRL:
 - [Antoine Cully](https://www.imperial.ac.uk/people/a.cully) -->
 
 From InstaDeep:
-- [Felix Chalumeau](https://www.linkedin.com/in/f%C3%A9lix-chalumeau-083457172/)
+
+<a href="https://github.com/felixchalumeau" title="Felix Chalumeau"><img src="https://github.com/felixchalumeau.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/ranzenTom" title="Thomas Pierrot"><img src="https://github.com/ranzenTom.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/Egiob" title="Raphael Boige"><img src="https://github.com/Egiob.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/valentinmace" title="Valentin Mace"><img src="https://github.com/valentinmace.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/remidebette" title="Rémi Debette"><img src="https://github.com/remidebette.png" height="auto" width="50" style="border-radius:50%"></a>
+
+<!-- - [Felix Chalumeau](https://www.linkedin.com/in/f%C3%A9lix-chalumeau-083457172/)
 - [Thomas Pierrot](https://scholar.google.fr/citations?user=0zBiyNUAAAAJ&hl=en)
 - [Raphaël Boige](https://www.linkedin.com/in/raphaelboige/)
 - [Valentin Macé](https://www.linkedin.com/in/valentinmace/)
 - [Arthur Flajolet](https://scholar.google.com/citations?user=YYwquKkAAAAJ&hl=en)
 - [Guillaume Richard](https://scholar.google.com/citations?user=viOjnmQAAAAJ&hl=fr)
-- [Rémi Debette](https://www.linkedin.com/in/remidebette/)
+- [Rémi Debette](https://www.linkedin.com/in/remidebette/) -->
