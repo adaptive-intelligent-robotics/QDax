@@ -59,12 +59,7 @@ From the AIRL team:
 <a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a>
-<!-- - [Bryan Lim](https://limbryan.github.io/)
-- [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
-- [Luca Grillotti](https://scholar.google.com/citations?user=gY9CmssAAAAJ&hl=fr&oi=sra)
-- [Antoine Cully](https://www.imperial.ac.uk/people/a.cully) -->
-& From the InstaDeep team:
+<a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a> & From the InstaDeep team:
 <a href="https://github.com/felixchalumeau" title="Felix Chalumeau"><img src="https://github.com/felixchalumeau.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/ranzenTom" title="Thomas Pierrot"><img src="https://github.com/ranzenTom.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Egiob" title="Raphael Boige"><img src="https://github.com/Egiob.png" height="auto" width="50" style="border-radius:50%"></a>
@@ -78,3 +73,7 @@ From the AIRL team:
 - [Arthur Flajolet](https://scholar.google.com/citations?user=YYwquKkAAAAJ&hl=en)
 - [Guillaume Richard](https://scholar.google.com/citations?user=viOjnmQAAAAJ&hl=fr)
 - [Rémi Debette](https://www.linkedin.com/in/remidebette/) -->
+<!-- - [Bryan Lim](https://limbryan.github.io/)
+- [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
+- [Luca Grillotti](https://scholar.google.com/citations?user=gY9CmssAAAAJ&hl=fr&oi=sra)
+- [Antoine Cully](https://www.imperial.ac.uk/people/a.cully) -->
