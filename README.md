@@ -56,10 +56,11 @@ Issues and contributions are welcome. Please this the [documentation]() to see h
 QDax is currently developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/):
 
 From AIRL:
-<a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun" height="auto" width="50" style="border-radius:50%"></a>
+
+<a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a>
 <!-- - [Bryan Lim](https://limbryan.github.io/)
 - [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
 - [Luca Grillotti](https://scholar.google.com/citations?user=gY9CmssAAAAJ&hl=fr&oi=sra)
