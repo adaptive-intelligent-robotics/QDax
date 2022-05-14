@@ -27,7 +27,7 @@ pip install -r requirements.txt
 
 Nevertheless, we recommand to use either Docker, Singularity or conda to use the repository. Steps to do so are presented in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
 
-## Current components of QDax
+## QDax Components
 
 ### Algorithms
 - MAP-Elites
@@ -53,7 +53,7 @@ Issues and contributions are welcome. Please this the [documentation]() to see h
 
 ## Contributors
 
-QDax is currently developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/). Thank you to all the contributors from both teams!
+QDax is developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/). Thank you to all the contributors from both teams!
 
 <a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
