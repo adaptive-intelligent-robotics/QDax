@@ -210,13 +210,17 @@ def isoline_variation(
     Evolutionary Computation Conference. 2018.
     """
 
+    # Computing line_noise
+    random_key, key_line_noise = jax.random.split(random_key)
+    batch_size = jax.tree_leaves(x1)[0].shape[0]
+    line_noise = jax.random.normal(key_line_noise, shape=(batch_size,)) * line_sigma
+
     def _variation_fn(
-        x1: jnp.ndarray, x2: jnp.ndarray, random_key: RNGKey
+        x1: jnp.ndarray, x2: jnp.ndarray, key_iso_noise: RNGKey
     ) -> jnp.ndarray:
-        subkey1, subkey2 = jax.random.split(random_key)
-        iso_noise = jax.random.normal(subkey1, shape=x1.shape) * iso_sigma
-        line_noise = jax.random.normal(subkey2, shape=x2.shape) * line_sigma
-        x = (x1 + iso_noise) + line_noise * (x2 - x1)
+
+        iso_noise = jax.random.normal(key_iso_noise, shape=x1.shape) * iso_sigma
+        x = (x1 + iso_noise) + jax.vmap(jnp.multiply)((x2 - x1), line_noise)
 
         # Back in bounds if necessary (floating point issues)
         if (minval is not None) or (maxval is not None):
