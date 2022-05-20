@@ -12,7 +12,6 @@ GROUP_ID = $$(id -g)
 clean:
 	find . -type f -name "*.DS_Store" -ls -delete
 	find . | grep -E "(__pycache__|\.pyc|\.pyo)" | xargs rm -rfv
-	find . | grep -E ".pytest_cache" | xargs rm -rfv
 	find . | grep -E "nul" | xargs rm -rfv
 
 .PHONY: build
