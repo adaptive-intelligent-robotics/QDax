@@ -34,12 +34,6 @@ Nevertheless, we recommand to use either Docker, Singularity or conda to use the
 - CVT MAP-Elites
 - Policy Gradient Assisted MAP-Elites
 
-### Tasks and environments
-- Brax environments with wrappers to access feet contact and xy position of the agent in the environment.
-- AntTrap
-- AntMaze
-- PointMaze
-
 ## QDax flexibility
 
 QDax has been designed to be flexible so it's easy for anyone to extend it. For instance, MAP-Elites is designed to work with many different components: a user can hence create a new emitter and pass it to the MAPElites class without having to re-implement everything.
