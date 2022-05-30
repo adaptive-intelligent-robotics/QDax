@@ -1,8 +1,5 @@
 # added elements
 
-last_repertoire
-*logs.csv
-
 # Singularity generated files
 *.simg
 *.sif
@@ -165,3 +162,12 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+
+.dockerignore
+.gitignore
+.pre-commit-config.yaml
+Makefile
+mypy.ini
+README.md
+dev.Dockerfile
