@@ -5,10 +5,10 @@
 
 
 # QDax: Accelerated Quality-Diversity
-QDax is a tool to accelerate Quality-Diveristy (QD) and neuro-evolution algorithms through hardware accelerators and massive parallelism. QDax has been developped as a research framework: it is flexible and easy to extend.
+QDax is a tool to accelerate Quality-Diversity (QD) and neuro-evolution algorithms through hardware accelerators and massive parallelism. QDax has been developped as a research framework: it is flexible and easy to extend.
 
-QDax paper: https://arxiv.org/abs/2202.01258
-QDax documentation: https://qdax.readthedocs.io/en/latest/
+- QDax [paper](https://arxiv.org/abs/2202.01258)
+- QDax [documentation](https://qdax.readthedocs.io/en/latest/)
 
 ## Hands on QDax
 [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/QDax/blob/2-instadeep-new-structure-suggestion/)
@@ -27,19 +27,18 @@ pip install -r requirements.txt
 
 Nevertheless, we recommand to use either Docker, Singularity or conda to use the repository. Steps to do so are presented in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
 
-## QDax Components
+## QDax Algorithms
+- [MAP-Elites](https://arxiv.org/abs/1504.04909)
+- [CVT MAP-Elites](https://arxiv.org/abs/1610.05729)
+- [Policy Gradient Assisted MAP-Elites](https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf)
 
-### Algorithms
-- MAP-Elites
-- CVT MAP-Elites
-- Policy Gradient Assisted MAP-Elites
-
+Those are the currently implemented algorithms but other algorithms will be released soon.
 ## QDax flexibility
 
-QDax has been designed to be flexible so it's easy for anyone to extend it. For instance, MAP-Elites is designed to work with many different components: a user can hence create a new emitter and pass it to the MAPElites class without having to re-implement everything.
+QDax has been designed to be flexible so it's easy for anyone to extend it. For instance, MAP-Elites is designed to work with many different components: a user can hence create a new emitter and pass it to the MAPElites class so he does not have to re-implement the evaluation and addition steps.
 
 ## Contributions
-Issues and contributions are welcome. Please this the [documentation]() to see how you can contribute to the project.
+Issues and contributions are welcome. Please this the [documentation](https://qdax.readthedocs.io/en/latest/guides/CONTRIBUTING/) to see how you can contribute to the project.
 
 ## Related Projects
 - [EvoJax: Hardware-Accelerated Neuroevolution](https://github.com/google/evojax). EvoJAX is a scalable, general purpose, hardware-accelerated neuroevolution toolkit. [Paper](https://arxiv.org/abs/2202.05008)

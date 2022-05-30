@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import jax
 from chex import ArrayTree
@@ -135,3 +135,29 @@ class MAPElites:
         metrics = self._metrics_function(repertoire)
 
         return repertoire, emitter_state, metrics, random_key
+
+    @partial(jax.jit, static_argnames=("self",))
+    def scan_update(
+        self,
+        carry: Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey],
+        unused: Any,
+    ) -> Tuple[Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey], Metrics]:
+        """Rewrites the update function in a way that makes it compatible with the
+        jax.lax.scan primitive.
+
+        Args:
+            carry: a tuple containing the repertoire, the emitter state and a
+                random key.
+            unused: unused element, necessary to respect jax.lax.scan API.
+
+        Returns:
+            The updated repertoire and emitter state, with a new random key and metrics.
+        """
+        repertoire, emitter_state, random_key = carry
+        (repertoire, emitter_state, metrics, random_key,) = self.update(
+            repertoire,
+            emitter_state,
+            random_key,
+        )
+
+        return (repertoire, emitter_state, random_key), metrics
