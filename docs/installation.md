@@ -40,15 +40,6 @@ There are two options for installing the dependencies using either `docker` or `
         The command `make dev_container` automatically runs the image, mounts the qdax directory, setups the GPU and forwards Neptune's credentials. Pretty handy, right?
 
 
-    ??? question "How to forward environment variables into docker"
-        You can also forward your environment variables into the docker container. For instance, assuming you have created the environment variables `NEPTUNE_USER_NAME` and `NEPTUNE_API_TOKEN`, you can run:
-
-        ```
-        sudo docker run --rm -it -e NEPTUNE_API_TOKEN=$NEPTUNE_API_TOKEN -e NEPTUNE_USER_NAME=$NEPTUNE_USER_NAME -v $QDAX_PATH:/app instadeep/qdax:$USER /bin/bash
-        ```
-
-        and you will not need to export your neptune api token or specify your neptune user name when running experiments.
-
     ??? question "How to use GPUs with Docker?"
 
         Docker also allows you to use GPUs. First, be sure you have already installed

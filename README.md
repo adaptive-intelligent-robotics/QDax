@@ -1,6 +1,6 @@
 [![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
-![pytest](https://github.com/instadeepai/QDax/actions/workflows/ci.yaml/badge.svg?branch=2-instadeep-new-structure-suggestion)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/instadeepai/QDax/blob/2-instadeep-new-structure-suggestion/LICENSE)
+![pytest](https://github.com/adaptive-intelligent-robotics/QDax/actions/workflows/ci.yaml/badge.svg?branch=main)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/adaptive-intelligent-robotics/QDax/blob/main/LICENSE)
 
 
 
@@ -11,7 +11,7 @@ QDax is a tool to accelerate Quality-Diversity (QD) and neuro-evolution algorith
 - QDax [documentation](https://qdax.readthedocs.io/en/latest/)
 
 ## Hands on QDax
-[![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/QDax/blob/2-instadeep-new-structure-suggestion/)
+[![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/)
 
 To see how QDax works, you can run this [notebook](./notebooks/mapelites_example.ipynb) on colab, it is an example of MAP-Elites evolving a population of controllers on a chosen Brax environment (Walker by default).
 
