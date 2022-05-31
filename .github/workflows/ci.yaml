@@ -19,45 +19,6 @@ jobs:
           echo "::set-output name=ci_name_ref_slug::$CI_REF_NAME_SLUG"
           echo "::set-output name=image_name::$REGISTRY/$CI_REPOSITORY_OWNER_SLUG/$CI_REPOSITORY_NAME_SLUG"
 
-  style:
-    needs: [build]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.sha }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Run pre-commits
-        run: |
-          pre-commit run --all-files isort
-          pre-commit run --all-files black
-          pre-commit run --all-files nbstripout
-          pre-commit run --all-files debug-statements
-          pre-commit run --all-files check-ast
-          pre-commit run --all-files check-merge-conflict
-
-  tests:
-    needs: [build]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.sha }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Run pytests
-        run: |
-          pytest -vv tests
-
   build:
     needs: [setup]
     runs-on: ubuntu-latest
@@ -107,14 +68,68 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push test Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: tool.Dockerfile
+          push: true
+          tags: "${{ needs.setup.outputs.image_name }}/tool:${{ github.sha }},${{ needs.setup.outputs.image_name }}/tool:${{ needs.setup.outputs.ci_name_ref_slug }}"
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  style:
+    needs: [build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/qdax/tool:${{ github.sha }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Run pre-commits
+        run: |
+          pre-commit run --all-files isort
+          pre-commit run --all-files black
+          pre-commit run --all-files nbstripout
+          pre-commit run --all-files debug-statements
+          pre-commit run --all-files check-ast
+          pre-commit run --all-files check-merge-conflict
+
+  tests:
+    needs: [build]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.sha }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Run pytests
+        run: |
+          pytest -vv tests
+
   docs:
     runs-on: ubuntu-latest
-    needs: [setup]
+    needs: [build]
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/qdax/tool:${{ github.sha }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
       - name: Build docs
         run: |
-          pip install -r docs/requirements.txt
           mkdocs build --verbose
