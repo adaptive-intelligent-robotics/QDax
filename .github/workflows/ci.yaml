@@ -102,7 +102,7 @@ jobs:
           file: dev.Dockerfile
           push: true
           target: test-image
-          tags: "${{ needs.setup.outputs.image_name }}/test:${{ needs.setup.outputs.sha }},${{ needs.setup.outputs.image_name }}/test:${{ needs.setup.outputs.ci_name_ref_slug }}"
+          tags: "${{ needs.setup.outputs.image_name }}/test:${{ github.sha }},${{ needs.setup.outputs.image_name }}/test:${{ needs.setup.outputs.ci_name_ref_slug }}"
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
