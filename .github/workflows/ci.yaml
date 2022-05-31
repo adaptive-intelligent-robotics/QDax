@@ -8,18 +8,22 @@ env:
 jobs:
   setup:
     runs-on: ubuntu-latest
+    outputs:
+      ci_name_ref_slug: ${{ steps.set_env.outputs.ci_name_ref_slug }}
+      image_name: ${{ steps.set_env.outputs.image_name }}
     steps:
       - uses: FranzDiebold/github-env-vars-action@v2
       - name: Generate global env vars
+        id: set_env
         run: |
-          echo "CI_REF_NAME_SLUG=$CI_REF_NAME_SLUG"
-          echo "IMAGE_NAME=$REGISTRY/$CI_REPOSITORY_OWNER_SLUG/$CI_REPOSITORY_NAME_SLUG"
+          echo "::set-output name=ci_name_ref_slug::$CI_REF_NAME_SLUG"
+          echo "::set-output name=image_name::$REGISTRY/$CI_REPOSITORY_OWNER_SLUG/$CI_REPOSITORY_NAME_SLUG"
 
   style:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.IMAGE_NAME }}/test:${{ env.CI_REF_NAME_SLUG }}
+      image: ${{ needs.setup.outputs.image_name }}/test:${{ needs.setup.outputs.ci_name_ref_slug }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -41,7 +45,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.IMAGE_NAME }}//test:${{ env.CI_REF_NAME_SLUG }}
+      image: ${{ needs.setup.outputs.image_name }}//test:${{ needs.setup.outputs.ci_name_ref_slug }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -78,7 +82,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ needs.setup.outputs.image_name }}
 
 #      - name: Build and push Docker image
 #        uses: docker/build-push-action@v3
@@ -98,7 +102,7 @@ jobs:
           file: dev.Dockerfile
           push: true
           target: test-image
-          tags: "${{ env.IMAGE_NAME }}/test:${{ env.CI_REF_NAME_SLUG }}"
+          tags: "${{ needs.setup.outputs.image_name }}/test:${{ needs.setup.outputs.ci_name_ref_slug }}"
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
