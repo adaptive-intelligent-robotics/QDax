@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: FranzDiebold/github-env-vars-action@v2
-        name: Generate global env vars
+      - name: Generate global env vars
         run: |
           echo "CI_REF_NAME_SLUG=$CI_REF_NAME_SLUG"
           echo "IMAGE_NAME=$REGISTRY/$CI_REPOSITORY_OWNER_SLUG/$CI_REPOSITORY_NAME_SLUG"
