@@ -83,7 +83,7 @@ def test_td3() -> None:
     td3 = TD3(config=td3_config, action_size=env.action_size)
 
     key, subkey = jax.random.split(key)
-    training_state = td3.init_fn(
+    training_state = td3.init(
         key, action_size=env.action_size, observation_size=env.observation_size
     )
 
@@ -96,10 +96,6 @@ def test_td3() -> None:
 
     # Wrap and jit play eval step function
     play_eval_step = partial(td3.play_step_fn, env=eval_env, deterministic=True)
-    # play_eval_step = jax.jit(play_eval_step)
-
-    # Wrap and jit update function
-    update = td3.update_fn
 
     # Wrap and jit eval policy function
     eval_policy = partial(
@@ -114,7 +110,7 @@ def test_td3() -> None:
         env_batch_size=env_batch_size,
         grad_updates_per_step=grad_updates_per_step,
         play_step_fn=play_step,
-        update_fn=update,
+        update_fn=td3.update,
     )
 
     def _scan_do_iteration(

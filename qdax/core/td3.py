@@ -88,7 +88,7 @@ class TD3:
             learning_rate=self._config.policy_learning_rate
         )
 
-    def init_fn(
+    def init(
         self, random_key: RNGKey, action_size: int, observation_size: int
     ) -> TD3TrainingState:
         """Initialise the training state of the TD3 algorithm, through creation
@@ -139,7 +139,7 @@ class TD3:
         return training_state
 
     @partial(jax.jit, static_argnames=("self", "deterministic"))
-    def _select_action_fn(
+    def _select_action(
         self,
         obs: Observation,
         policy_params: Params,
@@ -195,7 +195,7 @@ class TD3:
             environment.
         """
 
-        actions, random_key = self._select_action_fn(
+        actions, random_key = self._select_action(
             obs=env_state.obs,
             policy_params=policy_params,
             random_key=random_key,
@@ -262,7 +262,7 @@ class TD3:
         return true_return, true_returns
 
     @partial(jax.jit, static_argnames=("self",))
-    def update_fn(
+    def update(
         self,
         training_state: TD3TrainingState,
         replay_buffer: ReplayBuffer,
