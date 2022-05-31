@@ -8,22 +8,19 @@ env:
 jobs:
   setup:
     runs-on: ubuntu-latest
-    outputs:
-      ci_name_ref_slug: ${{ steps.set_env.outputs.ci_name_ref_slug }}
-      image_name: ${{ steps.set_env.outputs.image_name }}
     steps:
       - uses: FranzDiebold/github-env-vars-action@v2
       - name: Generate global env vars
         id: set_env
         run: |
-          echo "::set-output name=ci_name_ref_slug::$CI_REF_NAME_SLUG"
-          echo "::set-output name=image_name::$REGISTRY/$CI_REPOSITORY_OWNER_SLUG/$CI_REPOSITORY_NAME_SLUG"
+          echo "CI_REF_NAME_SLUG=$CI_REF_NAME_SLUG"
+          echo "IMAGE_NAME=$REGISTRY/$CI_REPOSITORY_OWNER_SLUG/$CI_REPOSITORY_NAME_SLUG"
 
   style:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ${{ needs.setup.outputs.image_name }}/test:${{ needs.setup.outputs.ci_name_ref_slug }}
+      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.sha }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -45,7 +42,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ${{ needs.setup.outputs.image_name }}//test:${{ needs.setup.outputs.ci_name_ref_slug }}
+      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.sha }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -82,7 +79,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ needs.setup.outputs.image_name }}
+          images: ${{ env.IMAGE_NAME }}
 
 #      - name: Build and push Docker image
 #        uses: docker/build-push-action@v3
@@ -102,7 +99,7 @@ jobs:
           file: dev.Dockerfile
           push: true
           target: test-image
-          tags: "${{ needs.setup.outputs.image_name }}/test:${{ needs.setup.outputs.ci_name_ref_slug }}"
+          tags: "${{ env.IMAGE_NAME }}/test:${{ needs.setup.outputs.sha }},${{ env.IMAGE_NAME }}/test:${{ needs.setup.outputs.ci_name_ref_slug }}"
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
