@@ -4,14 +4,22 @@ on: push
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/qdax
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: FranzDiebold/github-env-vars-action@v2
+        name: Generate global env vars
+        run: |
+          echo "CI_REF_NAME_SLUG=$CI_REF_NAME_SLUG"
+          echo "IMAGE_NAME=$REGISTRY/$CI_REPOSITORY_OWNER_SLUG/$CI_REPOSITORY_NAME_SLUG"
+
   style:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.ref_name }}
+      image: ${{ env.IMAGE_NAME }}/test:${{ env.CI_REF_NAME_SLUG }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -33,7 +41,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/qdax/test:${{ github.ref_name }}
+      image: ${{ env.IMAGE_NAME }}//test:${{ env.CI_REF_NAME_SLUG }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -47,6 +55,7 @@ jobs:
           pytest -vv tests
 
   build:
+    needs: [setup]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -89,13 +98,14 @@ jobs:
           file: dev.Dockerfile
           push: true
           target: test-image
-          tags: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/test:${{github.ref_name}}"
+          tags: "${{ env.IMAGE_NAME }}/test:${{ env.CI_REF_NAME_SLUG }}"
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   docs:
     runs-on: ubuntu-latest
+    needs: [setup]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
