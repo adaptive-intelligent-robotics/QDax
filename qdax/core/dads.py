@@ -419,22 +419,21 @@ class DADS(SAC):
             the replay buffer
             the training metrics
         """
-        # TODO: output rngkey in those methods!!
+
         @jax.jit
         def _update_dynamics(
-            operand: Tuple[DadsTrainingState, QDTransition, RNGKey]
+            operand: Tuple[DadsTrainingState, QDTransition]
         ) -> Tuple[Params, float, optax.OptState]:
             """Update the dynamics network, independently of other networks. Called every
             `dynamics_update_freq` training steps.
             """
-            training_state, samples, subkey = operand
+            training_state, samples = operand
 
             dynamics_loss, dynamics_gradient = jax.value_and_grad(
                 self._dynamics_loss_fn,
             )(
                 training_state.dynamics_params,
                 samples,
-                subkey,
             )
 
             (
@@ -454,13 +453,13 @@ class DADS(SAC):
 
         @jax.jit
         def _not_update_dynamics(
-            operand: Tuple[DadsTrainingState, QDTransition, RNGKey]
+            operand: Tuple[DadsTrainingState, QDTransition]
         ) -> Tuple[Params, float, optax.OptState]:
             """Fake update of the dynamics, called every time we don't want to update
             the dynamics while we update the other networks.
             """
 
-            training_state, _samples, _subkey = operand
+            training_state, _samples = operand
 
             return (
                 training_state.dynamics_params,
@@ -502,12 +501,11 @@ class DADS(SAC):
         samples = samples.replace(next_state_desc=next_state_desc, rewards=rewards)
 
         # Update skill-dynamics
-        random_key, subkey = jax.random.split(random_key)
         (dynamics_params, dynamics_loss, dynamics_optimizer_state,) = jax.lax.cond(
             training_state.steps % self._config.dynamics_update_freq == 0,
             _update_dynamics,
             _not_update_dynamics,
-            (training_state, samples, subkey),
+            (training_state, samples),
         )
 
         if not self._config.fix_alpha:

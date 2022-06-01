@@ -19,7 +19,7 @@ def test_diayn() -> None:
 
     env_name = "pointmaze"
     seed = 0
-    env_batch_size = 250
+    env_batch_size = 200
     num_steps = 10000
     warmup_steps = 0
     buffer_size = 10000
