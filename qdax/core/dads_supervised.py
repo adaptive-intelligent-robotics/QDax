@@ -18,7 +18,7 @@ from qdax.types import Metrics, Reward
 
 
 @dataclass
-class SmerlDadsConfig(DadsConfig):
+class DadsSmerlConfig(DadsConfig):
     """Configuration for the SMERL_DADS algorithm"""
 
     diversity_reward_scale: float = 1.0
@@ -36,9 +36,9 @@ class DADSSMERL(DADS):
     reward).
     """
 
-    def __init__(self, config: SmerlDadsConfig, action_size: int, descriptor_size: int):
+    def __init__(self, config: DadsSmerlConfig, action_size: int, descriptor_size: int):
         super(DADSSMERL, self).__init__(config, action_size, descriptor_size)
-        self._config: SmerlDadsConfig = config
+        self._config: DadsSmerlConfig = config
 
     @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(

@@ -17,7 +17,7 @@ from qdax.types import Metrics, Reward
 
 
 @dataclass
-class SmerlDiaynConfig(DiaynConfig):
+class DiaynSmerlConfig(DiaynConfig):
     """Configuration for the SMERL_DIAYN algorithm"""
 
     diversity_reward_scale: float = 1.0
@@ -35,9 +35,9 @@ class DIAYNSMERL(DIAYN):
     the `extrinsic` reward).
     """
 
-    def __init__(self, config: SmerlDiaynConfig, action_size: int):
+    def __init__(self, config: DiaynSmerlConfig, action_size: int):
         super(DIAYNSMERL, self).__init__(config, action_size)
-        self._config: SmerlDiaynConfig = config
+        self._config: DiaynSmerlConfig = config
 
     @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(
