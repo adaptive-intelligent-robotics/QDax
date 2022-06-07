@@ -6,7 +6,7 @@ import pytest
 from brax.envs import State as EnvState
 
 from qdax import environments
-from qdax.core.neuroevolution.buffers.buffers import ReplayBuffer, Transition
+from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.mdp_utils import do_iteration_fn, warmstart_buffer
 from qdax.core.td3 import TD3, TD3Config, TD3TrainingState
 

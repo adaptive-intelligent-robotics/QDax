@@ -14,7 +14,7 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from brax.training.distribution import NormalTanhDistribution
 
-from qdax.core.neuroevolution.buffers.buffers import ReplayBuffer, Transition
+from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.losses.sac_loss import make_sac_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.sac_networks import make_sac_networks
