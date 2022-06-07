@@ -41,7 +41,6 @@ def test_diayn() -> None:
     descriptor_full_state = False
 
     # Initialize environments
-    env_batch_size = env_batch_size
     assert (
         env_batch_size % num_skills == 0
     ), "Parameter env_batch_size should be a multiple of num_skills"
@@ -76,11 +75,6 @@ def test_diayn() -> None:
         buffer_size=buffer_size, transition=dummy_transition
     )
 
-    if descriptor_full_state:
-        descriptor_size = env.observation_size
-    else:
-        descriptor_size = env.behavior_descriptor_length
-
     diayn_config = DiaynConfig(
         # SAC config
         batch_size=batch_size,
@@ -100,6 +94,12 @@ def test_diayn() -> None:
     )
 
     diayn = DIAYN(config=diayn_config, action_size=env.action_size)
+
+    if descriptor_full_state:
+        descriptor_size = env.observation_size
+    else:
+        descriptor_size = env.behavior_descriptor_length
+
     training_state = diayn.init(
         key,
         action_size=env.action_size,
