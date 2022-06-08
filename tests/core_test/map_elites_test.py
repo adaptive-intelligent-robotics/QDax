@@ -29,7 +29,7 @@ def test_map_elites() -> None:
     max_bd = 1.0
 
     # Init environment
-    env = environments.create(env_name)
+    env = environments.create(env_name, episode_length=episode_length)
 
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
@@ -65,6 +65,8 @@ def test_map_elites() -> None:
         """
 
         actions = policy_network.apply(policy_params, env_state.obs)
+
+        state_desc = env_state.info["state_descriptor"]
         next_state = env.step(env_state, actions)
 
         transition = QDTransition(
@@ -74,7 +76,7 @@ def test_map_elites() -> None:
             dones=next_state.done,
             actions=actions,
             truncations=next_state.info["truncation"],
-            state_desc=env_state.info["state_descriptor"],
+            state_desc=state_desc,
             next_state_desc=next_state.info["state_descriptor"],
         )
 
