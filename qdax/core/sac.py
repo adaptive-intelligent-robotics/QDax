@@ -151,7 +151,7 @@ class SAC:
         return training_state
 
     @partial(jax.jit, static_argnames=("self", "deterministic"))
-    def _select_action(
+    def select_action(
         self,
         obs: Observation,
         policy_params: Params,
@@ -168,8 +168,7 @@ class SAC:
                 Defaults to False.
 
         Returns:
-            selected action
-            jax random key
+            The selected action and a new random key.
         """
 
         dist_params = self._policy.apply(policy_params, obs)
@@ -179,7 +178,7 @@ class SAC:
 
         else:
             # The first half of parameters is for mean and the second half for variance
-            actions = jax.nn.tanh(dist_params[:, : dist_params.shape[1] // 2])
+            actions = jax.nn.tanh(dist_params[..., : dist_params.shape[-1] // 2])
 
         return actions, random_key
 
@@ -225,7 +224,7 @@ class SAC:
             normalized_obs = obs
             normalization_running_stats = training_state.normalization_running_stats
 
-        actions, random_key = self._select_action(
+        actions, random_key = self.select_action(
             obs=normalized_obs,
             policy_params=policy_params,
             random_key=random_key,

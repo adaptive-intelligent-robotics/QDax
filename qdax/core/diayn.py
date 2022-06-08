@@ -202,7 +202,7 @@ class DIAYN(SAC):
             training_state: the DIAYN training state
             skills: the skills concatenated to the observation vector
             env: the environment
-            deterministic: the whether or not to select action in a deterministic way.
+            deterministic: whether or not to select action in a deterministic way.
                 Defaults to False.
 
         Returns:
@@ -221,7 +221,7 @@ class DIAYN(SAC):
         else:
             state_desc = jnp.zeros((env_state.obs.shape[0], 2))
 
-        actions, random_key = self._select_action(
+        actions, random_key = self.select_action(
             obs=obs,
             policy_params=policy_params,
             random_key=random_key,
