@@ -139,7 +139,7 @@ class TD3:
         return training_state
 
     @partial(jax.jit, static_argnames=("self", "deterministic"))
-    def _select_action(
+    def select_action(
         self,
         obs: Observation,
         policy_params: Params,
@@ -195,7 +195,7 @@ class TD3:
             environment.
         """
 
-        actions, random_key = self._select_action(
+        actions, random_key = self.select_action(
             obs=env_state.obs,
             policy_params=policy_params,
             random_key=random_key,

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import jax.numpy as jnp
 import matplotlib as mpl
@@ -6,6 +6,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -258,3 +259,92 @@ def plot_map_elites_results(
     )
 
     return fig, axes
+
+
+def multiline(
+    xs: Iterable, ys: Iterable, c: Iterable, ax: Optional[Axes] = None, **kwargs: Any
+) -> LineCollection:
+    """Plot lines with different colorings (with c a container of numbers mapped to
+        colormap)
+
+    Note:
+        len(xs) == len(ys) == len(c) is the number of line segments
+        len(xs[i]) == len(ys[i]) is the number of points for each line (indexed by i)
+
+    Args:
+        xs: _description_
+        ys: _description_
+        c: _description_
+        ax: _description_. Defaults to None.
+
+    Returns:
+        _description_
+    """
+
+    # find axes
+    ax = plt.gca() if ax is None else ax
+
+    # create LineCollection
+    segments = [np.column_stack([x, y]) for x, y in zip(xs, ys)]
+    lc = LineCollection(segments, **kwargs)
+
+    # set coloring of line segments
+    # Note: error if c is given as a list here.
+    lc.set_array(np.asarray(c))
+
+    # add lines to axes and rescale
+    # Note: adding a collection doesn't autoscalee xlim/ylim
+    ax.add_collection(lc)
+    ax.autoscale()
+    return lc
+
+
+def plot_skills_trajectory(
+    trajectories: jnp.ndarray,
+    skills: jnp.ndarray,
+    min_values: jnp.ndarray,
+    max_values: jnp.ndarray,
+) -> Tuple[Figure, Axes]:
+    """Plots skills trajectories on a single plot with
+    different colors to recognize the skills.
+
+    The plot can contain several trajectories of the same
+    skill.
+
+    Args:
+        trajectories: skills trajectories
+        skills: skills corresponding to the given trajectories
+        min_values: minimum values that can be taken by the steps
+            of the trajectory
+        max_values: maximum values that can be taken by the steps
+            of the trajectory
+
+    Returns:
+        A figure and axes.
+    """
+    # get number of skills
+    num_skills = skills.shape[1]
+
+    # create color from possible skills (indexed from 0 to num skills - 1)
+    c = skills.argmax(axis=1)
+
+    # create the figure
+    fig, ax = plt.subplots()
+
+    # get lines from the trajectories
+    xs, ys = trajectories
+    lc = multiline(xs=xs, ys=ys, c=c, ax=ax, cmap="gist_rainbow")
+
+    # set aesthetics
+    ax.set_ylim(min_values[1], max_values[1])
+    ax.set_xlim(min_values[0], max_values[0])
+    ax.set_xlabel("Behavior Dimension 1")
+    ax.set_ylabel("Behavior Dimension 2")
+    ax.set_aspect("equal")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    axcb = fig.colorbar(lc, cax=cax)
+    axcb.set_ticks(np.arange(num_skills, dtype=int))
+    ax.set_title("Skill trajectories")
+
+    return fig, ax
