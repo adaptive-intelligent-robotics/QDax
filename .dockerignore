@@ -166,7 +166,6 @@ cython_debug/
 
 .dockerignore
 .gitignore
-.pre-commit-config.yaml
 Makefile
 mypy.ini
 README.md
