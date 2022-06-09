@@ -259,7 +259,7 @@ class DADS(SAC):
         else:
             state_desc = jnp.zeros((env_state.obs.shape[0], 2))
 
-        actions, random_key = self._select_action(
+        actions, random_key = self.select_action(
             obs=obs,
             policy_params=policy_params,
             random_key=random_key,
