@@ -116,7 +116,13 @@ jobs:
 
       - name: Run pytests
         run: |
-          pytest -vv tests
+          coverage run -m pytest -vv tests
+          coverage xml
+
+          curl -Os https://uploader.codecov.io/latest/linux/codecov
+
+          chmod +x codecov
+          ./codecov
 
   docs:
     runs-on: ubuntu-latest
