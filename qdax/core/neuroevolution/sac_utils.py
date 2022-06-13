@@ -5,6 +5,7 @@ training state we can update running statistics for normalization for instance.
 We are currently thinking about elegant ways to unify both in order to avoid code
 repetition.
 """
+# TODO: Uniformize with the functions in mdp_utils
 from functools import partial
 from typing import Any, Callable, Tuple
 
@@ -43,14 +44,14 @@ def warmstart_buffer(
     and the new state of the environment.
     """
 
-    def _scannable_play_step_fn(
+    def _scan_play_step_fn(
         carry: Tuple[EnvState, TrainingState], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, TrainingState], Transition]:
         env_state, training_state, transitions = play_step_fn(*carry)
         return (env_state, training_state), transitions
 
     (env_state, training_state), transitions = jax.lax.scan(
-        _scannable_play_step_fn,
+        _scan_play_step_fn,
         (env_state, training_state),
         (),
         length=num_warmstart_steps // env_batch_size,
@@ -78,14 +79,14 @@ def generate_unroll(
     episode and the transitions of the episode.
     """
 
-    def _scannable_play_step_fn(
+    def _scan_play_step_fn(
         carry: Tuple[EnvState, TrainingState], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, TrainingState], Transition]:
         env_state, training_state, transitions = play_step_fn(*carry)
         return (env_state, training_state), transitions
 
     (state, training_state), transitions = jax.lax.scan(
-        _scannable_play_step_fn,
+        _scan_play_step_fn,
         (init_state, training_state),
         (),
         length=episode_length,
@@ -132,7 +133,7 @@ def do_iteration_fn(
     metrics.
     """
 
-    def _scannable_update_fn(
+    def _scan_update_fn(
         carry: Tuple[TrainingState, ReplayBuffer], unused_arg: Any
     ) -> Tuple[Tuple[TrainingState, ReplayBuffer], Metrics]:
         training_state, replay_buffer, metrics = update_fn(*carry)
@@ -146,7 +147,7 @@ def do_iteration_fn(
     num_updates = int(grad_updates_per_step * env_batch_size)
 
     (training_state, replay_buffer), metrics = jax.lax.scan(
-        _scannable_update_fn,
+        _scan_update_fn,
         (training_state, replay_buffer),
         (),
         length=num_updates,
