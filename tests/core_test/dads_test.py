@@ -17,7 +17,7 @@ from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
 def test_dads() -> None:
     """Launches and monitors the training of the agent."""
 
-    env_name = "pointmaze"
+    env_name = "ant_omni"
     seed = 0
     env_batch_size = 200
     num_steps = 10000
@@ -40,7 +40,7 @@ def test_dads() -> None:
     num_skills = 5
     dynamics_update_freq = 1
     normalize_target = True
-    descriptor_full_state = False
+    descriptor_full_state = True
 
     # Initialize environments
     env_batch_size = env_batch_size
@@ -106,7 +106,7 @@ def test_dads() -> None:
     dads = DADS(
         config=dads_config,
         action_size=env.action_size,
-        descriptor_size=env.state_descriptor_length,
+        descriptor_size=descriptor_size,
     )
     training_state = dads.init(
         key,
