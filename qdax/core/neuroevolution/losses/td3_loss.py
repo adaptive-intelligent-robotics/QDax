@@ -56,11 +56,12 @@ def make_td3_loss_fn(
         target_policy_params: Params,
         target_critic_params: Params,
         transitions: Transition,
-        key: RNGKey,
+        random_key: RNGKey,
     ) -> jnp.ndarray:
         """Critics loss function for TD3 agent"""
         noise = (
-            jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
+            jax.random.normal(random_key, shape=transitions.actions.shape)
+            * policy_noise
         ).clip(-noise_clip, noise_clip)
 
         next_action = (
