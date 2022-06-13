@@ -14,7 +14,7 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from brax.training.distribution import NormalTanhDistribution
 
-from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.diayn_loss import make_diayn_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.diayn_networks import make_diayn_networks
@@ -349,33 +349,45 @@ class DIAYN(SAC):
         )
 
     @partial(jax.jit, static_argnames=("self",))
-    def _update_networks(
+    def update(
         self,
         training_state: DiaynTrainingState,
-        transitions: QDTransition,
-        random_key: RNGKey,
-    ) -> Tuple[DiaynTrainingState, Metrics]:
-        """Updates all the networks of the training state.
+        replay_buffer: ReplayBuffer,
+    ) -> Tuple[DiaynTrainingState, ReplayBuffer, Metrics]:
+        """Performs a training step to update the policy, the critic and the
+        discriminator parameters.
 
         Args:
-            training_state: the current training state.
-            transitions: transitions sampled from the replay buffer.
-            random_key: a random key to handle stochastic operations.
+            training_state: the current DIAYN training state
+            replay_buffer: the replay buffer
 
         Returns:
-            The update training state and metrics.
+            the updated DIAYN training state
+            the replay buffer
+            the training metrics
         """
-        random_key, subkey = jax.random.split(random_key)
+        # sample a batch of transitions in the buffer
+        random_key = training_state.random_key
 
-        # Compute discriminator loss and gradients
-        discriminator_loss, discriminator_gradient = jax.value_and_grad(
-            self._discriminator_loss_fn
-        )(
-            training_state.discriminator_params,
-            transitions=transitions,
+        samples, random_key = replay_buffer.sample(
+            random_key,
+            sample_size=self._config.batch_size,
         )
 
-        # update discriminator
+        if self._config.descriptor_full_state:
+            state_desc = samples.obs[:, : -self._config.num_skills]
+            next_state_desc = samples.next_obs[:, : -self._config.num_skills]
+            samples = samples.replace(
+                state_desc=state_desc, next_state_desc=next_state_desc
+            )
+
+        rewards = self._compute_reward(samples, training_state)
+        samples = samples.replace(rewards=rewards)
+
+        random_key, subkey = jax.random.split(random_key)
+        discriminator_loss, discriminator_gradient = jax.value_and_grad(
+            self._discriminator_loss_fn
+        )(training_state.discriminator_params, transitions=samples)
         (
             discriminator_updates,
             discriminator_optimizer_state,
@@ -387,12 +399,12 @@ class DIAYN(SAC):
         )
 
         if not self._config.fix_alpha:
-            # Update alpha
+            # update alpha
             random_key, subkey = jax.random.split(random_key)
             alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
                 training_state.alpha_params,
                 training_state.policy_params,
-                transitions=transitions,
+                transitions=samples,
                 random_key=subkey,
             )
 
@@ -408,18 +420,17 @@ class DIAYN(SAC):
             alpha_loss = 0.0
         alpha = jnp.exp(training_state.alpha_params)
 
-        # Update critic
+        # update critic
         random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
             training_state.critic_params,
             training_state.policy_params,
             training_state.target_critic_params,
             alpha,
-            transitions=transitions,
+            transitions=samples,
             random_key=subkey,
         )
 
-        # update critic
         (critic_updates, critic_optimizer_state,) = self._critic_optimizer.update(
             critic_gradient, training_state.critic_optimizer_state
         )
@@ -432,14 +443,13 @@ class DIAYN(SAC):
             critic_params,
         )
 
-        # Update actor
+        # update actor
         random_key, subkey = jax.random.split(random_key)
-
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
             training_state.policy_params,
             training_state.critic_params,
             alpha,
-            transitions=transitions,
+            transitions=samples,
             random_key=subkey,
         )
         (policy_updates, policy_optimizer_state,) = self._policy_optimizer.update(
@@ -449,7 +459,7 @@ class DIAYN(SAC):
             training_state.policy_params, policy_updates
         )
 
-        # Create new training state
+        # create new training state
         new_training_state = DiaynTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -469,49 +479,4 @@ class DIAYN(SAC):
             "discriminator_loss": discriminator_loss,
             "alpha_loss": alpha_loss,
         }
-
-        return new_training_state, metrics
-
-    @partial(jax.jit, static_argnames=("self",))
-    def update(
-        self,
-        training_state: DiaynTrainingState,
-        replay_buffer: ReplayBuffer,
-    ) -> Tuple[DiaynTrainingState, ReplayBuffer, Metrics]:
-        """Performs a training step to update the policy, the critic and the
-        discriminator parameters.
-
-        Args:
-            training_state: the current DIAYN training state
-            replay_buffer: the replay buffer
-
-        Returns:
-            the updated DIAYN training state
-            the replay buffer
-            the training metrics
-        """
-        # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-
-        samples, random_key = replay_buffer.sample(
-            random_key,
-            sample_size=self._config.batch_size,
-        )
-
-        # Optionally replace the state descriptor by the observation
-        if self._config.descriptor_full_state:
-            state_desc = samples.obs[:, : -self._config.num_skills]
-            next_state_desc = samples.next_obs[:, : -self._config.num_skills]
-            samples = samples.replace(
-                state_desc=state_desc, next_state_desc=next_state_desc
-            )
-
-        # Compute the rewards
-        rewards = self._compute_reward(samples, training_state)
-        samples = samples.replace(rewards=rewards)
-
-        new_training_state, metrics = self._update_networks(
-            training_state, transitions=samples, random_key=random_key
-        )
-
         return new_training_state, replay_buffer, metrics

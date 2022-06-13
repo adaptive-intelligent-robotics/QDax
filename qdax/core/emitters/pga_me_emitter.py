@@ -12,7 +12,7 @@ from jax.tree_util import tree_map
 
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.networks import QModule
 from qdax.environments.base_wrappers import QDEnv

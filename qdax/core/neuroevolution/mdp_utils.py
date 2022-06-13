@@ -7,7 +7,7 @@ import jax.numpy as jnp
 from brax.envs import State as EnvState
 from flax.struct import PyTreeNode
 
-from qdax.core.neuroevolution.buffers.buffer import (
+from qdax.core.neuroevolution.buffers.buffers import (
     QDTransition,
     ReplayBuffer,
     Transition,

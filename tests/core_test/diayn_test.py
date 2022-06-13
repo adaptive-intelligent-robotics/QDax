@@ -10,7 +10,7 @@ from brax.envs import State as EnvState
 
 from qdax import environments
 from qdax.core.diayn import DIAYN, DiaynConfig, DiaynTrainingState
-from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
 
 

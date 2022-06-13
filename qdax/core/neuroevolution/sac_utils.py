@@ -1,17 +1,15 @@
-"""Functions similar to the ones in mdp_utils, the main difference is the assumption
+"""Functions similar to the ones in rl_utils, the main difference is the assumption
 that the policy parameters are included in the training state. By passing this whole
 training state we can update running statistics for normalization for instance.
-
-We are currently thinking about elegant ways to unify both in order to avoid code
-repetition.
 """
+# TODO: Uniformize with the functions in rl_utils to simplify the API
 from functools import partial
 from typing import Any, Callable, Tuple
 
 import jax
 from brax.envs import State as EnvState
 
-from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
+from qdax.core.neuroevolution.buffers.buffers import ReplayBuffer, Transition
 from qdax.core.neuroevolution.mdp_utils import TrainingState
 from qdax.types import Metrics
 

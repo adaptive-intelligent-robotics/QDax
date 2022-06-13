@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from brax.training.distribution import ParametricDistribution
 
-from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.core.neuroevolution.buffers.buffers import QDTransition
 from qdax.core.neuroevolution.losses.sac_loss import make_sac_loss_fn
 from qdax.types import Action, Observation, Params, RNGKey, StateDescriptor
 

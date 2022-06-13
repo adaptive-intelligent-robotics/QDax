@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.core.neuroevolution.buffers.buffers import QDTransition
 from qdax.types import Descriptor
 
 

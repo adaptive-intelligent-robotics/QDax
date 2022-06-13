@@ -10,7 +10,7 @@ from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_cen
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.core.neuroevolution.buffers.buffers import QDTransition
 from qdax.core.neuroevolution.mdp_utils import scoring_function
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import EnvState, Params, RNGKey

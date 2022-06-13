@@ -11,7 +11,7 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from jax import numpy as jnp
 
-from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
+from qdax.core.neuroevolution.buffers.buffers import ReplayBuffer, Transition
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.mdp_utils import (
     TrainingState,

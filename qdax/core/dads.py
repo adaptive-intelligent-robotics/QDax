@@ -14,7 +14,7 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from brax.training.distribution import NormalTanhDistribution
 
-from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.dads_loss import make_dads_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.dads_networks import make_dads_networks
@@ -402,167 +402,6 @@ class DADS(SAC):
         )
 
     @partial(jax.jit, static_argnames=("self",))
-    def _update_dynamics(
-        self, operand: Tuple[DadsTrainingState, QDTransition, RNGKey]
-    ) -> Tuple[Params, float, optax.OptState]:
-        """Update the dynamics network, independently of other networks. Called every
-        `dynamics_update_freq` training steps.
-        """
-        training_state, samples, _subkey = operand
-
-        dynamics_loss, dynamics_gradient = jax.value_and_grad(self._dynamics_loss_fn,)(
-            training_state.dynamics_params,
-            samples,
-        )
-
-        (dynamics_updates, dynamics_optimizer_state,) = self._dynamics_optimizer.update(
-            dynamics_gradient, training_state.dynamics_optimizer_state
-        )
-        dynamics_params = optax.apply_updates(
-            training_state.dynamics_params, dynamics_updates
-        )
-        return (
-            dynamics_params,
-            dynamics_loss,
-            dynamics_optimizer_state,
-        )
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _not_update_dynamics(
-        self, operand: Tuple[DadsTrainingState, QDTransition, RNGKey]
-    ) -> Tuple[Params, float, optax.OptState]:
-        """Fake update of the dynamics, called every time we don't want to update
-        the dynamics while we update the other networks.
-        """
-
-        training_state, _samples, _subkey = operand
-
-        return (
-            training_state.dynamics_params,
-            jnp.nan,
-            training_state.dynamics_optimizer_state,
-        )
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _update_networks(
-        self,
-        training_state: DadsTrainingState,
-        transitions: QDTransition,
-        random_key: RNGKey,
-    ) -> Tuple[DadsTrainingState, Metrics]:
-        """Updates the networks involved in DADS.
-
-        Args:
-            training_state: the current training state of the algorithm.
-            transitions: transitions sampled from a replay buffer.
-            random_key: a random key to handle stochasticity.
-
-        Returns:
-            The updated training state and training metrics.
-        """
-
-        random_key, subkey = jax.random.split(random_key)
-
-        # Update skill-dynamics
-        (dynamics_params, dynamics_loss, dynamics_optimizer_state,) = jax.lax.cond(
-            training_state.steps % self._config.dynamics_update_freq == 0,
-            self._update_dynamics,
-            self._not_update_dynamics,
-            (training_state, transitions, subkey),
-        )
-
-        random_key, subkey = jax.random.split(random_key)
-
-        if not self._config.fix_alpha:
-            # update alpha
-            alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
-                training_state.alpha_params,
-                training_state.policy_params,
-                transitions=transitions,
-                random_key=subkey,
-            )
-
-            (alpha_updates, alpha_optimizer_state,) = self._alpha_optimizer.update(
-                alpha_gradient, training_state.alpha_optimizer_state
-            )
-            alpha_params = optax.apply_updates(
-                training_state.alpha_params, alpha_updates
-            )
-        else:
-            alpha_params = training_state.alpha_params
-            alpha_optimizer_state = training_state.alpha_optimizer_state
-            alpha_loss = 0.0
-        alpha = jnp.exp(training_state.alpha_params)
-
-        # Update critic
-        random_key, subkey = jax.random.split(random_key)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
-            training_state.critic_params,
-            training_state.policy_params,
-            training_state.target_critic_params,
-            alpha,
-            transitions=transitions,
-            random_key=subkey,
-        )
-
-        (critic_updates, critic_optimizer_state,) = self._critic_optimizer.update(
-            critic_gradient, training_state.critic_optimizer_state
-        )
-        critic_params = optax.apply_updates(
-            training_state.critic_params, critic_updates
-        )
-        target_critic_params = jax.tree_multimap(
-            lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
-            training_state.target_critic_params,
-            critic_params,
-        )
-
-        # Update actor
-        random_key, subkey = jax.random.split(random_key)
-
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            training_state.policy_params,
-            training_state.critic_params,
-            alpha,
-            transitions=transitions,
-            random_key=subkey,
-        )
-        (policy_updates, policy_optimizer_state,) = self._policy_optimizer.update(
-            policy_gradient, training_state.policy_optimizer_state
-        )
-        policy_params = optax.apply_updates(
-            training_state.policy_params, policy_updates
-        )
-
-        # Create new training state
-        new_training_state = DadsTrainingState(
-            policy_optimizer_state=policy_optimizer_state,
-            policy_params=policy_params,
-            critic_optimizer_state=critic_optimizer_state,
-            critic_params=critic_params,
-            alpha_optimizer_state=alpha_optimizer_state,
-            alpha_params=alpha_params,
-            target_critic_params=target_critic_params,
-            dynamics_optimizer_state=dynamics_optimizer_state,
-            dynamics_params=dynamics_params,
-            random_key=random_key,
-            normalization_running_stats=training_state.normalization_running_stats,
-            steps=training_state.steps + 1,
-        )
-        metrics = {
-            "actor_loss": policy_loss,
-            "critic_loss": critic_loss,
-            "dynamics_loss": dynamics_loss,
-            "alpha_loss": alpha_loss,
-            "alpha": alpha,
-            "training_observed_reward_mean": jnp.mean(transitions.rewards),
-            "target_mean": jnp.mean(transitions.next_state_desc),
-            "target_std": jnp.std(transitions.next_state_desc),
-        }
-
-        return new_training_state, metrics
-
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DadsTrainingState,
@@ -580,6 +419,53 @@ class DADS(SAC):
             the replay buffer
             the training metrics
         """
+
+        @jax.jit
+        def _update_dynamics(
+            operand: Tuple[DadsTrainingState, QDTransition]
+        ) -> Tuple[Params, float, optax.OptState]:
+            """Update the dynamics network, independently of other networks. Called every
+            `dynamics_update_freq` training steps.
+            """
+            training_state, samples = operand
+
+            dynamics_loss, dynamics_gradient = jax.value_and_grad(
+                self._dynamics_loss_fn,
+            )(
+                training_state.dynamics_params,
+                samples,
+            )
+
+            (
+                dynamics_updates,
+                dynamics_optimizer_state,
+            ) = self._dynamics_optimizer.update(
+                dynamics_gradient, training_state.dynamics_optimizer_state
+            )
+            dynamics_params = optax.apply_updates(
+                training_state.dynamics_params, dynamics_updates
+            )
+            return (
+                dynamics_params,
+                dynamics_loss,
+                dynamics_optimizer_state,
+            )
+
+        @jax.jit
+        def _not_update_dynamics(
+            operand: Tuple[DadsTrainingState, QDTransition]
+        ) -> Tuple[Params, float, optax.OptState]:
+            """Fake update of the dynamics, called every time we don't want to update
+            the dynamics while we update the other networks.
+            """
+
+            training_state, _samples = operand
+
+            return (
+                training_state.dynamics_params,
+                jnp.nan,
+                training_state.dynamics_optimizer_state,
+            )
 
         # Sample a batch of transitions in the buffer
         random_key = training_state.random_key
@@ -614,8 +500,98 @@ class DADS(SAC):
         # Update the transitions
         samples = samples.replace(next_state_desc=next_state_desc, rewards=rewards)
 
-        new_training_state, metrics = self._update_networks(
-            training_state, transitions=samples, random_key=random_key
+        # Update skill-dynamics
+        (dynamics_params, dynamics_loss, dynamics_optimizer_state,) = jax.lax.cond(
+            training_state.steps % self._config.dynamics_update_freq == 0,
+            _update_dynamics,
+            _not_update_dynamics,
+            (training_state, samples),
         )
 
+        if not self._config.fix_alpha:
+            # update alpha
+            random_key, subkey = jax.random.split(random_key)
+            alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
+                training_state.alpha_params,
+                training_state.policy_params,
+                transitions=samples,
+                random_key=subkey,
+            )
+
+            (alpha_updates, alpha_optimizer_state,) = self._alpha_optimizer.update(
+                alpha_gradient, training_state.alpha_optimizer_state
+            )
+            alpha_params = optax.apply_updates(
+                training_state.alpha_params, alpha_updates
+            )
+        else:
+            alpha_params = training_state.alpha_params
+            alpha_optimizer_state = training_state.alpha_optimizer_state
+            alpha_loss = 0.0
+        alpha = jnp.exp(training_state.alpha_params)
+
+        # Update critic
+        random_key, subkey = jax.random.split(random_key)
+        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
+            training_state.critic_params,
+            training_state.policy_params,
+            training_state.target_critic_params,
+            alpha,
+            transitions=samples,
+            random_key=subkey,
+        )
+
+        (critic_updates, critic_optimizer_state,) = self._critic_optimizer.update(
+            critic_gradient, training_state.critic_optimizer_state
+        )
+        critic_params = optax.apply_updates(
+            training_state.critic_params, critic_updates
+        )
+        target_critic_params = jax.tree_multimap(
+            lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
+            training_state.target_critic_params,
+            critic_params,
+        )
+
+        # Update actor
+        random_key, subkey = jax.random.split(random_key)
+        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+            training_state.policy_params,
+            training_state.critic_params,
+            alpha,
+            transitions=samples,
+            random_key=subkey,
+        )
+        (policy_updates, policy_optimizer_state,) = self._policy_optimizer.update(
+            policy_gradient, training_state.policy_optimizer_state
+        )
+        policy_params = optax.apply_updates(
+            training_state.policy_params, policy_updates
+        )
+
+        # Create new training state
+        new_training_state = DadsTrainingState(
+            policy_optimizer_state=policy_optimizer_state,
+            policy_params=policy_params,
+            critic_optimizer_state=critic_optimizer_state,
+            critic_params=critic_params,
+            alpha_optimizer_state=alpha_optimizer_state,
+            alpha_params=alpha_params,
+            target_critic_params=target_critic_params,
+            dynamics_optimizer_state=dynamics_optimizer_state,
+            dynamics_params=dynamics_params,
+            random_key=random_key,
+            normalization_running_stats=training_state.normalization_running_stats,
+            steps=training_state.steps + 1,
+        )
+        metrics = {
+            "actor_loss": policy_loss,
+            "critic_loss": critic_loss,
+            "dynamics_loss": dynamics_loss,
+            "alpha_loss": alpha_loss,
+            "alpha": alpha,
+            "training_diversity_reward_mean": jnp.mean(rewards),
+            "target_mean": jnp.mean(samples.next_state_desc),
+            "target_std": jnp.std(samples.next_state_desc),
+        }
         return new_training_state, replay_buffer, metrics
