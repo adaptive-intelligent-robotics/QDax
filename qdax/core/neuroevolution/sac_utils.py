@@ -2,7 +2,7 @@
 that the policy parameters are included in the training state. By passing this whole
 training state we can update running statistics for normalization for instance.
 """
-# TODO: Uniformize with the functions in rl_utils to simplify the API
+# TODO: Uniformize with the functions in mdp_utils
 from functools import partial
 from typing import Any, Callable, Tuple
 
