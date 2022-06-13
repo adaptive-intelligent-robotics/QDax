@@ -90,7 +90,7 @@ def test_diayn_smerl() -> None:
     else:
         descriptor_size = env.behavior_descriptor_length
 
-    diayn_config = DiaynSmerlConfig(
+    diayn_smerl_config = DiaynSmerlConfig(
         # SAC config
         batch_size=batch_size,
         episode_length=episode_length,
@@ -106,12 +106,13 @@ def test_diayn_smerl() -> None:
         # DIAYN config
         num_skills=num_skills,
         descriptor_full_state=descriptor_full_state,
+        # SMERL config
         diversity_reward_scale=diversity_reward_scale,
         smerl_margin=smerl_margin,
         smerl_target=smerl_target,
     )
 
-    diayn_smerl = DIAYNSMERL(config=diayn_config, action_size=env.action_size)
+    diayn_smerl = DIAYNSMERL(config=diayn_smerl_config, action_size=env.action_size)
     training_state = diayn_smerl.init(
         key,
         action_size=env.action_size,

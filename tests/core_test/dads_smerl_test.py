@@ -93,7 +93,7 @@ def test_dads_smerl() -> None:
     else:
         descriptor_size = env.behavior_descriptor_length
 
-    dads_config = DadsSmerlConfig(
+    dads_smerl_config = DadsSmerlConfig(
         # SAC config
         batch_size=batch_size,
         episode_length=episode_length,
@@ -118,7 +118,7 @@ def test_dads_smerl() -> None:
         smerl_target=smerl_target,
     )
     dads_smerl = DADSSMERL(
-        config=dads_config,
+        config=dads_smerl_config,
         action_size=env.action_size,
         descriptor_size=env.state_descriptor_length,
     )

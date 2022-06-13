@@ -51,7 +51,7 @@ class DIAYN(SAC):
     def __init__(self, config: DiaynConfig, action_size: int):
         self._config: DiaynConfig = config
         if self._config.normalize_observations:
-            raise NotImplementedError("Normalization in not implemented for DIAYN yet")
+            raise NotImplementedError("Normalization is not implemented for DIAYN yet")
 
         # define the networks
         self._policy, self._critic, self._discriminator = make_diayn_networks(
