@@ -48,6 +48,26 @@ class DiaynConfig(SacConfig):
 
 
 class DIAYN(SAC):
+    """Implements DIAYN algorithm https://arxiv.org/abs/1802.06070.
+
+    Note that the select action function is inherited from SAC algorithm.
+
+    In the current implementation, we suppose that the skills are fixed one
+    hot vectors, and do not support continuous skills at the moment.
+
+    Also, we suppose that the skills are evaluated in parallel in a fixed
+    manner: a batch of environments, containing a multiple of the number
+    of skills, is used to evaluate the skills in the environment and hence
+    to generate transitions. The sampling is hence fixed and perfectly uniform.
+
+    Since we are using categorical skills, the current loss function used
+    to train the discriminator is the categorical cross entropy loss.
+
+    We plan to add continous skill as an option in the future. We also plan
+    to release the current constraint on the number of batched environments
+    by sampling from the skills rather than having this fixed setting.
+    """
+
     def __init__(self, config: DiaynConfig, action_size: int):
         self._config: DiaynConfig = config
         if self._config.normalize_observations:
