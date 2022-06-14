@@ -313,6 +313,17 @@ class SAC:
     def _update_alpha(
         self, training_state: SacTrainingState, samples: Transition, random_key: RNGKey
     ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
+        """Updates the alpha parameter if necessary. Else, it keeps the
+        current value.
+
+        Args:
+            training_state: the current training state.
+            samples: a sample of transitions from the replay buffer.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            New alpha params, optimizer state, loss and a new random key.
+        """
         if not self._config.fix_alpha:
             # update alpha
             random_key, subkey = jax.random.split(random_key)
@@ -344,6 +355,20 @@ class SAC:
         samples: Transition,
         random_key: RNGKey,
     ) -> Tuple[Params, Params, optax.OptState, jnp.ndarray, RNGKey]:
+        """Updates the critic following the method described in the
+        Soft Actor Critic paper.
+
+        Args:
+            training_state: the current training state.
+            alpha: the alpha parameter that controls the importance of
+                the entropy term.
+            samples: a batch of transitions sampled from the replay buffer.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            New parameters of the critic and its target. New optimizer state,
+            loss and a new random key.
+        """
         # update critic
         random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
@@ -383,6 +408,20 @@ class SAC:
         samples: Transition,
         random_key: RNGKey,
     ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
+        """Updates the actor parameters following the stochastic
+        policy gradient theorem with the method introduced in SAC.
+
+        Args:
+            training_state: the currrent training state.
+            alpha: the alpha parameter that controls the importance
+                of the entropy term.
+            samples: a batch of transitions sampled from the replay
+                buffer.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            New params and optimizer state. Current loss. New random key.
+        """
         random_key, subkey = jax.random.split(random_key)
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
             training_state.policy_params,
