@@ -55,10 +55,30 @@ class DadsConfig(SacConfig):
 
 
 class DADS(SAC):
+    """Implements DADS algorithm https://arxiv.org/abs/1907.01657.
+
+    Note that the functions select_action, _update_alpha, _update_critic and
+    _update_actor are inherited from SAC algorithm.
+
+    In the current implementation, we suppose that the skills are fixed one
+    hot vectors, and do not support continuous skills at the moment.
+
+    Also, we suppose that the skills are evaluated in parallel in a fixed
+    manner: a batch of environments, containing a multiple of the number
+    of skills, is used to evaluate the skills in the environment and hence
+    to generate transitions. The sampling is hence fixed and perfectly uniform.
+
+    We plan to add continous skill as an option in the future. We also plan
+    to release the current constraint on the number of batched environments
+    by sampling from the skills rather than having this fixed setting.
+    """
+
     def __init__(self, config: DadsConfig, action_size: int, descriptor_size: int):
         self._config: DadsConfig = config
+
         if self._config.normalize_observations:
             raise NotImplementedError("Normalization in not implemented for DADS yet")
+
         # define the networks
         self._policy, self._critic, self._dynamics = make_dads_networks(
             action_size=action_size,

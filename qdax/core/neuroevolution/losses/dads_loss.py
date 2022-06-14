@@ -59,9 +59,19 @@ def make_dads_loss_fn(
         dynamics_params: Params,
         transitions: QDTransition,
     ) -> jnp.ndarray:
+        """Computes the loss used to train the dynamics network.
+
+        Args:
+            dynamics_params: the parameters of the neural network
+                used to predict the dynamics.
+            transitions: the batch of transitions used to train. They
+                have been sampled from a replay buffer beforehand.
+
+        Returns:
+            The loss obtained on the batch of transitions.
+        """
 
         active_skills = transitions.obs[:, -num_skills:]
-        # next_state_desc -= state_desc was called beforehand
         target = transitions.next_state_desc
         log_prob = dynamics_fn(  # type: ignore
             dynamics_params,
