@@ -54,7 +54,7 @@ def warmstart_buffer(
     and the new state of the environment.
     """
 
-    def _scannable_play_step_fn(
+    def _scan_play_step_fn(
         carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
         env_state, policy_params, random_key, transitions = play_step_fn(*carry)
@@ -62,7 +62,7 @@ def warmstart_buffer(
 
     random_key, subkey = jax.random.split(random_key)
     (state, _, _), transitions = jax.lax.scan(
-        _scannable_play_step_fn,
+        _scan_play_step_fn,
         (env_state, policy_params, subkey),
         (),
         length=num_warmstart_steps // env_batch_size,
@@ -102,14 +102,14 @@ def generate_unroll(
         A new state, the experienced transition.
     """
 
-    def _scannable_play_step_fn(
+    def _scan_play_step_fn(
         carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
         env_state, policy_params, random_key, transitions = play_step_fn(*carry)
         return (env_state, policy_params, random_key), transitions
 
     (state, _, _), transitions = jax.lax.scan(
-        _scannable_play_step_fn,
+        _scan_play_step_fn,
         (init_state, policy_params, random_key),
         (),
         length=episode_length,
@@ -219,7 +219,7 @@ def do_iteration_fn(
     metrics.
     """
 
-    def _scannable_update_fn(
+    def _scan_update_fn(
         carry: Tuple[TrainingState, ReplayBuffer], unused_arg: Any
     ) -> Tuple[Tuple[TrainingState, ReplayBuffer], Metrics]:
         training_state, replay_buffer, metrics = update_fn(*carry)
@@ -238,7 +238,7 @@ def do_iteration_fn(
     num_updates = int(grad_updates_per_step * env_batch_size)
 
     (training_state, replay_buffer), metrics = jax.lax.scan(
-        _scannable_update_fn,
+        _scan_update_fn,
         (training_state, replay_buffer),
         (),
         length=num_updates,
