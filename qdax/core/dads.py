@@ -508,65 +508,44 @@ class DADS(SAC):
             (training_state, samples),
         )
 
-        if not self._config.fix_alpha:
-            # update alpha
-            random_key, subkey = jax.random.split(random_key)
-            alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
-                training_state.alpha_params,
-                training_state.policy_params,
-                transitions=samples,
-                random_key=subkey,
-            )
+        # udpate alpha
+        (
+            alpha_params,
+            alpha_optimizer_state,
+            alpha_loss,
+            random_key,
+        ) = self._update_alpha(
+            training_state=training_state, samples=samples, random_key=random_key
+        )
 
-            (alpha_updates, alpha_optimizer_state,) = self._alpha_optimizer.update(
-                alpha_gradient, training_state.alpha_optimizer_state
-            )
-            alpha_params = optax.apply_updates(
-                training_state.alpha_params, alpha_updates
-            )
-        else:
-            alpha_params = training_state.alpha_params
-            alpha_optimizer_state = training_state.alpha_optimizer_state
-            alpha_loss = 0.0
+        # use the previous alpha
         alpha = jnp.exp(training_state.alpha_params)
 
-        # Update critic
-        random_key, subkey = jax.random.split(random_key)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
-            training_state.critic_params,
-            training_state.policy_params,
-            training_state.target_critic_params,
-            alpha,
-            transitions=samples,
-            random_key=subkey,
-        )
-
-        (critic_updates, critic_optimizer_state,) = self._critic_optimizer.update(
-            critic_gradient, training_state.critic_optimizer_state
-        )
-        critic_params = optax.apply_updates(
-            training_state.critic_params, critic_updates
-        )
-        target_critic_params = jax.tree_multimap(
-            lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
-            training_state.target_critic_params,
+        # update critic
+        (
             critic_params,
+            target_critic_params,
+            critic_optimizer_state,
+            critic_loss,
+            random_key,
+        ) = self._update_critic(
+            training_state=training_state,
+            alpha=alpha,
+            samples=samples,
+            random_key=random_key,
         )
 
-        # Update actor
-        random_key, subkey = jax.random.split(random_key)
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            training_state.policy_params,
-            training_state.critic_params,
-            alpha,
-            transitions=samples,
-            random_key=subkey,
-        )
-        (policy_updates, policy_optimizer_state,) = self._policy_optimizer.update(
-            policy_gradient, training_state.policy_optimizer_state
-        )
-        policy_params = optax.apply_updates(
-            training_state.policy_params, policy_updates
+        # update actor
+        (
+            policy_params,
+            policy_optimizer_state,
+            policy_loss,
+            random_key,
+        ) = self._update_actor(
+            training_state=training_state,
+            alpha=alpha,
+            samples=samples,
+            random_key=random_key,
         )
 
         # Create new training state
