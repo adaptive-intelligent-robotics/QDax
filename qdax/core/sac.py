@@ -310,41 +310,20 @@ class SAC:
         return true_return, true_returns
 
     @partial(jax.jit, static_argnames=("self"))
-    def update(
-        self,
-        training_state: SacTrainingState,
-        replay_buffer: ReplayBuffer,
-    ) -> Tuple[SacTrainingState, ReplayBuffer, Metrics]:
-        """Performs a training step to update the policy and the critic parameters.
+    def _update_alpha(
+        self, training_state: SacTrainingState, samples: Transition, random_key: RNGKey
+    ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
+        """Updates the alpha parameter if necessary. Else, it keeps the
+        current value.
 
         Args:
-            training_state: the current SAC training state
-            replay_buffer: the replay buffer
+            training_state: the current training state.
+            samples: a sample of transitions from the replay buffer.
+            random_key: a random key to handle stochastic operations.
 
         Returns:
-            the updated SAC training state
-            the replay buffer
-            the training metrics
+            New alpha params, optimizer state, loss and a new random key.
         """
-
-        # sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-
-        samples, random_key = replay_buffer.sample(
-            random_key,
-            sample_size=self._config.batch_size,
-        )
-
-        if self._config.normalize_observations:
-            normalization_running_stats = training_state.normalization_running_stats
-            normalized_obs = normalize_with_rmstd(
-                samples.obs, normalization_running_stats
-            )
-            normalized_next_obs = normalize_with_rmstd(
-                samples.next_obs, normalization_running_stats
-            )
-            samples = samples.replace(obs=normalized_obs, next_obs=normalized_next_obs)
-
         if not self._config.fix_alpha:
             # update alpha
             random_key, subkey = jax.random.split(random_key)
@@ -364,9 +343,32 @@ class SAC:
         else:
             alpha_params = training_state.alpha_params
             alpha_optimizer_state = training_state.alpha_optimizer_state
-            alpha_loss = 0.0
-        alpha = jnp.exp(training_state.alpha_params)
+            alpha_loss = jnp.array(0.0)
 
+        return alpha_params, alpha_optimizer_state, alpha_loss, random_key
+
+    @partial(jax.jit, static_argnames=("self"))
+    def _update_critic(
+        self,
+        training_state: SacTrainingState,
+        alpha: Params,
+        samples: Transition,
+        random_key: RNGKey,
+    ) -> Tuple[Params, Params, optax.OptState, jnp.ndarray, RNGKey]:
+        """Updates the critic following the method described in the
+        Soft Actor Critic paper.
+
+        Args:
+            training_state: the current training state.
+            alpha: the alpha parameter that controls the importance of
+                the entropy term.
+            samples: a batch of transitions sampled from the replay buffer.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            New parameters of the critic and its target. New optimizer state,
+            loss and a new random key.
+        """
         # update critic
         random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
@@ -390,7 +392,36 @@ class SAC:
             critic_params,
         )
 
-        # update actor
+        return (
+            critic_params,
+            target_critic_params,
+            critic_optimizer_state,
+            critic_loss,
+            random_key,
+        )
+
+    @partial(jax.jit, static_argnames=("self"))
+    def _update_actor(
+        self,
+        training_state: SacTrainingState,
+        alpha: Params,
+        samples: Transition,
+        random_key: RNGKey,
+    ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
+        """Updates the actor parameters following the stochastic
+        policy gradient theorem with the method introduced in SAC.
+
+        Args:
+            training_state: the currrent training state.
+            alpha: the alpha parameter that controls the importance
+                of the entropy term.
+            samples: a batch of transitions sampled from the replay
+                buffer.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            New params and optimizer state. Current loss. New random key.
+        """
         random_key, subkey = jax.random.split(random_key)
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
             training_state.policy_params,
@@ -404,6 +435,84 @@ class SAC:
         )
         policy_params = optax.apply_updates(
             training_state.policy_params, policy_updates
+        )
+
+        return policy_params, policy_optimizer_state, policy_loss, random_key
+
+    @partial(jax.jit, static_argnames=("self"))
+    def update(
+        self,
+        training_state: SacTrainingState,
+        replay_buffer: ReplayBuffer,
+    ) -> Tuple[SacTrainingState, ReplayBuffer, Metrics]:
+        """Performs a training step to update the policy and the critic parameters.
+
+        Args:
+            training_state: the current SAC training state
+            replay_buffer: the replay buffer
+
+        Returns:
+            the updated SAC training state
+            the replay buffer
+            the training metrics
+        """
+
+        # sample a batch of transitions in the buffer
+        random_key = training_state.random_key
+        samples, random_key = replay_buffer.sample(
+            random_key,
+            sample_size=self._config.batch_size,
+        )
+
+        # normalise observations if necessary
+        if self._config.normalize_observations:
+            normalization_running_stats = training_state.normalization_running_stats
+            normalized_obs = normalize_with_rmstd(
+                samples.obs, normalization_running_stats
+            )
+            normalized_next_obs = normalize_with_rmstd(
+                samples.next_obs, normalization_running_stats
+            )
+            samples = samples.replace(obs=normalized_obs, next_obs=normalized_next_obs)
+
+        # udpate alpha
+        (
+            alpha_params,
+            alpha_optimizer_state,
+            alpha_loss,
+            random_key,
+        ) = self._update_alpha(
+            training_state=training_state, samples=samples, random_key=random_key
+        )
+
+        # use the previous alpha
+        alpha = jnp.exp(training_state.alpha_params)
+
+        # update critic
+        (
+            critic_params,
+            target_critic_params,
+            critic_optimizer_state,
+            critic_loss,
+            random_key,
+        ) = self._update_critic(
+            training_state=training_state,
+            alpha=alpha,
+            samples=samples,
+            random_key=random_key,
+        )
+
+        # update actor
+        (
+            policy_params,
+            policy_optimizer_state,
+            policy_loss,
+            random_key,
+        ) = self._update_actor(
+            training_state=training_state,
+            alpha=alpha,
+            samples=samples,
+            random_key=random_key,
         )
 
         # create new training state
