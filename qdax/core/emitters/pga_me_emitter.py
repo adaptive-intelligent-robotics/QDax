@@ -227,6 +227,7 @@ class PGEmitter(Emitter):
     def state_update(
         self,
         emitter_state: PGEmitterState,
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,

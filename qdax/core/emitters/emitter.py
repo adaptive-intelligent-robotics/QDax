@@ -74,6 +74,7 @@ class Emitter(ABC):
     def state_update(
         self,
         emitter_state: Optional[EmitterState],
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,

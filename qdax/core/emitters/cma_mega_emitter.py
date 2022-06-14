@@ -32,7 +32,9 @@ class CMAMEGAState(EmitterState):
 class CMAMEGAEmitter(Emitter):
     def __init__(
         self,
-        scoring_function: Callable[[Genotype], Tuple[Fitness, Descriptor, ExtraScores]],
+        scoring_function: Callable[
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
+        ],
         batch_size: int,
         learning_rate: float,
         num_descriptors: int,
@@ -79,7 +81,9 @@ class CMAMEGAEmitter(Emitter):
         self._cma_initial_state = self._cmaes.init()
 
     @partial(jax.jit, static_argnames=("self",))
-    def init(self, init_genotypes: Genotype, random_key: RNGKey) -> CMAMEGAState:
+    def init(
+        self, init_genotypes: Genotype, random_key: RNGKey
+    ) -> Tuple[CMAMEGAState, RNGKey]:
         """
         Initializes the CMA-MEGA emitter
 
@@ -99,15 +103,18 @@ class CMAMEGAEmitter(Emitter):
         )
 
         # score it
-        _, _, extra_score = self._scoring_function(theta)
+        _, _, extra_score, random_key = self._scoring_function(theta, random_key)
         theta_grads = extra_score["normalized_grads"]
 
         # return the initial state
-        return CMAMEGAState(
-            theta=theta,
-            theta_grads=theta_grads,
-            cmaes_state=self._cma_initial_state,
-            random_key=random_key,
+        return (
+            CMAMEGAState(
+                theta=theta,
+                theta_grads=theta_grads,
+                cmaes_state=self._cma_initial_state,
+                random_key=random_key,
+            ),
+            random_key,
         )
 
     @partial(jax.jit, static_argnames=("self", "batch_size"))
@@ -246,7 +253,7 @@ class CMAMEGAEmitter(Emitter):
         )
 
         # score theta
-        _, _, extra_score = self._scoring_function(theta)
+        _, _, extra_score, random_key = self._scoring_function(theta, random_key)
 
         # create new emitter state
         emitter_state = CMAMEGAState(
