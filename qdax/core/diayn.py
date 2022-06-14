@@ -182,6 +182,9 @@ class DIAYN(SAC):
     ) -> Reward:
         """Computes the diversity reward of DIAYN.
 
+        As we use discrete skills (one hot encoded vectors), the categorical
+        cross entropy is used here.
+
         Args:
             transition: a batch of transitions from the replay buffer
             discriminator_params: the parameters of the discriminator
