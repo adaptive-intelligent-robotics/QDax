@@ -407,7 +407,6 @@ class DIAYN(SAC):
         samples = samples.replace(rewards=rewards)
 
         # update the discriminator
-        random_key, subkey = jax.random.split(random_key)
         discriminator_loss, discriminator_gradient = jax.value_and_grad(
             self._discriminator_loss_fn
         )(training_state.discriminator_params, transitions=samples)
