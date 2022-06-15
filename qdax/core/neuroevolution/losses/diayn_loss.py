@@ -57,6 +57,26 @@ def make_diayn_loss_fn(
         discriminator_params: Params,
         transitions: QDTransition,
     ) -> jnp.ndarray:
+        """Computes the loss used to train the discriminator. The
+        discriminator is trained to predict the skill that has been
+        used to generate transitions. In our case, skills are one
+        hot encoded, the discriminator is hence trained like a
+        multi-label classifier, using the categorical cross entropy
+        loss.
+
+        In this loss, log softmax outputs the log probabilities for
+        each skill. By multiplying by the skills (that are one hot
+        vectors), we filter to keep only the log probability of the
+        true skill.
+
+        Args:
+            discriminator_params: the parameters of the neural network
+                used to discriminate the skills.
+            transitions: the transitions sampled from the replay buffer.
+
+        Returns:
+            The loss of the discriminator on those transitions.
+        """
 
         state_desc = transitions.state_desc
         skills = transitions.obs[:, -num_skills:]

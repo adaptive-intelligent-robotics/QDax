@@ -48,6 +48,27 @@ class DiaynConfig(SacConfig):
 
 
 class DIAYN(SAC):
+    """Implements DIAYN algorithm https://arxiv.org/abs/1802.06070.
+
+    Note that the functions select_action, _update_alpha, _update_critic and
+    _update_actor are inherited from SAC algorithm.
+
+    In the current implementation, we suppose that the skills are fixed one
+    hot vectors, and do not support continuous skills at the moment.
+
+    Also, we suppose that the skills are evaluated in parallel in a fixed
+    manner: a batch of environments, containing a multiple of the number
+    of skills, is used to evaluate the skills in the environment and hence
+    to generate transitions. The sampling is hence fixed and perfectly uniform.
+
+    Since we are using categorical skills, the current loss function used
+    to train the discriminator is the categorical cross entropy loss.
+
+    We plan to add continous skill as an option in the future. We also plan
+    to release the current constraint on the number of batched environments
+    by sampling from the skills rather than having this fixed setting.
+    """
+
     def __init__(self, config: DiaynConfig, action_size: int):
         self._config: DiaynConfig = config
         if self._config.normalize_observations:
@@ -160,6 +181,9 @@ class DIAYN(SAC):
         add_log_p_z: bool = True,
     ) -> Reward:
         """Computes the diversity reward of DIAYN.
+
+        As we use discrete skills (one hot encoded vectors), the categorical
+        cross entropy is used here.
 
         Args:
             transition: a batch of transitions from the replay buffer
@@ -365,7 +389,6 @@ class DIAYN(SAC):
         Returns:
             The update training state and metrics.
         """
-        random_key, subkey = jax.random.split(random_key)
 
         # Compute discriminator loss and gradients
         discriminator_loss, discriminator_gradient = jax.value_and_grad(
@@ -386,67 +409,44 @@ class DIAYN(SAC):
             training_state.discriminator_params, discriminator_updates
         )
 
-        if not self._config.fix_alpha:
-            # Update alpha
-            random_key, subkey = jax.random.split(random_key)
-            alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
-                training_state.alpha_params,
-                training_state.policy_params,
-                transitions=transitions,
-                random_key=subkey,
-            )
+        # udpate alpha
+        (
+            alpha_params,
+            alpha_optimizer_state,
+            alpha_loss,
+            random_key,
+        ) = self._update_alpha(
+            training_state=training_state, samples=transitions, random_key=random_key
+        )
 
-            (alpha_updates, alpha_optimizer_state,) = self._alpha_optimizer.update(
-                alpha_gradient, training_state.alpha_optimizer_state
-            )
-            alpha_params = optax.apply_updates(
-                training_state.alpha_params, alpha_updates
-            )
-        else:
-            alpha_params = training_state.alpha_params
-            alpha_optimizer_state = training_state.alpha_optimizer_state
-            alpha_loss = 0.0
+        # use the previous alpha
         alpha = jnp.exp(training_state.alpha_params)
 
-        # Update critic
-        random_key, subkey = jax.random.split(random_key)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
-            training_state.critic_params,
-            training_state.policy_params,
-            training_state.target_critic_params,
-            alpha,
-            transitions=transitions,
-            random_key=subkey,
-        )
-
         # update critic
-        (critic_updates, critic_optimizer_state,) = self._critic_optimizer.update(
-            critic_gradient, training_state.critic_optimizer_state
-        )
-        critic_params = optax.apply_updates(
-            training_state.critic_params, critic_updates
-        )
-        target_critic_params = jax.tree_multimap(
-            lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
-            training_state.target_critic_params,
+        (
             critic_params,
+            target_critic_params,
+            critic_optimizer_state,
+            critic_loss,
+            random_key,
+        ) = self._update_critic(
+            training_state=training_state,
+            alpha=alpha,
+            samples=transitions,
+            random_key=random_key,
         )
 
-        # Update actor
-        random_key, subkey = jax.random.split(random_key)
-
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            training_state.policy_params,
-            training_state.critic_params,
-            alpha,
-            transitions=transitions,
-            random_key=subkey,
-        )
-        (policy_updates, policy_optimizer_state,) = self._policy_optimizer.update(
-            policy_gradient, training_state.policy_optimizer_state
-        )
-        policy_params = optax.apply_updates(
-            training_state.policy_params, policy_updates
+        # update actor
+        (
+            policy_params,
+            policy_optimizer_state,
+            policy_loss,
+            random_key,
+        ) = self._update_actor(
+            training_state=training_state,
+            alpha=alpha,
+            samples=transitions,
+            random_key=random_key,
         )
 
         # Create new training state
