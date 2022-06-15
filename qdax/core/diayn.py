@@ -377,7 +377,6 @@ class DIAYN(SAC):
         self,
         training_state: DiaynTrainingState,
         transitions: QDTransition,
-        random_key: RNGKey,
     ) -> Tuple[DiaynTrainingState, Metrics]:
         """Updates all the networks of the training state.
 
@@ -387,8 +386,9 @@ class DIAYN(SAC):
             random_key: a random key to handle stochastic operations.
 
         Returns:
-            The update training state and metrics.
+            The update training state, metrics and a new random key.
         """
+        random_key = training_state.random_key
 
         # Compute discriminator loss and gradients
         discriminator_loss, discriminator_gradient = jax.value_and_grad(
@@ -416,7 +416,9 @@ class DIAYN(SAC):
             alpha_loss,
             random_key,
         ) = self._update_alpha(
-            training_state=training_state, samples=transitions, random_key=random_key
+            training_state=training_state,
+            transitions=transitions,
+            random_key=random_key,
         )
 
         # use the previous alpha
@@ -432,7 +434,7 @@ class DIAYN(SAC):
         ) = self._update_critic(
             training_state=training_state,
             alpha=alpha,
-            samples=transitions,
+            transitions=transitions,
             random_key=random_key,
         )
 
@@ -445,7 +447,7 @@ class DIAYN(SAC):
         ) = self._update_actor(
             training_state=training_state,
             alpha=alpha,
-            samples=transitions,
+            transitions=transitions,
             random_key=random_key,
         )
 
@@ -492,26 +494,26 @@ class DIAYN(SAC):
         """
         # Sample a batch of transitions in the buffer
         random_key = training_state.random_key
-
-        samples, random_key = replay_buffer.sample(
+        transitions, random_key = replay_buffer.sample(
             random_key,
             sample_size=self._config.batch_size,
         )
 
         # Optionally replace the state descriptor by the observation
         if self._config.descriptor_full_state:
-            state_desc = samples.obs[:, : -self._config.num_skills]
-            next_state_desc = samples.next_obs[:, : -self._config.num_skills]
-            samples = samples.replace(
+            state_desc = transitions.obs[:, : -self._config.num_skills]
+            next_state_desc = transitions.next_obs[:, : -self._config.num_skills]
+            transitions = transitions.replace(
                 state_desc=state_desc, next_state_desc=next_state_desc
             )
 
-        # Compute the rewards
-        rewards = self._compute_reward(samples, training_state)
-        samples = samples.replace(rewards=rewards)
+        # Compute the rewards and replace transitions
+        rewards = self._compute_reward(transitions, training_state)
+        transitions = transitions.replace(rewards=rewards)
 
+        # update params of networks in the training state
         new_training_state, metrics = self._update_networks(
-            training_state, transitions=samples, random_key=random_key
+            training_state, transitions=transitions
         )
 
         return new_training_state, replay_buffer, metrics
