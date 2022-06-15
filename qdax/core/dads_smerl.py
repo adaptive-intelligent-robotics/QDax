@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 import jax
 
 from qdax.core.dads import DADS, DadsConfig, DadsTrainingState
-from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.core.neuroevolution.normalization_utils import normalize_with_rmstd
 from qdax.types import Metrics, Reward
@@ -111,110 +111,6 @@ class DADSSMERL(DADS):
         # Compute the reward
         rewards = self._compute_reward(
             transition=samples, training_state=training_state, returns=returns
-        )
-
-        # Compute the target and optionally normalize it for the training
-        if self._config.normalize_target:
-            next_state_desc = normalize_with_rmstd(
-                samples.next_state_desc - samples.state_desc,
-                training_state.normalization_running_stats,
-            )
-
-        else:
-            next_state_desc = samples.next_state_desc - samples.state_desc
-
-        # Update the transitions
-        samples = samples.replace(next_state_desc=next_state_desc, rewards=rewards)
-
-        new_training_state, metrics = self._update_networks(
-            training_state, transitions=samples, random_key=random_key
-        )
-        return new_training_state, replay_buffer, metrics
-
-
-@dataclass
-class DadsSumConfig(DadsConfig):
-    """Configuration for the DADS SUM algorithm"""
-
-    diversity_reward_scale: float = 1.0
-
-
-class DADSSUM(DADS):
-    """DADSSUM refers to a family of methods that combine the DADS's diversity
-    reward with some environment `extrinsic` reward, uby simply summing them.
-
-    Most of the methods are inherited from the DADS algorithm, the only change is the
-    way the reward is computed (a combination of the DADS reward and
-    the `extrinsic` reward).
-    """
-
-    def __init__(self, config: DadsSumConfig, action_size: int, descriptor_size: int):
-        super(DADSSUM, self).__init__(config, action_size, descriptor_size)
-        self._config: DadsSumConfig = config
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _compute_reward(
-        self,
-        transition: QDTransition,
-        training_state: DadsTrainingState,
-    ) -> Reward:
-        """Computes the reward to train the networks.
-
-        Args:
-            transition: a batch of transitions from the replay buffer
-            training_state: the current training state
-
-        Returns:
-            the reward
-        """
-
-        diversity_rewards = self._compute_diversity_reward(
-            transition=transition, training_state=training_state
-        )
-        # Compute new reward (r_extrinsic + diversity_scale * r_diversity)
-        rewards = (
-            transition.rewards + self._config.diversity_reward_scale * diversity_rewards
-        )
-
-        return rewards
-
-    @partial(jax.jit, static_argnames=("self",))
-    def update(
-        self,
-        training_state: DadsTrainingState,
-        replay_buffer: ReplayBuffer,
-    ) -> Tuple[DadsTrainingState, ReplayBuffer, Metrics]:
-        """Performs a training step to update the policy, the critic and the
-        dynamics network parameters.
-
-        Args:
-            training_state: the current DADS training state
-            replay_buffer: the replay buffer
-
-        Returns:
-            the updated DIAYN training state
-            the replay buffer
-            the training metrics
-        """
-
-        # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-        samples, random_key = replay_buffer.sample(
-            random_key,
-            sample_size=self._config.batch_size,
-        )
-
-        # Optionally replace the state descriptor by the observation
-        if self._config.descriptor_full_state:
-            _state_desc = samples.obs[:, : -self._config.num_skills]
-            _next_state_desc = samples.next_obs[:, : -self._config.num_skills]
-            samples = samples.replace(
-                state_desc=_state_desc, next_state_desc=_next_state_desc
-            )
-
-        # Compute the reward
-        rewards = self._compute_reward(
-            transition=samples, training_state=training_state
         )
 
         # Compute the target and optionally normalize it for the training

@@ -1,5 +1,4 @@
-"""Training script for the algorithm DADS, should be launched with hydra.
-    e.g. python train_dads.py config=dads_ant"""
+"""Testing script for the algorithm DADS"""
 from functools import partial
 from typing import Any, Tuple
 
@@ -10,7 +9,7 @@ from brax.envs import State as EnvState
 
 from qdax import environments
 from qdax.core.dads import DadsTrainingState
-from qdax.core.dads_supervised import DADSSMERL, DadsSmerlConfig
+from qdax.core.dads_smerl import DADSSMERL, DadsSmerlConfig
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer

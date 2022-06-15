@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 import jax
 
 from qdax.core.diayn import DIAYN, DiaynConfig, DiaynTrainingState
-from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.types import Metrics, Reward
 
@@ -117,102 +117,6 @@ class DIAYNSMERL(DIAYN):
 
         # Compute the rewards
         rewards = self._compute_reward(samples, training_state, returns)
-
-        samples = samples.replace(rewards=rewards)
-
-        new_training_state, metrics = self._update_networks(
-            training_state, transitions=samples, random_key=random_key
-        )
-
-        return new_training_state, replay_buffer, metrics
-
-
-@dataclass
-class DiaynSumConfig(DiaynConfig):
-    """Configuration for the DIAYNSUM algorithm"""
-
-    diversity_reward_scale: float = 1.0
-
-
-class DIAYNSUM(DIAYN):
-    """DIAYNSUM sums the reward from the enviroment (extrinsic reward) with the diversity
-    reward computed by the discriminator.
-
-    Most methods are inherited from the DIAYN algorithm, the only change is the
-    way the reward is computed (a combination of the DIAYN reward and
-    the `extrinsic` reward).
-    """
-
-    def __init__(self, config: DiaynSumConfig, action_size: int):
-        super(DIAYNSUM, self).__init__(config, action_size)
-        self._config: DiaynSumConfig = config
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _compute_reward(
-        self,
-        transition: QDTransition,
-        training_state: DiaynTrainingState,
-    ) -> Reward:
-        """Computes the reward to train the networks.
-
-        Args:
-            transition: a batch of transitions from the replay buffer
-            training_state: the current training state
-
-        Returns:
-            the combined reward
-        """
-
-        # Compute the diversity reward
-        diversity_rewards = self._compute_diversity_reward(
-            transition=transition,
-            discriminator_params=training_state.discriminator_params,
-            add_log_p_z=True,
-        )
-
-        # sum the rewards
-        rewards = (
-            transition.rewards + self._config.diversity_reward_scale * diversity_rewards
-        )
-
-        return rewards
-
-    @partial(jax.jit, static_argnames=("self",))
-    def update(
-        self,
-        training_state: DiaynTrainingState,
-        replay_buffer: ReplayBuffer,
-    ) -> Tuple[DiaynTrainingState, ReplayBuffer, Metrics]:
-        """Performs a training step to update the policy, the critic and the
-        discriminator parameters.
-
-        Args:
-            training_state: the current DIAYN training state
-            replay_buffer: the replay buffer
-
-        Returns:
-            the updated DIAYN training state
-            the replay buffer
-            the training metrics
-        """
-        # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-
-        samples, random_key = replay_buffer.sample(
-            random_key,
-            sample_size=self._config.batch_size,
-        )
-
-        # Optionally replace the state descriptor by the observation
-        if self._config.descriptor_full_state:
-            state_desc = samples.obs[:, : -self._config.num_skills]
-            next_state_desc = samples.next_obs[:, : -self._config.num_skills]
-            samples = samples.replace(
-                state_desc=state_desc, next_state_desc=next_state_desc
-            )
-
-        # Compute the rewards
-        rewards = self._compute_reward(samples, training_state)
 
         samples = samples.replace(rewards=rewards)
 
