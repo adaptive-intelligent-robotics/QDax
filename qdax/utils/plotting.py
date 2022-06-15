@@ -12,7 +12,9 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.spatial import Voronoi
 
+from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.multi_objectives_map_elites import compute_global_pareto_front
 
 
 def get_voronoi_finite_polygons_2d(
@@ -348,3 +350,115 @@ def plot_skills_trajectory(
     ax.set_title("Skill trajectories")
 
     return fig, ax
+
+
+def plot_mome_pareto_fronts(
+    centroids: jnp.ndarray,
+    map_elites_grid: MOMERepertoire,
+    maxval: float,
+    minval: float,
+    axes: Optional[plt.Axes] = None,
+    color_style: Optional[str] = "hsv",
+    with_global: Optional[bool] = False,
+) -> plt.Axes:
+    fitnesses = map_elites_grid.fitnesses
+    grid_descriptors = map_elites_grid.descriptors
+
+    assert fitnesses.shape[-1] == grid_descriptors.shape[-1] == 2
+    assert color_style in ["hsv", "spectral"], "color_style must be hsv or spectral"
+
+    num_centroids = len(centroids)
+    grid_empty = jnp.any(fitnesses == -jnp.inf, axis=-1)
+
+    # Extract polar coordinates
+    if color_style == "hsv":
+        center = jnp.array([(maxval - minval) / 2] * centroids.shape[1])
+        polars = jnp.stack(
+            (
+                jnp.sqrt((jnp.sum((centroids - center) ** 2, axis=-1)))
+                / (maxval - minval)
+                / jnp.sqrt(2),
+                jnp.arctan((centroids - center)[:, 1] / (centroids - center)[:, 0]),
+            ),
+            axis=-1,
+        )
+    elif color_style == "spectral":
+        cmap = cm.get_cmap("Spectral")
+
+    if axes is None:
+        _, axes = plt.subplots(ncols=2, figsize=(12, 6))
+
+    for i in range(num_centroids):
+        if jnp.sum(~grid_empty[i]) > 0:
+            cell_scores = fitnesses[i][~grid_empty[i]]
+            cell = grid_descriptors[i][~grid_empty[i]]
+            if color_style == "hsv":
+                color = vector_to_rgb(polars[i, 1], polars[i, 0])
+            else:
+                color = cmap((centroids[i, 0] - minval) / (maxval - minval))
+            axes[0].plot(cell_scores[:, 0], cell_scores[:, 1], "o", color=color)
+
+            axes[1].plot(cell[:, 0], cell[:, 1], "o", color=color)
+
+    # create the regions and vertices from centroids
+    regions, vertices = get_voronoi_finite_polygons_2d(centroids)
+
+    # fill the plot with contours
+    for region in regions:
+        polygon = vertices[region]
+        axes[1].fill(
+            *zip(*polygon), alpha=0.2, edgecolor="black", facecolor="white", lw=1
+        )
+    axes[0].set_title("Fitness")
+    axes[1].set_title("Descriptor")
+    axes[1].set_xlim(minval, maxval)
+    axes[1].set_ylim(minval, maxval)
+
+    if with_global:
+        global_pareto_front, pareto_bool = compute_global_pareto_front(map_elites_grid)
+        global_pareto_descriptors = jnp.concatenate(grid_descriptors)[pareto_bool]
+        axes[0].scatter(
+            global_pareto_front[:, 0],
+            global_pareto_front[:, 1],
+            marker="o",
+            edgecolors="black",
+            facecolors="none",
+            zorder=3,
+            label="Global Pareto Front",
+        )
+        sorted_index = jnp.argsort(global_pareto_front[:, 0])
+        axes[0].plot(
+            global_pareto_front[sorted_index, 0],
+            global_pareto_front[sorted_index, 1],
+            linestyle="--",
+            linewidth=2,
+            color="k",
+            zorder=3,
+        )
+        axes[1].scatter(
+            global_pareto_descriptors[:, 0],
+            global_pareto_descriptors[:, 1],
+            marker="o",
+            edgecolors="black",
+            facecolors="none",
+            zorder=3,
+            label="Global Pareto Descriptor",
+        )
+
+    return axes
+
+
+def vector_to_rgb(angle: float, absolute: float) -> Any:
+    """
+    Returns a color based on polar coordinates.
+    """
+
+    # normalize angle
+    angle = angle % (2 * np.pi)
+    if angle < 0:
+        angle += 2 * np.pi
+
+    # rise absolute to avoid black colours
+    absolute = (absolute + 0.5) / 1.5
+
+    return mpl.colors.hsv_to_rgb((angle / 2 / np.pi, 1, absolute))

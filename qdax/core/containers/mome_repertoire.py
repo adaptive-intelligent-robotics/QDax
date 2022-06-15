@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from functools import partial
-from multiprocessing.dummy import Array
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Tuple
 
 import flax
 import jax
 import jax.numpy as jnp
-from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
+
+from qdax.core.containers.repertoire import get_cells_indices
 from qdax.types import Centroid, Descriptor, Fitness, RNGKey
 from qdax.utils.mome_utils import (
     sample_in_masked_pareto_front,
@@ -18,7 +18,7 @@ from qdax.utils.mome_utils import (
 @flax.struct.dataclass
 class MOMERepertoire:
     """Class for the repertoire in MO Map Elites
-    
+
     Genotypes can only be jnp.ndarray at the moment.
     """
 
@@ -44,6 +44,7 @@ class MOMERepertoire:
         """
         return int(self.genotypes.shape[1] * self.genotypes.shape[2])
 
+    @partial(jax.jit, static_argnames=("num_samples",))
     def sample(
         self, random_key: RNGKey, num_samples: int
     ) -> Tuple[jnp.ndarray, RNGKey]:
@@ -55,31 +56,45 @@ class MOMERepertoire:
         vector of boolean True if cell empty False otherwise
         """
 
+        # grid_empty = jnp.any(self.fitnesses == -jnp.inf, axis=-1)
+        # p = jnp.any(~grid_empty, axis=-1) / jnp.sum(jnp.any(~grid_empty, axis=-1))
+        # indices = jnp.arange(start=0, stop=grid_empty.shape[0])
+
+        # # choose idx
+        # random_key, subkey = jax.random.split(random_key)
+        # cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
+
+        # # sample
+        # sample_in_fronts = partial(sample_in_masked_pareto_front, num_samples=1)
+        # sample_in_fronts = jax.vmap(sample_in_fronts)
+
+        # random_key, subkey = jax.random.split(random_key)
+        # subkeys = jax.random.split(subkey, num=num_samples)
+
+        # # TODO: sure we want to vmap all elements??
+        # elements, random_key = sample_in_fronts(  # type: ignore
+        #     pareto_front_x=self.genotypes[cells_idx],
+        #     mask=grid_empty[cells_idx],
+        #     random_key=subkeys,
+        # )
+
+        # # TODO: what is that?
+        # return elements[:, 0, :], random_key[0, :]
+
+        random_key, sub_key1 = jax.random.split(random_key, num=2)
         grid_empty = jnp.any(self.fitnesses == -jnp.inf, axis=-1)
         p = jnp.any(~grid_empty, axis=-1) / jnp.sum(jnp.any(~grid_empty, axis=-1))
         indices = jnp.arange(start=0, stop=grid_empty.shape[0])
-
-        # choose idx
-        random_key, subkey = jax.random.split(random_key)
-        cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
-
-        # sample
+        cells_idx = jax.random.choice(sub_key1, indices, shape=(num_samples,), p=p)
         sample_in_fronts = partial(sample_in_masked_pareto_front, num_samples=1)
+        random_key = jax.random.split(random_key, num=num_samples)
         sample_in_fronts = jax.vmap(sample_in_fronts)
-
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, num=num_samples)
-
-        # TODO: sure we want to vmap all elements??
-        elements, random_key = sample_in_fronts(  # type: ignore
-            pareto_front_x=self.genotypes[cells_idx],
-            mask=grid_empty[cells_idx],
-            random_key=subkeys,
+        elements, random_key = sample_in_fronts(
+            self.genotypes[cells_idx], grid_empty[cells_idx], random_key=random_key
         )
+        return elements[:, 0, :], random_key[0, :]
 
-        # TODO: what is that?
-        return elements[:, 0, :], random_key
-
+    @jax.jit
     def add(
         self,
         batch_of_genotypes: jnp.ndarray,

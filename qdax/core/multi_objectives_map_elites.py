@@ -5,6 +5,7 @@ from typing import Any, Callable, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
 from qdax.utils.mome_utils import (
@@ -16,11 +17,14 @@ from qdax.utils.mome_utils import (
 
 class MOME:
     def __init__(
-        self, scoring_function: Callable[[Genotype], Tuple[Fitness, Descriptor]]
+        self,
+        scoring_function: Callable[[Genotype], Tuple[Fitness, Descriptor]],
+        batch_size: int,
     ) -> None:
         self._scoring_function = scoring_function
+        self._batch_size = batch_size
 
-    @partial(jax.jit, static_argnames=("self",))
+    @partial(jax.jit, static_argnames=("self", "pareto_front_max_length"))
     def init(
         self,
         init_genotypes: jnp.ndarray,
@@ -49,9 +53,9 @@ class MOME:
         )
 
         repertoire = MOMERepertoire(  # type: ignore
-            grid=grid_x,
+            genotypes=grid_x,
             fitnesses=grid_fitness,
-            grid_descriptors=grid_descriptors,
+            descriptors=grid_descriptors,
             centroids=centroids,
         )
 
@@ -63,7 +67,15 @@ class MOME:
 
         return repertoire
 
-    @partial(jax.jit, static_argnames=("self",))
+    @partial(
+        jax.jit,
+        static_argnames=(
+            "self",
+            "crossover_function",
+            "mutation_function",
+            "crossover_percentage",
+        ),
+    )
     def update(
         self,
         repertoire: MOMERepertoire,
@@ -73,7 +85,6 @@ class MOME:
         ],
         mutation_function: Callable[[Genotype, RNGKey], Tuple[Genotype, RNGKey]],
         crossover_percentage: float,
-        batch_size: int,
     ) -> Tuple[MOMERepertoire, RNGKey]:
         """
         Performs one iteration of the MOME algorithm.
@@ -81,8 +92,8 @@ class MOME:
         2. The copies are mutated and crossed-over
         3. The obtained offsprings are scored and then added to the archive.
         """
-        n_crossover = int(batch_size * crossover_percentage)
-        n_mutation = batch_size - n_crossover
+        n_crossover = int(self._batch_size * crossover_percentage)
+        n_mutation = self._batch_size - n_crossover
 
         if n_crossover > 0:
             x1, random_key = repertoire.sample(random_key, n_crossover)
@@ -108,67 +119,6 @@ class MOME:
         return repertoire, random_key
 
 
-def run_mome(
-    centroids: Centroid,
-    init_genotypes: Genotype,
-    random_key: RNGKey,
-    scoring_function: Callable[[Genotype], Tuple[Fitness, Descriptor]],
-    crossover_function: Callable[[Genotype, Genotype, RNGKey], Tuple[Genotype, RNGKey]],
-    mutation_function: Callable[[Genotype, RNGKey], Tuple[Genotype, RNGKey]],
-    crossover_percentage: float,
-    batch_size: int,
-    num_iterations: int,
-    pareto_front_max_length: int,
-    reference_point: jnp.ndarray,
-) -> Tuple[MOMERepertoire, MOQDMetrics]:
-    """
-    Run the MOME algorithm. This function initialize the MOME grid and
-    then performs num_iterations iterations. It returns the final grid and
-    the MOQD metrics for each iteration.
-    """
-    # jit functions
-    init_function = partial(
-        init_mome,
-        centroids=centroids,
-        scoring_function=scoring_function,
-        pareto_front_max_length=pareto_front_max_length,
-    )
-    init_function = jax.jit(init_function)
-
-    iteration_function = partial(
-        do_mome_iteration,
-        scoring_function=scoring_function,
-        crossover_function=crossover_function,
-        mutation_function=mutation_function,
-        crossover_percentage=crossover_percentage,
-        batch_size=batch_size,
-    )
-
-    @jax.jit
-    def iteration_fn(
-        carry: Tuple[MOMERepertoire, jnp.ndarray], unused: Any
-    ) -> Tuple[Tuple[MOMERepertoire, RNGKey], Metrics]:
-        # iterate over grid
-        grid, random_key = carry
-        grid, random_key = iteration_function(grid, random_key)
-
-        # get metrics
-        metrics = compute_moqd_metrics(grid, reference_point)
-        return (grid, random_key), metrics
-
-    # init algorithm
-    map_elites_grid = init_function(init_genotypes)
-    init_metrics = compute_moqd_metrics(map_elites_grid, reference_point)
-
-    # run optimization loop
-    (map_elites_grid, random_key), metrics = jax.lax.scan(
-        iteration_fn, (map_elites_grid, random_key), (), length=num_iterations
-    )
-    metrics = add_init_metrics(metrics, init_metrics)
-
-    return map_elites_grid, metrics
-
-
 def compute_moqd_metrics(
     grid: MOMERepertoire, reference_point: jnp.ndarray
 ) -> MOQDMetrics:
@@ -187,7 +137,10 @@ def compute_moqd_metrics(
     max_scores = jnp.max(grid.fitnesses, axis=(0, 1))
     max_sum_scores = jnp.max(jnp.sum(grid.fitnesses, axis=-1), axis=(0, 1))
     num_solutions = jnp.sum(~grid_empty)
-    (pareto_front, _,) = compute_global_pareto_front(grid)
+    (
+        pareto_front,
+        _,
+    ) = compute_global_pareto_front(grid)
 
     global_hypervolume = compute_hypervolume(
         pareto_front, reference_point=reference_point
