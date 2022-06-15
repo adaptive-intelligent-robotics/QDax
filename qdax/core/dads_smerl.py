@@ -127,6 +127,6 @@ class DADSSMERL(DADS):
         samples = samples.replace(next_state_desc=next_state_desc, rewards=rewards)
 
         new_training_state, metrics = self._update_networks(
-            training_state, transitions=samples, random_key=random_key
+            training_state, transitions=samples
         )
         return new_training_state, replay_buffer, metrics
