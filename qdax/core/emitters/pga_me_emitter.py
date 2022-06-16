@@ -243,6 +243,7 @@ class PGEmitter(Emitter):
 
         Args:
             emitter_state: current emitter state.
+            repertoire: the current genotypes repertoire
             genotypes: unused here - but compulsory in the signature.
             fitnesses: unused here - but compulsory in the signature.
             descriptors: unused here - but compulsory in the signature.

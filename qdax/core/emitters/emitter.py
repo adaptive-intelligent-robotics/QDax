@@ -94,6 +94,7 @@ class Emitter(ABC):
 
         Args:
             emitter_state: current emitter state
+            repertoire: the current genotypes repertoire
             genotypes: the genotypes of the batch of emitted offspring.
             fitnesses: the fitnesses of the batch of emitted offspring.
             descriptors: the descriptors of the emitted offspring.
