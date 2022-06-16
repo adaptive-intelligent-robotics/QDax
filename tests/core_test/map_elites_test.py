@@ -1,5 +1,7 @@
+"""Tests MAP Elites implementation"""
+
 import functools
-from typing import Any, Dict, Tuple
+from typing import Dict, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -134,25 +136,14 @@ def test_map_elites() -> None:
     )
 
     # Compute initial repertoire
-    repertoire, _, random_key = map_elites.init(init_variables, centroids, random_key)
-
-    # Prepare scan over map_elites update to perform several iterations at a time
-    @jax.jit
-    def update_scan_fn(carry: Any, unused: Any) -> Any:
-        # iterate over grid
-        repertoire, random_key = carry
-        (repertoire, _, metrics, random_key,) = map_elites.update(
-            repertoire,
-            None,
-            random_key,
-        )
-
-        return (repertoire, random_key), metrics
+    repertoire, emitter_state, random_key = map_elites.init(
+        init_variables, centroids, random_key
+    )
 
     # Run the algorithm
-    (repertoire, random_key,), metrics = jax.lax.scan(
-        update_scan_fn,
-        (repertoire, random_key),
+    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+        map_elites.scan_update,
+        (repertoire, emitter_state, random_key),
         (),
         length=num_iterations,
     )

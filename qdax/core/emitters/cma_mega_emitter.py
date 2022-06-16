@@ -19,7 +19,9 @@ class CMAMEGAState(EmitterState):
     Args:
         theta: current genotype from where candidates will be drawn.
         theta_grads: normalized fitness and descriptors gradients of theta.
-        random_key: a random key to handle stochastic operations.
+        random_key: a random key to handle stochastic operations. Used for
+            state update only, another key is used to emit. This might be
+            subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
     """
 
@@ -53,9 +55,8 @@ class CMAMEGAEmitter(Emitter):
             learning_rate: rate at which the mean of the distribution is updated.
             num_descriptors: number of descriptors
             sigma_g: standard deviation for the coefficients
-            step_size: size of the steps used in CMAEs updates
+            step_size: size of the steps used in CMAES updates
         """
-        # Internalize hyperparameters
         self._scoring_function = scoring_function
         self._batch_size = batch_size
         self._learning_rate = learning_rate
@@ -67,6 +68,7 @@ class CMAMEGAEmitter(Emitter):
         if step_size is None:
             step_size = 1.0
 
+        # define a CMAES instance
         self._cmaes = CMAES(
             population_size=batch_size,
             search_dim=num_descriptors + 1,
@@ -90,10 +92,10 @@ class CMAMEGAEmitter(Emitter):
 
         Args:
             init_genotypes: initial genotypes to add to the grid.
-            random_key: random key.
+            random_key: a random key to handle stochastic operations.
 
         Returns:
-            CMAMEGAState: initial state of the emitter.
+            The initial state of the emitter.
         """
 
         # define init theta as 0
@@ -107,12 +109,13 @@ class CMAMEGAEmitter(Emitter):
         theta_grads = extra_score["normalized_grads"]
 
         # return the initial state
+        random_key, subkey = jax.random.split(random_key)
         return (
             CMAMEGAState(
                 theta=theta,
                 theta_grads=theta_grads,
                 cmaes_state=self._cma_initial_state,
-                random_key=random_key,
+                random_key=subkey,
             ),
             random_key,
         )
@@ -125,9 +128,9 @@ class CMAMEGAEmitter(Emitter):
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
-        CMA-MEGA Emitter: it actually only uses the current emitter state as new
-        candidates are sampled as random gradient steps (with various coefficients)
-        around the current theta.
+        Emits new individuals. Interestingly, this method does not directly modify
+        individuals from the repertoire but sample from a distribution. Hence the
+        repertoire is not used in the emit function.
 
         Args:
             repertoire: a repertoire of genotypes (unused).
@@ -141,7 +144,6 @@ class CMAMEGAEmitter(Emitter):
         # retrieve elements from the emitter state
         theta = jnp.nan_to_num(emitter_state.theta)
         cmaes_state = emitter_state.cmaes_state
-        random_key = emitter_state.random_key
         grads = jnp.nan_to_num(emitter_state.theta_grads[0])
 
         # Draw random coefficients
@@ -243,6 +245,7 @@ class CMAMEGAEmitter(Emitter):
         ) * (1 - reinitialize)
         num_updates = 1 * reinitialize + cmaes_state.num_updates * (1 - reinitialize)
 
+        # define new cmaes state
         cmaes_state = CMAESState(
             mean=mean,
             cov_matrix=cov,
