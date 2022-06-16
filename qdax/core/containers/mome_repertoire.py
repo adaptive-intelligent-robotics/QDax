@@ -28,7 +28,7 @@ class MOMERepertoire(MapElitesRepertoire):
         maximum pareto front length.
         """
         first_leaf = jax.tree_leaves(self.genotypes)[0]
-        return int(first_leaf.shape[1] * first_leaf.shape[2])
+        return int(first_leaf.shape[0] * first_leaf.shape[1])
 
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample(
