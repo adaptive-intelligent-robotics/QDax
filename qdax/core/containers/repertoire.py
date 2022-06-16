@@ -208,12 +208,12 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             random_key: an updated jax PRNG random key
         """
 
-        random_key, sub_key = jax.random.split(random_key)
+        random_key, subkey = jax.random.split(random_key)
         grid_empty = self.fitnesses == -jnp.inf
         p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
         samples = jax.tree_map(
-            lambda x: jax.random.choice(sub_key, x, shape=(num_samples,), p=p),
+            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
 

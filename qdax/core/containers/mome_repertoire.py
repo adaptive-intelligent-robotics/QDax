@@ -3,9 +3,9 @@ from __future__ import annotations
 from functools import partial
 from typing import Any, Tuple
 
-import flax
 import jax
 import jax.numpy as jnp
+
 from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from qdax.utils.mome_utils import (
@@ -51,8 +51,9 @@ class MOMERepertoire(MapElitesRepertoire):
         cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
 
         # sample
-        sample_in_fronts = partial(sample_in_masked_pareto_front, num_samples=1)
-        sample_in_fronts = jax.vmap(sample_in_fronts)
+        sample_in_fronts = jax.vmap(
+            partial(sample_in_masked_pareto_front, num_samples=1)
+        )
 
         random_key, subkey = jax.random.split(random_key)
         subkeys = jax.random.split(subkey, num=num_samples)
@@ -60,17 +61,18 @@ class MOMERepertoire(MapElitesRepertoire):
         # get genotypes
         pareto_front_genotypes = jax.tree_map(lambda x: x[cells_idx], self.genotypes)
 
-        # TODO: refacto to avoid array of keys in output
-
-        # TODO: sure we want to vmap all elements??
-        elements, random_key = sample_in_fronts(  # type: ignore
+        sampled_genotypes = sample_in_fronts(  # type: ignore
             pareto_front_genotypes=pareto_front_genotypes,
             mask=grid_empty[cells_idx],
             random_key=subkeys,
         )
 
-        # TODO: what is that?
-        return elements[:, 0, :], random_key[0, :]
+        print("My sampled elements : ", sampled_genotypes)
+        print("My random keys : ", random_key)
+
+        sampled_genotypes = jax.tree_map(lambda x: x.squeeze(), sampled_genotypes)
+
+        return sampled_genotypes, random_key
 
     @jax.jit
     def add(
@@ -90,8 +92,6 @@ class MOMERepertoire(MapElitesRepertoire):
         batch_of_descriptors of shape (batch_size, num_descriptors)
         batch_of_fitnesses of shape (batch_size, num_criteria)
         """
-        first_leaf = jax.tree_leaves(batch_of_genotypes)[0]
-        gen_dim = first_leaf.shape[1]
 
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
@@ -108,45 +108,57 @@ class MOMERepertoire(MapElitesRepertoire):
             # get cell data
             cell_genotype = jax.tree_map(lambda x: x[index], carry.genotypes)
             cell_fitness = carry.fitnesses[index]
-            cell_descriptors = carry.descriptors[index]
+            cell_descriptor = carry.descriptors[index]
             cell_mask = jnp.any(cell_fitness == -jnp.inf, axis=-1)
 
-            # create pareto front genotypes
+            print("Cell fitness shape : ", cell_fitness)
+            print("Fitness shape : ", fitness.shape)
 
-            # TODO: What is happening there???
-            # TODO: remove the concatenations
+            print("Cell genotype shape : ", cell_genotype)
+            print("Cell descriptor shape : ", cell_descriptor)
 
-            # TODO: why those 0?? is because there is only one element
-            # but we want to squeeze it? then i'll make it explicit!
+            print("---" * 50)
 
             # update pareto front
             (
                 cell_fitness,
                 cell_genotype,
-                cell_desc,
+                cell_descriptor,
                 cell_mask,
             ) = update_masked_pareto_front(
-                pareto_front_fitness=cell_fitness[0, :],
-                pareto_front_genotypes=cell_genotype[0, :],
-                pareto_front_descriptors=cell_descriptors[0, :],
-                mask=cell_mask[0, :],
+                pareto_front_fitness=cell_fitness.squeeze(),
+                pareto_front_genotypes=cell_genotype.squeeze(),
+                pareto_front_descriptors=cell_descriptor.squeeze(),
+                mask=cell_mask.squeeze(),
                 new_batch_of_criteria=jnp.expand_dims(fitness, axis=0),
                 new_batch_of_genotypes=jnp.expand_dims(genotype, axis=0),
                 new_batch_of_descriptors=jnp.expand_dims(descriptors, axis=0),
                 new_mask=jnp.zeros(shape=(1,), dtype=bool),
             )
 
+            print("carry genotypes : ", carry.genotypes)
+            print("cell genotype : ", cell_genotype)
+
+            print("carry fitnesses : ", carry.fitnesses)
+            print("cell fitness : ", cell_fitness)
+
+            print("carry descriptors : ", carry.descriptors)
+            print("cell desc : ", cell_descriptor)
+
             # update cell fitness
             cell_fitness = cell_fitness - jnp.inf * jnp.expand_dims(cell_mask, axis=-1)
 
             # update grid
-            new_grid = carry.genotypes.at[index].set(cell_genotype)
-            new_grid_scores = carry.fitnesses.at[index].set(cell_fitness)
-            new_grid_descriptors = carry.descriptors.at[index].set(cell_desc)
+            new_genotypes = jax.tree_map(
+                lambda x, y: x.at[index].set(y), carry.genotypes, cell_genotype
+            )
+
+            new_fitnesses = carry.fitnesses.at[index].set(cell_fitness)
+            new_descriptors = carry.descriptors.at[index].set(cell_descriptor)
             carry = carry.replace(  # type: ignore
-                genotypes=new_grid,
-                descriptors=new_grid_descriptors,
-                fitnesses=new_grid_scores,
+                genotypes=new_genotypes,
+                descriptors=new_descriptors,
+                fitnesses=new_fitnesses,
             )
 
             # return new grid
@@ -166,7 +178,7 @@ class MOMERepertoire(MapElitesRepertoire):
         return self
 
     @classmethod
-    def init(
+    def init(  # type: ignore
         cls,
         genotypes: jnp.ndarray,
         fitnesses: Fitness,
@@ -196,7 +208,6 @@ class MOMERepertoire(MapElitesRepertoire):
 
         # get dimensions
         num_criteria = fitnesses.shape[1]
-        dim_genotype = genotypes.shape[1]
         num_descriptors = descriptors.shape[1]
         num_centroids = centroids.shape[0]
 
@@ -204,8 +215,15 @@ class MOMERepertoire(MapElitesRepertoire):
         default_fitnesses = -jnp.inf * jnp.ones(
             shape=(num_centroids, pareto_front_max_length, num_criteria)
         )
-        default_genotypes = jnp.zeros(
-            shape=(num_centroids, pareto_front_max_length, dim_genotype)
+        default_genotypes = jax.tree_map(
+            lambda x: jnp.zeros(
+                shape=(
+                    num_centroids,
+                    pareto_front_max_length,
+                )
+                + x.shape[1:]
+            ),
+            genotypes,
         )
         default_descriptors = jnp.zeros(
             shape=(num_centroids, pareto_front_max_length, num_descriptors)

@@ -3,8 +3,9 @@ from typing import Tuple
 import flax
 import jax
 import jax.numpy as jnp
-from qdax.types import Descriptor, Fitness, Genotype, RNGKey
 from typing_extensions import TypeAlias
+
+from qdax.types import Descriptor, Fitness, Genotype, RNGKey
 
 
 def compute_pareto_dominance(
@@ -73,22 +74,22 @@ def sample_in_masked_pareto_front(
     mask: jnp.ndarray,
     num_samples: int,
     random_key: RNGKey,
-) -> Tuple[jnp.ndarray, RNGKey]:
+) -> Genotype:
     """
     Sample num_samples elements in masked pareto front.
+
+    Note: do not retrieve a random key because this function
+    is to be vmapped. The public method that uses this function
+    will return a random key
     """
-    random_key, subkey = jax.random.split(random_key)
     p = (1.0 - mask) / jnp.sum(1.0 - mask)
 
     genotype_sample = jax.tree_map(
-        lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+        lambda x: jax.random.choice(random_key, x, shape=(num_samples,), p=p),
         pareto_front_genotypes,
     )
 
-    return (
-        genotype_sample,
-        random_key,
-    )
+    return genotype_sample
 
 
 def update_masked_pareto_front(
@@ -107,16 +108,22 @@ def update_masked_pareto_front(
     """
     # get dimensions
     batch_size = new_batch_of_criteria.shape[0]
-    pareto_front_len = pareto_front_fitness.shape[0]
     num_criteria = new_batch_of_criteria.shape[1]
-    genotypes_dim = new_batch_of_genotypes.shape[0]
-    descriptors_dim = new_batch_of_descriptors.shape[0]
+
+    pareto_front_len = pareto_front_fitness.shape[0]
+
+    first_leaf = jax.tree_leaves(new_batch_of_genotypes)[0]
+    genotypes_dim = first_leaf.shape[1]
+
+    descriptors_dim = new_batch_of_descriptors.shape[1]
 
     # gather all data
     cat_mask = jnp.concatenate([mask, new_mask], axis=-1)
     cat_f = jnp.concatenate([pareto_front_fitness, new_batch_of_criteria], axis=0)
-    cat_genotypes = jnp.concatenate(
-        [pareto_front_genotypes, new_batch_of_genotypes], axis=0
+    cat_genotypes = jax.tree_map(
+        lambda x, y: jnp.concatenate([x, y], axis=0),
+        pareto_front_genotypes,
+        new_batch_of_genotypes,
     )
     cat_descriptors = jnp.concatenate(
         [pareto_front_descriptors, new_batch_of_descriptors], axis=0
@@ -132,7 +139,9 @@ def update_masked_pareto_front(
 
     # get new fitness, genotypes and descriptors
     new_front_fitness = jnp.take(cat_f, indices, axis=0)
-    new_front_genotypes = jnp.take(cat_genotypes, indices, axis=0)
+    new_front_genotypes = jax.tree_map(
+        lambda x: jnp.take(x, indices, axis=0), cat_genotypes
+    )
     new_front_descriptors = jnp.take(cat_descriptors, indices, axis=0)
 
     # compute new mask
@@ -153,8 +162,12 @@ def update_masked_pareto_front(
     genotypes_mask = jnp.repeat(
         jnp.expand_dims(new_mask, axis=-1), genotypes_dim, axis=-1
     )
-    new_front_genotypes = new_front_genotypes * genotypes_mask
-    new_front_genotypes = new_front_genotypes[: len(pareto_front_fitness), :]
+    new_front_genotypes = jax.tree_map(
+        lambda x: x * genotypes_mask, new_front_genotypes
+    )
+    new_front_genotypes = jax.tree_map(
+        lambda x: x[: len(pareto_front_fitness), :], new_front_genotypes
+    )
 
     descriptors_mask = jnp.repeat(
         jnp.expand_dims(new_mask, axis=-1), descriptors_dim, axis=-1
@@ -164,7 +177,7 @@ def update_masked_pareto_front(
 
     new_mask = ~new_mask[: len(pareto_front_fitness)]
 
-    return new_front_fitness, new_front_genotypes, new_front_genotypes, new_mask
+    return new_front_fitness, new_front_genotypes, new_front_descriptors, new_mask
 
 
 # Define Metrics
