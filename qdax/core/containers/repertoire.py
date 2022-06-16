@@ -324,7 +324,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             an initialized MAP-Elite repertoire
         """
 
-        # Initialize grid with default values
+        # Initialize repertoire with default values
         num_centroids = centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
         default_genotypes = jax.tree_map(
@@ -340,7 +340,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             centroids=centroids,
         )
 
-        # Add initial values to the grid
+        # Add initial values to the repertoire
         new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
 
         return new_repertoire  # type: ignore

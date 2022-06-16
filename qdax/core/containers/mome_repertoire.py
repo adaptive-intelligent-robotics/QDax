@@ -15,8 +15,7 @@ from qdax.utils.mome_utils import (
 )
 
 
-@flax.struct.dataclass
-class MOMERepertoire:
+class MOMERepertoire(flax.struct.PyTreeNode):
     """Class for the repertoire in MO Map Elites
 
     Genotypes can only be jnp.ndarray at the moment.
@@ -39,8 +38,9 @@ class MOMERepertoire:
     @property
     def grid_size(self) -> int:
         """
-        Returns the maximum number of solutions the repertoire can contain which corresponds
-        to the number of cells times the maximum pareto front length.
+        Returns the maximum number of solutions the repertoire can
+        contain which corresponds to the number of cells times the
+        maximum pareto front length.
         """
         return int(self.genotypes.shape[1] * self.genotypes.shape[2])
 
@@ -56,42 +56,29 @@ class MOMERepertoire:
         vector of boolean True if cell empty False otherwise
         """
 
-        # grid_empty = jnp.any(self.fitnesses == -jnp.inf, axis=-1)
-        # p = jnp.any(~grid_empty, axis=-1) / jnp.sum(jnp.any(~grid_empty, axis=-1))
-        # indices = jnp.arange(start=0, stop=grid_empty.shape[0])
-
-        # # choose idx
-        # random_key, subkey = jax.random.split(random_key)
-        # cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
-
-        # # sample
-        # sample_in_fronts = partial(sample_in_masked_pareto_front, num_samples=1)
-        # sample_in_fronts = jax.vmap(sample_in_fronts)
-
-        # random_key, subkey = jax.random.split(random_key)
-        # subkeys = jax.random.split(subkey, num=num_samples)
-
-        # # TODO: sure we want to vmap all elements??
-        # elements, random_key = sample_in_fronts(  # type: ignore
-        #     pareto_front_x=self.genotypes[cells_idx],
-        #     mask=grid_empty[cells_idx],
-        #     random_key=subkeys,
-        # )
-
-        # # TODO: what is that?
-        # return elements[:, 0, :], random_key[0, :]
-
-        random_key, sub_key1 = jax.random.split(random_key, num=2)
         grid_empty = jnp.any(self.fitnesses == -jnp.inf, axis=-1)
         p = jnp.any(~grid_empty, axis=-1) / jnp.sum(jnp.any(~grid_empty, axis=-1))
         indices = jnp.arange(start=0, stop=grid_empty.shape[0])
-        cells_idx = jax.random.choice(sub_key1, indices, shape=(num_samples,), p=p)
+
+        # choose idx
+        random_key, subkey = jax.random.split(random_key)
+        cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
+
+        # sample
         sample_in_fronts = partial(sample_in_masked_pareto_front, num_samples=1)
-        random_key = jax.random.split(random_key, num=num_samples)
         sample_in_fronts = jax.vmap(sample_in_fronts)
-        elements, random_key = sample_in_fronts(
-            self.genotypes[cells_idx], grid_empty[cells_idx], random_key=random_key
+
+        random_key, subkey = jax.random.split(random_key)
+        subkeys = jax.random.split(subkey, num=num_samples)
+
+        # TODO: sure we want to vmap all elements??
+        elements, random_key = sample_in_fronts(  # type: ignore
+            pareto_front_x=self.genotypes[cells_idx],
+            mask=grid_empty[cells_idx],
+            random_key=subkeys,
         )
+
+        # TODO: what is that?
         return elements[:, 0, :], random_key[0, :]
 
     @jax.jit
@@ -172,3 +159,62 @@ class MOMERepertoire:
         )
 
         return self
+
+    @classmethod
+    def init(
+        cls,
+        genotypes: jnp.ndarray,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        centroids: Centroid,
+        pareto_front_max_length: int,
+    ) -> MOMERepertoire:
+        """
+        Initialize a Map-Elites repertoire with an initial population of genotypes.
+        Requires the definition of centroids that can be computed with any method
+        such as CVT or Euclidean mapping.
+
+        Note: this function has been kept outside of the object MapElites, so it can
+        be called easily called from other modules.
+
+        Args:
+            genotypes: initial genotypes, pytree in which leaves
+                have shape (batch_size, num_features)
+            fitnesses: fitness of the initial genotypes of shape (batch_size,)
+            descriptors: descriptors of the initial genotypes
+                of shape (batch_size, num_descriptors)
+            centroids: tesselation centroids of shape (batch_size, num_descriptors)
+
+        Returns:
+            an initialized MAP-Elite repertoire
+        """
+
+        # get dimensions
+        num_criteria = fitnesses.shape[1]
+        dim_genotype = genotypes.shape[1]
+        num_descriptors = descriptors.shape[1]
+        num_centroids = centroids.shape[0]
+
+        # create default values
+        default_fitnesses = -jnp.inf * jnp.ones(
+            shape=(num_centroids, pareto_front_max_length, num_criteria)
+        )
+        default_genotypes = jnp.zeros(
+            shape=(num_centroids, pareto_front_max_length, dim_genotype)
+        )
+        default_descriptors = jnp.zeros(
+            shape=(num_centroids, pareto_front_max_length, num_descriptors)
+        )
+
+        # create repertoire with default values
+        repertoire = MOMERepertoire(  # type: ignore
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            descriptors=default_descriptors,
+            centroids=centroids,
+        )
+
+        # add first batch of individuals in the repertoire
+        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+
+        return new_repertoire  # type: ignore

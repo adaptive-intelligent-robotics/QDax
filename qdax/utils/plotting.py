@@ -14,7 +14,7 @@ from scipy.spatial import Voronoi
 
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.containers.repertoire import MapElitesRepertoire
-from qdax.core.multi_objectives_map_elites import compute_global_pareto_front
+from qdax.core.mome import compute_global_pareto_front
 
 
 def get_voronoi_finite_polygons_2d(

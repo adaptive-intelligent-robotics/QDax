@@ -60,16 +60,19 @@ class MAPElites:
         Returns:
             an initialized MAP-Elite repertoire with the initial state of the emitter.
         """
+        # score initial genotypes
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             init_genotypes, random_key
         )
 
+        # init the repertoire
         repertoire = MapElitesRepertoire.init(
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
         )
+
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
             init_genotypes=init_genotypes, random_key=random_key
