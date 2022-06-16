@@ -6,34 +6,19 @@ from typing import Any, Tuple
 import flax
 import jax
 import jax.numpy as jnp
-
-from qdax.core.containers.repertoire import get_cells_indices
-from qdax.types import Centroid, Descriptor, Fitness, RNGKey
+from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
+from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from qdax.utils.mome_utils import (
     sample_in_masked_pareto_front,
     update_masked_pareto_front,
 )
 
 
-class MOMERepertoire(flax.struct.PyTreeNode):
+class MOMERepertoire(MapElitesRepertoire):
     """Class for the repertoire in MO Map Elites
 
     Genotypes can only be jnp.ndarray at the moment.
     """
-
-    genotypes: jnp.ndarray
-    fitnesses: Fitness
-    descriptors: Descriptor
-    centroids: Centroid
-
-    def save(self, path: str = "./") -> None:
-        """
-        Save the repertoire on disk in the form of .npy files.
-        """
-        jnp.save(path + "genotypes.npy", self.genotypes)
-        jnp.save(path + "fitnesses.npy", self.fitnesses)
-        jnp.save(path + "descriptors.npy", self.descriptors)
-        jnp.save(path + "centroids.npy", self.centroids)
 
     @property
     def grid_size(self) -> int:
@@ -42,7 +27,8 @@ class MOMERepertoire(flax.struct.PyTreeNode):
         contain which corresponds to the number of cells times the
         maximum pareto front length.
         """
-        return int(self.genotypes.shape[1] * self.genotypes.shape[2])
+        first_leaf = jax.tree_leaves(self.genotypes)[0]
+        return int(first_leaf.shape[1] * first_leaf.shape[2])
 
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample(
@@ -71,9 +57,14 @@ class MOMERepertoire(flax.struct.PyTreeNode):
         random_key, subkey = jax.random.split(random_key)
         subkeys = jax.random.split(subkey, num=num_samples)
 
+        # get genotypes
+        pareto_front_genotypes = jax.tree_map(lambda x: x[cells_idx], self.genotypes)
+
+        # TODO: refacto to avoid array of keys in output
+
         # TODO: sure we want to vmap all elements??
         elements, random_key = sample_in_fronts(  # type: ignore
-            pareto_front_genotypes=self.genotypes[cells_idx],
+            pareto_front_genotypes=pareto_front_genotypes,
             mask=grid_empty[cells_idx],
             random_key=subkeys,
         )
@@ -84,7 +75,7 @@ class MOMERepertoire(flax.struct.PyTreeNode):
     @jax.jit
     def add(
         self,
-        batch_of_genotypes: jnp.ndarray,
+        batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
     ) -> MOMERepertoire:
@@ -99,15 +90,15 @@ class MOMERepertoire(flax.struct.PyTreeNode):
         batch_of_descriptors of shape (batch_size, num_descriptors)
         batch_of_fitnesses of shape (batch_size, num_criteria)
         """
-
-        gen_dim = batch_of_genotypes.shape[1]
+        first_leaf = jax.tree_leaves(batch_of_genotypes)[0]
+        gen_dim = first_leaf.shape[1]
 
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
 
         def _add_one(
             carry: MOMERepertoire,
-            data: Tuple[jnp.ndarray, Descriptor, Fitness, jnp.ndarray],
+            data: Tuple[Genotype, Descriptor, Fitness, jnp.ndarray],
         ) -> Tuple[MOMERepertoire, Any]:
             # unwrap data
             genotype, descriptors, fitness, index = data
@@ -115,29 +106,41 @@ class MOMERepertoire(flax.struct.PyTreeNode):
             index = index.astype(jnp.int32)
 
             # get cell data
-            cell, cell_fitness = carry.genotypes[index], carry.fitnesses[index]
+            cell_genotype = jax.tree_map(lambda x: x[index], carry.genotypes)
+            cell_fitness = carry.fitnesses[index]
             cell_descriptors = carry.descriptors[index]
             cell_mask = jnp.any(cell_fitness == -jnp.inf, axis=-1)
 
+            # create pareto front genotypes
+
+            # TODO: What is happening there???
+            # TODO: remove the concatenations
+
+            # TODO: why those 0?? is because there is only one element
+            # but we want to squeeze it? then i'll make it explicit!
+
             # update pareto front
-            cell_fitness, cell, cell_mask = update_masked_pareto_front(
+            (
+                cell_fitness,
+                cell_genotype,
+                cell_desc,
+                cell_mask,
+            ) = update_masked_pareto_front(
                 pareto_front_fitness=cell_fitness[0, :],
-                pareto_front_genotypes=jnp.concatenate(
-                    [cell[0, :], cell_descriptors[0, :]], axis=-1
-                ),
+                pareto_front_genotypes=cell_genotype[0, :],
+                pareto_front_descriptors=cell_descriptors[0, :],
                 mask=cell_mask[0, :],
                 new_batch_of_criteria=jnp.expand_dims(fitness, axis=0),
-                new_batch_of_genotypes=jnp.expand_dims(
-                    jnp.concatenate([genotype, descriptors], axis=-1), axis=0
-                ),
+                new_batch_of_genotypes=jnp.expand_dims(genotype, axis=0),
+                new_batch_of_descriptors=jnp.expand_dims(descriptors, axis=0),
                 new_mask=jnp.zeros(shape=(1,), dtype=bool),
             )
-            cell_desc = cell[:, gen_dim:]
-            cell = cell[:, :gen_dim]
+
+            # update cell fitness
             cell_fitness = cell_fitness - jnp.inf * jnp.expand_dims(cell_mask, axis=-1)
 
             # update grid
-            new_grid = carry.genotypes.at[index].set(cell)
+            new_grid = carry.genotypes.at[index].set(cell_genotype)
             new_grid_scores = carry.fitnesses.at[index].set(cell_fitness)
             new_grid_descriptors = carry.descriptors.at[index].set(cell_desc)
             carry = carry.replace(  # type: ignore

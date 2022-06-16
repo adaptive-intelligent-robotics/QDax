@@ -3,9 +3,8 @@ from typing import Tuple
 import flax
 import jax
 import jax.numpy as jnp
+from qdax.types import Descriptor, Fitness, Genotype, RNGKey
 from typing_extensions import TypeAlias
-
-from qdax.types import Fitness, Genotype, RNGKey
 
 
 def compute_pareto_dominance(
@@ -70,7 +69,7 @@ def compute_masked_pareto_front(
 
 
 def sample_in_masked_pareto_front(
-    pareto_front_genotypes: jnp.ndarray,
+    pareto_front_genotypes: Genotype,
     mask: jnp.ndarray,
     num_samples: int,
     random_key: RNGKey,
@@ -78,11 +77,16 @@ def sample_in_masked_pareto_front(
     """
     Sample num_samples elements in masked pareto front.
     """
-    random_key, sub_key = jax.random.split(random_key)
+    random_key, subkey = jax.random.split(random_key)
     p = (1.0 - mask) / jnp.sum(1.0 - mask)
 
+    genotype_sample = jax.tree_map(
+        lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+        pareto_front_genotypes,
+    )
+
     return (
-        jax.random.choice(sub_key, pareto_front_genotypes, shape=(num_samples,), p=p),
+        genotype_sample,
         random_key,
     )
 
@@ -90,11 +94,13 @@ def sample_in_masked_pareto_front(
 def update_masked_pareto_front(
     pareto_front_fitness: Fitness,
     pareto_front_genotypes: Genotype,
+    pareto_front_descriptors: Descriptor,
     mask: jnp.ndarray,
     new_batch_of_criteria: Fitness,
     new_batch_of_genotypes: Genotype,
+    new_batch_of_descriptors: Descriptor,
     new_mask: jnp.ndarray,
-) -> Tuple[Fitness, Genotype, jnp.ndarray]:
+) -> Tuple[Fitness, Genotype, Descriptor, jnp.ndarray]:
     """
     Takes a fixed size pareto front, its mask and new points to add.
     Returns updated front and mask.
@@ -103,13 +109,17 @@ def update_masked_pareto_front(
     batch_size = new_batch_of_criteria.shape[0]
     pareto_front_len = pareto_front_fitness.shape[0]
     num_criteria = new_batch_of_criteria.shape[1]
-    genotypes_dim = new_batch_of_genotypes.shape[1]
+    genotypes_dim = new_batch_of_genotypes.shape[0]
+    descriptors_dim = new_batch_of_descriptors.shape[0]
 
     # gather all data
     cat_mask = jnp.concatenate([mask, new_mask], axis=-1)
     cat_f = jnp.concatenate([pareto_front_fitness, new_batch_of_criteria], axis=0)
     cat_genotypes = jnp.concatenate(
         [pareto_front_genotypes, new_batch_of_genotypes], axis=0
+    )
+    cat_descriptors = jnp.concatenate(
+        [pareto_front_descriptors, new_batch_of_descriptors], axis=0
     )
 
     # get new front
@@ -120,9 +130,10 @@ def update_masked_pareto_front(
     indices = indices + ~cat_bool_front * (batch_size + pareto_front_len - 1)
     indices = jnp.sort(indices)
 
-    # get new fitness and genotypes
+    # get new fitness, genotypes and descriptors
     new_front_fitness = jnp.take(cat_f, indices, axis=0)
     new_front_genotypes = jnp.take(cat_genotypes, indices, axis=0)
+    new_front_descriptors = jnp.take(cat_descriptors, indices, axis=0)
 
     # compute new mask
     num_front_elements = jnp.sum(cat_bool_front)
@@ -139,13 +150,21 @@ def update_masked_pareto_front(
     new_front_fitness = new_front_fitness * fitness_mask
     new_front_fitness = new_front_fitness[: len(pareto_front_fitness), :]
 
-    x_mask = jnp.repeat(jnp.expand_dims(new_mask, axis=-1), genotypes_dim, axis=-1)
-    new_front_genotypes = new_front_genotypes * x_mask
+    genotypes_mask = jnp.repeat(
+        jnp.expand_dims(new_mask, axis=-1), genotypes_dim, axis=-1
+    )
+    new_front_genotypes = new_front_genotypes * genotypes_mask
     new_front_genotypes = new_front_genotypes[: len(pareto_front_fitness), :]
+
+    descriptors_mask = jnp.repeat(
+        jnp.expand_dims(new_mask, axis=-1), descriptors_dim, axis=-1
+    )
+    new_front_descriptors = new_front_descriptors * descriptors_mask
+    new_front_descriptors = new_front_descriptors[: len(pareto_front_fitness), :]
 
     new_mask = ~new_mask[: len(pareto_front_fitness)]
 
-    return new_front_fitness, new_front_genotypes, new_mask
+    return new_front_fitness, new_front_genotypes, new_front_genotypes, new_mask
 
 
 # Define Metrics
