@@ -5,7 +5,7 @@ from typing import Callable, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.core.neuroevolution.buffers.buffers import Transition
+from qdax.core.neuroevolution.buffers.buffer import Transition
 from qdax.types import Action, Observation, Params, RNGKey
 
 

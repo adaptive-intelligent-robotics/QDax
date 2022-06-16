@@ -14,7 +14,7 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from brax.training.distribution import NormalTanhDistribution
 
-from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.dads_loss import make_dads_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.dads_networks import make_dads_networks
@@ -422,110 +422,72 @@ class DADS(SAC):
         )
 
     @partial(jax.jit, static_argnames=("self",))
-    def update(
-        self,
-        training_state: DadsTrainingState,
-        replay_buffer: ReplayBuffer,
-    ) -> Tuple[DadsTrainingState, ReplayBuffer, Metrics]:
-        """Performs a training step to update the policy, the critic and the
-        dynamics network parameters.
+    def _update_dynamics(
+        self, operand: Tuple[DadsTrainingState, QDTransition]
+    ) -> Tuple[Params, float, optax.OptState]:
+        """Update the dynamics network, independently of other networks. Called every
+        `dynamics_update_freq` training steps.
+        """
+        training_state, transitions = operand
 
-        Args:
-            training_state: the current DADS training state
-            replay_buffer: the replay buffer
+        dynamics_loss, dynamics_gradient = jax.value_and_grad(self._dynamics_loss_fn,)(
+            training_state.dynamics_params,
+            transitions,
+        )
 
-        Returns:
-            the updated DIAYN training state
-            the replay buffer
-            the training metrics
+        (dynamics_updates, dynamics_optimizer_state,) = self._dynamics_optimizer.update(
+            dynamics_gradient, training_state.dynamics_optimizer_state
+        )
+        dynamics_params = optax.apply_updates(
+            training_state.dynamics_params, dynamics_updates
+        )
+        return (
+            dynamics_params,
+            dynamics_loss,
+            dynamics_optimizer_state,
+        )
+
+    @partial(jax.jit, static_argnames=("self",))
+    def _not_update_dynamics(
+        self, operand: Tuple[DadsTrainingState, QDTransition]
+    ) -> Tuple[Params, float, optax.OptState]:
+        """Fake update of the dynamics, called every time we don't want to update
+        the dynamics while we update the other networks.
         """
 
-        @jax.jit
-        def _update_dynamics(
-            operand: Tuple[DadsTrainingState, QDTransition]
-        ) -> Tuple[Params, float, optax.OptState]:
-            """Update the dynamics network, independently of other networks. Called every
-            `dynamics_update_freq` training steps.
-            """
-            training_state, samples = operand
+        training_state, _transitions = operand
 
-            dynamics_loss, dynamics_gradient = jax.value_and_grad(
-                self._dynamics_loss_fn,
-            )(
-                training_state.dynamics_params,
-                samples,
-            )
+        return (
+            training_state.dynamics_params,
+            jnp.nan,
+            training_state.dynamics_optimizer_state,
+        )
 
-            (
-                dynamics_updates,
-                dynamics_optimizer_state,
-            ) = self._dynamics_optimizer.update(
-                dynamics_gradient, training_state.dynamics_optimizer_state
-            )
-            dynamics_params = optax.apply_updates(
-                training_state.dynamics_params, dynamics_updates
-            )
-            return (
-                dynamics_params,
-                dynamics_loss,
-                dynamics_optimizer_state,
-            )
+    @partial(jax.jit, static_argnames=("self",))
+    def _update_networks(
+        self,
+        training_state: DadsTrainingState,
+        transitions: QDTransition,
+    ) -> Tuple[DadsTrainingState, Metrics]:
+        """Updates the networks involved in DADS.
 
-        @jax.jit
-        def _not_update_dynamics(
-            operand: Tuple[DadsTrainingState, QDTransition]
-        ) -> Tuple[Params, float, optax.OptState]:
-            """Fake update of the dynamics, called every time we don't want to update
-            the dynamics while we update the other networks.
-            """
+        Args:
+            training_state: the current training state of the algorithm.
+            transitions: transitions sampled from a replay buffer.
+            random_key: a random key to handle stochasticity.
 
-            training_state, _samples = operand
+        Returns:
+            The updated training state and training metrics.
+        """
 
-            return (
-                training_state.dynamics_params,
-                jnp.nan,
-                training_state.dynamics_optimizer_state,
-            )
-
-        # Sample a batch of transitions in the buffer
         random_key = training_state.random_key
-        samples, random_key = replay_buffer.sample(
-            random_key,
-            sample_size=self._config.batch_size,
-        )
-
-        # Optionally replace the state descriptor by the observation
-        if self._config.descriptor_full_state:
-            _state_desc = samples.obs[:, : -self._config.num_skills]
-            _next_state_desc = samples.next_obs[:, : -self._config.num_skills]
-            samples = samples.replace(
-                state_desc=_state_desc, next_state_desc=_next_state_desc
-            )
-
-        # Compute the reward
-        rewards = self._compute_reward(
-            transition=samples, training_state=training_state
-        )
-
-        # Compute the target and optionally normalize it for the training
-        if self._config.normalize_target:
-            next_state_desc = normalize_with_rmstd(
-                samples.next_state_desc - samples.state_desc,
-                training_state.normalization_running_stats,
-            )
-
-        else:
-            next_state_desc = samples.next_state_desc - samples.state_desc
-
-        # Update the transitions
-        samples = samples.replace(next_state_desc=next_state_desc, rewards=rewards)
 
         # Update skill-dynamics
         (dynamics_params, dynamics_loss, dynamics_optimizer_state,) = jax.lax.cond(
             training_state.steps % self._config.dynamics_update_freq == 0,
-            _update_dynamics,
-            _not_update_dynamics,
-            (training_state, samples),
+            self._update_dynamics,
+            self._not_update_dynamics,
+            (training_state, transitions),
         )
 
         # udpate alpha
@@ -535,7 +497,9 @@ class DADS(SAC):
             alpha_loss,
             random_key,
         ) = self._update_alpha(
-            training_state=training_state, samples=samples, random_key=random_key
+            training_state=training_state,
+            transitions=transitions,
+            random_key=random_key,
         )
 
         # use the previous alpha
@@ -551,7 +515,7 @@ class DADS(SAC):
         ) = self._update_critic(
             training_state=training_state,
             alpha=alpha,
-            samples=samples,
+            transitions=transitions,
             random_key=random_key,
         )
 
@@ -564,7 +528,7 @@ class DADS(SAC):
         ) = self._update_actor(
             training_state=training_state,
             alpha=alpha,
-            samples=samples,
+            transitions=transitions,
             random_key=random_key,
         )
 
@@ -589,8 +553,69 @@ class DADS(SAC):
             "dynamics_loss": dynamics_loss,
             "alpha_loss": alpha_loss,
             "alpha": alpha,
-            "training_diversity_reward_mean": jnp.mean(rewards),
-            "target_mean": jnp.mean(samples.next_state_desc),
-            "target_std": jnp.std(samples.next_state_desc),
+            "training_observed_reward_mean": jnp.mean(transitions.rewards),
+            "target_mean": jnp.mean(transitions.next_state_desc),
+            "target_std": jnp.std(transitions.next_state_desc),
         }
+
+        return new_training_state, metrics
+
+    @partial(jax.jit, static_argnames=("self",))
+    def update(
+        self,
+        training_state: DadsTrainingState,
+        replay_buffer: ReplayBuffer,
+    ) -> Tuple[DadsTrainingState, ReplayBuffer, Metrics]:
+        """Performs a training step to update the policy, the critic and the
+        dynamics network parameters.
+
+        Args:
+            training_state: the current DADS training state
+            replay_buffer: the replay buffer
+
+        Returns:
+            the updated DIAYN training state
+            the replay buffer
+            the training metrics
+        """
+
+        # Sample a batch of transitions in the buffer
+        random_key = training_state.random_key
+        transitions, random_key = replay_buffer.sample(
+            random_key,
+            sample_size=self._config.batch_size,
+        )
+
+        # Optionally replace the state descriptor by the observation
+        if self._config.descriptor_full_state:
+            _state_desc = transitions.obs[:, : -self._config.num_skills]
+            _next_state_desc = transitions.next_obs[:, : -self._config.num_skills]
+            transitions = transitions.replace(
+                state_desc=_state_desc, next_state_desc=_next_state_desc
+            )
+
+        # Compute the reward
+        rewards = self._compute_reward(
+            transition=transitions, training_state=training_state
+        )
+
+        # Compute the target and optionally normalize it for the training
+        if self._config.normalize_target:
+            next_state_desc = normalize_with_rmstd(
+                transitions.next_state_desc - transitions.state_desc,
+                training_state.normalization_running_stats,
+            )
+
+        else:
+            next_state_desc = transitions.next_state_desc - transitions.state_desc
+
+        # Update the transitions
+        transitions = transitions.replace(
+            next_state_desc=next_state_desc, rewards=rewards
+        )
+
+        new_training_state, metrics = self._update_networks(
+            training_state, transitions=transitions
+        )
+
         return new_training_state, replay_buffer, metrics

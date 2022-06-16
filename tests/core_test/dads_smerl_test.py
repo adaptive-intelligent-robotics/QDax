@@ -1,5 +1,4 @@
-"""Training script for the algorithm DADS, should be launched with hydra.
-    e.g. python train_dads.py config=dads_ant"""
+"""Testing script for the algorithm DADS"""
 from functools import partial
 from typing import Any, Tuple
 
@@ -9,24 +8,26 @@ import pytest
 from brax.envs import State as EnvState
 
 from qdax import environments
-from qdax.core.dads import DADS, DadsConfig, DadsTrainingState
-from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
+from qdax.core.dads import DadsTrainingState
+from qdax.core.dads_smerl import DADSSMERL, DadsSmerlConfig
+from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
 
 
-def test_dads() -> None:
+def test_dads_smerl() -> None:
     """Launches and monitors the training of the agent."""
 
-    env_name = "ant_omni"
+    env_name = "pointmaze"
     seed = 0
-    env_batch_size = 200
+    env_batch_size = 100
     num_steps = 10000
     warmup_steps = 0
     buffer_size = 10000
 
     # SAC config
     batch_size = 256
-    episode_length = 200
+    episode_length = 100
     tau = 0.005
     grad_updates_per_step = 0.25
     normalize_observations = False
@@ -40,7 +41,12 @@ def test_dads() -> None:
     num_skills = 5
     dynamics_update_freq = 1
     normalize_target = True
-    descriptor_full_state = True
+    descriptor_full_state = False
+
+    # SMERL specific
+    diversity_reward_scale = 2.0
+    smerl_target = -200
+    smerl_margin = 40
 
     # Initialize environments
     env_batch_size = env_batch_size
@@ -74,8 +80,11 @@ def test_dads() -> None:
         action_dim=env.action_size,
         descriptor_dim=env.behavior_descriptor_length,
     )
-    replay_buffer = ReplayBuffer.init(
-        buffer_size=buffer_size, transition=dummy_transition
+    replay_buffer = TrajectoryBuffer.init(
+        buffer_size=buffer_size,
+        transition=dummy_transition,
+        env_batch_size=env_batch_size,
+        episode_length=episode_length,
     )
 
     if descriptor_full_state:
@@ -83,7 +92,7 @@ def test_dads() -> None:
     else:
         descriptor_size = env.behavior_descriptor_length
 
-    dads_config = DadsConfig(
+    dads_smerl_config = DadsSmerlConfig(
         # SAC config
         batch_size=batch_size,
         episode_length=episode_length,
@@ -102,13 +111,17 @@ def test_dads() -> None:
         omit_input_dynamics_dim=env.behavior_descriptor_length,
         dynamics_update_freq=dynamics_update_freq,
         normalize_target=normalize_target,
+        # SMERL config
+        diversity_reward_scale=diversity_reward_scale,
+        smerl_margin=smerl_margin,
+        smerl_target=smerl_target,
     )
-    dads = DADS(
-        config=dads_config,
+    dads_smerl = DADSSMERL(
+        config=dads_smerl_config,
         action_size=env.action_size,
-        descriptor_size=descriptor_size,
+        descriptor_size=env.state_descriptor_length,
     )
-    training_state = dads.init(
+    training_state = dads_smerl.init(
         key,
         action_size=env.action_size,
         observation_size=env.observation_size,
@@ -122,7 +135,7 @@ def test_dads() -> None:
 
     # Make play_step* functions scannable by passing static args beforehand
     play_eval_step = partial(
-        dads.play_step_fn,
+        dads_smerl.play_step_fn,
         deterministic=True,
         env=eval_env,
         skills=skills,
@@ -130,14 +143,14 @@ def test_dads() -> None:
     )
 
     play_step = partial(
-        dads.play_step_fn,
+        dads_smerl.play_step_fn,
         env=env,
         deterministic=False,
         skills=skills,
     )
 
     eval_policy = partial(
-        dads.eval_policy_fn,
+        dads_smerl.eval_policy_fn,
         play_step_fn=play_eval_step,
         eval_env_first_state=eval_env_first_state,
         env_batch_size=env_batch_size,
@@ -160,14 +173,14 @@ def test_dads() -> None:
         env_batch_size=env_batch_size,
         grad_updates_per_step=grad_updates_per_step,
         play_step_fn=play_step,
-        update_fn=dads.update,
+        update_fn=dads_smerl.update,
     )
 
     @jax.jit
     def _scan_do_iteration(
-        carry: Tuple[DadsTrainingState, EnvState, ReplayBuffer],
+        carry: Tuple[DadsTrainingState, EnvState, TrajectoryBuffer],
         unused_arg: Any,
-    ) -> Tuple[Tuple[DadsTrainingState, EnvState, ReplayBuffer], Any]:
+    ) -> Tuple[Tuple[DadsTrainingState, EnvState, TrajectoryBuffer], Any]:
         (
             training_state,
             env_state,
@@ -195,4 +208,4 @@ def test_dads() -> None:
 
 
 if __name__ == "__main__":
-    test_dads()
+    test_dads_smerl()

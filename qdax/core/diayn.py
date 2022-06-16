@@ -14,7 +14,7 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from brax.training.distribution import NormalTanhDistribution
 
-from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.diayn_loss import make_diayn_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.diayn_networks import make_diayn_networks
@@ -72,7 +72,7 @@ class DIAYN(SAC):
     def __init__(self, config: DiaynConfig, action_size: int):
         self._config: DiaynConfig = config
         if self._config.normalize_observations:
-            raise NotImplementedError("Normalization in not implemented for DIAYN yet")
+            raise NotImplementedError("Normalization is not implemented for DIAYN yet")
 
         # define the networks
         self._policy, self._critic, self._discriminator = make_diayn_networks(
@@ -373,46 +373,32 @@ class DIAYN(SAC):
         )
 
     @partial(jax.jit, static_argnames=("self",))
-    def update(
+    def _update_networks(
         self,
         training_state: DiaynTrainingState,
-        replay_buffer: ReplayBuffer,
-    ) -> Tuple[DiaynTrainingState, ReplayBuffer, Metrics]:
-        """Performs a training step to update the policy, the critic and the
-        discriminator parameters.
+        transitions: QDTransition,
+    ) -> Tuple[DiaynTrainingState, Metrics]:
+        """Updates all the networks of the training state.
 
         Args:
-            training_state: the current DIAYN training state
-            replay_buffer: the replay buffer
+            training_state: the current training state.
+            transitions: transitions sampled from the replay buffer.
+            random_key: a random key to handle stochastic operations.
 
         Returns:
-            the updated DIAYN training state
-            the replay buffer
-            the training metrics
+            The update training state, metrics and a new random key.
         """
-        # sample a batch of transitions in the buffer
         random_key = training_state.random_key
-        samples, random_key = replay_buffer.sample(
-            random_key,
-            sample_size=self._config.batch_size,
-        )
 
-        # choose appropriate state descriptor
-        if self._config.descriptor_full_state:
-            state_desc = samples.obs[:, : -self._config.num_skills]
-            next_state_desc = samples.next_obs[:, : -self._config.num_skills]
-            samples = samples.replace(
-                state_desc=state_desc, next_state_desc=next_state_desc
-            )
-
-        # replace the rewards by the diversity rewards
-        rewards = self._compute_reward(samples, training_state)
-        samples = samples.replace(rewards=rewards)
-
-        # update the discriminator
+        # Compute discriminator loss and gradients
         discriminator_loss, discriminator_gradient = jax.value_and_grad(
             self._discriminator_loss_fn
-        )(training_state.discriminator_params, transitions=samples)
+        )(
+            training_state.discriminator_params,
+            transitions=transitions,
+        )
+
+        # update discriminator
         (
             discriminator_updates,
             discriminator_optimizer_state,
@@ -430,7 +416,9 @@ class DIAYN(SAC):
             alpha_loss,
             random_key,
         ) = self._update_alpha(
-            training_state=training_state, samples=samples, random_key=random_key
+            training_state=training_state,
+            transitions=transitions,
+            random_key=random_key,
         )
 
         # use the previous alpha
@@ -446,7 +434,7 @@ class DIAYN(SAC):
         ) = self._update_critic(
             training_state=training_state,
             alpha=alpha,
-            samples=samples,
+            transitions=transitions,
             random_key=random_key,
         )
 
@@ -459,11 +447,11 @@ class DIAYN(SAC):
         ) = self._update_actor(
             training_state=training_state,
             alpha=alpha,
-            samples=samples,
+            transitions=transitions,
             random_key=random_key,
         )
 
-        # create new training state
+        # Create new training state
         new_training_state = DiaynTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -483,4 +471,49 @@ class DIAYN(SAC):
             "discriminator_loss": discriminator_loss,
             "alpha_loss": alpha_loss,
         }
+
+        return new_training_state, metrics
+
+    @partial(jax.jit, static_argnames=("self",))
+    def update(
+        self,
+        training_state: DiaynTrainingState,
+        replay_buffer: ReplayBuffer,
+    ) -> Tuple[DiaynTrainingState, ReplayBuffer, Metrics]:
+        """Performs a training step to update the policy, the critic and the
+        discriminator parameters.
+
+        Args:
+            training_state: the current DIAYN training state
+            replay_buffer: the replay buffer
+
+        Returns:
+            the updated DIAYN training state
+            the replay buffer
+            the training metrics
+        """
+        # Sample a batch of transitions in the buffer
+        random_key = training_state.random_key
+        transitions, random_key = replay_buffer.sample(
+            random_key,
+            sample_size=self._config.batch_size,
+        )
+
+        # Optionally replace the state descriptor by the observation
+        if self._config.descriptor_full_state:
+            state_desc = transitions.obs[:, : -self._config.num_skills]
+            next_state_desc = transitions.next_obs[:, : -self._config.num_skills]
+            transitions = transitions.replace(
+                state_desc=state_desc, next_state_desc=next_state_desc
+            )
+
+        # Compute the rewards and replace transitions
+        rewards = self._compute_reward(transitions, training_state)
+        transitions = transitions.replace(rewards=rewards)
+
+        # update params of networks in the training state
+        new_training_state, metrics = self._update_networks(
+            training_state, transitions=transitions
+        )
+
         return new_training_state, replay_buffer, metrics
