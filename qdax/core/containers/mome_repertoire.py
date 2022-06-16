@@ -73,7 +73,7 @@ class MOMERepertoire(flax.struct.PyTreeNode):
 
         # TODO: sure we want to vmap all elements??
         elements, random_key = sample_in_fronts(  # type: ignore
-            pareto_front_x=self.genotypes[cells_idx],
+            pareto_front_genotypes=self.genotypes[cells_idx],
             mask=grid_empty[cells_idx],
             random_key=subkeys,
         )
@@ -121,14 +121,16 @@ class MOMERepertoire(flax.struct.PyTreeNode):
 
             # update pareto front
             cell_fitness, cell, cell_mask = update_masked_pareto_front(
-                cell_fitness[0, :],
-                jnp.concatenate([cell[0, :], cell_descriptors[0, :]], axis=-1),
-                cell_mask[0, :],
-                jnp.expand_dims(fitness, axis=0),
-                jnp.expand_dims(
+                pareto_front_fitness=cell_fitness[0, :],
+                pareto_front_genotypes=jnp.concatenate(
+                    [cell[0, :], cell_descriptors[0, :]], axis=-1
+                ),
+                mask=cell_mask[0, :],
+                new_batch_of_criteria=jnp.expand_dims(fitness, axis=0),
+                new_batch_of_genotypes=jnp.expand_dims(
                     jnp.concatenate([genotype, descriptors], axis=-1), axis=0
                 ),
-                jnp.zeros(shape=(1,), dtype=bool),
+                new_mask=jnp.zeros(shape=(1,), dtype=bool),
             )
             cell_desc = cell[:, gen_dim:]
             cell = cell[:, :gen_dim]
