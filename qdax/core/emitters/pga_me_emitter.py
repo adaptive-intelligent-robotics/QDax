@@ -227,6 +227,7 @@ class PGEmitter(Emitter):
     def state_update(
         self,
         emitter_state: PGEmitterState,
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -242,6 +243,7 @@ class PGEmitter(Emitter):
 
         Args:
             emitter_state: current emitter state.
+            repertoire: the current genotypes repertoire
             genotypes: unused here - but compulsory in the signature.
             fitnesses: unused here - but compulsory in the signature.
             descriptors: unused here - but compulsory in the signature.

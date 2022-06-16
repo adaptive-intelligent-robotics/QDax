@@ -206,6 +206,7 @@ class OMGMEGAEmitter(Emitter):
     def state_update(
         self,
         emitter_state: OMGMEGAEmitterState,
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -218,6 +219,7 @@ class OMGMEGAEmitter(Emitter):
 
         Args:
             emitter_state: current emitter state
+            repertoire: the current genotypes repertoire
             genotypes: the genotypes of the batch of emitted offspring.
             fitnesses: the fitnesses of the batch of emitted offspring.
             descriptors: the descriptors of the emitted offspring.
