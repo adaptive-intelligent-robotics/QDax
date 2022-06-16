@@ -6,13 +6,15 @@ from brax.training.distribution import ParametricDistribution
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.losses.sac_loss import make_sac_loss_fn
-from qdax.types import Action, Observation, Params, RNGKey, StateDescriptor
+from qdax.types import Action, Observation, Params, RNGKey, Skill, StateDescriptor
 
 
-def make_diayn_loss_fn(
+def make_dads_loss_fn(
     policy_fn: Callable[[Params, Observation], jnp.ndarray],
     critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
-    discriminator_fn: Callable[[Params, StateDescriptor], jnp.ndarray],
+    dynamics_fn: Callable[
+        [Params, StateDescriptor, Skill, StateDescriptor], jnp.ndarray
+    ],
     parametric_action_distribution: ParametricDistribution,
     reward_scaling: float,
     discount: float,
@@ -24,13 +26,13 @@ def make_diayn_loss_fn(
     Callable[[Params, Params, Params, QDTransition, RNGKey], jnp.ndarray],
     Callable[[Params, QDTransition, RNGKey], jnp.ndarray],
 ]:
-    """Creates the loss used in DIAYN.
+    """Creates the loss used in DADS.
 
     Args:
         policy_fn: the apply function of the policy
         critic_fn: the apply function of the critic
-        discriminator_fn: the apply function of the discriminator
-        parametric_action_distribution: the distribution over actions
+        dynamics_fn: the apply function of the dynamics network
+        parametric_action_distribution: the distribution over action
         reward_scaling: a multiplicative factor to the reward
         discount: the discount factor
         action_size: the size of the environment's action space
@@ -40,7 +42,7 @@ def make_diayn_loss_fn(
         the loss of the entropy parameter auto-tuning
         the loss of the policy
         the loss of the critic
-        the loss of the discriminator
+        the loss of the dynamics network
     """
 
     _alpha_loss_fn, _policy_loss_fn, _critic_loss_fn = make_sac_loss_fn(
@@ -53,40 +55,33 @@ def make_diayn_loss_fn(
     )
 
     @jax.jit
-    def _discriminator_loss_fn(
-        discriminator_params: Params,
+    def _dynamics_loss_fn(
+        dynamics_params: Params,
         transitions: QDTransition,
     ) -> jnp.ndarray:
-        """Computes the loss used to train the discriminator. The
-        discriminator is trained to predict the skill that has been
-        used to generate transitions. In our case, skills are one
-        hot encoded, the discriminator is hence trained like a
-        multi-label classifier, using the categorical cross entropy
-        loss.
-
-        In this loss, log softmax outputs the log probabilities for
-        each skill. By multiplying by the skills (that are one hot
-        vectors), we filter to keep only the log probability of the
-        true skill.
+        """Computes the loss used to train the dynamics network.
 
         Args:
-            discriminator_params: the parameters of the neural network
-                used to discriminate the skills.
-            transitions: the transitions sampled from the replay buffer.
+            dynamics_params: the parameters of the neural network
+                used to predict the dynamics.
+            transitions: the batch of transitions used to train. They
+                have been sampled from a replay buffer beforehand.
 
         Returns:
-            The loss of the discriminator on those transitions.
+            The loss obtained on the batch of transitions.
         """
 
-        state_desc = transitions.state_desc
-        skills = transitions.obs[:, -num_skills:]
-        logits = jnp.sum(
-            jax.nn.log_softmax(discriminator_fn(discriminator_params, state_desc))
-            * skills,
-            axis=1,
+        active_skills = transitions.obs[:, -num_skills:]
+        target = transitions.next_state_desc
+        log_prob = dynamics_fn(  # type: ignore
+            dynamics_params,
+            obs=transitions.state_desc,
+            skill=active_skills,
+            target=target,
         )
 
-        loss = -jnp.mean(logits)
+        # prevent training on malformed target
+        loss = -jnp.mean(log_prob * (1 - transitions.dones))
         return loss
 
-    return _alpha_loss_fn, _policy_loss_fn, _critic_loss_fn, _discriminator_loss_fn
+    return _alpha_loss_fn, _policy_loss_fn, _critic_loss_fn, _dynamics_loss_fn
