@@ -12,7 +12,7 @@ import jax.numpy as jnp
 
 from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
-from qdax.utils.mome_utils import compute_masked_pareto_front
+from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
 class MOMERepertoire(MapElitesRepertoire):
@@ -53,12 +53,19 @@ class MOMERepertoire(MapElitesRepertoire):
         mask: jnp.ndarray,
         random_key: RNGKey,
     ) -> Genotype:
-        """
-        Sample num_samples elements in masked pareto front.
+        """Sample num_samples elements in masked pareto front.
 
         Note: do not retrieve a random key because this function
         is to be vmapped. The public method that uses this function
         will return a random key
+
+        Args:
+            pareto_front_genotypes: the genotypes of a pareto front
+            mask: a mask associated to the front
+            random_key: a random key to handle stochastic operations
+
+        Returns:
+            A single genotype among the pareto front.
         """
         p = (1.0 - mask) / jnp.sum(1.0 - mask)
 
@@ -122,24 +129,37 @@ class MOMERepertoire(MapElitesRepertoire):
     @jax.jit
     def _update_masked_pareto_front(
         self,
-        pareto_front_fitness: Fitness,
+        pareto_front_fitnesses: Fitness,
         pareto_front_genotypes: Genotype,
         pareto_front_descriptors: Descriptor,
         mask: jnp.ndarray,
-        new_batch_of_criteria: Fitness,
+        new_batch_of_fitnesses: Fitness,
         new_batch_of_genotypes: Genotype,
         new_batch_of_descriptors: Descriptor,
         new_mask: jnp.ndarray,
     ) -> Tuple[Fitness, Genotype, Descriptor, jnp.ndarray]:
-        """
-        Takes a fixed size pareto front, its mask and new points to add.
+        """Takes a fixed size pareto front, its mask and new points to add.
         Returns updated front and mask.
+
+        Args:
+            pareto_front_fitnesses: fitness of the pareto front
+            pareto_front_genotypes: corresponding genotypes
+            pareto_front_descriptors: corresponding descriptors
+            mask: mask of the front, to hide void parts
+            new_batch_of_fitnesses: new batch of fitness that is considered
+                to be added to the pareto front
+            new_batch_of_genotypes: corresponding genotypes
+            new_batch_of_descriptors: corresponding descriptors
+            new_mask: corresponding mask (no one is masked)
+
+        Returns:
+            The updated pareto front.
         """
         # get dimensions
-        batch_size = new_batch_of_criteria.shape[0]
-        num_criteria = new_batch_of_criteria.shape[1]
+        batch_size = new_batch_of_fitnesses.shape[0]
+        num_criteria = new_batch_of_fitnesses.shape[1]
 
-        pareto_front_len = pareto_front_fitness.shape[0]
+        pareto_front_len = pareto_front_fitnesses.shape[0]
 
         first_leaf = jax.tree_leaves(new_batch_of_genotypes)[0]
         genotypes_dim = first_leaf.shape[1]
@@ -148,7 +168,9 @@ class MOMERepertoire(MapElitesRepertoire):
 
         # gather all data
         cat_mask = jnp.concatenate([mask, new_mask], axis=-1)
-        cat_f = jnp.concatenate([pareto_front_fitness, new_batch_of_criteria], axis=0)
+        cat_fitnesses = jnp.concatenate(
+            [pareto_front_fitnesses, new_batch_of_fitnesses], axis=0
+        )
         cat_genotypes = jax.tree_map(
             lambda x, y: jnp.concatenate([x, y], axis=0),
             pareto_front_genotypes,
@@ -160,7 +182,7 @@ class MOMERepertoire(MapElitesRepertoire):
 
         # get new front
         cat_bool_front = compute_masked_pareto_front(
-            batch_of_criteria=cat_f, mask=cat_mask
+            batch_of_criteria=cat_fitnesses, mask=cat_mask
         )
 
         # get corresponding indices
@@ -171,7 +193,7 @@ class MOMERepertoire(MapElitesRepertoire):
         indices = jnp.sort(indices)
 
         # get new fitness, genotypes and descriptors
-        new_front_fitness = jnp.take(cat_f, indices, axis=0)
+        new_front_fitness = jnp.take(cat_fitnesses, indices, axis=0)
         new_front_genotypes = jax.tree_map(
             lambda x: jnp.take(x, indices, axis=0), cat_genotypes
         )
@@ -192,7 +214,7 @@ class MOMERepertoire(MapElitesRepertoire):
             jnp.expand_dims(new_mask, axis=-1), num_criteria, axis=-1
         )
         new_front_fitness = new_front_fitness * fitness_mask
-        new_front_fitness = new_front_fitness[: len(pareto_front_fitness), :]
+        new_front_fitness = new_front_fitness[: len(pareto_front_fitnesses), :]
 
         genotypes_mask = jnp.repeat(
             jnp.expand_dims(new_mask, axis=-1), genotypes_dim, axis=-1
@@ -201,16 +223,16 @@ class MOMERepertoire(MapElitesRepertoire):
             lambda x: x * genotypes_mask, new_front_genotypes
         )
         new_front_genotypes = jax.tree_map(
-            lambda x: x[: len(pareto_front_fitness), :], new_front_genotypes
+            lambda x: x[: len(pareto_front_fitnesses), :], new_front_genotypes
         )
 
         descriptors_mask = jnp.repeat(
             jnp.expand_dims(new_mask, axis=-1), descriptors_dim, axis=-1
         )
         new_front_descriptors = new_front_descriptors * descriptors_mask
-        new_front_descriptors = new_front_descriptors[: len(pareto_front_fitness), :]
+        new_front_descriptors = new_front_descriptors[: len(pareto_front_fitnesses), :]
 
-        new_mask = ~new_mask[: len(pareto_front_fitness)]
+        new_mask = ~new_mask[: len(pareto_front_fitnesses)]
 
         return new_front_fitness, new_front_genotypes, new_front_descriptors, new_mask
 
@@ -375,16 +397,19 @@ class MOMERepertoire(MapElitesRepertoire):
 
         return new_repertoire  # type: ignore
 
+    @jax.jit
+    def compute_global_pareto_front(
+        self,
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """Merge all the pareto fronts of the MOME repertoire into a single one
+        called global pareto front.
 
-def compute_global_pareto_front(
-    grid: MOMERepertoire,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """
-    Merge all the pareto fronts of the MOME grid into a single one called global.
-    """
-    fitnesses = jnp.concatenate(grid.fitnesses, axis=0)
-    mask = jnp.any(fitnesses == -jnp.inf, axis=-1)
-    pareto_bool = compute_masked_pareto_front(fitnesses, mask)
-    pareto_front = fitnesses - jnp.inf * (~jnp.array([pareto_bool, pareto_bool]).T)
+        Returns:
+            The pareto front and its mask.
+        """
+        fitnesses = jnp.concatenate(self.fitnesses, axis=0)
+        mask = jnp.any(fitnesses == -jnp.inf, axis=-1)
+        pareto_bool = compute_masked_pareto_front(fitnesses, mask)
+        pareto_front = fitnesses - jnp.inf * (~jnp.array([pareto_bool, pareto_bool]).T)
 
-    return pareto_front, pareto_bool
+        return pareto_front, pareto_bool

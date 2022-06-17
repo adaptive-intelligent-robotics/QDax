@@ -15,13 +15,9 @@ from qdax.types import Centroid, RNGKey
 class MOME(MAPElites):
     """Implements Multi-Objectives MAP Elites.
 
-    Note: most functions are inherited from MAPElites.
-
-    Args:
-        MAPElites: _description_
-
-    Returns:
-        _description_
+    Note: most functions are inherited from MAPElites. The only function
+    that had to be overwritten is the init function as it has to take
+    into account the specificities of the the Multi Objective repertoire.
     """
 
     @partial(jax.jit, static_argnames=("self", "pareto_front_max_length"))
@@ -32,10 +28,19 @@ class MOME(MAPElites):
         pareto_front_max_length: int,
         random_key: RNGKey,
     ) -> Tuple[MOMERepertoire, Optional[EmitterState], RNGKey]:
-        """
-        Initialize a MOME grid with an initial population of genotypes. Requires
+        """Initialize a MOME grid with an initial population of genotypes. Requires
         the definition of centroids that can be computed with any method such as
         CVT or Euclidean mapping.
+
+        Args:
+            init_genotypes: genotypes of the initial population.
+            centroids: centroids of the repertoire.
+            pareto_front_max_length: maximum size of the pareto front. This is
+                necessary to respect jax.jit fixed shape size constraint.
+            random_key: a random key to handle stochasticity.
+
+        Returns:
+            The initial repertoire and emitter state, and a new random key.
         """
 
         # first score

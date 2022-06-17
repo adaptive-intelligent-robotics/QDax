@@ -14,7 +14,6 @@ from scipy.spatial import Voronoi
 
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.containers.repertoire import MapElitesRepertoire
-from qdax.core.mome import compute_global_pareto_front
 
 
 def get_voronoi_finite_polygons_2d(
@@ -415,7 +414,7 @@ def plot_mome_pareto_fronts(
     axes[1].set_ylim(minval, maxval)
 
     if with_global:
-        global_pareto_front, pareto_bool = compute_global_pareto_front(map_elites_grid)
+        global_pareto_front, pareto_bool = map_elites_grid.compute_global_pareto_front()
         global_pareto_descriptors = jnp.concatenate(grid_descriptors)[pareto_bool]
         axes[0].scatter(
             global_pareto_front[:, 0],

@@ -7,23 +7,33 @@ import jax.numpy as jnp
 def compute_pareto_dominance(
     criteria_point: jnp.ndarray, batch_of_criteria: jnp.ndarray
 ) -> jnp.ndarray:
-    """
-    Returns if a point is pareto dominated given a set of points or not.
+    """Returns if a point is pareto dominated given a set of points or not.
     We use maximization convention here.
 
-    # criteria_point of shape (num_criteria,)
-    # batch_of_criteria of shape (num_points, num_criteria)
+    criteria_point has shape (num_criteria,)
+    batch_of_criteria has shape (num_points, num_criteria)
+
+    Args:
+        criteria_point: a vector of values.
+        batch_of_criteria: a batch of vector of values.
+
+    Returns:
+        Return booleans when the vector is dominated by the batch.
     """
     diff = jnp.subtract(batch_of_criteria, criteria_point)
     return jnp.any(jnp.all(diff > 0, axis=-1))
 
 
 def compute_pareto_front(batch_of_criteria: jnp.ndarray) -> jnp.ndarray:
-    """
-    Returns an array of boolean that states for each element if it is in
-    the pareto front or not.
+    """Returns an array of boolean that states for each element if it is
+    in the pareto front or not.
 
-    # batch_of_criteria of shape (num_points, num_criteria)
+    Args:
+        batch_of_criteria: a batch of points of shape (num_points, num_criteria)
+
+    Returns:
+        An array of boolean with the boolean stating if each point is on the
+        front or not.
     """
     func = jax.vmap(lambda x: ~compute_pareto_dominance(x, batch_of_criteria))
     return func(batch_of_criteria)
@@ -32,15 +42,21 @@ def compute_pareto_front(batch_of_criteria: jnp.ndarray) -> jnp.ndarray:
 def compute_masked_pareto_dominance(
     criteria_point: jnp.ndarray, batch_of_criteria: jnp.ndarray, mask: jnp.ndarray
 ) -> jnp.ndarray:
-    """
-    Returns if a point is pareto dominated given a set of points or not.
+    """Returns if a point is pareto dominated given a set of points or not.
     We use maximization convention here.
+
     This function is to be used with constant size batches of criteria,
     thus a mask is used to know which values are padded.
 
-    # criteria_point of shape (num_criteria,)
-    # batch_of_criteria of shape (batch_size, num_criteria)
-    # mask of shape (batch_size,), 1.0 where there is not element, 0 otherwise
+    Args:
+        criteria_point: values to be evaluated, of shape (num_criteria,)
+        batch_of_criteria: set of points to compare with,
+            of shape (batch_size, num_criteria)
+        mask: mask of shape (batch_size,), 1.0 where there is not element,
+            0 otherwise
+
+    Returns:
+        _description_
     """
 
     diff = jnp.subtract(batch_of_criteria, criteria_point)
@@ -54,10 +70,16 @@ def compute_masked_pareto_dominance(
 def compute_masked_pareto_front(
     batch_of_criteria: jnp.ndarray, mask: jnp.ndarray
 ) -> jnp.ndarray:
-    """
-    Returns an array of boolean that states for each element if it is to be
-    considered or not. This function works is to be used constant size batches of
+    """Returns an array of boolean that states for each element if it is to be
+    considered or not. This function is to be used with batches of constant size
     criteria, thus a mask is used to know which values are padded.
+
+    Args:
+        batch_of_criteria: data points considered
+        mask: mask to hide several points
+
+    Returns:
+        An array of boolean stating the points to consider.
     """
     func = jax.vmap(
         lambda x: ~compute_masked_pareto_dominance(x, batch_of_criteria, mask)
@@ -72,22 +94,43 @@ def compute_hypervolume(
 
     TODO: implement recursive version of
     https://github.com/anyoptimization/pymoo/blob/master/pymoo/vendor/hv.py
-    """
 
+    Args:
+        pareto_front: a pareto front, shape (pareto_size, num_objectives)
+        reference_point: a reference point to compute the volume, of shape
+            (num_objectives,)
+
+    Returns:
+        The hypervolume of the pareto front.
+    """
+    # get the number of objectives
     num_objectives = pareto_front.shape[1]
 
     assert (
         num_objectives == 2
     ), "Hypervolume calculation for more than 2 objectives not yet supported."
 
+    # concatenate the reference point to prepare for the area computation
     pareto_front = jnp.concatenate(  # type: ignore
         (pareto_front, jnp.expand_dims(reference_point, axis=0)), axis=0
     )
+    # get ordered indices for the first objective
     idx = jnp.argsort(pareto_front[:, 0])
+    # Note: this orders it in inversely for the second objective
+
+    # create the mask - hide fake elements (those having -inf fitness)
     mask = pareto_front[idx, :] != -jnp.inf
+
+    # sort the front and offset it with the ref point
     sorted_front = (pareto_front[idx, :] - reference_point) * mask
+
+    # compute area rectangles between successive points
     sumdiff = (sorted_front[1:, 0] - sorted_front[:-1, 0]) * sorted_front[1:, 1]
+
+    # remove the irrelevant values - where a mask was applied
     sumdiff = sumdiff * mask[:-1, 0]
+
+    # get the hypervolume by summing the succcessives areas
     hypervolume = jnp.sum(sumdiff)
 
     return hypervolume
