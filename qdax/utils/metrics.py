@@ -1,11 +1,20 @@
+"""Defines functions to retrieve metrics from training processes."""
+
 from __future__ import annotations
 
 import csv
+from functools import partial
 from typing import Dict, List
 
+import jax
 from jax import numpy as jnp
 
+from qdax.core.containers.mome_repertoire import (
+    MOMERepertoire,
+    compute_global_pareto_front,
+)
 from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.utils.mome_utils import compute_hypervolume
 
 
 class CSVLogger:
@@ -68,3 +77,42 @@ def default_qd_metrics(
     max_fitness = jnp.max(repertoire.fitnesses)
 
     return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
+
+
+def compute_moqd_metrics(
+    grid: MOMERepertoire, reference_point: jnp.ndarray
+) -> Dict[str, jnp.ndarray]:
+    """
+    Compute the MOQD metric given a MOME grid and a reference point.
+    """
+    grid_empty = grid.fitnesses == -jnp.inf
+    grid_empty = jnp.all(grid_empty, axis=-1)
+    grid_not_empty = ~grid_empty
+    grid_not_empty = jnp.any(grid_not_empty, axis=-1)
+    coverage = 100 * jnp.mean(grid_not_empty)
+    hypervolume_function = partial(compute_hypervolume, reference_point=reference_point)
+    moqd_scores = jax.vmap(hypervolume_function)(grid.fitnesses)
+    moqd_scores = jnp.where(grid_not_empty, moqd_scores, -jnp.inf)
+    max_hypervolume = jnp.max(moqd_scores)
+    max_scores = jnp.max(grid.fitnesses, axis=(0, 1))
+    max_sum_scores = jnp.max(jnp.sum(grid.fitnesses, axis=-1), axis=(0, 1))
+    num_solutions = jnp.sum(~grid_empty)
+    (
+        pareto_front,
+        _,
+    ) = compute_global_pareto_front(grid)
+
+    global_hypervolume = compute_hypervolume(
+        pareto_front, reference_point=reference_point
+    )
+    metrics = {
+        "moqd_score": moqd_scores,
+        "max_hypervolume": max_hypervolume,
+        "max_scores": max_scores,
+        "max_sum_scores": max_sum_scores,
+        "coverage": coverage,
+        "number_solutions": num_solutions,
+        "global_hypervolume": global_hypervolume,
+    }
+
+    return metrics

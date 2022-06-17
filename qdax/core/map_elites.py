@@ -47,9 +47,9 @@ class MAPElites:
         random_key: RNGKey,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
         """
-        Initialize a Map-Elites grid with an initial population of genotypes. Requires
-        the definition of centroids that can be computed with any method such as
-        CVT or Euclidean mapping.
+        Initialize a Map-Elites repertoire with an initial population of genotypes.
+        Requires the definition of centroids that can be computed with any method
+        such as CVT or Euclidean mapping.
 
         Args:
             init_genotypes: initial genotypes, pytree in which leaves

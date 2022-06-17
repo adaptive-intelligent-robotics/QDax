@@ -13,8 +13,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.flatten_util import ravel_pytree
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from sklearn.cluster import KMeans
+
+from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(
@@ -96,7 +97,7 @@ def get_cells_indices(
 ) -> jnp.ndarray:
     """
     Returns the array of cells indices for a batch of descriptors
-    given the centroids of the grid.
+    given the centroids of the repertoire.
 
     Args:
         batch_of_descriptors: a batch of descriptors
@@ -147,7 +148,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
     centroids: Centroid
 
     def save(self, path: str = "./") -> None:
-        """Saves the grid on disk in the form of .npy files.
+        """Saves the repertoire on disk in the form of .npy files.
 
         Flattens the genotypes to store it with .npy format. Supposes that
         a user will have access to the reconstruction function when loading
@@ -172,7 +173,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
     @classmethod
     def load(cls, reconstruction_fn: Callable, path: str = "./") -> MapElitesRepertoire:
-        """Loads a MAP Elites Grid.
+        """Loads a MAP Elites Repertoire.
 
         Args:
             reconstruction_fn: Function to reconstruct a PyTree
@@ -200,7 +201,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
         """
-        Sample elements in the grid.
+        Sample elements in the repertoire.
 
         Args:
             random_key: a jax PRNG random key
@@ -212,8 +213,8 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         """
 
         random_key, subkey = jax.random.split(random_key)
-        grid_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
+        repertoire_empty = self.fitnesses == -jnp.inf
+        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
         samples = jax.tree_map(
             lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
@@ -266,8 +267,10 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # get addition condition
-        grid_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(grid_fitnesses, batch_of_indices, 0)
+        repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
+        current_fitnesses = jnp.take_along_axis(
+            repertoire_fitnesses, batch_of_indices, 0
+        )
         addition_condition = batch_of_fitnesses > current_fitnesses
 
         # assign fake position when relevant : num_centroids is out of bound
@@ -275,9 +278,9 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             addition_condition, x=batch_of_indices, y=num_centroids
         )
 
-        # create new grid
-        new_grid_genotypes = jax.tree_multimap(
-            lambda grid_genotypes, new_genotypes: grid_genotypes.at[
+        # create new repertoire
+        new_repertoire_genotypes = jax.tree_multimap(
+            lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),
             self.genotypes,
@@ -293,7 +296,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         return MapElitesRepertoire(
-            genotypes=new_grid_genotypes,
+            genotypes=new_repertoire_genotypes,
             fitnesses=new_fitnesses.squeeze(),
             descriptors=new_descriptors.squeeze(),
             centroids=self.centroids,
