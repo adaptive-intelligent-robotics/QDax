@@ -288,11 +288,11 @@ class MOMERepertoire(MapElitesRepertoire):
                 cell_descriptor,
                 cell_mask,
             ) = self._update_masked_pareto_front(
-                pareto_front_fitness=cell_fitness.squeeze(),
+                pareto_front_fitnesses=cell_fitness.squeeze(),
                 pareto_front_genotypes=cell_genotype.squeeze(),
                 pareto_front_descriptors=cell_descriptor.squeeze(),
                 mask=cell_mask.squeeze(),
-                new_batch_of_criteria=jnp.expand_dims(fitness, axis=0),
+                new_batch_of_fitnesses=jnp.expand_dims(fitness, axis=0),
                 new_batch_of_genotypes=jnp.expand_dims(genotype, axis=0),
                 new_batch_of_descriptors=jnp.expand_dims(descriptors, axis=0),
                 new_mask=jnp.zeros(shape=(1,), dtype=bool),
