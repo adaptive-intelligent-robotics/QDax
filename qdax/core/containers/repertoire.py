@@ -1,3 +1,7 @@
+"""This file contains util functions and a class to define
+a repertoire, used to store individuals in the MAP-Elites
+algorithm as well as several variants."""
+
 from __future__ import annotations
 
 import math
@@ -9,9 +13,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.flatten_util import ravel_pytree
-from sklearn.cluster import KMeans
-
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
+from sklearn.cluster import KMeans
 
 
 def compute_cvt_centroids(

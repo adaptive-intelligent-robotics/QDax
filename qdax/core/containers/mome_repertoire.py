@@ -1,3 +1,7 @@
+"""This file contains the class to define the repertoire used to
+store individuals in the Multi-Objective MAP-Elites algorithm as
+well as several variants."""
+
 from __future__ import annotations
 
 from functools import partial
@@ -5,7 +9,6 @@ from typing import Any, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from qdax.utils.mome_utils import (
@@ -15,17 +18,32 @@ from qdax.utils.mome_utils import (
 
 
 class MOMERepertoire(MapElitesRepertoire):
-    """Class for the repertoire in MO Map Elites
+    """Class for the repertoire in Multi Objective Map Elites
 
-    Genotypes can only be jnp.ndarray at the moment.
+    This class inherits from MAPElitesRepertoire. The stored data
+    is the same: genotypes, fitnesses, descriptors, centroids.
+
+    The shape of genotypes is (in the case where it's an array):
+    (num_centroids, pareto_front_length, genotype_dim).
+    When the genotypes is a PyTree, the two first dimensions are the same
+    but the third will depend on the leafs.
+
+    The shape of fitnesses is: (num_centroids, pareto_front_length, num_criteria)
+
+    The shape of descriptors and centroids are:
+    (num_centroids, num_descriptors, pareto_front_length).
+
+    Inherited functions: save and load.
     """
 
     @property
-    def grid_size(self) -> int:
-        """
-        Returns the maximum number of solutions the repertoire can
+    def repertoire_capacity(self) -> int:
+        """Returns the maximum number of solutions the repertoire can
         contain which corresponds to the number of cells times the
         maximum pareto front length.
+
+        Returns:
+            The repertoire capacity.
         """
         first_leaf = jax.tree_leaves(self.genotypes)[0]
         return int(first_leaf.shape[0] * first_leaf.shape[1])
@@ -34,42 +52,50 @@ class MOMERepertoire(MapElitesRepertoire):
     def sample(
         self, random_key: RNGKey, num_samples: int
     ) -> Tuple[jnp.ndarray, RNGKey]:
+        """Sample elements in the repertoire.
+
+        This method sample a non-empty pareto front, and then sample
+        genotypes from this pareto front.
+
+        Args:
+            random_key: a random key to handle stochasticity.
+            num_samples: number of samples to retrieve from the repertoire.
+
+        Returns:
+            A sample of genotypes.
         """
-        Sample elements in the repertoire.
 
-        grid_x of shape (num_centroids, pareto_front,length, genotype_dim)
-        grid_empty of shape (num_centroids, pareto_front_length),
-        vector of boolean True if cell empty False otherwise
-        """
+        # create sampling probability for the cells
+        repertoire_empty = jnp.any(self.fitnesses == -jnp.inf, axis=-1)
+        occupied_cells = jnp.any(~repertoire_empty, axis=-1)
 
-        grid_empty = jnp.any(self.fitnesses == -jnp.inf, axis=-1)
-        p = jnp.any(~grid_empty, axis=-1) / jnp.sum(jnp.any(~grid_empty, axis=-1))
-        indices = jnp.arange(start=0, stop=grid_empty.shape[0])
+        p = occupied_cells / jnp.sum(occupied_cells)
 
-        # choose idx
+        # possible indices - num cells
+        indices = jnp.arange(start=0, stop=repertoire_empty.shape[0])
+
+        # choose idx - among indices of cells that are not empty
         random_key, subkey = jax.random.split(random_key)
         cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
 
-        # sample
+        # get genotypes (front) from the chosen indices
+        pareto_front_genotypes = jax.tree_map(lambda x: x[cells_idx], self.genotypes)
+
+        # prepare second sampling function
         sample_in_fronts = jax.vmap(
             partial(sample_in_masked_pareto_front, num_samples=1)
         )
 
+        # sample genotypes from the pareto front
         random_key, subkey = jax.random.split(random_key)
         subkeys = jax.random.split(subkey, num=num_samples)
-
-        # get genotypes
-        pareto_front_genotypes = jax.tree_map(lambda x: x[cells_idx], self.genotypes)
-
         sampled_genotypes = sample_in_fronts(  # type: ignore
             pareto_front_genotypes=pareto_front_genotypes,
-            mask=grid_empty[cells_idx],
+            mask=repertoire_empty[cells_idx],
             random_key=subkeys,
         )
 
-        print("My sampled elements : ", sampled_genotypes)
-        print("My random keys : ", random_key)
-
+        # remove unnecessary dimension
         sampled_genotypes = jax.tree_map(lambda x: x.squeeze(), sampled_genotypes)
 
         return sampled_genotypes, random_key
@@ -81,18 +107,26 @@ class MOMERepertoire(MapElitesRepertoire):
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
     ) -> MOMERepertoire:
-        """
-        Insert a batch of elements in the repertoire.
+        """Insert a batch of elements in the repertoire.
 
-        grid_fitness of shape (num_centroids, pf_max_size, num_criteria)
-        grid_x of shape (num_centroids, pf_max_size, genotype_dim)
-        grid_empty of shape (num_centroids, pf_max_size),
-        vector of booleans True if cell empty False otherwise
-        x of shape (batch_size, num_criteria)
-        batch_of_descriptors of shape (batch_size, num_descriptors)
-        batch_of_fitnesses of shape (batch_size, num_criteria)
+        Shape of the batch_of_genotypes (if an array):
+        (batch_size, genotypes_dim)
+        Shape of the batch_of_descriptors: (batch_size, num_descriptors)
+        Shape of the batch_of_fitnesses: (batch_size, num_criteria)
+
+        Args:
+            batch_of_genotypes: a batch of genotypes that we are trying to
+                insert into the repertoire.
+            batch_of_descriptors: the descriptors of the genotypes we are
+                trying to add to the repertoire.
+            batch_of_fitnesses: the fitnesses of the genotypes we are trying
+                to add to the repertoire.
+
+        Returns:
+            The updated repertoire with potential new individuals.
         """
 
+        # get the indices that corresponds to the descriptors in the repertoire
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
 
@@ -111,14 +145,6 @@ class MOMERepertoire(MapElitesRepertoire):
             cell_descriptor = carry.descriptors[index]
             cell_mask = jnp.any(cell_fitness == -jnp.inf, axis=-1)
 
-            print("Cell fitness shape : ", cell_fitness)
-            print("Fitness shape : ", fitness.shape)
-
-            print("Cell genotype shape : ", cell_genotype)
-            print("Cell descriptor shape : ", cell_descriptor)
-
-            print("---" * 50)
-
             # update pareto front
             (
                 cell_fitness,
@@ -136,15 +162,6 @@ class MOMERepertoire(MapElitesRepertoire):
                 new_mask=jnp.zeros(shape=(1,), dtype=bool),
             )
 
-            print("carry genotypes : ", carry.genotypes)
-            print("cell genotype : ", cell_genotype)
-
-            print("carry fitnesses : ", carry.fitnesses)
-            print("cell fitness : ", cell_fitness)
-
-            print("carry descriptors : ", carry.descriptors)
-            print("cell desc : ", cell_descriptor)
-
             # update cell fitness
             cell_fitness = cell_fitness - jnp.inf * jnp.expand_dims(cell_mask, axis=-1)
 
@@ -152,7 +169,6 @@ class MOMERepertoire(MapElitesRepertoire):
             new_genotypes = jax.tree_map(
                 lambda x, y: x.at[index].set(y), carry.genotypes, cell_genotype
             )
-
             new_fitnesses = carry.fitnesses.at[index].set(cell_fitness)
             new_descriptors = carry.descriptors.at[index].set(cell_descriptor)
             carry = carry.replace(  # type: ignore
@@ -164,6 +180,7 @@ class MOMERepertoire(MapElitesRepertoire):
             # return new grid
             return carry, ()
 
+        # scan the addition operation for all the data
         self, _ = jax.lax.scan(
             _add_one,
             self,
@@ -187,9 +204,9 @@ class MOMERepertoire(MapElitesRepertoire):
         pareto_front_max_length: int,
     ) -> MOMERepertoire:
         """
-        Initialize a Map-Elites repertoire with an initial population of genotypes.
-        Requires the definition of centroids that can be computed with any method
-        such as CVT or Euclidean mapping.
+        Initialize a Multi Objective Map-Elites repertoire with an initial population
+        of genotypes. Requires the definition of centroids that can be computed with
+        any method such as CVT or Euclidean mapping.
 
         Note: this function has been kept outside of the object MapElites, so it can
         be called easily called from other modules.
@@ -197,13 +214,14 @@ class MOMERepertoire(MapElitesRepertoire):
         Args:
             genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
-            fitnesses: fitness of the initial genotypes of shape (batch_size,)
+            fitnesses: fitness of the initial genotypes of shape (batch_size, num_criteria)
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            pareto_front_max_length: maximum size of the pareto fronts
 
         Returns:
-            an initialized MAP-Elite repertoire
+            An initialized MAP-Elite repertoire
         """
 
         # get dimensions
