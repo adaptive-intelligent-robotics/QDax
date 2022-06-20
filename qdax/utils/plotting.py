@@ -12,16 +12,15 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.spatial import Voronoi
 
+from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.containers.repertoire import MapElitesRepertoire
 
 
 def get_voronoi_finite_polygons_2d(
     centroids: np.ndarray, radius: Optional[float] = None
 ) -> Tuple[List, np.ndarray]:
-    """
-    Reconstruct infinite voronoi regions in a 2D diagram to finite
-    regions.
-    """
+    """Reconstruct infinite voronoi regions in a 2D diagram to finite
+    regions."""
     voronoi_diagram = Voronoi(centroids)
     if voronoi_diagram.points.shape[1] != 2:
         raise ValueError("Requires 2D input")
@@ -62,7 +61,6 @@ def get_voronoi_finite_polygons_2d(
                 continue
 
             # Compute the missing endpoint of an infinite ridge
-
             t = voronoi_diagram.points[p2] - voronoi_diagram.points[p1]  # tangent
             t /= np.linalg.norm(t)
             n = np.array([-t[1], t[0]])  # normal
@@ -86,26 +84,49 @@ def get_voronoi_finite_polygons_2d(
     return new_regions, np.asarray(new_vertices)
 
 
-def plot_2d_map_elites_grid(
+def plot_2d_map_elites_repertoire(
     centroids: jnp.ndarray,
-    grid_fitness: jnp.ndarray,
+    repertoire_fitnesses: jnp.ndarray,
     minval: jnp.ndarray,
     maxval: jnp.ndarray,
-    grid_descriptors: Optional[jnp.ndarray] = None,
+    repertoire_descriptors: Optional[jnp.ndarray] = None,
     ax: Optional[plt.Axes] = None,
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
 ) -> Tuple[Optional[Figure], Axes]:
+    """Plot a visual representation of a 2d map elites repertoire.
+
+    Note: should we use a repertoire as input directly? Because this
+    function is very specific to repertoires.
+
+    Args:
+        centroids: the centroids of the repertoire
+        repertoire_fitnesses: the fitness of the repertoire
+        minval: minimum values for the descritors
+        maxval: maximum values for the descriptors
+        repertoire_descriptors: the descriptors. Defaults to None.
+        ax: a matplotlib axe for the figure to plot. Defaults to None.
+        vmin: minimum value for the fitness. Defaults to None.
+        vmax: maximum value for the fitness. Defaults to None.
+
+    Raises:
+        NotImplementedError: does not work for descriptors dimension different
+        from 2.
+
+    Returns:
+        A figure and axes object, corresponding to the visualisation of the
+        repertoire.
+    """
 
     # TODO: check it and fix it if needed
-    grid_empty = grid_fitness == -jnp.inf
+    grid_empty = repertoire_fitnesses == -jnp.inf
     num_descriptors = centroids.shape[1]
     if num_descriptors != 2:
         raise NotImplementedError("Grid plot supports 2 descriptors only for now.")
 
     my_cmap = cm.viridis
 
-    fitnesses = grid_fitness
+    fitnesses = repertoire_fitnesses
     if vmin is None:
         vmin = float(jnp.min(fitnesses[~grid_empty]))
     if vmax is None:
@@ -164,8 +185,8 @@ def plot_2d_map_elites_grid(
             ax.fill(*zip(*polygon), alpha=0.8, color=my_cmap(norm(fitness)))
 
     # if descriptors are specified, add points location
-    if grid_descriptors is not None:
-        descriptors = grid_descriptors[~grid_empty]
+    if repertoire_descriptors is not None:
+        descriptors = repertoire_descriptors[~grid_empty]
         ax.scatter(
             descriptors[:, 0],
             descriptors[:, 1],
@@ -204,13 +225,13 @@ def plot_map_elites_results(
 
     Args:
         env_steps: the array containing the number of steps done in the environment.
-        metrics: _description_
-        repertoire: _description_
-        min_bd: _description_
-        max_bd: _description_
+        metrics: a dictionary containing metrics from the optimizatoin process.
+        repertoire: the final repertoire obtained.
+        min_bd: the mimimal possible values for the bd.
+        max_bd: the maximal possible values for the bd.
 
     Returns:
-        _description_
+        A figure and axes with the plots of the metrics and visualisation of the grid.
     """
     # Customize matplotlib params
     font_size = 16
@@ -249,12 +270,12 @@ def plot_map_elites_results(
     axes[2].set_title("QD Score evolution during training")
     axes[2].set_aspect(0.95 / axes[2].get_data_ratio(), adjustable="box")
 
-    _, axes = plot_2d_map_elites_grid(
+    _, axes = plot_2d_map_elites_repertoire(
         centroids=repertoire.centroids,
-        grid_fitness=repertoire.fitnesses,
+        repertoire_fitnesses=repertoire.fitnesses,
         minval=min_bd,
         maxval=max_bd,
-        grid_descriptors=repertoire.descriptors,
+        repertoire_descriptors=repertoire.descriptors,
         ax=axes[3],
     )
 
@@ -272,13 +293,13 @@ def multiline(
         len(xs[i]) == len(ys[i]) is the number of points for each line (indexed by i)
 
     Args:
-        xs: _description_
-        ys: _description_
-        c: _description_
-        ax: _description_. Defaults to None.
+        xs: First dimension of the trajectory.
+        ys: Second dimension of the trajectory.
+        c: Colors - one for each trajectory.
+        ax: A matplotlib axe. Defaults to None.
 
     Returns:
-        _description_
+        Return a oollection of lines corresponding to the trajectories.
     """
 
     # find axes
@@ -348,3 +369,136 @@ def plot_skills_trajectory(
     ax.set_title("Skill trajectories")
 
     return fig, ax
+
+
+def plot_mome_pareto_fronts(
+    centroids: jnp.ndarray,
+    repertoire: MOMERepertoire,
+    maxval: float,
+    minval: float,
+    axes: Optional[plt.Axes] = None,
+    color_style: Optional[str] = "hsv",
+    with_global: Optional[bool] = False,
+) -> plt.Axes:
+    """Plot the pareto fronts from all cells of the mome repertoire.
+
+    Args:
+        centroids: centroids of the repertoire
+        repertoire: mome repertoire
+        maxval: maximum values for the descriptors
+        minval: minimum values for the descriptors
+        axes: matplotlib axes. Defaults to None.
+        color_style: style of the colors used. Defaults to "hsv".
+        with_global: plot the global pareto front in addition.
+            Defaults to False.
+
+    Returns:
+        Returns the axes object with the plot.
+    """
+    fitnesses = repertoire.fitnesses
+    repertoire_descriptors = repertoire.descriptors
+
+    assert fitnesses.shape[-1] == repertoire_descriptors.shape[-1] == 2
+    assert color_style in ["hsv", "spectral"], "color_style must be hsv or spectral"
+
+    num_centroids = len(centroids)
+    grid_empty = jnp.any(fitnesses == -jnp.inf, axis=-1)
+
+    # Extract polar coordinates
+    if color_style == "hsv":
+        center = jnp.array([(maxval - minval) / 2] * centroids.shape[1])
+        polars = jnp.stack(
+            (
+                jnp.sqrt((jnp.sum((centroids - center) ** 2, axis=-1)))
+                / (maxval - minval)
+                / jnp.sqrt(2),
+                jnp.arctan((centroids - center)[:, 1] / (centroids - center)[:, 0]),
+            ),
+            axis=-1,
+        )
+    elif color_style == "spectral":
+        cmap = cm.get_cmap("Spectral")
+
+    if axes is None:
+        _, axes = plt.subplots(ncols=2, figsize=(12, 6))
+
+    for i in range(num_centroids):
+        if jnp.sum(~grid_empty[i]) > 0:
+            cell_scores = fitnesses[i][~grid_empty[i]]
+            cell = repertoire_descriptors[i][~grid_empty[i]]
+            if color_style == "hsv":
+                color = vector_to_rgb(polars[i, 1], polars[i, 0])
+            else:
+                color = cmap((centroids[i, 0] - minval) / (maxval - minval))
+            axes[0].plot(cell_scores[:, 0], cell_scores[:, 1], "o", color=color)
+
+            axes[1].plot(cell[:, 0], cell[:, 1], "o", color=color)
+
+    # create the regions and vertices from centroids
+    regions, vertices = get_voronoi_finite_polygons_2d(centroids)
+
+    # fill the plot with contours
+    for region in regions:
+        polygon = vertices[region]
+        axes[1].fill(
+            *zip(*polygon), alpha=0.2, edgecolor="black", facecolor="white", lw=1
+        )
+    axes[0].set_title("Fitness")
+    axes[1].set_title("Descriptor")
+    axes[1].set_xlim(minval, maxval)
+    axes[1].set_ylim(minval, maxval)
+
+    if with_global:
+        global_pareto_front, pareto_bool = repertoire.compute_global_pareto_front()
+        global_pareto_descriptors = jnp.concatenate(repertoire_descriptors)[pareto_bool]
+        axes[0].scatter(
+            global_pareto_front[:, 0],
+            global_pareto_front[:, 1],
+            marker="o",
+            edgecolors="black",
+            facecolors="none",
+            zorder=3,
+            label="Global Pareto Front",
+        )
+        sorted_index = jnp.argsort(global_pareto_front[:, 0])
+        axes[0].plot(
+            global_pareto_front[sorted_index, 0],
+            global_pareto_front[sorted_index, 1],
+            linestyle="--",
+            linewidth=2,
+            color="k",
+            zorder=3,
+        )
+        axes[1].scatter(
+            global_pareto_descriptors[:, 0],
+            global_pareto_descriptors[:, 1],
+            marker="o",
+            edgecolors="black",
+            facecolors="none",
+            zorder=3,
+            label="Global Pareto Descriptor",
+        )
+
+    return axes
+
+
+def vector_to_rgb(angle: float, absolute: float) -> Any:
+    """Returns a color based on polar coordinates.
+
+    Args:
+        angle: a given angle
+        absolute: a ref
+
+    Returns:
+        An appropriate color.
+    """
+
+    # normalize angle
+    angle = angle % (2 * np.pi)
+    if angle < 0:
+        angle += 2 * np.pi
+
+    # rise absolute to avoid black colours
+    absolute = (absolute + 0.5) / 1.5
+
+    return mpl.colors.hsv_to_rgb((angle / 2 / np.pi, 1, absolute))
