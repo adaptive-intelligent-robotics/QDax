@@ -29,7 +29,7 @@ class MixingEmitter(Emitter):
     def emit(
         self,
         repertoire: MapElitesRepertoire,
-        unused_emitter_state: Optional[EmitterState],
+        emitter_state: Optional[EmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
@@ -44,7 +44,7 @@ class MixingEmitter(Emitter):
 
         Params:
             repertoire: the MAP-Elites repertoire to sample from
-            unused_emitter_state: void
+            emitter_state: void
             random_key: a jax PRNG random key
 
         Returns:
