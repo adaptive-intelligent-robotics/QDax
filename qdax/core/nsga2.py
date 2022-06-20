@@ -207,7 +207,7 @@ def update_population(solutions: Solutions, new_solutions: Solutions) -> Solutio
     return new_solutions
 
 
-def compute_crowding_distances(scores: Fitness, mask: Mask):
+def compute_crowding_distances(scores: Fitness, mask: jnp.ndarray):
     """
     Compute crowding distances
     """

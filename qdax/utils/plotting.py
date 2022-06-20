@@ -10,10 +10,9 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from scipy.spatial import Voronoi
-
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.containers.repertoire import MapElitesRepertoire
+from scipy.spatial import Voronoi
 
 
 def get_voronoi_finite_polygons_2d(
@@ -502,3 +501,24 @@ def vector_to_rgb(angle: float, absolute: float) -> Any:
     absolute = (absolute + 0.5) / 1.5
 
     return mpl.colors.hsv_to_rgb((angle / 2 / np.pi, 1, absolute))
+
+
+# TODO: check if factorisation is possible
+def plot_global_pareto_front(
+    pareto_front: jnp.ndarray,
+    ax: Optional[plt.Axes] = None,
+    label: Optional[str] = None,
+    colour: Optional[str] = None,
+) -> Tuple[Optional[Figure], plt.Axes]:
+    """
+    Plots the global Pareto Front
+    """
+    fig = None
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=colour, label=label)
+        return fig, ax
+    else:
+        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=colour, label=label)
+
+    return fig, ax
