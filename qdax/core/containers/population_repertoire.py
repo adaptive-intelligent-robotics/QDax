@@ -51,6 +51,9 @@ class PopulationRepertoire(flax.struct.PyTreeNode):
         population_size: int,
     ) -> PopulationRepertoire:
 
+        # avoid the condition by doing the usual
+        # default values + addition
+
         num_add = population_size - genotypes.shape[0]
         if num_add > 0:
             genotypes = jnp.concatenate(
