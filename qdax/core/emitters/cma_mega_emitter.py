@@ -144,15 +144,11 @@ class CMAMEGAEmitter(Emitter):
         # retrieve elements from the emitter state
         theta = jnp.nan_to_num(emitter_state.theta)
         cmaes_state = emitter_state.cmaes_state
-        grads = jnp.nan_to_num(emitter_state.theta_grads[0])
+        grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze())
 
         # Draw random coefficients
-        random_key, subkey = jax.random.split(random_key)
-        coeffs = jax.random.multivariate_normal(
-            subkey,
-            shape=(self._batch_size,),
-            mean=cmaes_state.mean,
-            cov=cmaes_state.cov_matrix,
+        coeffs, random_key = self._cmaes.sample(
+            cmaes_state=cmaes_state, random_key=random_key
         )
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
         update_grad = coeffs @ grads.T
@@ -178,6 +174,12 @@ class CMAMEGAEmitter(Emitter):
         """
         Updates the CMA-MEGA emitter state.
 
+        Note: we have to sort the geotypes by ourself, because there
+        is no simple fixed fitness function, the fitness function depends
+        on the repertoire. Which is why we sort by ourself and use the
+        method update_state from CMAES, rather than the method update that
+        handle the sorting by itself.
+
         Args:
             emitter_state: current emitter state
             repertoire: the current genotypes repertoire
@@ -202,12 +204,8 @@ class CMAMEGAEmitter(Emitter):
         sorted_indices = jnp.argsort(improvements.squeeze())[::-1]
 
         # Draw the coeffs
-        random_key, subkey = jax.random.split(random_key)
-        coeffs = jax.random.multivariate_normal(
-            subkey,
-            shape=(self._batch_size,),
-            mean=cmaes_state.mean,
-            cov=cmaes_state.cov_matrix,
+        coeffs, random_key = self._cmaes.sample(
+            cmaes_state=cmaes_state, random_key=random_key
         )
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
         update_grad = coeffs @ grads.T

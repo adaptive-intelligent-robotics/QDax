@@ -124,10 +124,12 @@ class CMAES:
             a new random key.
         """
         random_key, subkey = jax.random.split(random_key)
-        samples = jax.random.normal(
-            subkey, shape=(self._population_size, self._search_dim)
+        samples = jax.random.multivariate_normal(
+            subkey,
+            shape=(self._population_size,),
+            mean=cmaes_state.mean,
+            cov=cmaes_state.cov_matrix,
         )
-        samples = samples * cmaes_state.cov_matrix + cmaes_state.mean
         return samples, random_key
 
     @functools.partial(jax.jit, static_argnames=("self",))
