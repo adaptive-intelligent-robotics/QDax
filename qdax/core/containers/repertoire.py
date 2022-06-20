@@ -11,7 +11,7 @@ import numpy as np
 from jax.flatten_util import ravel_pytree
 from sklearn.cluster import KMeans
 
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
+from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(
@@ -225,6 +225,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: ExtraScores,
     ) -> MapElitesRepertoire:
         """
         Add a batch of elements to the repertoire.
@@ -237,6 +238,8 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
                 aforementioned genotypes. Its shape is (batch_size, num_descriptors)
             batch_of_fitnesses: an array that contains the fitnesses of the
                 aforementioned genotypes. Its shape is (batch_size,)
+            batch_of_extra_scores: unused tree that contains the extra_scores of
+                aforementioned genotypes. 
 
         Returns:
             The updated MAP-Elites repertoire.
@@ -302,6 +305,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
+        extra_scores: ExtraScores,
         centroids: Centroid,
     ) -> MapElitesRepertoire:
         """
@@ -318,6 +322,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             fitnesses: fitness of the initial genotypes of shape (batch_size,)
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
+            extra_scores: unused extra_scores of the initial genotypes
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
 
         Returns:
@@ -341,6 +346,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # Add initial values to the grid
-        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
 
         return new_repertoire  # type: ignore
