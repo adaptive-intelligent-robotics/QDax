@@ -174,11 +174,11 @@ class CMAMEGAEmitter(Emitter):
         """
         Updates the CMA-MEGA emitter state.
 
-        Note: we have to sort the geotypes by ourself, because there
-        is no simple fixed fitness function, the fitness function depends
-        on the repertoire. Which is why we sort by ourself and use the
-        method update_state from CMAES, rather than the method update that
-        handle the sorting by itself.
+        Note: we have to sort the genotypes by ourself, because there
+        is no simple fixed fitness function here as it depends
+        on the repertoire. This is why we sort genotypes by ourself and use
+        the method update_state from CMAES, rather than the method update
+        that handle the sorting by itself.
 
         Args:
             emitter_state: current emitter state
