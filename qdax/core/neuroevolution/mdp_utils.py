@@ -136,17 +136,13 @@ def scoring_function(
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
-    """Evaluates policies contained in flatten_variables in parallel
+    """Evaluates policies contained in policies_params in parallel in
+    deterministic or pseudo-deterministic environments.
 
     This rollout is only deterministic when all the init states are the same.
     If the init states are fixed but different, as a policy is not necessarly
     evaluated with the same environment everytime, this won't be determinist.
-
-    When the init states are different, this is not purely stochastic. This
-    choice was made for performance reason, as the reset function of brax envs
-    is quite time consuming. If pure stochasticity of the environment is needed
-    for a use case, please open an issue.
-
+    When the init states are different, this is not purely stochastic.
     """
 
     # Perform rollouts with each policy
@@ -177,6 +173,48 @@ def scoring_function(
         },
         random_key,
     )
+
+
+@partial(
+    jax.jit,
+    static_argnames=(
+        "episode_length",
+        "play_reset_fn",
+        "play_step_fn",
+        "behavior_descriptor_extractor",
+    ),
+)
+def stochastic_scoring_function(
+    policies_params: Genotype,
+    random_key: RNGKey,
+    episode_length: int,
+    play_reset_fn: Callable[[RNGKey], brax.envs.State],
+    play_step_fn: Callable[
+        [brax.envs.State, Params, RNGKey, brax.envs.Env],
+        Tuple[brax.envs.State, Params, RNGKey, QDTransition],
+    ],
+    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
+    """Evaluates policies contained in policies_params in parallel.
+    The play_reset_fn function allows to define purely stochastic environments.
+    To use the reset function from the environment set it to "partial(env.reset)".
+    """
+
+    random_key, subkey = jax.random.split(random_key)
+    keys = jax.random.split(subkey, jax.tree_leaves(policies_params)[0].shape[0])
+    reset_fn = jax.vmap(play_reset_fn)
+    init_states = reset_fn(keys)
+
+    fitnesses, descriptors, info, random_key = scoring_function(
+        policies_params=policies_params,
+        random_key=random_key,
+        init_states=init_states,
+        episode_length=episode_length,
+        play_step_fn=play_step_fn,
+        behavior_descriptor_extractor=behavior_descriptor_extractor,
+    )
+
+    return (fitnesses, descriptors, info, random_key)
 
 
 @partial(
