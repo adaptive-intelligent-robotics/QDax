@@ -146,10 +146,12 @@ class CMAMEGAEmitter(Emitter):
         cmaes_state = emitter_state.cmaes_state
         grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze())
 
-        # Draw random coefficients
-        coeffs, random_key = self._cmaes.sample(
-            cmaes_state=cmaes_state, random_key=random_key
+        # Draw random coefficients - use the emitter state key
+        coeffs, _ = self._cmaes.sample(
+            cmaes_state=cmaes_state, random_key=emitter_state.random_key
         )
+
+        # make sure the fitness coefficient is positive
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
         update_grad = coeffs @ grads.T
 
@@ -174,11 +176,13 @@ class CMAMEGAEmitter(Emitter):
         """
         Updates the CMA-MEGA emitter state.
 
-        Note: we have to sort the genotypes by ourself, because there
-        is no simple fixed fitness function here as it depends
-        on the repertoire. This is why we sort genotypes by ourself and use
-        the method update_state from CMAES, rather than the method update
-        that handle the sorting by itself.
+        Note: in order to recover the coeffs that where used to sample the genotypes,
+        we reuse the emitter state's random key in this function.
+
+        Note: we use the update_state function from CMAES, a function that suppose
+        that the candidates are already sorted. We do this because we have to sort
+        them in this function anyway, in order to apply the right weights to the
+        terms when update theta.
 
         Args:
             emitter_state: current emitter state
@@ -193,7 +197,6 @@ class CMAMEGAEmitter(Emitter):
         """
 
         # retrieve elements from the emitter state
-        random_key = emitter_state.random_key
         cmaes_state = emitter_state.cmaes_state
         theta = jnp.nan_to_num(emitter_state.theta)
         grads = jnp.nan_to_num(emitter_state.theta_grads[0])
@@ -203,19 +206,26 @@ class CMAMEGAEmitter(Emitter):
         improvements = fitnesses - repertoire.fitnesses[indices]
         sorted_indices = jnp.argsort(improvements.squeeze())[::-1]
 
-        # Draw the coeffs
+        # Draw the coeffs - reuse the emitter state key to get same coeffs
         coeffs, random_key = self._cmaes.sample(
-            cmaes_state=cmaes_state, random_key=random_key
+            cmaes_state=cmaes_state, random_key=emitter_state.random_key
         )
+        # make sure the fitness coeff is positive
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
+
+        # get the gradients that must be applied
         update_grad = coeffs @ grads.T
-        sorted_candidates = coeffs[sorted_indices]
+
+        # weight terms - based on improvement rank
         gradient_step = jnp.sum(self._weights[sorted_indices] * update_grad, axis=0)
+
+        # update theta
         theta = jax.tree_map(
             lambda x, y: x + self._learning_rate * y, theta, gradient_step
         )
 
         # Update CMA Parameters
+        sorted_candidates = coeffs[sorted_indices]
         cmaes_state = self._cmaes.update_state(cmaes_state, sorted_candidates)
 
         # If no improvement draw randomly and re-initialize parameters
