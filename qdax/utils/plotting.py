@@ -10,9 +10,10 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from qdax.core.containers.mome_repertoire import MOMERepertoire
-from qdax.core.containers.repertoire import MapElitesRepertoire
 from scipy.spatial import Voronoi
+
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
+from qdax.core.containers.mome_repertoire import MOMERepertoire
 
 
 def get_voronoi_finite_polygons_2d(

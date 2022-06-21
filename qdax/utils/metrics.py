@@ -9,8 +9,9 @@ from typing import Dict, List
 import jax
 from jax import numpy as jnp
 
+from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.mome_repertoire import MOMERepertoire
-from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.utils.pareto_front import compute_hypervolume
 
 
@@ -47,6 +48,30 @@ class CSVLogger:
             writer.writerow(metrics)
 
 
+def default_ga_metrics(
+    repertoire: GARepertoire,
+) -> Dict[str, jnp.ndarray]:
+    """Compute the usual QD metrics that one can retrieve
+    from a MAP Elites repertoire.
+
+    Args:
+        repertoire: a GA repertoire
+
+    Returns:
+        a dictionary containing the QD score (sum of fitnesses
+            modified to be all positive), the max fitness of the
+            repertoire, the coverage (number of niche filled in
+            the repertoire).
+    """
+
+    # get metrics
+    max_fitness = jnp.max(repertoire.fitnesses)
+
+    return {
+        "max_fitness": max_fitness,
+    }
+
+
 def default_qd_metrics(
     repertoire: MapElitesRepertoire, qd_offset: float
 ) -> Dict[str, jnp.ndarray]:
@@ -76,7 +101,7 @@ def default_qd_metrics(
     return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
 
-def compute_moqd_metrics(
+def default_moqd_metrics(
     repertoire: MOMERepertoire, reference_point: jnp.ndarray
 ) -> Dict[str, jnp.ndarray]:
     """

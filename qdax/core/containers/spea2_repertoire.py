@@ -5,11 +5,11 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.population_repertoire import PopulationRepertoire
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.types import Fitness, Genotype
 
 
-class SPEA2Repertoire(PopulationRepertoire):
+class SPEA2Repertoire(GARepertoire):
 
     num_neighbours: int
 

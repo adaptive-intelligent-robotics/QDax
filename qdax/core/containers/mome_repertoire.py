@@ -10,7 +10,10 @@ from typing import Any, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    get_cells_indices,
+)
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from qdax.utils.pareto_front import compute_masked_pareto_front
 

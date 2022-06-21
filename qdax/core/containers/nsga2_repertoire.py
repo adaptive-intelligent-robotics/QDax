@@ -6,12 +6,12 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from qdax.core.containers.population_repertoire import PopulationRepertoire
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.types import Fitness, Genotype
 from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
-class NSGA2Repertoire(PopulationRepertoire):
+class NSGA2Repertoire(GARepertoire):
     @jax.jit
     def _compute_crowding_distances(
         self, scores: Fitness, mask: jnp.ndarray

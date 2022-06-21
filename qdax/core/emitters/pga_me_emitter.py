@@ -2,7 +2,7 @@
 https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf"""
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import flax.linen as nn
 import jax
@@ -10,7 +10,7 @@ import optax
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
@@ -174,7 +174,7 @@ class PGEmitter(Emitter):
     )
     def emit(
         self,
-        repertoire: MapElitesRepertoire,
+        repertoire: Repertoire,
         emitter_state: PGEmitterState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
@@ -227,10 +227,10 @@ class PGEmitter(Emitter):
     def state_update(
         self,
         emitter_state: PGEmitterState,
-        repertoire: MapElitesRepertoire,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
+        repertoire: Optional[Repertoire],
+        genotypes: Optional[Genotype],
+        fitnesses: Optional[Fitness],
+        descriptors: Optional[Descriptor],
         extra_scores: ExtraScores,
     ) -> PGEmitterState:
         """This function gives an opportunity to update the emitter state

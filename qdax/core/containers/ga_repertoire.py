@@ -3,14 +3,14 @@ from __future__ import annotations
 from functools import partial
 from typing import Tuple
 
-import flax
 import jax
 import jax.numpy as jnp
 
+from qdax.core.containers.repertoire import Repertoire
 from qdax.types import Fitness, Genotype, RNGKey
 
 
-class PopulationRepertoire(flax.struct.PyTreeNode):
+class GARepertoire(Repertoire):
     genotypes: Genotype
     fitnesses: Fitness
 
@@ -40,30 +40,37 @@ class PopulationRepertoire(flax.struct.PyTreeNode):
     @jax.jit
     def add(
         self, batch_of_genotypes: Genotype, batch_of_fitnesses: Fitness
-    ) -> PopulationRepertoire:
-        raise NotImplementedError
+    ) -> GARepertoire:
+
+        # gather individuals and fitnesses
+        candidates = jnp.concatenate((self.genotypes, batch_of_genotypes))
+        candidates_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
+
+        # sort by fitnesses
+        indices = jnp.argsort(candidates_fitnesses)
+
+        # keep only the best ones
+        new_repertoire = self.replace(
+            genotypes=candidates[indices], fitnesses=candidates_fitnesses[indices]
+        )
+
+        return new_repertoire  # type: ignore
 
     @classmethod
-    def init(
+    def init(  # type: ignore
         cls,
         genotypes: Genotype,
         fitnesses: Fitness,
         population_size: int,
-    ) -> PopulationRepertoire:
+    ) -> GARepertoire:
 
-        # avoid the condition by doing the usual
-        # default values + addition
+        default_fitnesses = -jnp.inf * jnp.ones(
+            shape=(population_size, fitnesses.shape[-1])
+        )
+        default_genotypes = jnp.zeros(shape=(population_size, genotypes.shape[-1]))
 
-        num_add = population_size - genotypes.shape[0]
-        if num_add > 0:
-            genotypes = jnp.concatenate(
-                (genotypes, jnp.zeros((num_add, genotypes.shape[1]))), axis=0
-            )
-            fitnesses = jnp.concatenate(
-                (fitnesses, -jnp.ones((num_add, fitnesses.shape[1])) * jnp.inf),
-                axis=0,
-            )
+        repertoire = cls(genotypes=default_genotypes, fitnesses=default_fitnesses)
 
-        new_repertoire = cls(genotypes=genotypes, fitnesses=fitnesses)
+        new_repertoire = repertoire.add(genotypes, fitnesses)
 
-        return new_repertoire
+        return new_repertoire  # type: ignore

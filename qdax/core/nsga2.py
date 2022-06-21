@@ -23,8 +23,10 @@ class NSGA2(GeneticAlgorithm):
         self, init_genotypes: Genotype, population_size: int, random_key: RNGKey
     ) -> Tuple[NSGA2Repertoire, Optional[EmitterState], RNGKey]:
 
-        # score initial population
-        fitnesses = self._scoring_function(init_genotypes)
+        # score initial genotypes
+        fitnesses, extra_scores, random_key = self._scoring_function(
+            init_genotypes, random_key
+        )
 
         # init the repertoire
         repertoire = NSGA2Repertoire.init(
@@ -36,6 +38,15 @@ class NSGA2(GeneticAlgorithm):
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
             init_genotypes=init_genotypes, random_key=random_key
+        )
+
+        # update emitter state
+        emitter_state = self._emitter.state_update(
+            emitter_state=emitter_state,
+            repertoire=repertoire,
+            genotypes=init_genotypes,
+            fitnesses=fitnesses,
+            extra_scores=extra_scores,
         )
 
         return repertoire, emitter_state, random_key

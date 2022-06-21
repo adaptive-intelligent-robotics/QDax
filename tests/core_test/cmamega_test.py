@@ -6,7 +6,10 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    compute_cvt_centroids,
+)
 from qdax.core.emitters.cma_mega_emitter import CMAMEGAEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey

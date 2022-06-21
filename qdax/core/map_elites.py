@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Tuple
 import jax
 from chex import ArrayTree
 
-from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
 

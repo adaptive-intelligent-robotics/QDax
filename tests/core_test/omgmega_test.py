@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.containers.repertoire import (
+from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     compute_euclidean_centroids,
 )
