@@ -12,6 +12,13 @@ from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
 class NSGA2Repertoire(GARepertoire):
+    """Repertoire used for the NSGA2 algorithm.
+
+    Inherits from the GARepertoire. The data stored are the genotypes
+    and there fitness. Several functions are inherited from GARepertoire,
+    including size, save, sample and init.
+    """
+
     @jax.jit
     def _compute_crowding_distances(
         self, scores: Fitness, mask: jnp.ndarray
@@ -65,6 +72,17 @@ class NSGA2Repertoire(GARepertoire):
     def add(
         self, batch_of_genotypes: Genotype, batch_of_fitnesses: Fitness
     ) -> NSGA2Repertoire:
+        """Implements the repertoire addition rules.
+
+        TODO: add explanation of the addition rule.
+
+        Args:
+            batch_of_genotypes: new genotypes that we try to add.
+            batch_of_fitnesses: fitness of those new genotypes.
+
+        Returns:
+            The updated repertoire.
+        """
         # All the candidates
         candidates = jnp.concatenate((self.genotypes, batch_of_genotypes))
         candidate_scores = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
