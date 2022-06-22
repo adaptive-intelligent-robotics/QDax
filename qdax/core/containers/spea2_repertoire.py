@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from functools import partial
-
+import flax
 import jax
 import jax.numpy as jnp
 
@@ -14,12 +13,12 @@ class SPEA2Repertoire(GARepertoire):
 
     Inherits from the GARepertoire. The data stored are the genotypes
     and there fitness. Several functions are inherited from GARepertoire,
-    including size, save, sample and init.
+    including size, save, sample.
     """
 
-    _num_neighbours: int
+    num_neighbours: int = flax.struct.field(pytree_node=False)
 
-    @partial(jax.jit, static_argnames=("self",))
+    @jax.jit
     def _compute_strength_scores(self, batch_of_fitnesses: Fitness) -> jnp.ndarray:
         """Compute the strength scores (defined for a solution by the number of
         solutions dominating it).
@@ -39,7 +38,7 @@ class SPEA2Repertoire(GARepertoire):
             (fitnesses - jnp.expand_dims(fitnesses, axis=1)) ** 2, axis=-1
         )
         densities = jnp.sum(
-            jnp.sort(distance_matrix, axis=1)[:, : self._num_neighbours + 1], axis=1
+            jnp.sort(distance_matrix, axis=1)[:, : self.num_neighbours + 1], axis=1
         )
 
         strength_scores = strength_scores + 1 / (1 + densities)
@@ -47,7 +46,7 @@ class SPEA2Repertoire(GARepertoire):
 
         return strength_scores
 
-    @partial(jax.jit, static_argnames=("self",))
+    @jax.jit
     def add(
         self,
         batch_of_genotypes: Genotype,
@@ -73,11 +72,53 @@ class SPEA2Repertoire(GARepertoire):
         candidates_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
 
         # Track front
-        strength_scores = self._compute_strength_scores(
-            self.genotypes, batch_of_fitnesses, self._num_neighbours
-        )
+        strength_scores = self._compute_strength_scores(batch_of_fitnesses)
         indices = jnp.argsort(strength_scores)[: self.size]
         new_candidates = jax.tree_map(lambda x: x[indices], candidates)
         new_fitnesses = candidates_fitnesses[indices]
 
-        return SPEA2Repertoire(genotypes=new_candidates, fitnesses=new_fitnesses)
+        new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_fitnesses)
+
+        return new_repertoire  # type: ignore
+
+    @classmethod
+    def init(  # type: ignore
+        cls,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        population_size: int,
+        num_neighbours: int,
+    ) -> GARepertoire:
+        """Initializes the repertoire.
+
+        Start with default values and adds a first batch of genotypes
+        to the repertoire.
+
+        Args:
+            genotypes: first batch of genotypes
+            fitnesses: corresponding fitnesses
+            population_size: size of the population we want to evolve
+
+        Returns:
+            An initial repertoire.
+        """
+        # create default fitnesses
+        default_fitnesses = -jnp.inf * jnp.ones(
+            shape=(population_size, fitnesses.shape[-1])
+        )
+
+        # create default genotypes
+        default_genotypes = jax.tree_map(
+            lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
+        )
+
+        # create an initial repertoire with those default values
+        repertoire = cls(
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            num_neighbours=num_neighbours,
+        )
+
+        new_repertoire = repertoire.add(genotypes, fitnesses)
+
+        return new_repertoire  # type: ignore

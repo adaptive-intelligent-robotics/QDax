@@ -93,6 +93,9 @@ class GARepertoire(Repertoire):
         mask = self.fitnesses != -jnp.inf
         p = jnp.any(mask, axis=-1) / jnp.sum(jnp.any(mask, axis=-1))
 
+        print("Probability vector : ", p)
+        print("Genotypes vector: ", self.genotypes)
+
         # sample
         random_key, subkey = jax.random.split(random_key)
         samples = jax.tree_map(
@@ -127,16 +130,21 @@ class GARepertoire(Repertoire):
             self.genotypes,
             batch_of_genotypes,
         )
-        candidates_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
+        candidates_fitnesses = jnp.concatenate(
+            (self.fitnesses, batch_of_fitnesses), axis=0
+        )
 
         # sort by fitnesses
-        indices = jnp.argsort(candidates_fitnesses)
+        indices = jnp.argsort(jnp.sum(candidates_fitnesses, axis=1))[::-1]
 
         # keep only the best ones
-        new_candidates = jax.tree_map(lambda x: x[indices], candidates)
+        survivor_indices = indices[: self.size]
+
+        # keep only the best ones
+        new_candidates = jax.tree_map(lambda x: x[survivor_indices], candidates)
 
         new_repertoire = self.replace(
-            genotypes=new_candidates, fitnesses=candidates_fitnesses[indices]
+            genotypes=new_candidates, fitnesses=candidates_fitnesses[survivor_indices]
         )
 
         return new_repertoire  # type: ignore

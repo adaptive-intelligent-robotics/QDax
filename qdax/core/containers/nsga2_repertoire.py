@@ -206,6 +206,8 @@ class NSGA2Repertoire(GARepertoire):
         indices = indices + ~to_keep_index * (num_candidates)
         indices = jnp.sort(indices)[: self.size]
 
+        print("indices used to extract : ", indices)
+
         new_candidates = jax.tree_map(lambda x: x[indices], candidates)
         new_scores = candidate_fitnesses[indices]
 

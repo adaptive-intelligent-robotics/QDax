@@ -30,9 +30,20 @@ class SPEA2(GeneticAlgorithm):
     b13724cb54ae4171916f3f969d304b9e9752a57f"
     """
 
-    @partial(jax.jit, static_argnames=("self", "population_size"))
+    @partial(
+        jax.jit,
+        static_argnames=(
+            "self",
+            "population_size",
+            "num_neighbours",
+        ),
+    )
     def init(
-        self, init_genotypes: Genotype, population_size: int, random_key: RNGKey
+        self,
+        init_genotypes: Genotype,
+        population_size: int,
+        num_neighbours: int,
+        random_key: RNGKey,
     ) -> Tuple[SPEA2Repertoire, Optional[EmitterState], RNGKey]:
 
         # score initial genotypes
@@ -45,6 +56,7 @@ class SPEA2(GeneticAlgorithm):
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             population_size=population_size,
+            num_neighbours=num_neighbours,
         )
 
         # get initial state of the emitter
