@@ -21,7 +21,8 @@ class SPEA2Repertoire(GARepertoire):
     @jax.jit
     def _compute_strength_scores(self, batch_of_fitnesses: Fitness) -> jnp.ndarray:
         """Compute the strength scores (defined for a solution by the number of
-        solutions dominating it).
+        solutions dominating it plus the inverse of the density of solution in the
+        fitness space).
 
         Args:
             batch_of_fitnesses: a batch of fitness vectors.
@@ -30,10 +31,13 @@ class SPEA2Repertoire(GARepertoire):
             Strength score of each solution corresponding to the fitnesses.
         """
         fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses), axis=0)
+        # dominating solutions
         dominates = jnp.all(
             (fitnesses - jnp.expand_dims(fitnesses, axis=1)) > 0, axis=-1
         )
         strength_scores = jnp.sum(dominates, axis=1)
+
+        # density
         distance_matrix = jnp.sum(
             (fitnesses - jnp.expand_dims(fitnesses, axis=1)) ** 2, axis=-1
         )
@@ -41,6 +45,7 @@ class SPEA2Repertoire(GARepertoire):
             jnp.sort(distance_matrix, axis=1)[:, : self.num_neighbours + 1], axis=1
         )
 
+        # sum both terms
         strength_scores = strength_scores + 1 / (1 + densities)
         strength_scores = jnp.nan_to_num(strength_scores, nan=self.size + 2)
 
@@ -53,6 +58,10 @@ class SPEA2Repertoire(GARepertoire):
         batch_of_fitnesses: Fitness,
     ) -> SPEA2Repertoire:
         """Updates the population with the new solutions.
+
+        To decide which individuals to keep, we count, for each solution,
+        the number of solutions by which tey are dominated. We keep only
+        the solutions that are the less dominated ones.
 
         Args:
             batch_of_genotypes: genotypes of the new individuals that are
@@ -71,7 +80,7 @@ class SPEA2Repertoire(GARepertoire):
 
         candidates_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
 
-        # Track front
+        # compute strength score for all solutions
         strength_scores = self._compute_strength_scores(batch_of_fitnesses)
         indices = jnp.argsort(strength_scores)[: self.size]
         new_candidates = jax.tree_map(lambda x: x[indices], candidates)

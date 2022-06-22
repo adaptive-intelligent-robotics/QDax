@@ -115,50 +115,54 @@ class NSGA2Repertoire(GARepertoire):
         first_leaf = jax.tree_leaves(candidates)[0]
         num_candidates = first_leaf.shape[0]
 
-        # Track front
-        to_keep_index = jnp.zeros(num_candidates, dtype=np.bool)
-
-        # TODO: check shape, print etc... to be sure everything's fine
-
         def compute_current_front(
             val: Tuple[jnp.ndarray, jnp.ndarray]
         ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-            """Body function for the while loop.
-            val is a tuple with
-            (current_num_solutions, to_keep_index)
+            """Body function for the while loop. Computes the successive
+            pareto fronts in the data.
 
             Args:
                 val: Value passed through the while loop. Here, it is
-                    a tuple containing two values. The current number of
-                    solutions and the indexes of the front.
+                    a tuple containing two values. The indexes of all
+                    solutions to keep and the indexes of the last
+                    computed front.
 
             Returns:
                 The updated values to pass through the while loop. Updated
                 number of solutions and updated front indexes.
             """
             to_keep_index, _ = val
+
+            # mask the individual that are already kept
             front_index = compute_masked_pareto_front(
-                candidate_fitnesses, to_keep_index
+                candidate_fitnesses, mask=to_keep_index
             )
 
-            # Add new index
+            # Add new indexes
             to_keep_index = to_keep_index + front_index
 
             # Update front & number of solutions
             return to_keep_index, front_index
 
         def condition_fn_1(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
-            """_summary_
+            """Gives condition to stop the while loop. Makes sure the
+            the number of solution is smaller than the maximum size
+            of the population.
 
             Args:
-                val: _description_
+                val: Value passed through the while loop. Here, it is
+                    a tuple containing two values. The indexes of all
+                    solutions to keep and the indexes of the last
+                    computed front.
 
             Returns:
-                _description_
+                Returns True if we have reached the maximum number of
+                solutions we can keep in the population.
             """
             to_keep_index, _ = val
             return sum(to_keep_index) < self.size  # type: ignore
 
+        # get indexes of all first successive fronts and indexes of the last front
         to_keep_index, front_index = jax.lax.while_loop(
             condition_fn_1,
             compute_current_front,
@@ -168,7 +172,7 @@ class NSGA2Repertoire(GARepertoire):
             ),
         )
 
-        # Remove Last One
+        # remove the indexes of the last front - gives first indexes to keep
         new_index = jnp.arange(start=1, stop=len(to_keep_index) + 1) * to_keep_index
         new_index = new_index * (~front_index)
         to_keep_index = new_index > 0
@@ -192,21 +196,19 @@ class NSGA2Repertoire(GARepertoire):
             return sum(to_keep_index + front_index) < self.size  # type: ignore
 
         # Remove the highest distances
-        front_index, num = jax.lax.while_loop(
+        front_index, _num = jax.lax.while_loop(
             condition_fn_2,
             add_to_front,
             (jnp.zeros(num_candidates, dtype=np.bool), 0),
         )
 
-        # Update index
+        # update index
         to_keep_index = to_keep_index + front_index
 
-        # Update (cannot use to_keep_index directly as it is dynamic)
+        # update (cannot use to_keep_index directly as it is dynamic)
         indices = jnp.arange(start=0, stop=num_candidates) * to_keep_index
         indices = indices + ~to_keep_index * (num_candidates)
         indices = jnp.sort(indices)[: self.size]
-
-        print("indices used to extract : ", indices)
 
         new_candidates = jax.tree_map(lambda x: x[indices], candidates)
         new_scores = candidate_fitnesses[indices]

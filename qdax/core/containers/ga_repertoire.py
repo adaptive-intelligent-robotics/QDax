@@ -93,9 +93,6 @@ class GARepertoire(Repertoire):
         mask = self.fitnesses != -jnp.inf
         p = jnp.any(mask, axis=-1) / jnp.sum(jnp.any(mask, axis=-1))
 
-        print("Probability vector : ", p)
-        print("Genotypes vector: ", self.genotypes)
-
         # sample
         random_key, subkey = jax.random.split(random_key)
         samples = jax.tree_map(

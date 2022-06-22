@@ -504,22 +504,29 @@ def vector_to_rgb(angle: float, absolute: float) -> Any:
     return mpl.colors.hsv_to_rgb((angle / 2 / np.pi, 1, absolute))
 
 
-# TODO: check if factorisation is possible
 def plot_global_pareto_front(
     pareto_front: jnp.ndarray,
     ax: Optional[plt.Axes] = None,
     label: Optional[str] = None,
-    colour: Optional[str] = None,
+    color: Optional[str] = None,
 ) -> Tuple[Optional[Figure], plt.Axes]:
-    """
-    Plots the global Pareto Front
+    """Plots the global Pareto Front.
+
+    Args:
+        pareto_front: a pareto front
+        ax: a matplotlib ax. Defaults to None.
+        label: a given label. Defaults to None.
+        color: a color for the plotted points. Defaults to None.
+
+    Returns:
+        A figure and an axe.
     """
     fig = None
     if ax is None:
         fig, ax = plt.subplots(figsize=(6, 6))
-        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=colour, label=label)
+        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=color, label=label)
         return fig, ax
     else:
-        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=colour, label=label)
+        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=color, label=label)
 
     return fig, ax
