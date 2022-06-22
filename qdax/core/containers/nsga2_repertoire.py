@@ -21,32 +21,42 @@ class NSGA2Repertoire(GARepertoire):
 
     @jax.jit
     def _compute_crowding_distances(
-        self, scores: Fitness, mask: jnp.ndarray
+        self, fitnesses: Fitness, mask: jnp.ndarray
     ) -> jnp.ndarray:
-        """
-        Compute crowding distances
+        """Compute crowding distances.
+
+        Used in the addition function.
+
+        Args:
+            fitnesses: fitnesses of the considered individuals. Here,
+                fitness are vectors as we are doing multi-objective
+                optimization.
+            mask: a vector to mask values.
+
+        Returns:
+            The crowding distances.
         """
         # Retrieve only non masked solutions
-        num_solutions = scores.shape[0]
-        num_objective = scores.shape[1]
+        num_solutions = fitnesses.shape[0]
+        num_objective = fitnesses.shape[1]
         if num_solutions <= 2:
             return jnp.array([jnp.inf] * num_solutions)
 
         else:
             # Sort solutions on each objective
-            mask_dist = jnp.column_stack([mask] * scores.shape[1])
-            score_amplitude = jnp.max(scores, axis=0) - jnp.min(scores, axis=0)
-            dist_scores = (
-                scores + 3 * score_amplitude * jnp.ones_like(scores) * mask_dist
+            mask_dist = jnp.column_stack([mask] * fitnesses.shape[1])
+            score_amplitude = jnp.max(fitnesses, axis=0) - jnp.min(fitnesses, axis=0)
+            dist_fitnesses = (
+                fitnesses + 3 * score_amplitude * jnp.ones_like(fitnesses) * mask_dist
             )
-            sorted_index = jnp.argsort(dist_scores, axis=0)
-            srt_scores = scores[sorted_index, jnp.arange(num_objective)]
+            sorted_index = jnp.argsort(dist_fitnesses, axis=0)
+            srt_fitnesses = fitnesses[sorted_index, jnp.arange(num_objective)]
             dists = jnp.row_stack(
-                [srt_scores, jnp.full(num_objective, jnp.inf)]
-            ) - jnp.row_stack([jnp.full(num_objective, -jnp.inf), srt_scores])
+                [srt_fitnesses, jnp.full(num_objective, jnp.inf)]
+            ) - jnp.row_stack([jnp.full(num_objective, -jnp.inf), srt_fitnesses])
 
             # Calculate the norm for each objective - set to NaN if all values are equal
-            norm = jnp.max(srt_scores, axis=0) - jnp.min(srt_scores, axis=0)
+            norm = jnp.max(srt_fitnesses, axis=0) - jnp.min(srt_fitnesses, axis=0)
 
             # Prepare the distance to last and next vectors
             dist_to_last, dist_to_next = dists, dists
@@ -74,7 +84,17 @@ class NSGA2Repertoire(GARepertoire):
     ) -> NSGA2Repertoire:
         """Implements the repertoire addition rules.
 
-        TODO: add explanation of the addition rule.
+        The population is sorted in successive pareto front. The first one
+        is the global pareto front. The second one is the pareto front of the
+        population where the first pareto front has been removed, etc...
+
+        The successive pareto fronts are kept until the moment where adding a
+        full pareto front would exceed the population size.
+
+        To decide the survival of this pareto front, a crowding distance is
+        computed in order to keep individuals that are spread in this last pareto
+        front. Hence, the individuals with the biggest crowding distances are
+        added until the population size is reached.
 
         Args:
             batch_of_genotypes: new genotypes that we try to add.
@@ -90,12 +110,23 @@ class NSGA2Repertoire(GARepertoire):
         # Track front
         to_keep_index = jnp.zeros(candidates.shape[0], dtype=np.bool)
 
+        # TODO: check shape, print etc... to be sure everything's fine
+
         def compute_current_front(
             val: Tuple[jnp.ndarray, jnp.ndarray]
         ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-            """
-            Body function for the loop, val is a tuple with
+            """Body function for the while loop.
+            val is a tuple with
             (current_num_solutions, to_keep_index)
+
+            Args:
+                val: Value passed through the while loop. Here, it is
+                    a tuple containing two values. The current number of
+                    solutions and the indexes of the front.
+
+            Returns:
+                The updated values to pass through the while loop. Updated
+                number of solutions and updated front indexes.
             """
             to_keep_index, _ = val
             front_index = compute_masked_pareto_front(candidate_scores, to_keep_index)
@@ -106,17 +137,20 @@ class NSGA2Repertoire(GARepertoire):
             # Update front & number of solutions
             return to_keep_index, front_index
 
-        def stop_loop(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
+        def condition_fn_1(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
+            """_summary_
 
-            """
-            Stop function for the loop, val is a tuple with
-            (current_num_solutions, to_keep_index)
+            Args:
+                val: _description_
+
+            Returns:
+                _description_
             """
             to_keep_index, _ = val
-            return sum(to_keep_index) < self.size
+            return sum(to_keep_index) < self.size  # type: ignore
 
         to_keep_index, front_index = jax.lax.while_loop(
-            stop_loop,
+            condition_fn_1,
             compute_current_front,
             (
                 jnp.zeros(candidates.shape[0], dtype=np.bool),
@@ -143,13 +177,15 @@ class NSGA2Repertoire(GARepertoire):
             val = front_index, num
             return val
 
-        def stop_loop(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
+        def condition_fn_2(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
             front_index, _ = val
-            return sum(to_keep_index + front_index) < self.size
+            return sum(to_keep_index + front_index) < self.size  # type: ignore
 
         # Remove the highest distances
         front_index, num = jax.lax.while_loop(
-            stop_loop, add_to_front, (jnp.zeros(candidates.shape[0], dtype=np.bool), 0)
+            condition_fn_2,
+            add_to_front,
+            (jnp.zeros(candidates.shape[0], dtype=np.bool), 0),
         )
 
         # Update index

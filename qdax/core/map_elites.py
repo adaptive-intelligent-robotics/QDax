@@ -13,8 +13,11 @@ from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
 
 
 class MAPElites:
-    """
-    Core elements of the MAP-Elites algorithm.
+    """Core elements of the MAP-Elites algorithm.
+
+    Note: Although very similar to the GeneticAlgorithm, we decided to keep the
+    MAPElites class independant of the GeneticAlgorithm class at the moment to keep
+    elements explicit.
 
     Args:
         scoring_function: a function that takes a batch of genotypes and compute
@@ -58,7 +61,8 @@ class MAPElites:
             random_key: a random key used for stochastic operations.
 
         Returns:
-            an initialized MAP-Elite repertoire with the initial state of the emitter.
+            An initialized MAP-Elite repertoire with the initial state of the emitter,
+            and a random key.
         """
         # score initial genotypes
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
@@ -99,9 +103,11 @@ class MAPElites:
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics, RNGKey]:
         """
         Performs one iteration of the MAP-Elites algorithm.
-        1. A batch of genotypes is sampled in the archive and the genotypes are copied.
+        1. A batch of genotypes is sampled in the repertoire and the genotypes
+            are copied.
         2. The copies are mutated and crossed-over
-        3. The obtained offsprings are scored and then added to the archive.
+        3. The obtained offsprings are scored and then added to the repertoire.
+
 
         Args:
             repertoire: the MAP-Elites repertoire
