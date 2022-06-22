@@ -191,7 +191,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         descriptors = jnp.load(path + "descriptors.npy")
         centroids = jnp.load(path + "centroids.npy")
 
-        return MapElitesRepertoire(
+        return cls(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
@@ -212,10 +212,10 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             random_key: an updated jax PRNG random key
         """
 
-        random_key, subkey = jax.random.split(random_key)
         repertoire_empty = self.fitnesses == -jnp.inf
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
+        random_key, subkey = jax.random.split(random_key)
         samples = jax.tree_map(
             lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
             self.genotypes,
@@ -339,7 +339,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
         default_descriptors = jnp.zeros(shape=(num_centroids, centroids.shape[-1]))
 
-        repertoire = MapElitesRepertoire(
+        repertoire = cls(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,

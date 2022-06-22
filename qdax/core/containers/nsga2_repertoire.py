@@ -104,11 +104,19 @@ class NSGA2Repertoire(GARepertoire):
             The updated repertoire.
         """
         # All the candidates
-        candidates = jnp.concatenate((self.genotypes, batch_of_genotypes))
-        candidate_scores = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
+        candidates = jax.tree_map(
+            lambda x, y: jnp.concatenate((x, y), axis=0),
+            self.genotypes,
+            batch_of_genotypes,
+        )
+
+        candidate_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
+
+        first_leaf = jax.tree_leaves(candidates)[0]
+        num_candidates = first_leaf.shape[0]
 
         # Track front
-        to_keep_index = jnp.zeros(candidates.shape[0], dtype=np.bool)
+        to_keep_index = jnp.zeros(num_candidates, dtype=np.bool)
 
         # TODO: check shape, print etc... to be sure everything's fine
 
@@ -129,7 +137,9 @@ class NSGA2Repertoire(GARepertoire):
                 number of solutions and updated front indexes.
             """
             to_keep_index, _ = val
-            front_index = compute_masked_pareto_front(candidate_scores, to_keep_index)
+            front_index = compute_masked_pareto_front(
+                candidate_fitnesses, to_keep_index
+            )
 
             # Add new index
             to_keep_index = to_keep_index + front_index
@@ -153,8 +163,8 @@ class NSGA2Repertoire(GARepertoire):
             condition_fn_1,
             compute_current_front,
             (
-                jnp.zeros(candidates.shape[0], dtype=np.bool),
-                jnp.zeros(candidates.shape[0], dtype=np.bool),
+                jnp.zeros(num_candidates, dtype=np.bool),
+                jnp.zeros(num_candidates, dtype=np.bool),
             ),
         )
 
@@ -165,7 +175,7 @@ class NSGA2Repertoire(GARepertoire):
 
         # Compute crowding distances
         crowding_distances = self._compute_crowding_distances(
-            candidate_scores, ~front_index
+            candidate_fitnesses, ~front_index
         )
         crowding_distances = crowding_distances * (front_index)
         highest_dist = jnp.argsort(crowding_distances)
@@ -185,18 +195,18 @@ class NSGA2Repertoire(GARepertoire):
         front_index, num = jax.lax.while_loop(
             condition_fn_2,
             add_to_front,
-            (jnp.zeros(candidates.shape[0], dtype=np.bool), 0),
+            (jnp.zeros(num_candidates, dtype=np.bool), 0),
         )
 
         # Update index
         to_keep_index = to_keep_index + front_index
 
         # Update (cannot use to_keep_index directly as it is dynamic)
-        indices = jnp.arange(start=0, stop=len(candidates)) * to_keep_index
-        indices = indices + ~to_keep_index * (len(candidates))
+        indices = jnp.arange(start=0, stop=num_candidates) * to_keep_index
+        indices = indices + ~to_keep_index * (num_candidates)
         indices = jnp.sort(indices)[: self.size]
 
-        new_candidates = candidates[indices]
-        new_scores = candidate_scores[indices]
+        new_candidates = jax.tree_map(lambda x: x[indices], candidates)
+        new_scores = candidate_fitnesses[indices]
 
         return NSGA2Repertoire(genotypes=new_candidates, fitnesses=new_scores)

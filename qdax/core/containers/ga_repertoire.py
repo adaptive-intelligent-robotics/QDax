@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Tuple
+from typing import Callable, Tuple
 
 import jax
 import jax.numpy as jnp
+from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.types import Fitness, Genotype, RNGKey
@@ -33,7 +34,8 @@ class GARepertoire(Repertoire):
     @property
     def size(self) -> int:
         """Gives the size of the population."""
-        return len(self.genotypes)
+        first_leaf = jax.tree_leaves(self.genotypes)[0]
+        return int(first_leaf.shape[0])
 
     def save(self, path: str = "./") -> None:
         """Saves the repertoire.
@@ -41,8 +43,39 @@ class GARepertoire(Repertoire):
         Args:
             path: place to store the files. Defaults to "./".
         """
-        jnp.save(path + "genotypes.npy", self.genotypes)
+
+        def flatten_genotype(genotype: Genotype) -> jnp.ndarray:
+            flatten_genotype, _ = ravel_pytree(genotype)
+            return flatten_genotype
+
+        # flatten all the genotypes
+        flat_genotypes = jax.vmap(flatten_genotype)(self.genotypes)
+
+        jnp.save(path + "genotypes.npy", flat_genotypes)
         jnp.save(path + "scores.npy", self.fitnesses)
+
+    @classmethod
+    def load(cls, reconstruction_fn: Callable, path: str = "./") -> GARepertoire:
+        """Loads a GA Repertoire.
+
+        Args:
+            reconstruction_fn: Function to reconstruct a PyTree
+                from a flat array.
+            path: Path where the data is saved. Defaults to "./".
+
+        Returns:
+            A GA Repertoire.
+        """
+
+        flat_genotypes = jnp.load(path + "genotypes.npy")
+        genotypes = jax.vmap(reconstruction_fn)(flat_genotypes)
+
+        fitnesses = jnp.load(path + "fitnesses.npy")
+
+        return cls(
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+        )
 
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
@@ -57,16 +90,19 @@ class GARepertoire(Repertoire):
         """
 
         # prepare sampling probability
-        random_key, subkey = jax.random.split(random_key)
         mask = self.fitnesses != -jnp.inf
         p = jnp.any(mask, axis=-1) / jnp.sum(jnp.any(mask, axis=-1))
 
         # sample
-        genotype_sample = jax.random.choice(
-            key=subkey, a=self.genotypes, p=p, shape=(num_samples,), replace=False
+        random_key, subkey = jax.random.split(random_key)
+        samples = jax.tree_map(
+            lambda x: jax.random.choice(
+                subkey, x, shape=(num_samples,), p=p, replace=False
+            ),
+            self.genotypes,
         )
 
-        return genotype_sample, random_key
+        return samples, random_key
 
     @jax.jit
     def add(
@@ -86,15 +122,21 @@ class GARepertoire(Repertoire):
         """
 
         # gather individuals and fitnesses
-        candidates = jnp.concatenate((self.genotypes, batch_of_genotypes))
+        candidates = jax.tree_map(
+            lambda x, y: jnp.concatenate((x, y), axis=0),
+            self.genotypes,
+            batch_of_genotypes,
+        )
         candidates_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
 
         # sort by fitnesses
         indices = jnp.argsort(candidates_fitnesses)
 
         # keep only the best ones
+        new_candidates = jax.tree_map(lambda x: x[indices], candidates)
+
         new_repertoire = self.replace(
-            genotypes=candidates[indices], fitnesses=candidates_fitnesses[indices]
+            genotypes=new_candidates, fitnesses=candidates_fitnesses[indices]
         )
 
         return new_repertoire  # type: ignore
@@ -119,12 +161,17 @@ class GARepertoire(Repertoire):
         Returns:
             An initial repertoire.
         """
-
+        # create default fitnesses
         default_fitnesses = -jnp.inf * jnp.ones(
             shape=(population_size, fitnesses.shape[-1])
         )
-        default_genotypes = jnp.zeros(shape=(population_size, genotypes.shape[-1]))
 
+        # create default genotypes
+        default_genotypes = jax.tree_map(
+            lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
+        )
+
+        # create an initial repertoire with those default values
         repertoire = cls(genotypes=default_genotypes, fitnesses=default_fitnesses)
 
         new_repertoire = repertoire.add(genotypes, fitnesses)

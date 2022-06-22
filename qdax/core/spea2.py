@@ -1,3 +1,10 @@
+"""Core components of the SPEA2 algorithm.
+
+Link to paper: "https://www.semanticscholar.org/paper/SPEA2%3A
+-Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/
+b13724cb54ae4171916f3f969d304b9e9752a57f"
+"""
+
 from __future__ import annotations
 
 from functools import partial
@@ -14,8 +21,13 @@ from qdax.types import Genotype, RNGKey
 class SPEA2(GeneticAlgorithm):
     """Implements main functions of the SPEA2 algorithm.
 
+    This class inherits most functions from GeneticAlgorithm.
+    The init function is overwritten in order to precise the type
+    of repertoire used in SPEA2.
 
-    TODO: add link to paper.
+    Link to paper: "https://www.semanticscholar.org/paper/SPEA2%3A-
+    Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/
+    b13724cb54ae4171916f3f969d304b9e9752a57f"
     """
 
     @partial(jax.jit, static_argnames=("self", "population_size"))

@@ -1,3 +1,8 @@
+"""Core components of the NSGA2 algorithm.
+
+Link to paper: https://ieeexplore.ieee.org/document/996017
+"""
+
 from __future__ import annotations
 
 from functools import partial
@@ -14,8 +19,11 @@ from qdax.types import Genotype, RNGKey
 class NSGA2(GeneticAlgorithm):
     """Implements main functions of the NSGA2 algorithm.
 
+    This class inherits most functions from GeneticAlgorithm.
+    The init function is overwritten in order to precise the type
+    of repertoire used in NSGA2.
 
-    TODO: add link to paper.
+    Link to paper: https://ieeexplore.ieee.org/document/996017
     """
 
     @partial(jax.jit, static_argnames=("self", "population_size"))

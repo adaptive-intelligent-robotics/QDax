@@ -64,15 +64,20 @@ class SPEA2Repertoire(GARepertoire):
             Updated repertoire.
         """
         # All the candidates
-        candidates = jnp.concatenate((self.genotypes, batch_of_genotypes))
+        candidates = jax.tree_map(
+            lambda x, y: jnp.concatenate((x, y), axis=0),
+            self.genotypes,
+            batch_of_genotypes,
+        )
+
         candidates_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
 
         # Track front
         strength_scores = self._compute_strength_scores(
             self.genotypes, batch_of_fitnesses, self._num_neighbours
         )
-        indices = jnp.argsort(strength_scores)[: len(self.genotypes)]
-        new_candidates = candidates[indices]
+        indices = jnp.argsort(strength_scores)[: self.size]
+        new_candidates = jax.tree_map(lambda x: x[indices], candidates)
         new_fitnesses = candidates_fitnesses[indices]
 
         return SPEA2Repertoire(genotypes=new_candidates, fitnesses=new_fitnesses)
