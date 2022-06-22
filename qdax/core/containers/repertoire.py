@@ -9,9 +9,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.flatten_util import ravel_pytree
-from sklearn.cluster import KMeans
-
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
+from sklearn.cluster import KMeans
 
 
 def compute_cvt_centroids(
@@ -273,7 +272,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new grid
-        new_grid_genotypes = jax.tree_multimap(
+        new_grid_genotypes = jax.tree_map(
             lambda grid_genotypes, new_genotypes: grid_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),
