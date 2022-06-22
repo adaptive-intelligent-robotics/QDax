@@ -9,8 +9,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.flatten_util import ravel_pytree
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from sklearn.cluster import KMeans
+
+from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(
