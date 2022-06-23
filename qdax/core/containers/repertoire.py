@@ -273,7 +273,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new grid
-        new_grid_genotypes = jax.tree_multimap(
+        new_grid_genotypes = jax.tree_map(
             lambda grid_genotypes, new_genotypes: grid_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),

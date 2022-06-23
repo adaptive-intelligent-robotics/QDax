@@ -214,7 +214,7 @@ class PGEmitter(Emitter):
         )
 
         # gather offspring
-        genotypes = jax.tree_multimap(
+        genotypes = jax.tree_map(
             lambda x, y, z: jnp.concatenate([x, y, z], axis=0),
             x_mutation_ga,
             x_mutation_pg,
@@ -316,7 +316,7 @@ class PGEmitter(Emitter):
         )
         critic_params = optax.apply_updates(emitter_state.critic_params, critic_updates)
         # Soft update of target critic network
-        target_critic_params = jax.tree_multimap(
+        target_critic_params = jax.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             emitter_state.target_critic_params,
@@ -340,7 +340,7 @@ class PGEmitter(Emitter):
             emitter_state.greedy_policy_params, policy_updates
         )
         # Soft update of target greedy policy
-        target_greedy_policy_params = jax.tree_multimap(
+        target_greedy_policy_params = jax.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             emitter_state.target_greedy_policy_params,
