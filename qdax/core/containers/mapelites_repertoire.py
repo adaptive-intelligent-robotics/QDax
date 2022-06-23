@@ -279,7 +279,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new repertoire
-        new_repertoire_genotypes = jax.tree_multimap(
+        new_repertoire_genotypes = jax.tree_map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),

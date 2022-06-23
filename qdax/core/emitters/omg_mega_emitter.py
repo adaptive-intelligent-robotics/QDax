@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Optional, Tuple
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
@@ -60,7 +60,6 @@ class OMGMEGAEmitter(Emitter):
         sigma_g: float,
         num_descriptors: int,
         centroids: Centroid,
-        projection_fn: Optional[Callable[[Genotype], Genotype]] = None,
     ):
         """Creates an instance of the OMGMEGAEmitter class.
 
@@ -70,18 +69,12 @@ class OMGMEGAEmitter(Emitter):
             num_descriptors: number of descriptors
             centroids: centroids used to create the repertoire of solutions.
                 This will be used to create the repertoire of gradients.
-            projection_fn: function to project the solutions back to their admissible
-                space.
         """
         self._mu = jnp.zeros(num_descriptors + 1)
         self._sigma = jnp.eye(num_descriptors + 1) * sigma_g
         self._batch_size = batch_size
         self._centroids = centroids
         self._num_descriptors = num_descriptors
-        if projection_fn:
-            self._projection_fn = projection_fn
-        else:
-            self._projection_fn = lambda x: x
 
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
@@ -193,9 +186,6 @@ class OMGMEGAEmitter(Emitter):
 
         # update the genotypes
         new_genotypes = jax.tree_map(lambda x, y: x + y, genotypes, update_grad)
-
-        # Project if needed
-        new_genotypes = self._projection_fn(new_genotypes)
 
         return new_genotypes, random_key
 
