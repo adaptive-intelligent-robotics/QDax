@@ -25,7 +25,8 @@ class NSGA2Repertoire(GARepertoire):
     ) -> jnp.ndarray:
         """Compute crowding distances.
 
-        Used in the addition function.
+        The crowding distance is the Manhatten Distance in the objective
+        space. This is used to rank individuals in the addition function.
 
         Args:
             fitnesses: fitnesses of the considered individuals. Here,
@@ -51,12 +52,14 @@ class NSGA2Repertoire(GARepertoire):
             )
             sorted_index = jnp.argsort(dist_fitnesses, axis=0)
             srt_fitnesses = fitnesses[sorted_index, jnp.arange(num_objective)]
-            dists = jnp.row_stack(
-                [srt_fitnesses, jnp.full(num_objective, jnp.inf)]
-            ) - jnp.row_stack([jnp.full(num_objective, -jnp.inf), srt_fitnesses])
 
             # Calculate the norm for each objective - set to NaN if all values are equal
             norm = jnp.max(srt_fitnesses, axis=0) - jnp.min(srt_fitnesses, axis=0)
+
+            # get the distances
+            dists = jnp.row_stack(
+                [srt_fitnesses, jnp.full(num_objective, jnp.inf)]
+            ) - jnp.row_stack([jnp.full(num_objective, -jnp.inf), srt_fitnesses])
 
             # Prepare the distance to last and next vectors
             dist_to_last, dist_to_next = dists, dists
@@ -185,6 +188,19 @@ class NSGA2Repertoire(GARepertoire):
         highest_dist = jnp.argsort(crowding_distances)
 
         def add_to_front(val: Tuple[jnp.ndarray, float]) -> Tuple[jnp.ndarray, Any]:
+            """Add the individual with a given distance to the front.
+            A index is incremented to get the highest from the non
+            selected individuals.
+
+            Args:
+                val: a tuple of two elements. A boolean vector with the positions that
+                    will be kept, and a cursor with the number of individuals already
+                    added during this process.
+
+            Returns:
+                The updated tuple, with the new booleans and the number of
+                added elements.
+            """
             front_index, num = val
             front_index = front_index.at[highest_dist[-num]].set(True)
             num = num + 1
@@ -192,10 +208,13 @@ class NSGA2Repertoire(GARepertoire):
             return val
 
         def condition_fn_2(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
+            """Gives condition to stop the while loop. Makes sure the
+            the number of solution is smaller than the maximum size
+            of the population."""
             front_index, _ = val
             return sum(to_keep_index + front_index) < self.size  # type: ignore
 
-        # Remove the highest distances
+        # add the individuals with the highest distances
         front_index, _num = jax.lax.while_loop(
             condition_fn_2,
             add_to_front,
@@ -205,12 +224,23 @@ class NSGA2Repertoire(GARepertoire):
         # update index
         to_keep_index = to_keep_index + front_index
 
-        # update (cannot use to_keep_index directly as it is dynamic)
-        indices = jnp.arange(start=0, stop=num_candidates) * to_keep_index
-        indices = indices + ~to_keep_index * (num_candidates)
+        # go from boolean vector to indices - offset by 1
+        indices = jnp.arange(start=1, stop=num_candidates + 1) * to_keep_index
+
+        # get rid of the zeros (that correspond to the False from the mask)
+        fake_indice = num_candidates + 1  # bigger than all the other indices
+        indices = jnp.where(indices == 0, x=fake_indice, y=indices)
+
+        # sort the indices to remove the fake indices
         indices = jnp.sort(indices)[: self.size]
 
+        # remove the offset
+        indices = indices - 1
+
+        # keep only the survivors
         new_candidates = jax.tree_map(lambda x: x[indices], candidates)
         new_scores = candidate_fitnesses[indices]
 
-        return NSGA2Repertoire(genotypes=new_candidates, fitnesses=new_scores)
+        new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_scores)
+
+        return new_repertoire  # type: ignore

@@ -82,7 +82,11 @@ class SPEA2Repertoire(GARepertoire):
 
         # compute strength score for all solutions
         strength_scores = self._compute_strength_scores(batch_of_fitnesses)
+
+        # sort the strengths (the smaller the better (sic, respect paper's notation))
         indices = jnp.argsort(strength_scores)[: self.size]
+
+        # keep the survivors
         new_candidates = jax.tree_map(lambda x: x[indices], candidates)
         new_fitnesses = candidates_fitnesses[indices]
 
