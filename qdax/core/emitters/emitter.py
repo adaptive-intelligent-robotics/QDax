@@ -37,7 +37,7 @@ class Emitter(ABC):
         outputted.
 
         Args:
-            genotypes: The genotypes of the initial population.
+            init_genotypes: The genotypes of the initial population.
             random_key: a random key to handle stochastic operations.
 
         Returns:
