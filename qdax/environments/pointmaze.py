@@ -116,7 +116,7 @@ class PointMaze(env.Env):
         reward, done = jp.zeros(2)
         metrics: Dict = {}
         # managing state descriptor by our own
-        info_init = {"steps": 0, "state_descriptor": obs_init}
+        info_init = {"state_descriptor": obs_init}
         return env.State(fake_qp, obs_init, reward, done, metrics, info_init)
 
     def step(self, state: env.State, action: jp.ndarray) -> env.State:
@@ -126,9 +126,6 @@ class PointMaze(env.Env):
         min_action = self._low / self._scale_action_space
         max_action = self._high / self._scale_action_space
         action = jp.clip(action, min_action, max_action)
-
-        # get the step count
-        steps = state.info["steps"] + 1
 
         # get the current position
         x_pos_old, y_pos_old = state.obs
@@ -158,8 +155,7 @@ class PointMaze(env.Env):
         )
 
         new_obs = jp.array([x_pos, y_pos])
-        # update steps
-        state.info["steps"] = steps
+
         # update state descriptor
         state.info["state_descriptor"] = new_obs
         # update the state
