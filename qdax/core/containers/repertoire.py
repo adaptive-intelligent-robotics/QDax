@@ -13,8 +13,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.flatten_util import ravel_pytree
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 from sklearn.cluster import KMeans
+
+from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(
@@ -44,7 +45,11 @@ def compute_cvt_centroids(
     maxval = jnp.array(maxval)
     # assume here all values are in [0, 1] and rescale later
     x = np.random.rand(num_init_cvt_samples, num_descriptors)
-    k_means = KMeans(init="k-means++", n_clusters=num_centroids, n_init=1,)
+    k_means = KMeans(
+        init="k-means++",
+        n_clusters=num_centroids,
+        n_init=1,
+    )
     k_means.fit(x)
     centroids = k_means.cluster_centers_
     # rescale now
@@ -329,7 +334,8 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         num_centroids = centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
         default_genotypes = jax.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]), genotypes,
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
+            genotypes,
         )
         default_descriptors = jnp.zeros(shape=(num_centroids, centroids.shape[-1]))
 

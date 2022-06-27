@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from brax.envs import State as EnvState
+
 from qdax import environments
 from qdax.core.diayn import DIAYN, DiaynConfig, DiaynTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
@@ -106,16 +107,25 @@ def test_diayn() -> None:
         descriptor_size=descriptor_size,
     )
 
-    skills = jnp.concatenate([jnp.eye(num_skills)] * num_env_per_skill, axis=0,)
+    skills = jnp.concatenate(
+        [jnp.eye(num_skills)] * num_env_per_skill,
+        axis=0,
+    )
 
     # Make play_step* functions scannable by passing static args beforehand
 
     play_eval_step = partial(
-        diayn.play_step_fn, skills=skills, env=eval_env, deterministic=True,
+        diayn.play_step_fn,
+        skills=skills,
+        env=eval_env,
+        deterministic=True,
     )
 
     play_step = partial(
-        diayn.play_step_fn, skills=skills, env=env, deterministic=False,
+        diayn.play_step_fn,
+        skills=skills,
+        env=env,
+        deterministic=False,
     )
 
     eval_policy = partial(
@@ -147,9 +157,15 @@ def test_diayn() -> None:
 
     @jax.jit
     def _scan_do_iteration(
-        carry: Tuple[DiaynTrainingState, EnvState, ReplayBuffer], unused_arg: Any,
+        carry: Tuple[DiaynTrainingState, EnvState, ReplayBuffer],
+        unused_arg: Any,
     ) -> Tuple[Tuple[DiaynTrainingState, EnvState, ReplayBuffer], Any]:
-        (training_state, env_state, replay_buffer, metrics,) = do_iteration(*carry)
+        (
+            training_state,
+            env_state,
+            replay_buffer,
+            metrics,
+        ) = do_iteration(*carry)
         return (training_state, env_state, replay_buffer), metrics
 
     # Main loop
