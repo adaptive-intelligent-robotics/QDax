@@ -2,6 +2,7 @@ from typing import Dict, Tuple
 
 import jax
 import jax.numpy as jnp
+import math
 import pytest
 
 from qdax.core.containers.repertoire import (
@@ -18,6 +19,8 @@ def test_omg_mega() -> None:
     num_iterations = 200
     num_dimensions = 1000
     num_centroids = 10000
+    sqrt_centroids = math.sqrt(num_centroids) # 2-D grid 
+    grid_shape = [sqrt_centroids, sqrt_centroids]
     num_descriptors = 2
     sigma_g = 10
     minval = -5.12
@@ -88,7 +91,7 @@ def test_omg_mega() -> None:
     initial_population = jax.random.uniform(subkey, shape=(100, num_dimensions))
     centroids = compute_euclidean_centroids(
         num_descriptors=num_descriptors,
-        num_centroids=num_centroids,
+        grid_shape=grid_shape,
         minval=minval,
         maxval=maxval,
     )
