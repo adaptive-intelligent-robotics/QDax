@@ -68,7 +68,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push test Docker image
+      - name: Build and push tool Docker image
         uses: docker/build-push-action@v3
         with:
           context: .

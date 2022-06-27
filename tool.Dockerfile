@@ -11,6 +11,9 @@ RUN apt update && apt install -y --no-install-recommends git \
 COPY requirements-tool.txt ./
 COPY docs/requirements.txt ./requirements-docs.txt
 
+# need qdax for the docs
+COPY . ./
+
 RUN pip install -r requirements-tool.txt && pip install -r requirements-docs.txt
 
 COPY .pre-commit-config.yaml ./
