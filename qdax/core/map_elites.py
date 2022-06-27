@@ -81,6 +81,7 @@ class MAPElites:
         # update emitter state
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
+            repertoire=repertoire,
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
@@ -128,6 +129,7 @@ class MAPElites:
         # update emitter state after scoring is made
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
+            repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,

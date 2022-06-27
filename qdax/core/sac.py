@@ -14,7 +14,7 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from brax.training.distribution import NormalTanhDistribution
 
-from qdax.core.neuroevolution.buffers.buffers import ReplayBuffer, Transition
+from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.losses.sac_loss import make_sac_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.sac_networks import make_sac_networks
@@ -311,14 +311,17 @@ class SAC:
 
     @partial(jax.jit, static_argnames=("self"))
     def _update_alpha(
-        self, training_state: SacTrainingState, samples: Transition, random_key: RNGKey
+        self,
+        training_state: SacTrainingState,
+        transitions: Transition,
+        random_key: RNGKey,
     ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
         """Updates the alpha parameter if necessary. Else, it keeps the
         current value.
 
         Args:
             training_state: the current training state.
-            samples: a sample of transitions from the replay buffer.
+            transitions: a sample of transitions from the replay buffer.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -330,7 +333,7 @@ class SAC:
             alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
                 training_state.alpha_params,
                 training_state.policy_params,
-                transitions=samples,
+                transitions=transitions,
                 random_key=subkey,
             )
 
@@ -352,7 +355,7 @@ class SAC:
         self,
         training_state: SacTrainingState,
         alpha: Params,
-        samples: Transition,
+        transitions: Transition,
         random_key: RNGKey,
     ) -> Tuple[Params, Params, optax.OptState, jnp.ndarray, RNGKey]:
         """Updates the critic following the method described in the
@@ -362,7 +365,7 @@ class SAC:
             training_state: the current training state.
             alpha: the alpha parameter that controls the importance of
                 the entropy term.
-            samples: a batch of transitions sampled from the replay buffer.
+            transitions: a batch of transitions sampled from the replay buffer.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -376,7 +379,7 @@ class SAC:
             training_state.policy_params,
             training_state.target_critic_params,
             alpha,
-            transitions=samples,
+            transitions=transitions,
             random_key=subkey,
         )
 
@@ -405,7 +408,7 @@ class SAC:
         self,
         training_state: SacTrainingState,
         alpha: Params,
-        samples: Transition,
+        transitions: Transition,
         random_key: RNGKey,
     ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
         """Updates the actor parameters following the stochastic
@@ -415,7 +418,7 @@ class SAC:
             training_state: the currrent training state.
             alpha: the alpha parameter that controls the importance
                 of the entropy term.
-            samples: a batch of transitions sampled from the replay
+            transitions: a batch of transitions sampled from the replay
                 buffer.
             random_key: a random key to handle stochastic operations.
 
@@ -427,7 +430,7 @@ class SAC:
             training_state.policy_params,
             training_state.critic_params,
             alpha,
-            transitions=samples,
+            transitions=transitions,
             random_key=subkey,
         )
         (policy_updates, policy_optimizer_state,) = self._policy_optimizer.update(
@@ -459,7 +462,7 @@ class SAC:
 
         # sample a batch of transitions in the buffer
         random_key = training_state.random_key
-        samples, random_key = replay_buffer.sample(
+        transitions, random_key = replay_buffer.sample(
             random_key,
             sample_size=self._config.batch_size,
         )
@@ -468,12 +471,14 @@ class SAC:
         if self._config.normalize_observations:
             normalization_running_stats = training_state.normalization_running_stats
             normalized_obs = normalize_with_rmstd(
-                samples.obs, normalization_running_stats
+                transitions.obs, normalization_running_stats
             )
             normalized_next_obs = normalize_with_rmstd(
-                samples.next_obs, normalization_running_stats
+                transitions.next_obs, normalization_running_stats
             )
-            samples = samples.replace(obs=normalized_obs, next_obs=normalized_next_obs)
+            transitions = transitions.replace(
+                obs=normalized_obs, next_obs=normalized_next_obs
+            )
 
         # udpate alpha
         (
@@ -482,7 +487,9 @@ class SAC:
             alpha_loss,
             random_key,
         ) = self._update_alpha(
-            training_state=training_state, samples=samples, random_key=random_key
+            training_state=training_state,
+            transitions=transitions,
+            random_key=random_key,
         )
 
         # use the previous alpha
@@ -498,7 +505,7 @@ class SAC:
         ) = self._update_critic(
             training_state=training_state,
             alpha=alpha,
-            samples=samples,
+            transitions=transitions,
             random_key=random_key,
         )
 
@@ -511,7 +518,7 @@ class SAC:
         ) = self._update_actor(
             training_state=training_state,
             alpha=alpha,
-            samples=samples,
+            transitions=transitions,
             random_key=random_key,
         )
 
@@ -532,7 +539,7 @@ class SAC:
             "actor_loss": policy_loss,
             "critic_loss": critic_loss,
             "alpha_loss": alpha_loss,
-            "obs_mean": jnp.mean(samples.obs),
-            "obs_std": jnp.std(samples.obs),
+            "obs_mean": jnp.mean(transitions.obs),
+            "obs_std": jnp.std(transitions.obs),
         }
         return new_training_state, replay_buffer, metrics

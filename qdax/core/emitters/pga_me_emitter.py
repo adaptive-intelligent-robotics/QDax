@@ -12,7 +12,7 @@ from jax.tree_util import tree_map
 
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.core.neuroevolution.buffers.buffers import QDTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.networks import QModule
 from qdax.environments.base_wrappers import QDEnv
@@ -214,7 +214,7 @@ class PGEmitter(Emitter):
         )
 
         # gather offspring
-        genotypes = jax.tree_multimap(
+        genotypes = jax.tree_map(
             lambda x, y, z: jnp.concatenate([x, y, z], axis=0),
             x_mutation_ga,
             x_mutation_pg,
@@ -227,6 +227,7 @@ class PGEmitter(Emitter):
     def state_update(
         self,
         emitter_state: PGEmitterState,
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -242,6 +243,7 @@ class PGEmitter(Emitter):
 
         Args:
             emitter_state: current emitter state.
+            repertoire: the current genotypes repertoire
             genotypes: unused here - but compulsory in the signature.
             fitnesses: unused here - but compulsory in the signature.
             descriptors: unused here - but compulsory in the signature.
@@ -314,7 +316,7 @@ class PGEmitter(Emitter):
         )
         critic_params = optax.apply_updates(emitter_state.critic_params, critic_updates)
         # Soft update of target critic network
-        target_critic_params = jax.tree_multimap(
+        target_critic_params = jax.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             emitter_state.target_critic_params,
@@ -338,7 +340,7 @@ class PGEmitter(Emitter):
             emitter_state.greedy_policy_params, policy_updates
         )
         # Soft update of target greedy policy
-        target_greedy_policy_params = jax.tree_multimap(
+        target_greedy_policy_params = jax.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             emitter_state.target_greedy_policy_params,
