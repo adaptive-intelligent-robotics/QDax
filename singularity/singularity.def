@@ -32,7 +32,10 @@ From: airl_lab/default/airl_env:qdax_f57720d0
    cd /git/exp/qdax/
 
    # Running the test file as a demo
-   python3 tests/core_test/map_elites_test.py
+   echo
+   echo 'Running the test of MAP-Elites algorithm as a demo'
+   echo
+   pytest tests/core_test/map_elites_test.py
 
 %help
     This is the development and running environment of QDax
