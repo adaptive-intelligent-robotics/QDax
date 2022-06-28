@@ -181,7 +181,7 @@ def test_diayn() -> None:
         training_state=training_state
     )
 
-    pytest.assume(true_return > -200)
+    pytest.assume(true_return > -400)
 
 
 if __name__ == "__main__":
