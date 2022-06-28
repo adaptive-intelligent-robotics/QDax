@@ -184,7 +184,7 @@ def scoring_function(
         "behavior_descriptor_extractor",
     ),
 )
-def stochastic_scoring_function(
+def reset_based_scoring_function(
     policies_params: Genotype,
     random_key: RNGKey,
     episode_length: int,
@@ -196,8 +196,16 @@ def stochastic_scoring_function(
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
     """Evaluates policies contained in policies_params in parallel.
-    The play_reset_fn function allows to define purely stochastic environments.
-    To use the reset function from the environment set it to "partial(env.reset)".
+    The play_reset_fn function allows for a more general scoring_function that can be
+    called with different batch-size and not only with a batch-size of the same 
+    dimension as init_states.
+    
+    To define purely stochastic environments, using the reset function from the 
+    environment, use "play_reset_fn = env.reset".
+
+    To define purely deterministic environments, as in "scoring_function", generate 
+    a single init_state using "init_state = env.reset(random_key)", then use 
+    "play_reset_fn = lambda random_key: init_state".
     """
 
     random_key, subkey = jax.random.split(random_key)
