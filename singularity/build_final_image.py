@@ -4,12 +4,12 @@ import os
 import subprocess
 import sys
 import time
-from typing import Union
+from typing import Tuple, Union
 
 SINGULARITY_DEFINITION_FILE_NAME = "singularity.def"
 
 
-class bcolors:
+class BColors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
     OKCYAN = "\033[96m"
@@ -21,36 +21,36 @@ class bcolors:
     UNDERLINE = "\033[4m"
 
 
-def error_print(message: str):
-    print(f"{bcolors.FAIL}{message}{bcolors.ENDC}", file=sys.stderr)
+def error_print(message: str) -> None:
+    print(f"{BColors.FAIL}{message}{BColors.ENDC}", file=sys.stderr)
 
 
-def bold(message: str):
-    return f"{bcolors.BOLD}{message}{bcolors.ENDC}"
+def bold(message: str) -> str:
+    return f"{BColors.BOLD}{message}{BColors.ENDC}"
 
 
-def load_singularity_file(path_to_singularity_definition_file: str):
+def load_singularity_file(path_to_singularity_definition_file: str) -> str:
     try:
         # read input file
         fin = open(path_to_singularity_definition_file, "rt")
 
     except IOError:
         error_print(f"ERROR, {path_to_singularity_definition_file} file not found!")
-    finally:
 
+    finally:
         data = fin.read()
         # close the input file
         fin.close()
-        return data
+    return data
 
 
-def get_repo_address():
+def get_repo_address() -> str:
     # Search projects
     command = os.popen("git config --local remote.origin.url")
     url = command.read()[:-1]
 
-    # if it is using the ssh protocal,
-    # we need to convert it into an address compatible with https as the key is not available inside the container
+    # if it is using the ssh protocal, we need to convert it into an address
+    # compatible with https as the key is not available inside the container
     if url.startswith("git@"):
         url = url.replace(":", "/")
         url = url.replace("git@", "")
@@ -61,7 +61,9 @@ def get_repo_address():
     return url
 
 
-def get_commit_sha_and_branch_name(project_commit_sha_to_consider: str):
+def get_commit_sha_and_branch_name(
+    project_commit_sha_to_consider: str,
+) -> Tuple[str, str]:
     # Search projects
     command = os.popen(f"git rev-parse --short {project_commit_sha_to_consider}")
     sha = command.read()[:-1]
@@ -71,7 +73,7 @@ def get_commit_sha_and_branch_name(project_commit_sha_to_consider: str):
     return sha, branch
 
 
-def check_local_changes():
+def check_local_changes() -> None:
     command = os.popen("git status --porcelain --untracked-files=no")
     output = command.read()[:-1]
     if output:
@@ -79,17 +81,18 @@ def check_local_changes():
         error_print(output)
 
 
-def check_local_commit_is_pushed(project_commit_ref_to_consider: str):
+def check_local_commit_is_pushed(project_commit_ref_to_consider: str) -> None:
     command = os.popen(f"git branch -r --contains {project_commit_ref_to_consider}")
     remote_branches_containing_commit = command.read()[:-1]
 
     if not remote_branches_containing_commit:
         error_print(
-            f"WARNING: local commit {project_commit_ref_to_consider} not pushed, build is likely to fail!"
+            f"WARNING: local commit {project_commit_ref_to_consider} not pushed, "
+            f"build is likely to fail!"
         )
 
 
-def get_project_folder_name():
+def get_project_folder_name() -> str:
     return (
         os.path.basename(os.path.dirname(os.getcwd())).strip().lower().replace(" ", "_")
     )
@@ -113,7 +116,8 @@ def clone_commands(
         repo_address = f"https://{repo_address}"
 
     print(
-        f"Building final image using branch: {bold(branch)} with sha: {bold(sha)} \n URL: {bold(repo_address)}"
+        f"Building final image using branch: {bold(branch)} with sha: {bold(sha)} \n"
+        f"URL: {bold(repo_address)}"
     )
 
     if not no_check:
@@ -121,9 +125,10 @@ def clone_commands(
         if [ ! -d {project_name} ]
         then
           echo 'ERROR: you are probably not cloning your project in the right directory'
-          echo 'Consider using the --project option of build_final_image' with one of the folders shown below:
+          echo 'Consider using the --project option of build_final_image'
+          echo 'with one of the folders shown below:'
           ls
-          echo 'if you want to build your image anyway, you can use the --no-check option'
+          echo 'if you want to build your image anyway, use the --no-check option'
           exit 1
         fi
 
@@ -149,7 +154,7 @@ def apply_changes(
     personal_token: str,
     project_name: str,
     no_check: bool = False,
-):
+) -> None:
     fout = open("./tmp.def", "w")
     for line in original_file.splitlines():
         if "#NOTFORFINAL" in line:
@@ -166,7 +171,9 @@ def apply_changes(
     fout.close()
 
 
-def compile_container(project_name: str, image_name: Union[str, None], debug: bool):
+def compile_container(
+    project_name: str, image_name: Union[str, None], debug: bool
+) -> None:
     if not image_name:
         image_name = f"final_{project_name}_{time.strftime('%Y-%m-%d_%H_%M_%S')}.sif"
     subprocess.run(
@@ -176,7 +183,7 @@ def compile_container(project_name: str, image_name: Union[str, None], debug: bo
         os.remove("./tmp.def")
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build a read-only final container "
         "in which the entire project repository is cloned",
@@ -207,8 +214,8 @@ def get_args():
         type=str,
         default=get_ci_job_token(),
         help="Gitlab CI job token (useful in particular when using #CLONEHERE). "
-        "If not specified, it takes the value of the environment variable CI_JOB_TOKEN, "
-        "if it exists. "
+        "If not specified, it takes the value of the environment variable "
+        "CI_JOB_TOKEN, if it exists. "
         "If the environment variable SINGULARITYENV_CI_JOB_TOKEN is not set yet, "
         "then it is set the value provided.",
     )
@@ -218,8 +225,8 @@ def get_args():
         type=str,
         default=get_personal_token(),
         help="Gitlab Personal token (useful in particular when using #CLONEHERE). "
-        "If not specified, it takes the value of the environment variable PERSONAL_TOKEN, "
-        "if it exists. "
+        "If not specified, it takes the value of the environment variable "
+        "PERSONAL_TOKEN, if it exists. "
         "If the environment variable SINGULARITYENV_PERSONAL_TOKEN is not set yet, "
         "then it is set the value provided.",
     )
@@ -232,7 +239,8 @@ def get_args():
         help="Specify the name of the project. This corresponds to: "
         "(1) Name of the folder in which the current repository will be cloned "
         "(useful only when using #CLONEHERE); "
-        '(2) the name in the final singularity image "final_<project>_YYYY_mm_DD_HH_MM_SS.sif". '
+        "(2) the name in the final singularity image "
+        '"final_<project>_YYYY_mm_DD_HH_MM_SS.sif". '
         "By default, it uses the name of the parent folder, as it is considered that "
         "the script is executed in the 'singularity/' folder of the project.",
     )
@@ -243,13 +251,15 @@ def get_args():
         required=False,
         type=str,
         default=None,
-        help='Name of the image to create. By default: "final_<project>_YYYY_mm_DD_HH_MM_SS.sif"',
+        help="Name of the image to create. By default: "
+        '"final_<project>_YYYY_mm_DD_HH_MM_SS.sif"',
     )
 
     parser.add_argument(
         "--no-check",
         action="store_true",
-        help="Avoids standard verifications (checking if the repository is cloned at the right place).",
+        help="Avoids standard verifications (checking if the repository is "
+        "cloned at the right place).",
     )
 
     parser.add_argument(
@@ -281,7 +291,7 @@ def generate_singularity_environment_variables(
     ci_job_token: Union[str, None],
     personal_token: Union[str, None],
     project_folder: Union[str, None],
-):
+) -> None:
     key_singularityenv_ci_job_token = "SINGULARITYENV_CI_JOB_TOKEN"
     if ci_job_token and key_singularityenv_ci_job_token not in os.environ:
         os.environ[key_singularityenv_ci_job_token] = ci_job_token
@@ -295,7 +305,7 @@ def generate_singularity_environment_variables(
         os.environ[key_singularityenv_project_folder] = project_folder
 
 
-def main():
+def main() -> None:
     args = get_args()
 
     path_to_singularity_definition_file = args.path_def
