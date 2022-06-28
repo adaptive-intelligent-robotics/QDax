@@ -1,16 +1,9 @@
-Bootstrap: localimage
-From: airl_env_cuda_20211217.sif
-
-# Bootstrap: library
-# From: airl_lab/default/airl_env:base_93277727
-# base image has sferes, robot_dart on Ubuntu20.04
+Bootstrap: library
+From: airl_lab/default/airl_env:qdax_f57720d0
 
 %labels
     Author bryan.lim16@imperial.ac.uk
     Version v0.0.1
-
-%files
-    ../requirements.txt /workspace
 
 %environment
    export PYTHONPATH=$PYTHONPATH:/workspace/lib/python3.8/site-packages/
@@ -19,80 +12,27 @@ From: airl_env_cuda_20211217.sif
 
 %post
    export LD_LIBRARY_PATH="/workspace/lib:$LD_LIBRARY_PATH"
-
    apt-get update -y
-   apt-get install -y cmake xvfb python3-tk ffmpeg graphviz python3-pip
-
-   #wget https://golang.org/dl/go1.17.3.linux-amd64.tar.gz
-   #rm -rf /usr/local/go && tar -C /usr/local -xzf go1.17.3.linux-amd64.tar.gz
-   #export PATH=$PATH:/usr/local/go/bin
-
-   #go get -u github.com/google/pprof
-
-   # installing all necessary python libraries
-   cd /workspace
    pip3 install --upgrade pip
-   pip3 install -r requirements.txt
 
-   mkdir -p /git/sferes2/exp/qdax
+   # Create working directory
+   mkdir -p /git/exp/qdax/
 
    #==================================================================================
    exit 0 #NOTFORFINAL - the lines below this "exit" will be executed only when building the final image
    #==================================================================================
-   cd /git/sferes2/exp/
+
+   # Enter working directory
+   cd /git/exp/
 
    #CLONEHERE
 
 %runscript
-    ############## Starting a VNC server ##################
-    ## Sleep random duration between 0 and 90 seconds, to prevent 2 vnc-servers from starting at the same time on the same host.
-    #bash -c 'sleep $[ ( $RANDOM % 90 ) + 1 ]s'\
-    #
-    ## Updating the HOME folder for the container, where the .Xauthority file will be created.
-    ## That solution works iff the appropriate binding is performed (this is done automatically in gitlab-notebook jobs)
-    #export HOME=/tmp/home
-    #mkdir $HOME
-    #D=$(/opt/TurboVNC/bin/vncserver 2>&1 | grep "Desktop" | awk '{print $3}' | sed 's/.*://g')
-    #export DISPLAY=':'$D
+   # Entering directory
+   cd /git/exp/qdax/
 
-    ################# Creating results folder ########################
-    CURPATH=$(pwd)
-    cd /git/sferes2/exp/qdax
-    DIRNAME=results
-    PATHNAME=$(date +%Y-%m-%d_%H_%M_%S)_$$
-
-    # Create a random direcotry name where XXX will be replaced with random characters
-    mkdir -p $CURPATH/$DIRNAME/
-    tmp_dir=$(mktemp -d -p $CURPATH/$DIRNAME/ ${PATHNAME}_XXX)
-    mkdir -p $tmp_dir
-    echo tmp_dir is $tmp_dir
-
-    ####################### Run program ####################
-    cd /git/sferes2/exp/qdax
-    command="time python3 run_comparison_batch_sizes.py $@ -d ${tmp_dir}"
-    bash -c "$command"
-
-
-
-
-
-
-# CREATE AND DEFINE DIFFERENT APPS TO RUN AS JOBS - called from the json file
-# Example: Can run using singularity run --app gen_job_scripts image_name
-%apprun gen_job_scripts
-    echo "Generating job scripts"
-    python3 /git/flex-qd/submodules/gitlab_notebook/gen_job_script.py "$@"
-
-
-%apprun Analysis
-    cd /git/sferes2/
-    PATH_ANALYSIS=$1
-    shift
-    python3 /git/sferes2/exp/rastrigin_stochastic/analyse/main_analysis.py -d $PATH_ANALYSIS "$@" --sample
-    cd /git/sferes2/exp/rastrigin_stochastic/
-    python3 ./submodules/gitlab_notebook/gen_report.py $PATH_ANALYSIS $PATH_ANALYSIS
-
-
+   # Running the test file as a demo
+   python3 tests/core_test/map_elites_test.py
 
 %help
-    This is the development and running environment of the flex qd
+    This is the development and running environment of QDax

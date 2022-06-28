@@ -7,7 +7,7 @@ import tempfile
 
 import build_final_image
 
-EXP_PATH = "git/sferes2/exp/"
+EXP_PATH = "git/exp/"
 ABSOLUTE_EXP_PATH = "/" + EXP_PATH
 
 
