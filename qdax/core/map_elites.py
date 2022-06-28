@@ -75,8 +75,8 @@ class MAPElites:
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            extra_scores=extra_scores,
             centroids=centroids,
+            extra_scores=extra_scores,
         )
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(

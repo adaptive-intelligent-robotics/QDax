@@ -225,7 +225,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
-        batch_of_extra_scores: ExtraScores,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> MapElitesRepertoire:
         """
         Add a batch of elements to the repertoire.
@@ -305,8 +305,8 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
-        extra_scores: ExtraScores,
         centroids: Centroid,
+        extra_scores: Optional[ExtraScores] = None,
     ) -> MapElitesRepertoire:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
