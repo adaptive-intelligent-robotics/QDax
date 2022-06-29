@@ -292,13 +292,13 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             batch_of_fitnesses.squeeze()
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze()].set(
-            batch_of_descriptors.squeeze()
+            batch_of_descriptors
         )
 
         return MapElitesRepertoire(
             genotypes=new_repertoire_genotypes,
             fitnesses=new_fitnesses.squeeze(),
-            descriptors=new_descriptors.squeeze(),
+            descriptors=new_descriptors,
             centroids=self.centroids,
         )
 
