@@ -47,13 +47,13 @@ def compute_cvt_centroids(
     maxval = jnp.array(maxval)
     # assume here all values are in [0, 1] and rescale later
 
-    _key_training_instances, \
-        _key_k_means, \
-        random_key = jax.random.split(random_key,
-                                      num=3)
+    _key_training_instances, _key_k_means, random_key = jax.random.split(
+        random_key, num=3
+    )
 
-    x = jax.random.uniform(key=_key_training_instances,
-                           shape=(num_init_cvt_samples, num_descriptors))
+    x = jax.random.uniform(
+        key=_key_training_instances, shape=(num_init_cvt_samples, num_descriptors)
+    )
 
     k_means = KMeans(
         init="k-means++",
