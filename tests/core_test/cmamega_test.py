@@ -97,12 +97,13 @@ def test_cma_mega() -> None:
         random_key, shape=(batch_size, num_dimensions)
     )
 
-    centroids = compute_cvt_centroids(
+    centroids, random_key = compute_cvt_centroids(
         num_descriptors=2,
         num_init_cvt_samples=10000,
         num_centroids=num_centroids,
         minval=minval,
         maxval=maxval,
+        random_key=random_key,
     )
 
     emitter = CMAMEGAEmitter(

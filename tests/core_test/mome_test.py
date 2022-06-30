@@ -108,12 +108,13 @@ def test_mome() -> None:
         batch_size=batch_size,
     )
 
-    centroids = compute_cvt_centroids(
+    centroids, random_key = compute_cvt_centroids(
         num_descriptors=2,
         num_init_cvt_samples=20000,
         num_centroids=num_centroids,
         minval=minval,
         maxval=maxval,
+        random_key=random_key,
     )
 
     mome = MOME(
