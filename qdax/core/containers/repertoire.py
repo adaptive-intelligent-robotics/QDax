@@ -4,7 +4,6 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
-import math
 from functools import partial
 from typing import Callable, List, Tuple, Union
 
@@ -76,19 +75,21 @@ def compute_euclidean_centroids(
     """
 
     assert num_descriptors == len(grid_shape)
-    
+
     linspace_list = []
     for num_centroids_in_dim in grid_shape:
         offset = 1 / (2 * int(num_centroids_in_dim))
         linspace = jnp.linspace(offset, 1.0 - offset, int(num_centroids_in_dim))
         linspace_list.append(linspace)
 
-    meshes = jnp.meshgrid(*[linspace for linspace in linspace_list], sparse=False)
-    centroids = jnp.stack([jnp.ravel(meshes[i]) for i in range(num_descriptors)], axis=-1)
+    meshes = jnp.meshgrid(*linspace_list, sparse=False)
+
+    centroids = jnp.stack(
+        [jnp.ravel(meshes[i]) for i in range(num_descriptors)], axis=-1
+    )
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
     return jnp.asarray(centroids) * (maxval - minval) + minval
-
 
 
 def get_cells_indices(

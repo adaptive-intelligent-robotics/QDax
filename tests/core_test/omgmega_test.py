@@ -1,8 +1,8 @@
+import math
 from typing import Dict, Tuple
 
 import jax
 import jax.numpy as jnp
-import math
 import pytest
 
 from qdax.core.containers.repertoire import (
@@ -19,7 +19,7 @@ def test_omg_mega() -> None:
     num_iterations = 200
     num_dimensions = 1000
     num_centroids = 10000
-    sqrt_centroids = math.sqrt(num_centroids) # 2-D grid 
+    sqrt_centroids = int(math.sqrt(num_centroids))  # 2-D grid
     grid_shape = [sqrt_centroids, sqrt_centroids]
     num_descriptors = 2
     sigma_g = 10

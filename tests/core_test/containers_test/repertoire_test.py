@@ -13,7 +13,7 @@ def test_repertoire() -> None:
     genotype_size = 12
     num_centroids = 4
     num_descriptors = 2
-    grid_shape = [2,2]
+    grid_shape = [2, 2]
 
     centroids = compute_euclidean_centroids(
         num_descriptors=num_descriptors,
