@@ -19,8 +19,6 @@ def test_omg_mega() -> None:
     num_iterations = 200
     num_dimensions = 1000
     num_centroids = 10000
-    sqrt_centroids = int(math.sqrt(num_centroids))  # 2-D grid
-    grid_shape = [sqrt_centroids, sqrt_centroids]
     num_descriptors = 2
     sigma_g = 10
     minval = -5.12
@@ -89,8 +87,10 @@ def test_omg_mega() -> None:
     # defines the population
     random_key, subkey = jax.random.split(random_key)
     initial_population = jax.random.uniform(subkey, shape=(100, num_dimensions))
+
+    sqrt_centroids = int(math.sqrt(num_centroids))  # 2-D grid
+    grid_shape = (sqrt_centroids, sqrt_centroids)
     centroids = compute_euclidean_centroids(
-        num_descriptors=num_descriptors,
         grid_shape=grid_shape,
         minval=minval,
         maxval=maxval,

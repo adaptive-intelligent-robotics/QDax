@@ -56,8 +56,7 @@ def compute_cvt_centroids(
 
 
 def compute_euclidean_centroids(
-    num_descriptors: int,
-    grid_shape: List[int],
+    grid_shape: Tuple[int, ...],
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
@@ -65,7 +64,6 @@ def compute_euclidean_centroids(
     Compute centroids for square Euclidean tesselation.
 
     Args:
-        num_descriptors: number of scalar descriptors
         grid_shape: number of centroids per BD dimension
         minval: minimum descriptors value
         maxval: maximum descriptors value
@@ -73,17 +71,19 @@ def compute_euclidean_centroids(
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
     """
+    # get number of descriptors
+    num_descriptors = len(grid_shape)
 
-    assert num_descriptors == len(grid_shape)
-
+    # prepare list of linspaces
     linspace_list = []
     for num_centroids_in_dim in grid_shape:
-        offset = 1 / (2 * int(num_centroids_in_dim))
-        linspace = jnp.linspace(offset, 1.0 - offset, int(num_centroids_in_dim))
+        offset = 1 / (2 * num_centroids_in_dim)
+        linspace = jnp.linspace(offset, 1.0 - offset, num_centroids_in_dim)
         linspace_list.append(linspace)
 
     meshes = jnp.meshgrid(*linspace_list, sparse=False)
 
+    # create centroids
     centroids = jnp.stack(
         [jnp.ravel(meshes[i]) for i in range(num_descriptors)], axis=-1
     )
