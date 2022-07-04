@@ -132,6 +132,6 @@ jobs:
 
       - name: Build docs
         env:
-          PYTHONPATH: ${{env.GITHUB_WORKSPACE}}
+          PYTHONPATH: ${{env.GITHUB_WORKSPACE}}/qdax
         run: |
           mkdocs build --verbose
