@@ -81,7 +81,7 @@ There are two options for installing the dependencies using either `docker` or `
    
     To build a final image, execute the `build_final_image` script:
     ```zsh
-    .\build_final_image
+    ./build_final_image
     ```
     It will generate a `.sif` file: `[image_name].sif`. If you execute this file using singularity, as follows, it will run the default application of the image, defined in the `singularity.def` file that you can find in the `singularity` folder as well. At the moment, this is just running the MAP-Elites algorithm on a simple task.
     ```zsh
@@ -92,9 +92,9 @@ There are two options for installing the dependencies using either `docker` or `
         The `--nv` flag of the `singularity run` command allows the container to use the GPU, it is thus important to use it for QDax.
 
 
-   To build a sandbox image, execute the `start_container` script:
+    To build a sandbox image, execute the `start_container` script:
     ```zsh
-    .\start_container -n
+    ./start_container -n
     ```
 
     !!! warning "Using GPU"
