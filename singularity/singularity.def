@@ -2,7 +2,7 @@ Bootstrap: library
 From: airl_lab/default/airl_env:qdax_f57720d0
 
 %labels
-    Author bryan.lim16@imperial.ac.uk
+    Author adaptive.intelligent.robotics@gmail.com
     Version v0.0.1
 
 %environment
