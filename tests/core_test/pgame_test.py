@@ -156,12 +156,13 @@ def test_pgame_elites() -> None:
     )
 
     # Compute the centroids
-    centroids = compute_cvt_centroids(
+    centroids, random_key = compute_cvt_centroids(
         num_descriptors=env.behavior_descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_bd,
         maxval=max_bd,
+        random_key=random_key,
     )
 
     # Instantiate MAP Elites
