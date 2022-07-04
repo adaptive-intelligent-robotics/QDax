@@ -126,12 +126,12 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    env:
-      PYTHONPATH: ${{env.GITHUB_WORKSPACE}}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
       - name: Build docs
+        env:
+          PYTHONPATH: ${{env.GITHUB_WORKSPACE}}
         run: |
           mkdocs build --verbose
