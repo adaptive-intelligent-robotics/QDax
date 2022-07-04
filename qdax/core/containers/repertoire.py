@@ -11,8 +11,8 @@ from typing import Callable, List, Tuple, Union
 import flax
 import jax
 import jax.numpy as jnp
-import numpy as np
 from jax.flatten_util import ravel_pytree
+from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
@@ -24,7 +24,8 @@ def compute_cvt_centroids(
     num_centroids: int,
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
-) -> jnp.ndarray:
+    random_key: RNGKey,
+) -> Tuple[jnp.ndarray, RNGKey]:
     """
     Compute centroids for CVT tesselation.
 
@@ -37,23 +38,31 @@ def compute_cvt_centroids(
         num_centroids: number of centroids
         minval: minimum descriptors value
         maxval: maximum descriptors value
+        random_key: a jax PRNG random key
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
+        random_key: an updated jax PRNG random key
     """
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
+
     # assume here all values are in [0, 1] and rescale later
-    x = np.random.rand(num_init_cvt_samples, num_descriptors)
+    random_key, subkey = jax.random.split(random_key)
+    x = jax.random.uniform(key=subkey, shape=(num_init_cvt_samples, num_descriptors))
+
+    # compute k means
+    random_key, subkey = jax.random.split(random_key)
     k_means = KMeans(
         init="k-means++",
         n_clusters=num_centroids,
         n_init=1,
+        random_state=RandomState(subkey),
     )
     k_means.fit(x)
     centroids = k_means.cluster_centers_
     # rescale now
-    return jnp.asarray(centroids) * (maxval - minval) + minval
+    return jnp.asarray(centroids) * (maxval - minval) + minval, random_key
 
 
 def compute_euclidean_centroids(
