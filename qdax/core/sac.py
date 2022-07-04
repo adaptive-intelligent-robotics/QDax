@@ -389,7 +389,7 @@ class SAC:
         critic_params = optax.apply_updates(
             training_state.critic_params, critic_updates
         )
-        target_critic_params = jax.tree_multimap(
+        target_critic_params = jax.tree_map(
             lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
             training_state.target_critic_params,
             critic_params,
