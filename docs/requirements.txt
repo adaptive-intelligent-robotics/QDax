@@ -6,4 +6,3 @@ mkdocs-git-revision-date-plugin==0.3.1
 mkdocs-material==8.2.3
 mkdocstrings==0.18.1
 mknotebooks==0.7.1
-.
