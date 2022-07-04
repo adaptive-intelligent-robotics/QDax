@@ -42,6 +42,7 @@ def compute_cvt_centroids(
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
+        random_key: an updated jax PRNG random key
     """
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
