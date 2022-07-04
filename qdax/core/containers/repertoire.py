@@ -45,21 +45,18 @@ def compute_cvt_centroids(
     """
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
+
     # assume here all values are in [0, 1] and rescale later
+    random_key, subkey = jax.random.split(random_key)
+    x = jax.random.uniform(key=subkey, shape=(num_init_cvt_samples, num_descriptors))
 
-    _key_training_instances, _key_k_means, random_key = jax.random.split(
-        random_key, num=3
-    )
-
-    x = jax.random.uniform(
-        key=_key_training_instances, shape=(num_init_cvt_samples, num_descriptors)
-    )
-
+    # compute k means
+    random_key, subkey = jax.random.split(random_key)
     k_means = KMeans(
         init="k-means++",
         n_clusters=num_centroids,
         n_init=1,
-        random_state=RandomState(_key_k_means),
+        random_state=RandomState(subkey),
     )
     k_means.fit(x)
     centroids = k_means.cluster_centers_
