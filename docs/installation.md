@@ -103,9 +103,9 @@ There are two options for installing the dependencies using either `docker` or `
     This command will generate a sandbox container `qdax.sif/` and enter it. If you execute this command again later, it will not generate a new container but enter directly the existing one. 
     Once inside the sandbox container, enter the qdax development folder:
     ```zsh
-    cd \git\exp\qdax
+    cd /git/exp/qdax
     ```
-    This folder is linked to the `qdax` folder on your machine, meaning that any modification inside the container will directly modify the file on your machine. You can now use this development environment to develop your own QDax-based code.
+    This folder is linked with the `qdax` folder on your machine, meaning that any modification inside the container will directly modify the files on your machine. You can now use this development environment to develop your own QDax-based code.
 
 
 === "Conda"
