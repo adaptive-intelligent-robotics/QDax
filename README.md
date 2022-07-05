@@ -5,51 +5,104 @@
 
 
 # QDax: Accelerated Quality-Diversity
-QDax is a tool to accelerate Quality-Diversity (QD) and neuro-evolution algorithms through hardware accelerators and massive parallelism. QDax has been developed as a research framework: it is flexible and easy to extend.
+QDax is a tool to accelerate Quality-Diversity (QD) and neuro-evolution algorithms through hardware accelerators and massive parallelism. QD algorithms usually take days/weeks to run on large CPU clusters. With QDax, QD algrotihms can now be run in minutes! ⏩ &nbsp;🕛
+
+QDax has been developed as a research framework: it is flexible and easy to extend and build on and can be used for any problem setting. Get started with simple example and run a QD algorithm in minutes here. &nbsp;[![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/mapelites_example.ipynb)
 
 - QDax [paper](https://arxiv.org/abs/2202.01258)
 - QDax [documentation](https://qdax.readthedocs.io/en/latest/)
 
-## Hands on QDax
-[![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/)
-
-To see how QDax works, you can run this [notebook](./notebooks/mapelites_example.ipynb) on colab, it is an example of MAP-Elites evolving a population of controllers on a chosen Brax environment (Walker by default).
 
 ## Installation
 
-The simplest way to install QDax is to clone the repo and to install the requirements.
-
+The latest stable release of QDax can be installed directly from PyPI with:
+```bash
+pip install qdax
+```
+Alternatively, to install QDax from source:
 ```bash
 pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git
-cd QDax
-pip install -r requirements.txt
 ```
 
-Nevertheless, we recommand to use either Docker, Singularity or conda to use the repository. Steps to do so are presented in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
+However, we also provide and recommend using either Docker, Singularity or conda environments to use the repository. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
 
 ## Basic API Usage
+For a full and interactive example to see how QDax works, we recommend starting with the tutorial-style [Colab notebook](./notebooks/mapelites_example.ipynb). It is an example of the MAP-Elites algorithm used to evolve a population of controllers on a chosen Brax environment (Walker by default).
+
 ```python
-
 import qdax
+from qdax.core.map_elites import MAPElites
 
+# Instantiate MAP-Elites
+map_elites = MAPElites(
+    scoring_function=scoring_fn,
+    emitter=mixing_emitter,
+    metrics_function=metrics_function,
+)
+
+# Initializes repertoire and emitter state
+repertoire, emitter_state, random_key = map_elites.init(init_variables, centroids, random_key)
+
+# Run MAP-Elites loop
+for i in range(num_iterations):
+    (repertoire, _, metrics, random_key,) = map_elites.update(
+            repertoire,
+            None,
+            random_key,
+        )
+
+# Get contents of repertoire
+repertoire.genotypes, repertoire.fitnesses, repertoire.descriptors
 ```
+
 
 
 ## QDax Algorithms
-- [MAP-Elites](https://arxiv.org/abs/1504.04909)
-- [CVT MAP-Elites](https://arxiv.org/abs/1610.05729)
-- [Policy Gradient Assisted MAP-Elites](https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf)
-- [Differentiable Quality-Diversity (DQD) - OMG-MEGA and CMA-MEGA](https://arxiv.org/abs/2106.03894)
-- [Multi-Objective Quality-Diversity (MOME)]()
-
 QDax currently supports the following algorithms.
+- [MAP-Elites](https://arxiv.org/abs/1504.04909) [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/mapelites_example.ipynb)
+- [CVT MAP-Elites](https://arxiv.org/abs/1610.05729) [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/mapelites_example.ipynb)
+- [Policy Gradient Assisted MAP-Elites (PGA-ME)](https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf) [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/pgame_example.ipynb)
+- [OMG-MEGA](https://arxiv.org/abs/2106.03894) [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/omgmega_example.ipynb)
+- [CMA-MEGA](https://arxiv.org/abs/2106.03894) [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/cmamega_example.ipynb)
+- [Multi-Objective Quality-Diversity (MOME)](https://arxiv.org/abs/2202.03057) [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/mome_example.ipynb)
 
 ## QDax flexibility
 
-QDax has been designed to be modular yet flexible so it's easy for anyone to use or extend and build on the different QD algortihms.
-For instance, MAP-Elites is designed to work with simple components: a user can hence create a new emitter and pass it to the MAPElites class so he does not have to re-implement the evaluation and addition steps. Similarly, the user can also implement its own container.
+QDax has been designed to be modular yet flexible so it's easy for anyone to use and extend on the different state-of-the-art QD algortihms available.
+For instance, MAP-Elites is designed to work with a few modular and simple components: `container`, `emitter`, and `scoring function`.
 
-QDax has also similarities to simple `ask`/`tell` interface. The `ask` function is similar to the `emit` function. The `tell` function is similar to the `update`. However, most importantly QDax handles the archive management which is the key idea of QD algorihtms and not present/needed in standard optimization algorihtms or evolutionary strategies.
+The `container` specifies the structure of archive of solutions to keep and the addition conditions associated with the archive.
+The `emitter` component is responsible for generating new solutions to be evaluated. For example, new solutions can be generated with random mutations, gradient descent, or sampling from distributions.
+The `scoring function` defines the problem/task we want to solve and functions to evaluate the solutions.
+
+With this modularity, a user can create a new emitter and pass it to the MAPElites class so he does not have to re-implement the evaluation and addition steps. Similarly, users can also implement their own container.
+
+Under one layer of abstraction, users have abit more flexibility. QDax has similarities to the simple and commonly found `ask`/`tell` interface. The `ask` function is similar to the `emit` function. The `tell` function is similar to the `update`. However, most importantly QDax handles the archive management which is the key idea of QD algorihtms and not present/needed in standard optimization algorihtms or evolutionary strategies.
+
+```python
+# generate new population with the emitter
+genotypes, random_key = self._emitter.emit(
+    repertoire, emitter_state, random_key
+)
+
+# scores/evaluates the population
+fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
+    genotypes, random_key
+)
+
+# update repertoire
+repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+
+# update emitter state after scoring is made
+emitter_state = self._emitter.state_update(
+    emitter_state=emitter_state,
+    repertoire=repertoire,
+    genotypes=genotypes,
+    fitnesses=fitnesses,
+    descriptors=descriptors,
+    extra_scores=extra_scores,
+)
+```
 
 
 ## Contributions
