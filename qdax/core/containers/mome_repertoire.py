@@ -46,7 +46,7 @@ class MOMERepertoire(MapElitesRepertoire):
         first_leaf = jax.tree_leaves(self.genotypes)[0]
         return int(first_leaf.shape[0] * first_leaf.shape[1])
 
-    @partial(jax.jit, static_argnames=("num_samples",))
+    @jax.jit
     def _sample_in_masked_pareto_front(
         self,
         pareto_front_genotypes: Genotype,
