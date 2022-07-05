@@ -98,7 +98,7 @@ def test_map_elites(environment_name: str) -> None:
     # Define emitter
     variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
     mixing_emitter = MixingEmitter(
-        mutation_fn=None,
+        mutation_fn=lambda x, y: (x, y),
         variation_fn=variation_fn,
         variation_percentage=1.0,
         batch_size=batch_size,
