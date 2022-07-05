@@ -20,7 +20,7 @@ python:
   install:
 #     - requirements: requirements.txt
     - requirements: docs/requirements.txt
-    - method: pip
-      path: .
-    # - method: setuptools
+    # - method: pip
     #   path: .
+    - method: setuptools
+      path: .
