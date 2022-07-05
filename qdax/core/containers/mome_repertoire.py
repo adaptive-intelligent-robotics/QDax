@@ -53,7 +53,7 @@ class MOMERepertoire(MapElitesRepertoire):
         mask: jnp.ndarray,
         random_key: RNGKey,
     ) -> Genotype:
-        """Sample num_samples elements in masked pareto front.
+        """Sample one single genotype in masked pareto front.
 
         Note: do not retrieve a random key because this function
         is to be vmapped. The public method that uses this function
