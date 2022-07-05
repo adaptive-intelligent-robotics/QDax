@@ -13,13 +13,13 @@ setup(
     description="A Python Library for Quality Diversity and NeuroEvolution",
     install_requires=[
         "absl-py==1.0.0",
-        "jax==0.3.2",
+        "jax==0.3.10",
         "flax==0.4.1",
         "brax==0.0.12",
-        "gym>=0.15",
-        "numpy>=1.19",
-        "scikit-learn>=1.0",
-        "scipy>=1.7",
+        "gym==0.23.1",
+        "numpy==1.22.3",
+        "scikit-learn==1.0.2",
+        "scipy==1.8.0",
         "sklearn",
     ],
     dependency_links=[
