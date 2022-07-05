@@ -122,7 +122,7 @@ If you use QDax in your research and want to cite it in your work, please use:
 
 ## Contributors
 
-QDax is developed and maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/). Thank you to all the contributors from both teams!
+QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/).
 
 <img src="./docs/images/AIRL_Logo.png" alt="AIRL_Logo" width="220"/>
 <img src="./docs/images/AIRL_Logo.png" alt="InstaDeep_Logo" width="220"/>
