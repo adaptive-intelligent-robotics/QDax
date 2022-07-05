@@ -264,7 +264,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         # get fitness segment max
         best_fitnesses = jax.ops.segment_max(
             batch_of_fitnesses,
-            batch_of_indices.astype(jnp.int32).squeeze(),
+            batch_of_indices.astype(jnp.int32).squeeze(axis=-1),
             num_segments=num_centroids,
         )
 
@@ -290,23 +290,23 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         # create new grid
         new_repertoire_genotypes = jax.tree_map(
             lambda grid_genotypes, new_genotypes: grid_genotypes.at[
-                batch_of_indices.squeeze()
+                batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
             self.genotypes,
             batch_of_genotypes,
         )
 
         # compute new fitness and descriptors
-        new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze()].set(
-            batch_of_fitnesses.squeeze()
+        new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze(axis=-1)].set(
+            batch_of_fitnesses.squeeze(axis=-1)
         )
-        new_descriptors = self.descriptors.at[batch_of_indices.squeeze()].set(
+        new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
             batch_of_descriptors
         )
 
         return MapElitesRepertoire(
             genotypes=new_repertoire_genotypes,
-            fitnesses=new_fitnesses.squeeze(),
+            fitnesses=new_fitnesses,
             descriptors=new_descriptors,
             centroids=self.centroids,
         )
