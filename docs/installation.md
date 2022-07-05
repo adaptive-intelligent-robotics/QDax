@@ -64,8 +64,8 @@ There are two options for installing the dependencies using either `docker` or `
     First, follow these initial steps:
 
     1. If it is not already done, install Singularity, following [these instructions](https://docs.sylabs.io/guides/3.0/user-guide/installation.html).
- 
-    2. Clone `qdax` 
+
+    2. Clone `qdax`
     ```zsh
     git clone git@github.com:adaptive-intelligent-robotics/QDax.git
     ```
@@ -78,7 +78,7 @@ There are two options for installing the dependencies using either `docker` or `
     You can build two distinct types of images with singularity: "final images" or "sandbox images".
     A final image is a single file with the `.sif` extension, it is immutable.
     On the contrary, a sandbox image is not a file but a folder, it allows you to develop inside the singularity container to test your code while writing it.
-   
+
     To build a final image, execute the `build_final_image` script:
     ```zsh
     ./build_final_image
@@ -100,7 +100,7 @@ There are two options for installing the dependencies using either `docker` or `
     !!! warning "Using GPU"
         The `-n` flag of the `start_container` command allow the container to use the GPU, it is thus important to use it for QDax.
 
-    This command will generate a sandbox container `qdax.sif/` and enter it. If you execute this command again later, it will not generate a new container but enter directly the existing one. 
+    This command will generate a sandbox container `qdax.sif/` and enter it. If you execute this command again later, it will not generate a new container but enter directly the existing one.
     Once inside the sandbox container, enter the qdax development folder:
     ```zsh
     cd /git/exp/qdax
