@@ -527,18 +527,21 @@ def _get_projection_in_1d(
     assert jnp.size(integer_coordinates) == len(
         bases_tuple
     ), "x should have the same size as bases"
+
     integer_coordinates = integer_coordinates.ravel().tolist()
+
+    # build the conversion
     coordinate = 0
     for x_coord, base in zip(integer_coordinates, bases_tuple):
         coordinate = coordinate * base + x_coord
+
     return coordinate
 
 
 def _get_projection_in_2d(
     integer_coordinates: jnp.ndarray, bases: Tuple[int, ...]
 ) -> Tuple[int, int]:
-    """
-    Projects an integer vector into a pair of integers,
+    """Projects an integer vector into a pair of integers,
     (given tuple of bases to consider for conversion).
 
     For example if x=jnp.array([3, 1, 2, 5]) and the bases are (5, 2, 3, 7).
@@ -597,7 +600,7 @@ def plot_multidimensional_map_elites_grid(
     if isinstance(grid_shape, tuple):
         assert (
             len(grid_shape) == num_descriptors
-        ), "resolution should have the same length as num_descriptors"
+        ), "grid_shape should have the same length as num_descriptors"
     else:
         raise ValueError("resolution should be a tuple")
 
@@ -624,7 +627,8 @@ def plot_multidimensional_map_elites_grid(
 
     # total number of grid cells along each dimension of the grid
     size_grid_x = np.prod(np.array(grid_shape[0::2]))
-    size_grid_y = np.prod(np.array(grid_shape[1::2]))
+    # convert to int for the 1d case - if not, value 1.0 is given
+    size_grid_y = np.prod(np.array(grid_shape[1::2]), dtype=int)
 
     # initialise the grid
     grid_2d = jnp.full(
