@@ -18,9 +18,10 @@ from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import EnvState, Params, RNGKey
 
 
-def test_map_elites() -> None:
+@pytest.mark.parametrize("environment_name", ["walker2d_uni", "hopper_uni"])
+def test_map_elites(environment_name: str) -> None:
     batch_size = 10
-    env_name = "walker2d_uni"
+    env_name = environment_name
     episode_length = 100
     num_iterations = 5
     seed = 42
@@ -127,12 +128,13 @@ def test_map_elites() -> None:
     )
 
     # Compute the centroids
-    centroids = compute_cvt_centroids(
+    centroids, random_key = compute_cvt_centroids(
         num_descriptors=env.behavior_descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_bd,
         maxval=max_bd,
+        random_key=random_key,
     )
 
     # Compute initial repertoire
@@ -152,4 +154,4 @@ def test_map_elites() -> None:
 
 
 if __name__ == "__main__":
-    test_map_elites()
+    test_map_elites(environment_name="walker2d_uni")

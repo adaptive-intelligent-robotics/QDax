@@ -1,14 +1,17 @@
+"""This file contains util functions and a class to define
+a repertoire, used to store individuals in the MAP-Elites
+algorithm as well as several variants."""
+
 from __future__ import annotations
 
-import math
 from functools import partial
 from typing import Callable, List, Tuple, Union
 
 import flax
 import jax
 import jax.numpy as jnp
-import numpy as np
 from jax.flatten_util import ravel_pytree
+from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
@@ -20,7 +23,8 @@ def compute_cvt_centroids(
     num_centroids: int,
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
-) -> jnp.ndarray:
+    random_key: RNGKey,
+) -> Tuple[jnp.ndarray, RNGKey]:
     """
     Compute centroids for CVT tesselation.
 
@@ -33,28 +37,35 @@ def compute_cvt_centroids(
         num_centroids: number of centroids
         minval: minimum descriptors value
         maxval: maximum descriptors value
+        random_key: a jax PRNG random key
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
+        random_key: an updated jax PRNG random key
     """
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
+
     # assume here all values are in [0, 1] and rescale later
-    x = np.random.rand(num_init_cvt_samples, num_descriptors)
+    random_key, subkey = jax.random.split(random_key)
+    x = jax.random.uniform(key=subkey, shape=(num_init_cvt_samples, num_descriptors))
+
+    # compute k means
+    random_key, subkey = jax.random.split(random_key)
     k_means = KMeans(
         init="k-means++",
         n_clusters=num_centroids,
         n_init=1,
+        random_state=RandomState(subkey),
     )
     k_means.fit(x)
     centroids = k_means.cluster_centers_
     # rescale now
-    return jnp.asarray(centroids) * (maxval - minval) + minval
+    return jnp.asarray(centroids) * (maxval - minval) + minval, random_key
 
 
 def compute_euclidean_centroids(
-    num_descriptors: int,
-    num_centroids: int,
+    grid_shape: Tuple[int, ...],
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
@@ -62,27 +73,29 @@ def compute_euclidean_centroids(
     Compute centroids for square Euclidean tesselation.
 
     Args:
-        num_descriptors: number od scalar descriptors
-        num_centroids: number of centroids
+        grid_shape: number of centroids per BD dimension
         minval: minimum descriptors value
         maxval: maximum descriptors value
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
     """
-    if num_descriptors != 2:
-        raise NotImplementedError("This function supports 2 descriptors only for now.")
+    # get number of descriptors
+    num_descriptors = len(grid_shape)
 
-    sqrt_centroids = math.sqrt(num_centroids)
+    # prepare list of linspaces
+    linspace_list = []
+    for num_centroids_in_dim in grid_shape:
+        offset = 1 / (2 * num_centroids_in_dim)
+        linspace = jnp.linspace(offset, 1.0 - offset, num_centroids_in_dim)
+        linspace_list.append(linspace)
 
-    if math.floor(sqrt_centroids) != sqrt_centroids:
-        raise ValueError("Num centroids should be a squared number.")
+    meshes = jnp.meshgrid(*linspace_list, sparse=False)
 
-    offset = 1 / (2 * int(sqrt_centroids))
-
-    linspace = jnp.linspace(offset, 1.0 - offset, int(sqrt_centroids))
-    meshes = jnp.meshgrid(linspace, linspace, sparse=False)
-    centroids = jnp.stack([jnp.ravel(meshes[0]), jnp.ravel(meshes[1])], axis=-1)
+    # create centroids
+    centroids = jnp.stack(
+        [jnp.ravel(meshes[i]) for i in range(num_descriptors)], axis=-1
+    )
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
     return jnp.asarray(centroids) * (maxval - minval) + minval
@@ -93,7 +106,7 @@ def get_cells_indices(
 ) -> jnp.ndarray:
     """
     Returns the array of cells indices for a batch of descriptors
-    given the centroids of the grid.
+    given the centroids of the repertoire.
 
     Args:
         batch_of_descriptors: a batch of descriptors
@@ -144,7 +157,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
     centroids: Centroid
 
     def save(self, path: str = "./") -> None:
-        """Saves the grid on disk in the form of .npy files.
+        """Saves the repertoire on disk in the form of .npy files.
 
         Flattens the genotypes to store it with .npy format. Supposes that
         a user will have access to the reconstruction function when loading
@@ -169,7 +182,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
     @classmethod
     def load(cls, reconstruction_fn: Callable, path: str = "./") -> MapElitesRepertoire:
-        """Loads a MAP Elites Grid.
+        """Loads a MAP Elites Repertoire.
 
         Args:
             reconstruction_fn: Function to reconstruct a PyTree
@@ -197,7 +210,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
         """
-        Sample elements in the grid.
+        Sample elements in the repertoire.
 
         Args:
             random_key: a jax PRNG random key
@@ -208,12 +221,12 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             random_key: an updated jax PRNG random key
         """
 
-        random_key, sub_key = jax.random.split(random_key)
-        grid_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
+        random_key, subkey = jax.random.split(random_key)
+        repertoire_empty = self.fitnesses == -jnp.inf
+        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
         samples = jax.tree_map(
-            lambda x: jax.random.choice(sub_key, x, shape=(num_samples,), p=p),
+            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
 
@@ -263,8 +276,10 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # get addition condition
-        grid_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(grid_fitnesses, batch_of_indices, 0)
+        repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
+        current_fitnesses = jnp.take_along_axis(
+            repertoire_fitnesses, batch_of_indices, 0
+        )
         addition_condition = batch_of_fitnesses > current_fitnesses
 
         # assign fake position when relevant : num_centroids is out of bound
@@ -273,7 +288,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new grid
-        new_grid_genotypes = jax.tree_multimap(
+        new_repertoire_genotypes = jax.tree_map(
             lambda grid_genotypes, new_genotypes: grid_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),
@@ -286,13 +301,13 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             batch_of_fitnesses.squeeze()
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze()].set(
-            batch_of_descriptors.squeeze()
+            batch_of_descriptors
         )
 
         return MapElitesRepertoire(
-            genotypes=new_grid_genotypes,
+            genotypes=new_repertoire_genotypes,
             fitnesses=new_fitnesses.squeeze(),
-            descriptors=new_descriptors.squeeze(),
+            descriptors=new_descriptors,
             centroids=self.centroids,
         )
 
@@ -324,7 +339,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             an initialized MAP-Elite repertoire
         """
 
-        # Initialize grid with default values
+        # Initialize repertoire with default values
         num_centroids = centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
         default_genotypes = jax.tree_map(
@@ -340,7 +355,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             centroids=centroids,
         )
 
-        # Add initial values to the grid
+        # Add initial values to the repertoire
         new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
 
         return new_repertoire  # type: ignore
