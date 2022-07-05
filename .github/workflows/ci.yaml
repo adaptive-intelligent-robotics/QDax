@@ -114,7 +114,12 @@ jobs:
 
       - name: Run pytests
         run: |
-          pytest -vv tests
+          coverage run -m pytest -vv tests
+          coverage xml
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v2
+
 
   docs:
     runs-on: ubuntu-latest
