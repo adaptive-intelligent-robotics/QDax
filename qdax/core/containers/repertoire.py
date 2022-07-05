@@ -4,7 +4,6 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
-import math
 from functools import partial
 from typing import Callable, List, Tuple, Union
 
@@ -66,8 +65,7 @@ def compute_cvt_centroids(
 
 
 def compute_euclidean_centroids(
-    num_descriptors: int,
-    num_centroids: int,
+    grid_shape: Tuple[int, ...],
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
@@ -75,27 +73,29 @@ def compute_euclidean_centroids(
     Compute centroids for square Euclidean tesselation.
 
     Args:
-        num_descriptors: number od scalar descriptors
-        num_centroids: number of centroids
+        grid_shape: number of centroids per BD dimension
         minval: minimum descriptors value
         maxval: maximum descriptors value
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
     """
-    if num_descriptors != 2:
-        raise NotImplementedError("This function supports 2 descriptors only for now.")
+    # get number of descriptors
+    num_descriptors = len(grid_shape)
 
-    sqrt_centroids = math.sqrt(num_centroids)
+    # prepare list of linspaces
+    linspace_list = []
+    for num_centroids_in_dim in grid_shape:
+        offset = 1 / (2 * num_centroids_in_dim)
+        linspace = jnp.linspace(offset, 1.0 - offset, num_centroids_in_dim)
+        linspace_list.append(linspace)
 
-    if math.floor(sqrt_centroids) != sqrt_centroids:
-        raise ValueError("Num centroids should be a squared number.")
+    meshes = jnp.meshgrid(*linspace_list, sparse=False)
 
-    offset = 1 / (2 * int(sqrt_centroids))
-
-    linspace = jnp.linspace(offset, 1.0 - offset, int(sqrt_centroids))
-    meshes = jnp.meshgrid(linspace, linspace, sparse=False)
-    centroids = jnp.stack([jnp.ravel(meshes[0]), jnp.ravel(meshes[1])], axis=-1)
+    # create centroids
+    centroids = jnp.stack(
+        [jnp.ravel(meshes[i]) for i in range(num_descriptors)], axis=-1
+    )
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
     return jnp.asarray(centroids) * (maxval - minval) + minval
