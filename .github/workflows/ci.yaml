@@ -119,12 +119,15 @@ jobs:
           coverage run -m pytest -vv tests
           coverage xml
 
-      - name: Upload coverage reports to Codecov
-        run: |
-          curl -Os https://uploader.codecov.io/latest/linux/codecov
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v2
 
-          chmod +x codecov
-          ./codecov
+      # - name: Upload coverage reports to Codecov
+      #   run: |
+      #     curl -Os https://uploader.codecov.io/latest/linux/codecov
+
+      #     chmod +x codecov
+      #     ./codecov
 
   docs:
     runs-on: ubuntu-latest
