@@ -8,9 +8,9 @@ setup(
     packages=find_packages(),
     url="https://github.com/adaptive-intelligent-robotics/QDax",
     license="MIT",
-    author="Bryan Lim and InstaDeep Ltd",
-    author_email="",
-    description="A Python Library for Quality Diversity and NeuroEvolution",
+    author="AIRL and InstaDeep Ltd",
+    author_email="adaptive.intelligent.robotics@gmail.com",
+    description="A Python Library for Quality-Diversity and NeuroEvolution",
     install_requires=[
         "absl-py==1.0.0",
         "jax==0.3.2",
@@ -25,7 +25,7 @@ setup(
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
     ],
-    keywords="Quality Diversity NeuroEvolution Reinforcement Learning JAX",
+    keywords="Quality-Diversity NeuroEvolution Reinforcement Learning JAX",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Environment :: Console",
