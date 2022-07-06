@@ -34,7 +34,7 @@ setup(
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
     ],
-    keywords="Quality-Diversity NeuroEvolution Reinforcement Learning JAX",
+    keywords=["Quality-Diversity", "NeuroEvolution", "Reinforcement Learning", "JAX"],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Environment :: Console",
