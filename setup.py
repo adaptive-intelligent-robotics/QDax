@@ -1,6 +1,13 @@
+import os
+
 from setuptools import find_packages, setup
 
 from qdax import __version__
+
+CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
+
+with open(os.path.join(CURRENT_DIR, "README.md"), encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="qdax",
@@ -11,6 +18,8 @@ setup(
     author="AIRL and InstaDeep Ltd",
     author_email="adaptive.intelligent.robotics@gmail.com",
     description="A Python Library for Quality-Diversity and NeuroEvolution",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     install_requires=[
         "absl-py==1.0.0",
         "jax==0.3.2",
