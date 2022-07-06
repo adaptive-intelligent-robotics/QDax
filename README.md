@@ -68,6 +68,15 @@ QDax currently supports the following algorithms:
 | [CMA-MEGA](https://arxiv.org/abs/2106.03894) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/cmamega_example.ipynb) |
 | [Multi-Objective Quality-Diversity (MOME)](https://arxiv.org/abs/2202.03057) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/mome_example.ipynb) |
 
+## Baseline Algorithms
+The QDax library also provides implementations for some useful baseline algorithms:
+| Algorithm  | Example |
+| --- | --- |
+| [DIAYN](https://arxiv.org/abs/1802.06070) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/diayn_example.ipynb) |
+| [DADS](https://arxiv.org/abs/1907.01657) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/dads_example.ipynb) |
+| [SMERL](https://arxiv.org/abs/2010.14484) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/smerl_example.ipynb) |
+
+
 ## QDax Overview
 
 QDax has been designed to be modular yet flexible so it's easy for anyone to use and extend on the different state-of-the-art QD algortihms available.
@@ -115,14 +124,14 @@ for i in range(num_iterations):
 ```
 
 
-## Contributions
+## Contributing
 Issues and contributions are welcome. Please refer to the [contribution guide](https://qdax.readthedocs.io/en/latest/guides/CONTRIBUTING/) in the documentation for more details.
 
 ## Related Projects
 - [EvoJax: Hardware-Accelerated Neuroevolution](https://github.com/google/evojax). EvoJAX is a scalable, general purpose, hardware-accelerated neuroevolution toolkit. [Paper](https://arxiv.org/abs/2202.05008)
 - [evosax: JAX-Based Evolution Strategies](https://github.com/RobertTLange/evosax)
 
-## Acknowledgements and Citing QDax
+## Citing QDax
 If you use QDax in your research and want to cite it in your work, please use:
 ```
 @article{lim2022accelerated,
