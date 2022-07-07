@@ -207,10 +207,7 @@ class CMAMEGAEmitter(Emitter):
         indices = get_cells_indices(descriptors, repertoire.centroids)
         improvements = fitnesses - repertoire.fitnesses[indices]
 
-        print("Improvments : ", improvements)
-        print("Improvments : ", improvements.squeeze())
-
-        sorted_indices = jnp.argsort(improvements.squeeze())[::-1]
+        sorted_indices = jnp.argsort(improvements)[::-1]
 
         # Draw the coeffs - reuse the emitter state key to get same coeffs
         coeffs, random_key = self._cmaes.sample(
