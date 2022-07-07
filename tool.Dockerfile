@@ -9,9 +9,8 @@ RUN apt update && apt install -y --no-install-recommends git \
     && rm -rf /var/lib/{apt,dpkg,cache,log}
 
 COPY requirements-tool.txt ./
-COPY docs/requirements.txt ./requirements-docs.txt
 
-RUN pip install -r requirements-tool.txt && pip install -r requirements-docs.txt
+RUN pip install -r requirements-tool.txt
 
 COPY .pre-commit-config.yaml ./
 RUN git init && pre-commit install-hooks
