@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 
 import argparse
-import glob
 import os
 import subprocess
 import tempfile
 
 import build_final_image
 
-EXP_PATH = "git/sferes2/exp/"
+EXP_PATH = "git/exp/"
 ABSOLUTE_EXP_PATH = "/" + EXP_PATH
 
 
-def get_default_image_name():
-    return f"{build_final_image.get_project_folder_name()}_braxqdgym.sif"
+def get_default_image_name() -> str:
+    return f"{build_final_image.get_project_folder_name()}.sif"
 
 
-def build_sandbox(path_singularity_def: str, image_name: str):
+def build_sandbox(path_singularity_def: str, image_name: str) -> None:
     # check if the sandbox has already been created
     if os.path.exists(image_name):
         return
@@ -27,7 +26,10 @@ def build_sandbox(path_singularity_def: str, image_name: str):
     )  # exit if path_singularity_definition_file is not found
 
     # run commands
-    command = f"singularity build --force --fakeroot --sandbox {image_name} {path_singularity_def}"
+    command = (
+        f"singularity build --force --fakeroot --sandbox {image_name} "
+        f"{path_singularity_def}"
+    )
     subprocess.run(command.split())
 
 
@@ -37,7 +39,7 @@ def run_container(
     use_tmp_home: bool,
     image_name: str,
     binding_folder_inside_container: str,
-):
+) -> None:
     additional_args = ""
 
     if nvidia:
@@ -52,8 +54,8 @@ def run_container(
         tmp_home_folder = tempfile.mkdtemp(dir="/tmp")
         additional_args += " " + f"--home {tmp_home_folder}"
         build_final_image.error_print(
-            f"Warning: The HOME folder is a temporary directory located in {tmp_home_folder}! "
-            f"Do not store any result there!"
+            f"Warning: The HOME folder is a temporary directory located in "
+            f"{tmp_home_folder}! Do not store any result there!"
         )
 
     if not binding_folder_inside_container:
@@ -71,21 +73,24 @@ def run_container(
             for existing_folder in list_possible_folder_binding_in_container
         ]
         build_final_image.error_print(
-            f"Warning: The folder {os.path.join(ABSOLUTE_EXP_PATH, binding_folder_inside_container)} does not exist in the container. "
-            f"The Binding between your project folder and your container is likely to be unsuccessful.\n"
-            f"You may want to consider adding one of the following options to the 'start_container' command:\n"
-            + "\n".join(list_possible_options)
+            f"Warning: The folder "
+            f"{os.path.join(ABSOLUTE_EXP_PATH, binding_folder_inside_container)} "
+            f"does not exist in the container. The Binding between your project folder "
+            f"and your container is likely to be unsuccessful.\n"
+            f"You may want to consider adding one of the following options to the "
+            f"'start_container' command:\n" + "\n".join(list_possible_options)
         )
 
     command = (
         f"singularity shell -w {additional_args} "
-        f"--bind {os.path.dirname(os.getcwd())}:{ABSOLUTE_EXP_PATH}/{binding_folder_inside_container} "
+        f"--bind {os.path.dirname(os.getcwd())}:"
+        f"{ABSOLUTE_EXP_PATH}/{binding_folder_inside_container} "
         f"{image_name}"
     )
     subprocess.run(command.split())
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build a sandbox container and shell into it.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -116,8 +121,8 @@ def get_args():
         type=str,
         default=build_final_image.get_personal_token(),
         help="Gitlab Personal token. "
-        "If not specified, it takes the value of the environment variable PERSONAL_TOKEN, "
-        "if it exists. "
+        "If not specified, it takes the value of the environment variable "
+        "PERSONAL_TOKEN, if it exists. "
         "If the environment variable SINGULARITYENV_PERSONAL_TOKEN is not set yet, "
         "then it is set the value provided.",
     )
@@ -128,8 +133,8 @@ def get_args():
         required=False,
         type=str,
         default=build_final_image.get_project_folder_name(),
-        help=f"If specified, it corresponds to the name folder in {ABSOLUTE_EXP_PATH} from which the binding "
-        f"is performed to the current project source code. "
+        help=f"If specified, it corresponds to the name folder in {ABSOLUTE_EXP_PATH} "
+        f"from which the binding is performed to the current project source code. "
         f"By default, it corresponds to the image name (without the .sif extension)",
     )
 
@@ -147,7 +152,7 @@ def get_args():
     return args
 
 
-def main():
+def main() -> None:
     args = get_args()
 
     enable_nvidia_support = args.nv

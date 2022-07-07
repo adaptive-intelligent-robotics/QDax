@@ -1,3 +1,4 @@
+import math
 from typing import Dict, Tuple
 
 import jax
@@ -86,9 +87,11 @@ def test_omg_mega() -> None:
     # defines the population
     random_key, subkey = jax.random.split(random_key)
     initial_population = jax.random.uniform(subkey, shape=(100, num_dimensions))
+
+    sqrt_centroids = int(math.sqrt(num_centroids))  # 2-D grid
+    grid_shape = (sqrt_centroids, sqrt_centroids)
     centroids = compute_euclidean_centroids(
-        num_descriptors=num_descriptors,
-        num_centroids=num_centroids,
+        grid_shape=grid_shape,
         minval=minval,
         maxval=maxval,
     )

@@ -18,11 +18,14 @@ from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_moqd_metrics
 
 
-def test_mome() -> None:
+@pytest.mark.parametrize("num_descriptors", [1, 2])
+def test_mome(num_descriptors: int) -> None:
 
     pareto_front_max_length = 50
-    num_variables = 100
+    num_variables = 120
     num_iterations = 100
+
+    num_descriptors = num_descriptors
 
     num_centroids = 64
     minval = -2
@@ -31,7 +34,7 @@ def test_mome() -> None:
     eta = 1
     proportion_var_to_change = 0.5
     crossover_percentage = 1.0
-    batch_size = 100
+    batch_size = 80
     lag = 2.2
     base_lag = 0
 
@@ -41,7 +44,7 @@ def test_mome() -> None:
         """
         Rastrigin Scorer with first two dimensions as descriptors
         """
-        descriptors = genotypes[:, :2]
+        descriptors = genotypes[:, :num_descriptors]
         f1 = -(
             10 * genotypes.shape[1]
             + jnp.sum(
@@ -79,7 +82,7 @@ def test_mome() -> None:
     random_key = jax.random.PRNGKey(42)
     random_key, subkey = jax.random.split(random_key)
     init_genotypes = jax.random.uniform(
-        random_key,
+        subkey,
         (batch_size, num_variables),
         minval=minval,
         maxval=maxval,
@@ -108,12 +111,13 @@ def test_mome() -> None:
         batch_size=batch_size,
     )
 
-    centroids = compute_cvt_centroids(
-        num_descriptors=2,
+    centroids, random_key = compute_cvt_centroids(
+        num_descriptors=num_descriptors,
         num_init_cvt_samples=20000,
         num_centroids=num_centroids,
         minval=minval,
         maxval=maxval,
+        random_key=random_key,
     )
 
     mome = MOME(
@@ -138,4 +142,4 @@ def test_mome() -> None:
 
 
 if __name__ == "__main__":
-    test_mome()
+    test_mome(num_descriptors=1)

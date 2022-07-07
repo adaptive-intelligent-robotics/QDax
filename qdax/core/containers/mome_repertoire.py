@@ -57,14 +57,14 @@ class MOMERepertoire(MapElitesRepertoire):
         first_leaf = jax.tree_leaves(self.genotypes)[0]
         return int(first_leaf.shape[0] * first_leaf.shape[1])
 
-    @partial(jax.jit, static_argnames=("num_samples",))
+    @jax.jit
     def _sample_in_masked_pareto_front(
         self,
         pareto_front_genotypes: ParetoFront[Genotype],
         mask: Mask,
         random_key: RNGKey,
     ) -> Genotype:
-        """Sample num_samples elements in masked pareto front.
+        """Sample one single genotype in masked pareto front.
 
         Note: do not retrieve a random key because this function
         is to be vmapped. The public method that uses this function
@@ -130,8 +130,8 @@ class MOMERepertoire(MapElitesRepertoire):
             random_key=subkeys,
         )
 
-        # remove unnecessary dimension
-        sampled_genotypes = jax.tree_map(lambda x: x.squeeze(), sampled_genotypes)
+        # remove the dim coming from pareto front
+        sampled_genotypes = jax.tree_map(lambda x: x.squeeze(axis=1), sampled_genotypes)
 
         return sampled_genotypes, random_key
 
@@ -301,10 +301,10 @@ class MOMERepertoire(MapElitesRepertoire):
                 cell_descriptor,
                 cell_mask,
             ) = self._update_masked_pareto_front(
-                pareto_front_fitnesses=cell_fitness.squeeze(),
-                pareto_front_genotypes=cell_genotype.squeeze(),
-                pareto_front_descriptors=cell_descriptor.squeeze(),
-                mask=cell_mask.squeeze(),
+                pareto_front_fitnesses=cell_fitness.squeeze(axis=0),
+                pareto_front_genotypes=cell_genotype.squeeze(axis=0),
+                pareto_front_descriptors=cell_descriptor.squeeze(axis=0),
+                mask=cell_mask.squeeze(axis=0),
                 new_batch_of_fitnesses=jnp.expand_dims(fitness, axis=0),
                 new_batch_of_genotypes=jnp.expand_dims(genotype, axis=0),
                 new_batch_of_descriptors=jnp.expand_dims(descriptors, axis=0),

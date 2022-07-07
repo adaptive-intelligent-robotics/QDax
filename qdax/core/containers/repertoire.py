@@ -1,3 +1,7 @@
+"""This file contains util functions and a class to define
+a repertoire, used to store individuals in the MAP-Elites
+algorithm as well as several variants."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractclassmethod, abstractmethod
