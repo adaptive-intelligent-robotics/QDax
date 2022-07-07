@@ -4,7 +4,6 @@ from typing import Any, Tuple
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.types import Fitness, Genotype
@@ -170,8 +169,8 @@ class NSGA2Repertoire(GARepertoire):
             condition_fn_1,
             compute_current_front,
             (
-                jnp.zeros(num_candidates, dtype=np.bool),
-                jnp.zeros(num_candidates, dtype=np.bool),
+                jnp.zeros(num_candidates, dtype=bool),
+                jnp.zeros(num_candidates, dtype=bool),
             ),
         )
 
@@ -218,7 +217,7 @@ class NSGA2Repertoire(GARepertoire):
         front_index, _num = jax.lax.while_loop(
             condition_fn_2,
             add_to_front,
-            (jnp.zeros(num_candidates, dtype=np.bool), 0),
+            (jnp.zeros(num_candidates, dtype=bool), 0),
         )
 
         # update index
