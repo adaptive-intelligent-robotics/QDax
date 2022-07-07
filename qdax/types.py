@@ -25,7 +25,7 @@ Gradient: TypeAlias = jnp.ndarray
 
 Skill: TypeAlias = jnp.ndarray
 
-ExtraScores: TypeAlias = ArrayTree
+ExtraScores: TypeAlias = Dict[str, ArrayTree]
 
 # Pareto fronts
 T = TypeVar("T", bound=Union[Fitness, Genotype, Descriptor, jnp.ndarray])
