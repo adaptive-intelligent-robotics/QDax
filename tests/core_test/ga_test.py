@@ -1,7 +1,7 @@
 """Tests that MOME is running."""
 
 from functools import partial
-from typing import Tuple
+from typing import Tuple, Type
 
 import jax
 import jax.numpy as jnp
@@ -20,7 +20,7 @@ from qdax.utils.metrics import default_ga_metrics
 
 
 @pytest.mark.parametrize("algorithm_class", [GeneticAlgorithm, NSGA2, SPEA2])
-def test_ga(algorithm_class: GeneticAlgorithm) -> None:
+def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
 
     population_size = 1000
     num_iterations = 1000
