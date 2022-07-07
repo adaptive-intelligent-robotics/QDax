@@ -22,7 +22,7 @@ from qdax.utils.metrics import compute_moqd_metrics
 def test_mome(num_descriptors: int) -> None:
 
     pareto_front_max_length = 50
-    num_variables = 100
+    num_variables = 120
     num_iterations = 100
 
     num_descriptors = num_descriptors
@@ -34,7 +34,7 @@ def test_mome(num_descriptors: int) -> None:
     eta = 1
     proportion_var_to_change = 0.5
     crossover_percentage = 1.0
-    batch_size = 100
+    batch_size = 80
     lag = 2.2
     base_lag = 0
 

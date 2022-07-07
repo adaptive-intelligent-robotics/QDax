@@ -157,4 +157,4 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
 
 
 if __name__ == "__main__":
-    test_map_elites(env_name="walker2d_uni", batch_size=10)
+    test_map_elites(env_name="pointmaze", batch_size=10)

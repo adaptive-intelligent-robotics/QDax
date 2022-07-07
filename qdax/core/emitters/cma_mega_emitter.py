@@ -144,7 +144,9 @@ class CMAMEGAEmitter(Emitter):
         # retrieve elements from the emitter state
         theta = jnp.nan_to_num(emitter_state.theta)
         cmaes_state = emitter_state.cmaes_state
-        grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze())
+
+        # get grads - remove nan and first dimension
+        grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze(axis=0))
 
         # Draw random coefficients - use the emitter state key
         coeffs, _ = self._cmaes.sample(
@@ -204,6 +206,10 @@ class CMAMEGAEmitter(Emitter):
         # Update the archive and compute the improvements
         indices = get_cells_indices(descriptors, repertoire.centroids)
         improvements = fitnesses - repertoire.fitnesses[indices]
+
+        print("Improvments : ", improvements)
+        print("Improvments : ", improvements.squeeze())
+
         sorted_indices = jnp.argsort(improvements.squeeze())[::-1]
 
         # Draw the coeffs - reuse the emitter state key to get same coeffs
