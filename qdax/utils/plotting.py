@@ -96,7 +96,7 @@ def plot_2d_map_elites_repertoire(
 ) -> Tuple[Optional[Figure], Axes]:
     """Plot a visual representation of a 2d map elites repertoire.
 
-    Note: should we use a repertoire as input directly? Because this
+    TODO: Use repertoire as input directly. Because this
     function is very specific to repertoires.
 
     Args:
@@ -106,8 +106,10 @@ def plot_2d_map_elites_repertoire(
         maxval: maximum values for the descriptors
         repertoire_descriptors: the descriptors. Defaults to None.
         ax: a matplotlib axe for the figure to plot. Defaults to None.
-        vmin: minimum value for the fitness. Defaults to None.
-        vmax: maximum value for the fitness. Defaults to None.
+        vmin: minimum value for the fitness. Defaults to None. If not given,
+            the value will be set to the minimum fitness in the repertoire.
+        vmax: maximum value for the fitness. Defaults to None. If not given,
+            the value will be set to the maximum fitness in the repertoire.
 
     Raises:
         NotImplementedError: does not work for descriptors dimension different
@@ -299,7 +301,7 @@ def multiline(
         ax: A matplotlib axe. Defaults to None.
 
     Returns:
-        Return a oollection of lines corresponding to the trajectories.
+        Return a collection of lines corresponding to the trajectories.
     """
 
     # find axes

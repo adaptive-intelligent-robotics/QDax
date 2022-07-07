@@ -12,6 +12,7 @@ from jax import numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.mome_repertoire import MOMERepertoire
+from qdax.types import Metrics
 from qdax.utils.pareto_front import compute_hypervolume
 
 
@@ -50,18 +51,16 @@ class CSVLogger:
 
 def default_ga_metrics(
     repertoire: GARepertoire,
-) -> Dict[str, jnp.ndarray]:
-    """Compute the usual QD metrics that one can retrieve
-    from a MAP Elites repertoire.
+) -> Metrics:
+    """Compute the usual GA metrics that one can retrieve
+    from a GA repertoire.
 
     Args:
         repertoire: a GA repertoire
 
     Returns:
-        a dictionary containing the QD score (sum of fitnesses
-            modified to be all positive), the max fitness of the
-            repertoire, the coverage (number of niche filled in
-            the repertoire).
+        a dictionary containing the max fitness of the
+            repertoire.
     """
 
     # get metrics
@@ -72,9 +71,7 @@ def default_ga_metrics(
     }
 
 
-def default_qd_metrics(
-    repertoire: MapElitesRepertoire, qd_offset: float
-) -> Dict[str, jnp.ndarray]:
+def default_qd_metrics(repertoire: MapElitesRepertoire, qd_offset: float) -> Metrics:
     """Compute the usual QD metrics that one can retrieve
     from a MAP Elites repertoire.
 
@@ -103,9 +100,16 @@ def default_qd_metrics(
 
 def default_moqd_metrics(
     repertoire: MOMERepertoire, reference_point: jnp.ndarray
-) -> Dict[str, jnp.ndarray]:
-    """
-    Compute the MOQD metric given a MOME repertoire and a reference point.
+) -> Metrics:
+    """Compute the MOQD metric given a MOME repertoire and a reference point.
+
+    Args:
+        repertoire: a MOME repertoire.
+        reference_point: the hypervolume of a pareto front has to be computed
+            relatively to a reference point.
+
+    Returns:
+        A dictionary containing all the computed metrics.
     """
     repertoire_empty = repertoire.fitnesses == -jnp.inf
     repertoire_empty = jnp.all(repertoire_empty, axis=-1)
