@@ -121,8 +121,8 @@ class MOMERepertoire(MapElitesRepertoire):
             random_key=subkeys,
         )
 
-        # remove unnecessary dimension
-        sampled_genotypes = jax.tree_map(lambda x: x.squeeze(), sampled_genotypes)
+        # remove the dim coming from pareto front
+        sampled_genotypes = jax.tree_map(lambda x: x.squeeze(axis=1), sampled_genotypes)
 
         return sampled_genotypes, random_key
 

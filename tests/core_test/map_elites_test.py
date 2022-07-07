@@ -18,10 +18,13 @@ from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import EnvState, Params, RNGKey
 
 
-@pytest.mark.parametrize("environment_name", ["walker2d_uni", "hopper_uni"])
-def test_map_elites(environment_name: str) -> None:
-    batch_size = 10
-    env_name = environment_name
+@pytest.mark.parametrize(
+    "env_name, batch_size",
+    [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
+)
+def test_map_elites(env_name: str, batch_size: int) -> None:
+    batch_size = batch_size
+    env_name = env_name
     episode_length = 100
     num_iterations = 5
     seed = 42
@@ -154,4 +157,4 @@ def test_map_elites(environment_name: str) -> None:
 
 
 if __name__ == "__main__":
-    test_map_elites(environment_name="walker2d_uni")
+    test_map_elites(env_name="pointmaze", batch_size=10)

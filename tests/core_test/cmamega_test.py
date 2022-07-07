@@ -15,7 +15,7 @@ from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
 def test_cma_mega() -> None:
 
     num_iterations = 20000
-    num_dimensions = 1000
+    num_dimensions = 100
     num_centroids = 10000
     minval = -5.12
     maxval = 5.12
