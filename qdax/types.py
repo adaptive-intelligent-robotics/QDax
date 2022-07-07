@@ -1,10 +1,9 @@
 """Defines some types used in PaRL"""
 
-from typing import Dict
+from typing import Dict, Generic, TypeVar, Union
 
 import jax
 import jax.numpy as jnp
-import tree
 from chex import ArrayTree
 from typing_extensions import TypeAlias
 
@@ -28,6 +27,17 @@ Skill: TypeAlias = jnp.ndarray
 
 ExtraScores: TypeAlias = Dict[str, ArrayTree]
 
+# Pareto fronts
+T = TypeVar("T", bound=Union[Fitness, Genotype, Descriptor, jnp.ndarray])
+
+
+class ParetoFront(Generic[T]):
+    def __init__(self) -> None:
+        super().__init__()
+
+
+Mask: TypeAlias = jnp.ndarray
+
 # Others
 RNGKey: TypeAlias = jax.random.KeyArray
-Metrics: TypeAlias = tree.StructureKV[str, jnp.ndarray]
+Metrics: TypeAlias = Dict[str, jnp.ndarray]

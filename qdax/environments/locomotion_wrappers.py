@@ -9,8 +9,6 @@ from brax.physics.system import System
 
 from qdax.environments.base_wrappers import QDEnv
 
-# TODO: add clipping option in the XYWrapper
-
 FEET_NAMES = {
     "ant": ["$ Body 4", "$ Body 7", "$ Body 10", "$ Body 13"],
     "halfcheetah": ["ffoot", "bfoot"],

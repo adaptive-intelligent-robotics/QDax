@@ -7,36 +7,33 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import (
     polynomial_crossover,
     polynomial_mutation,
 )
 from qdax.core.emitters.standard_emitters import MixingEmitter
-from qdax.core.mome import MOME
-from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
-from qdax.utils.metrics import default_moqd_metrics
+from qdax.core.genetic_algorithm import GeneticAlgorithm
+from qdax.core.nsga2 import NSGA2
+from qdax.core.spea2 import SPEA2
+from qdax.types import ExtraScores, Fitness, RNGKey
+from qdax.utils.metrics import default_ga_metrics
 
 
-@pytest.mark.parametrize("num_descriptors", [1, 2])
-def test_mome(num_descriptors: int) -> None:
+@pytest.mark.parametrize("algorithm_class", [GeneticAlgorithm, NSGA2, SPEA2])
+def test_ga(algorithm_class: GeneticAlgorithm) -> None:
 
-    pareto_front_max_length = 50
-    num_variables = 120
-    num_iterations = 100
-
-    num_descriptors = num_descriptors
-
-    num_centroids = 64
-    minval = -2
-    maxval = 4
-    proportion_to_mutate = 0.6
-    eta = 1
+    population_size = 1000
+    num_iterations = 1000
+    proportion_mutation = 0.80
     proportion_var_to_change = 0.5
-    crossover_percentage = 1.0
-    batch_size = 80
+    proportion_to_mutate = 0.5
+    eta = 0.05
+    minval, maxval = -5.12, 5.12
+    batch_size = 100
+    genotype_dim = 6
     lag = 2.2
     base_lag = 0
+    num_neighbours = 1
 
     def rastrigin_scorer(
         genotypes: jnp.ndarray, base_lag: int, lag: int
@@ -44,7 +41,7 @@ def test_mome(num_descriptors: int) -> None:
         """
         Rastrigin Scorer with first two dimensions as descriptors
         """
-        descriptors = genotypes[:, :num_descriptors]
+        descriptors = genotypes[:, :2]
         f1 = -(
             10 * genotypes.shape[1]
             + jnp.sum(
@@ -69,21 +66,16 @@ def test_mome(num_descriptors: int) -> None:
 
     def scoring_fn(
         genotypes: jnp.ndarray, random_key: RNGKey
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
-        fitnesses, descriptors = scoring_function(genotypes)
-        return fitnesses, descriptors, {}, random_key
-
-    reference_point = jnp.array([-150, -150])
-
-    # how to compute metrics from a repertoire
-    metrics_function = partial(default_moqd_metrics, reference_point=reference_point)
+    ) -> Tuple[Fitness, ExtraScores, RNGKey]:
+        fitnesses, _ = scoring_function(genotypes)
+        return fitnesses, {}, random_key
 
     # initial population
     random_key = jax.random.PRNGKey(42)
     random_key, subkey = jax.random.split(random_key)
     init_genotypes = jax.random.uniform(
         subkey,
-        (batch_size, num_variables),
+        (batch_size, genotype_dim),
         minval=minval,
         maxval=maxval,
         dtype=jnp.float32,
@@ -107,39 +99,33 @@ def test_mome(num_descriptors: int) -> None:
     mixing_emitter = MixingEmitter(
         mutation_fn=mutation_function,
         variation_fn=crossover_function,
-        variation_percentage=crossover_percentage,
+        variation_percentage=1 - proportion_mutation,
         batch_size=batch_size,
     )
 
-    centroids, random_key = compute_cvt_centroids(
-        num_descriptors=num_descriptors,
-        num_init_cvt_samples=20000,
-        num_centroids=num_centroids,
-        minval=minval,
-        maxval=maxval,
-        random_key=random_key,
-    )
-
-    mome = MOME(
+    algo_instance = algorithm_class(
         scoring_function=scoring_fn,
         emitter=mixing_emitter,
-        metrics_function=metrics_function,
+        metrics_function=default_ga_metrics,
     )
 
-    repertoire, emitter_state, random_key = mome.init(
-        init_genotypes, centroids, pareto_front_max_length, random_key
-    )
+    if isinstance(algo_instance, SPEA2):
+        repertoire, emitter_state, random_key = algo_instance.init(
+            init_genotypes, population_size, num_neighbours, random_key
+        )
+    else:
+        repertoire, emitter_state, random_key = algo_instance.init(
+            init_genotypes, population_size, random_key
+        )
 
     # Run the algorithm
     (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
-        mome.scan_update,
+        algo_instance.scan_update,
         (repertoire, emitter_state, random_key),
         (),
         length=num_iterations,
     )
 
-    pytest.assume(metrics["coverage"][-1] > 20)
-
-
-if __name__ == "__main__":
-    test_mome(num_descriptors=1)
+    x, y = metrics["max_fitness"][-1]
+    pytest.assume(x > -20)
+    pytest.assume(y > -20)

@@ -10,8 +10,19 @@ from typing import Any, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    get_cells_indices,
+)
+from qdax.types import (
+    Centroid,
+    Descriptor,
+    Fitness,
+    Genotype,
+    Mask,
+    ParetoFront,
+    RNGKey,
+)
 from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
@@ -49,8 +60,8 @@ class MOMERepertoire(MapElitesRepertoire):
     @jax.jit
     def _sample_in_masked_pareto_front(
         self,
-        pareto_front_genotypes: Genotype,
-        mask: jnp.ndarray,
+        pareto_front_genotypes: ParetoFront[Genotype],
+        mask: Mask,
         random_key: RNGKey,
     ) -> Genotype:
         """Sample one single genotype in masked pareto front.
@@ -77,9 +88,7 @@ class MOMERepertoire(MapElitesRepertoire):
         return genotype_sample
 
     @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(
-        self, random_key: RNGKey, num_samples: int
-    ) -> Tuple[jnp.ndarray, RNGKey]:
+    def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
         """Sample elements in the repertoire.
 
         This method sample a non-empty pareto front, and then sample
@@ -90,7 +99,7 @@ class MOMERepertoire(MapElitesRepertoire):
             num_samples: number of samples to retrieve from the repertoire.
 
         Returns:
-            A sample of genotypes.
+            A sample of genotypes and a new random key.
         """
 
         # create sampling probability for the cells
@@ -129,15 +138,17 @@ class MOMERepertoire(MapElitesRepertoire):
     @jax.jit
     def _update_masked_pareto_front(
         self,
-        pareto_front_fitnesses: Fitness,
-        pareto_front_genotypes: Genotype,
-        pareto_front_descriptors: Descriptor,
-        mask: jnp.ndarray,
+        pareto_front_fitnesses: ParetoFront[Fitness],
+        pareto_front_genotypes: ParetoFront[Genotype],
+        pareto_front_descriptors: ParetoFront[Descriptor],
+        mask: Mask,
         new_batch_of_fitnesses: Fitness,
         new_batch_of_genotypes: Genotype,
         new_batch_of_descriptors: Descriptor,
-        new_mask: jnp.ndarray,
-    ) -> Tuple[Fitness, Genotype, Descriptor, jnp.ndarray]:
+        new_mask: Mask,
+    ) -> Tuple[
+        ParetoFront[Fitness], ParetoFront[Genotype], ParetoFront[Descriptor], Mask
+    ]:
         """Takes a fixed size pareto front, its mask and new points to add.
         Returns updated front and mask.
 
@@ -159,7 +170,7 @@ class MOMERepertoire(MapElitesRepertoire):
         batch_size = new_batch_of_fitnesses.shape[0]
         num_criteria = new_batch_of_fitnesses.shape[1]
 
-        pareto_front_len = pareto_front_fitnesses.shape[0]
+        pareto_front_len = pareto_front_fitnesses.shape[0]  # type: ignore
 
         first_leaf = jax.tree_leaves(new_batch_of_genotypes)[0]
         genotypes_dim = first_leaf.shape[1]
@@ -214,7 +225,9 @@ class MOMERepertoire(MapElitesRepertoire):
             jnp.expand_dims(new_mask, axis=-1), num_criteria, axis=-1
         )
         new_front_fitness = new_front_fitness * fitness_mask
-        new_front_fitness = new_front_fitness[: len(pareto_front_fitnesses), :]
+
+        front_size = len(pareto_front_fitnesses)  # type: ignore
+        new_front_fitness = new_front_fitness[:front_size, :]
 
         genotypes_mask = jnp.repeat(
             jnp.expand_dims(new_mask, axis=-1), genotypes_dim, axis=-1
@@ -223,16 +236,16 @@ class MOMERepertoire(MapElitesRepertoire):
             lambda x: x * genotypes_mask, new_front_genotypes
         )
         new_front_genotypes = jax.tree_map(
-            lambda x: x[: len(pareto_front_fitnesses), :], new_front_genotypes
+            lambda x: x[:front_size, :], new_front_genotypes
         )
 
         descriptors_mask = jnp.repeat(
             jnp.expand_dims(new_mask, axis=-1), descriptors_dim, axis=-1
         )
         new_front_descriptors = new_front_descriptors * descriptors_mask
-        new_front_descriptors = new_front_descriptors[: len(pareto_front_fitnesses), :]
+        new_front_descriptors = new_front_descriptors[:front_size, :]
 
-        new_mask = ~new_mask[: len(pareto_front_fitnesses)]
+        new_mask = ~new_mask[:front_size]
 
         return new_front_fitness, new_front_genotypes, new_front_descriptors, new_mask
 
@@ -307,7 +320,6 @@ class MOMERepertoire(MapElitesRepertoire):
             )
             new_fitnesses = carry.fitnesses.at[index].set(cell_fitness)
             new_descriptors = carry.descriptors.at[index].set(cell_descriptor)
-
             carry = carry.replace(  # type: ignore
                 genotypes=new_genotypes,
                 descriptors=new_descriptors,
@@ -334,7 +346,7 @@ class MOMERepertoire(MapElitesRepertoire):
     @classmethod
     def init(  # type: ignore
         cls,
-        genotypes: jnp.ndarray,
+        genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         centroids: Centroid,
@@ -401,7 +413,7 @@ class MOMERepertoire(MapElitesRepertoire):
     @jax.jit
     def compute_global_pareto_front(
         self,
-    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    ) -> Tuple[ParetoFront[Fitness], Mask]:
         """Merge all the pareto fronts of the MOME repertoire into a single one
         called global pareto front.
 
@@ -410,7 +422,7 @@ class MOMERepertoire(MapElitesRepertoire):
         """
         fitnesses = jnp.concatenate(self.fitnesses, axis=0)
         mask = jnp.any(fitnesses == -jnp.inf, axis=-1)
-        pareto_bool = compute_masked_pareto_front(fitnesses, mask)
-        pareto_front = fitnesses - jnp.inf * (~jnp.array([pareto_bool, pareto_bool]).T)
+        pareto_mask = compute_masked_pareto_front(fitnesses, mask)
+        pareto_front = fitnesses - jnp.inf * (~jnp.array([pareto_mask, pareto_mask]).T)
 
-        return pareto_front, pareto_bool
+        return pareto_front, pareto_mask
