@@ -4,15 +4,14 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
-import math
 from functools import partial
 from typing import Callable, List, Tuple, Union
 
 import flax
 import jax
 import jax.numpy as jnp
-import numpy as np
 from jax.flatten_util import ravel_pytree
+from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
 from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
@@ -24,9 +23,9 @@ def compute_cvt_centroids(
     num_centroids: int,
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
-) -> jnp.ndarray:
-    """
-    Compute centroids for CVT tesselation.
+    random_key: RNGKey,
+) -> Tuple[jnp.ndarray, RNGKey]:
+    """Compute centroids for CVT tesselation.
 
     Args:
         num_descriptors: number od scalar descriptors
@@ -37,56 +36,64 @@ def compute_cvt_centroids(
         num_centroids: number of centroids
         minval: minimum descriptors value
         maxval: maximum descriptors value
+        random_key: a jax PRNG random key
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
+        random_key: an updated jax PRNG random key
     """
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
+
     # assume here all values are in [0, 1] and rescale later
-    x = np.random.rand(num_init_cvt_samples, num_descriptors)
+    random_key, subkey = jax.random.split(random_key)
+    x = jax.random.uniform(key=subkey, shape=(num_init_cvt_samples, num_descriptors))
+
+    # compute k means
+    random_key, subkey = jax.random.split(random_key)
     k_means = KMeans(
         init="k-means++",
         n_clusters=num_centroids,
         n_init=1,
+        random_state=RandomState(subkey),
     )
     k_means.fit(x)
     centroids = k_means.cluster_centers_
     # rescale now
-    return jnp.asarray(centroids) * (maxval - minval) + minval
+    return jnp.asarray(centroids) * (maxval - minval) + minval, random_key
 
 
 def compute_euclidean_centroids(
-    num_descriptors: int,
-    num_centroids: int,
+    grid_shape: Tuple[int, ...],
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
-    """
-    Compute centroids for square Euclidean tesselation.
+    """Compute centroids for square Euclidean tesselation.
 
     Args:
-        num_descriptors: number od scalar descriptors
-        num_centroids: number of centroids
+        grid_shape: number of centroids per BD dimension
         minval: minimum descriptors value
         maxval: maximum descriptors value
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
     """
-    if num_descriptors != 2:
-        raise NotImplementedError("This function supports 2 descriptors only for now.")
+    # get number of descriptors
+    num_descriptors = len(grid_shape)
 
-    sqrt_centroids = math.sqrt(num_centroids)
+    # prepare list of linspaces
+    linspace_list = []
+    for num_centroids_in_dim in grid_shape:
+        offset = 1 / (2 * num_centroids_in_dim)
+        linspace = jnp.linspace(offset, 1.0 - offset, num_centroids_in_dim)
+        linspace_list.append(linspace)
 
-    if math.floor(sqrt_centroids) != sqrt_centroids:
-        raise ValueError("Num centroids should be a squared number.")
+    meshes = jnp.meshgrid(*linspace_list, sparse=False)
 
-    offset = 1 / (2 * int(sqrt_centroids))
-
-    linspace = jnp.linspace(offset, 1.0 - offset, int(sqrt_centroids))
-    meshes = jnp.meshgrid(linspace, linspace, sparse=False)
-    centroids = jnp.stack([jnp.ravel(meshes[0]), jnp.ravel(meshes[1])], axis=-1)
+    # create centroids
+    centroids = jnp.stack(
+        [jnp.ravel(meshes[i]) for i in range(num_descriptors)], axis=-1
+    )
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
     return jnp.asarray(centroids) * (maxval - minval) + minval
@@ -112,8 +119,7 @@ def get_cells_indices(
     def _get_cells_indices(
         descriptors: jnp.ndarray, centroids: jnp.ndarray
     ) -> jnp.ndarray:
-        """
-        set_of_descriptors of shape (1, num_descriptors)
+        """Set_of_descriptors of shape (1, num_descriptors)
         centroids of shape (num_centroids, num_descriptors)
         """
         return jnp.argmin(
@@ -125,8 +131,7 @@ def get_cells_indices(
 
 
 class MapElitesRepertoire(flax.struct.PyTreeNode):
-    """
-    Class for the repertoire in Map Elites.
+    """Class for the repertoire in Map Elites.
 
     Args:
         genotypes: a PyTree containing all the genotypes in the repertoire ordered
@@ -200,8 +205,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
-        """
-        Sample elements in the repertoire.
+        """Sample elements in the repertoire.
 
         Args:
             random_key: a jax PRNG random key
@@ -255,7 +259,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         # get fitness segment max
         best_fitnesses = jax.ops.segment_max(
             batch_of_fitnesses,
-            batch_of_indices.astype(jnp.int32).squeeze(),
+            batch_of_indices.astype(jnp.int32).squeeze(axis=-1),
             num_segments=num_centroids,
         )
 
@@ -281,24 +285,24 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         # create new repertoire
         new_repertoire_genotypes = jax.tree_map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
-                batch_of_indices.squeeze()
+                batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
             self.genotypes,
             batch_of_genotypes,
         )
 
         # compute new fitness and descriptors
-        new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze()].set(
-            batch_of_fitnesses.squeeze()
+        new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze(axis=-1)].set(
+            batch_of_fitnesses.squeeze(axis=-1)
         )
-        new_descriptors = self.descriptors.at[batch_of_indices.squeeze()].set(
-            batch_of_descriptors.squeeze()
+        new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
+            batch_of_descriptors
         )
 
         return MapElitesRepertoire(
             genotypes=new_repertoire_genotypes,
-            fitnesses=new_fitnesses.squeeze(),
-            descriptors=new_descriptors.squeeze(),
+            fitnesses=new_fitnesses,
+            descriptors=new_descriptors,
             centroids=self.centroids,
         )
 

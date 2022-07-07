@@ -7,7 +7,7 @@ from qdax.core.containers.mapelites_repertoire import (
 )
 
 
-def test_repertoire() -> None:
+def test_mapelites_repertoire() -> None:
 
     batch_size = 2
     genotype_size = 12
