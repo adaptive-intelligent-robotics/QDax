@@ -25,16 +25,6 @@ COPY requirements-dev.txt ./
 
 RUN pip install -r requirements-dev.txt
 
-FROM test-image as docs-image
-
-COPY docs/requirements.txt ./requirements-docs.txt
-
-COPY qdax qdax
-COPY setup.py ./
-
-RUN pip install -r requirements-docs.txt
-RUN pip install .
-
 
 FROM nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04 as cuda-image
 ENV PATH=/opt/conda/envs/qdaxpy38/bin/:$PATH APP_FOLDER=/app
