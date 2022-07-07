@@ -5,11 +5,18 @@ from functools import partial
 from typing import Any, Callable, Optional, Tuple
 
 import jax
-from chex import ArrayTree
 
 from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
+from qdax.types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    Metrics,
+    RNGKey,
+)
 
 
 class MAPElites:
@@ -30,7 +37,7 @@ class MAPElites:
     def __init__(
         self,
         scoring_function: Callable[
-            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ArrayTree, RNGKey]
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
@@ -71,6 +78,7 @@ class MAPElites:
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
+            extra_scores=extra_scores,
         )
 
         # get initial state of the emitter
@@ -124,7 +132,7 @@ class MAPElites:
         )
 
         # add genotypes in the repertoire
-        repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+        repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
 
         # update emitter state after scoring is made
         emitter_state = self._emitter.state_update(
