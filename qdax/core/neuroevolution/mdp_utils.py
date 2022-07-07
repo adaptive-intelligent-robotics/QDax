@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Tuple
 
 import brax
 import jax
@@ -12,7 +12,15 @@ from qdax.core.neuroevolution.buffers.buffer import (
     ReplayBuffer,
     Transition,
 )
-from qdax.types import Descriptor, Fitness, Genotype, Metrics, Params, RNGKey
+from qdax.types import (
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    Metrics,
+    Params,
+    RNGKey,
+)
 
 
 class TrainingState(PyTreeNode):
@@ -135,7 +143,7 @@ def scoring_function(
         Tuple[EnvState, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
+) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.
 
@@ -194,17 +202,17 @@ def reset_based_scoring_function(
         Tuple[brax.envs.State, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
+) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel.
     The play_reset_fn function allows for a more general scoring_function that can be
-    called with different batch-size and not only with a batch-size of the same 
+    called with different batch-size and not only with a batch-size of the same
     dimension as init_states.
-    
-    To define purely stochastic environments, using the reset function from the 
+
+    To define purely stochastic environments, using the reset function from the
     environment, use "play_reset_fn = env.reset".
 
-    To define purely deterministic environments, as in "scoring_function", generate 
-    a single init_state using "init_state = env.reset(random_key)", then use 
+    To define purely deterministic environments, as in "scoring_function", generate
+    a single init_state using "init_state = env.reset(random_key)", then use
     "play_reset_fn = lambda random_key: init_state".
     """
 
@@ -213,7 +221,7 @@ def reset_based_scoring_function(
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)
 
-    fitnesses, descriptors, info, random_key = scoring_function(
+    fitnesses, descriptors, extra_scores, random_key = scoring_function(
         policies_params=policies_params,
         random_key=random_key,
         init_states=init_states,
@@ -222,7 +230,7 @@ def reset_based_scoring_function(
         behavior_descriptor_extractor=behavior_descriptor_extractor,
     )
 
-    return (fitnesses, descriptors, info, random_key)
+    return (fitnesses, descriptors, extra_scores, random_key)
 
 
 @partial(

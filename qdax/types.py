@@ -1,5 +1,7 @@
 """Defines some types used in PaRL"""
 
+from typing import Dict
+
 import jax
 import jax.numpy as jnp
 import tree
@@ -24,7 +26,7 @@ Gradient: TypeAlias = jnp.ndarray
 
 Skill: TypeAlias = jnp.ndarray
 
-ExtraScores: TypeAlias = ArrayTree
+ExtraScores: TypeAlias = Dict[str, ArrayTree]
 
 # Others
 RNGKey: TypeAlias = jax.random.KeyArray
