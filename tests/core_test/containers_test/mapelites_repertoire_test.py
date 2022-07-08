@@ -1,22 +1,24 @@
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.containers.repertoire import (
+from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     compute_euclidean_centroids,
 )
 
 
-def test_repertoire() -> None:
+def test_mapelites_repertoire() -> None:
 
     batch_size = 2
     genotype_size = 12
     num_centroids = 4
-    num_descriptors = 2
+    grid_shape = (2, 2)
+
+    # get num descriptors from grid shape
+    num_descriptors = len(grid_shape)
 
     centroids = compute_euclidean_centroids(
-        num_descriptors=num_descriptors,
-        num_centroids=num_centroids,
+        grid_shape=grid_shape,
         minval=0.0,
         maxval=1.0,
     )

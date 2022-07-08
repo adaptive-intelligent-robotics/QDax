@@ -6,7 +6,10 @@ import jax.numpy as jnp
 import pytest
 
 from qdax import environments
-from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    compute_cvt_centroids,
+)
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGEmitter
 from qdax.core.map_elites import MAPElites
@@ -156,12 +159,13 @@ def test_pgame_elites() -> None:
     )
 
     # Compute the centroids
-    centroids = compute_cvt_centroids(
+    centroids, random_key = compute_cvt_centroids(
         num_descriptors=env.behavior_descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_bd,
         maxval=max_bd,
+        random_key=random_key,
     )
 
     # Instantiate MAP Elites

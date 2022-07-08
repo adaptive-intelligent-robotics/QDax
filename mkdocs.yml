@@ -3,8 +3,8 @@ site_description: QDax
 site_author: QDax Contributors
 site_url: https://qdax.readthedocs.io/
 site_dir: public
-repo_name: instadeepai/QDax
-repo_url: https://github.com/instadeepai/QDax
+repo_name: QDax
+repo_url: https://github.com/adaptive-intelligent-robotics/QDax
 strict: false
 
 
@@ -55,8 +55,8 @@ markdown_extensions:
   - pymdownx.critic
   - pymdownx.details
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:materialx.emoji.twemoji
   - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.keys

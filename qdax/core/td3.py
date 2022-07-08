@@ -303,7 +303,7 @@ class TD3:
             training_state.critic_params, critic_updates
         )
         # Soft update of target critic network
-        target_critic_params = jax.tree_multimap(
+        target_critic_params = jax.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             training_state.target_critic_params,
@@ -325,7 +325,7 @@ class TD3:
                 training_state.policy_params, policy_updates
             )
             # Soft update of target policy
-            target_policy_params = jax.tree_multimap(
+            target_policy_params = jax.tree_map(
                 lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
                 + self._config.soft_tau_update * x2,
                 training_state.target_policy_params,

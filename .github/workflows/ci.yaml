@@ -1,6 +1,9 @@
 name: ci
 
-on: push
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
 
 env:
   REGISTRY: ghcr.io
@@ -94,12 +97,7 @@ jobs:
 
       - name: Run pre-commits
         run: |
-          pre-commit run --all-files isort
-          pre-commit run --all-files black
-          pre-commit run --all-files nbstripout
-          pre-commit run --all-files debug-statements
-          pre-commit run --all-files check-ast
-          pre-commit run --all-files check-merge-conflict
+          pre-commit run --all-files
 
   tests:
     needs: [build]
@@ -116,4 +114,8 @@ jobs:
 
       - name: Run pytests
         run: |
-          pytest -vv tests
+          coverage run -m pytest -vv tests
+          coverage xml
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v2
