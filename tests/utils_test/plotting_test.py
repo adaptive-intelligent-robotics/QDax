@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.utils.plotting import plot_multidimensional_map_elites_grid
 
 

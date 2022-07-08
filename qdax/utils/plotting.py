@@ -12,8 +12,8 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.spatial import Voronoi
 
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.mome_repertoire import MOMERepertoire
-from qdax.core.containers.repertoire import MapElitesRepertoire
 
 
 def get_voronoi_finite_polygons_2d(
@@ -96,7 +96,7 @@ def plot_2d_map_elites_repertoire(
 ) -> Tuple[Optional[Figure], Axes]:
     """Plot a visual representation of a 2d map elites repertoire.
 
-    Note: should we use a repertoire as input directly? Because this
+    TODO: Use repertoire as input directly. Because this
     function is very specific to repertoires.
 
     Args:
@@ -106,8 +106,10 @@ def plot_2d_map_elites_repertoire(
         maxval: maximum values for the descriptors
         repertoire_descriptors: the descriptors. Defaults to None.
         ax: a matplotlib axe for the figure to plot. Defaults to None.
-        vmin: minimum value for the fitness. Defaults to None.
-        vmax: maximum value for the fitness. Defaults to None.
+        vmin: minimum value for the fitness. Defaults to None. If not given,
+            the value will be set to the minimum fitness in the repertoire.
+        vmax: maximum value for the fitness. Defaults to None. If not given,
+            the value will be set to the maximum fitness in the repertoire.
 
     Raises:
         NotImplementedError: does not work for descriptors dimension different
@@ -299,7 +301,7 @@ def multiline(
         ax: A matplotlib axe. Defaults to None.
 
     Returns:
-        Return a oollection of lines corresponding to the trajectories.
+        Return a collection of lines corresponding to the trajectories.
     """
 
     # find axes
@@ -502,6 +504,34 @@ def vector_to_rgb(angle: float, absolute: float) -> Any:
     absolute = (absolute + 0.5) / 1.5
 
     return mpl.colors.hsv_to_rgb((angle / 2 / np.pi, 1, absolute))
+
+
+def plot_global_pareto_front(
+    pareto_front: jnp.ndarray,
+    ax: Optional[plt.Axes] = None,
+    label: Optional[str] = None,
+    color: Optional[str] = None,
+) -> Tuple[Optional[Figure], plt.Axes]:
+    """Plots the global Pareto Front.
+
+    Args:
+        pareto_front: a pareto front
+        ax: a matplotlib ax. Defaults to None.
+        label: a given label. Defaults to None.
+        color: a color for the plotted points. Defaults to None.
+
+    Returns:
+        A figure and an axe.
+    """
+    fig = None
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=color, label=label)
+        return fig, ax
+    else:
+        ax.scatter(pareto_front[:, 0], pareto_front[:, 1], color=color, label=label)
+
+    return fig, ax
 
 
 def _get_projection_in_1d(

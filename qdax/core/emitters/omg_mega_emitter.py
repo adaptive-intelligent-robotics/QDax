@@ -4,7 +4,7 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 

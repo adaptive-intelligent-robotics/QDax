@@ -6,7 +6,6 @@ from typing import Tuple
 import flax
 import jax
 import jax.numpy as jnp
-from flax import struct
 
 from qdax.types import Action, Done, Observation, Reward, RNGKey, StateDescriptor
 
@@ -271,11 +270,11 @@ class ReplayBuffer(flax.struct.PyTreeNode):
     """
 
     data: jnp.ndarray
-    buffer_size: int = struct.field(pytree_node=False)
+    buffer_size: int = flax.struct.field(pytree_node=False)
     transition: Transition
 
-    current_position: jnp.ndarray = struct.field()
-    current_size: jnp.ndarray = struct.field()
+    current_position: jnp.ndarray = flax.struct.field()
+    current_size: jnp.ndarray = flax.struct.field()
 
     @classmethod
     def init(

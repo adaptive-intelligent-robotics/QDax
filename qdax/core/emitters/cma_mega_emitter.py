@@ -7,7 +7,10 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.cmaes import CMAES, CMAESState
-from qdax.core.containers.repertoire import MapElitesRepertoire, get_cells_indices
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    get_cells_indices,
+)
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Gradient, RNGKey
 
@@ -123,7 +126,7 @@ class CMAMEGAEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self", "batch_size"))
     def emit(
         self,
-        repertoire: MapElitesRepertoire,
+        repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAMEGAState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
@@ -144,7 +147,9 @@ class CMAMEGAEmitter(Emitter):
         # retrieve elements from the emitter state
         theta = jnp.nan_to_num(emitter_state.theta)
         cmaes_state = emitter_state.cmaes_state
-        grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze())
+
+        # get grads - remove nan and first dimension
+        grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze(axis=0))
 
         # Draw random coefficients - use the emitter state key
         coeffs, _ = self._cmaes.sample(
@@ -204,7 +209,8 @@ class CMAMEGAEmitter(Emitter):
         # Update the archive and compute the improvements
         indices = get_cells_indices(descriptors, repertoire.centroids)
         improvements = fitnesses - repertoire.fitnesses[indices]
-        sorted_indices = jnp.argsort(improvements.squeeze())[::-1]
+
+        sorted_indices = jnp.argsort(improvements)[::-1]
 
         # Draw the coeffs - reuse the emitter state key to get same coeffs
         coeffs, random_key = self._cmaes.sample(

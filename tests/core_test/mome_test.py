@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.containers.repertoire import compute_cvt_centroids
+from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import (
     polynomial_crossover,
     polynomial_mutation,
@@ -15,14 +15,14 @@ from qdax.core.emitters.mutation_operators import (
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.mome import MOME
 from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
-from qdax.utils.metrics import compute_moqd_metrics
+from qdax.utils.metrics import default_moqd_metrics
 
 
 @pytest.mark.parametrize("num_descriptors", [1, 2])
 def test_mome(num_descriptors: int) -> None:
 
     pareto_front_max_length = 50
-    num_variables = 100
+    num_variables = 120
     num_iterations = 100
 
     num_descriptors = num_descriptors
@@ -34,7 +34,7 @@ def test_mome(num_descriptors: int) -> None:
     eta = 1
     proportion_var_to_change = 0.5
     crossover_percentage = 1.0
-    batch_size = 100
+    batch_size = 80
     lag = 2.2
     base_lag = 0
 
@@ -76,7 +76,7 @@ def test_mome(num_descriptors: int) -> None:
     reference_point = jnp.array([-150, -150])
 
     # how to compute metrics from a repertoire
-    metrics_function = partial(compute_moqd_metrics, reference_point=reference_point)
+    metrics_function = partial(default_moqd_metrics, reference_point=reference_point)
 
     # initial population
     random_key = jax.random.PRNGKey(42)
