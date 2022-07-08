@@ -14,6 +14,7 @@ setup(
     install_requires=[
         "absl-py==1.0.0",
         "jax==0.3.10",
+        "jaxlib==0.3.10",  # necessary to build the doc atm
         "flax==0.4.1",
         "brax==0.0.12",
         "gym==0.23.1",
