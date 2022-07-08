@@ -34,6 +34,7 @@ Nevertheless, we recommand to use either Docker, Singularity or conda to use the
 - [OMG-MEGA](https://arxiv.org/pdf/2106.03894.pdf)
 - [CMA-MEGA](https://arxiv.org/pdf/2106.03894.pdf)
 - [SMERL](https://arxiv.org/pdf/2010.14484.pdf)
+- [MOME](https://arxiv.org/pdf/2202.03057.pdf)
 
 Those are the currently implemented algorithms but other algorithms will be released soon.
 ## QDax flexibility
