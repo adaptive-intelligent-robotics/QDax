@@ -31,6 +31,10 @@ Nevertheless, we recommand to use either Docker, Singularity or conda to use the
 - [MAP-Elites](https://arxiv.org/abs/1504.04909)
 - [CVT MAP-Elites](https://arxiv.org/abs/1610.05729)
 - [Policy Gradient Assisted MAP-Elites](https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf)
+- [OMG-MEGA](https://arxiv.org/pdf/2106.03894.pdf)
+- [CMA-MEGA](https://arxiv.org/pdf/2106.03894.pdf)
+- [SMERL](https://arxiv.org/pdf/2010.14484.pdf)
+- [MOME](https://arxiv.org/pdf/2202.03057.pdf)
 
 Those are the currently implemented algorithms but other algorithms will be released soon.
 ## QDax flexibility
