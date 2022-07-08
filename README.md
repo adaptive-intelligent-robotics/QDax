@@ -46,9 +46,9 @@ repertoire, emitter_state, random_key = map_elites.init(init_variables, centroid
 
 # Run MAP-Elites loop
 for i in range(num_iterations):
-    (repertoire, _, metrics, random_key,) = map_elites.update(
+    (repertoire, emitter_state, metrics, random_key,) = map_elites.update(
             repertoire,
-            None,
+            emitter_state,
             random_key,
         )
 
@@ -80,17 +80,17 @@ The QDax library also provides implementations for some useful baseline algorith
 ## QDax Overview
 
 QDax has been designed to be modular yet flexible so it's easy for anyone to use and extend on the different state-of-the-art QD algortihms available.
-For instance, MAP-Elites is designed to work with a few modular and simple components: `container`, `emitter`, and `scoring function`.
+For instance, MAP-Elites is designed to work with a few modular and simple components: `container`, `emitter`, and `scoring_function`.
 
 The `container` specifies the structure of archive of solutions to keep and the addition conditions associated with the archive.
 
 The `emitter` component is responsible for generating new solutions to be evaluated. For example, new solutions can be generated with random mutations, gradient descent, or sampling from distributions as in evolutionary strategies.
 
-The `scoring function` defines the problem/task we want to solve and functions to evaluate the solutions. For example, the `scoring function` can be used to represent standard black-box optimization tasks such as rastrigin or RL tasks.
+The `scoring_function` defines the problem/task we want to solve and functions to evaluate the solutions. For example, the `scoring_function` can be used to represent standard black-box optimization tasks such as rastrigin or RL tasks.
 
-With this modularity, a user can easily swap out any one of the components and pass it to the MAPElites class, avoiding having to re-implement all the steps of the algorithm.
+With this modularity, a user can easily swap out any one of the components and pass it to the `MAPElites` class, avoiding having to re-implement all the steps of the algorithm.
 
-Under one layer of abstraction, users have abit more flexibility. QDax has similarities to the simple and commonly found `ask`/`tell` interface. The `ask` function is similar to the `emit` function in QDax and the `tell` function is similar to the `update` function in QDax. Likewise, the `eval` of solutions is analogous to the `scoring function` in QDax.
+Under one layer of abstraction, users have a bit more flexibility. QDax has similarities to the simple and commonly found `ask`/`tell` interface. The `ask` function is similar to the `emit` function in QDax and the `tell` function is similar to the `update` function in QDax. Likewise, the `eval` of solutions is analogous to the `scoring function` in QDax.
 More importantly, QDax handles the archive management which is the key idea of QD algorihtms and not present or needed in standard optimization algorihtms or evolutionary strategies.
 
 ```python
@@ -128,7 +128,7 @@ for i in range(num_iterations):
 Issues and contributions are welcome. Please refer to the [contribution guide](https://qdax.readthedocs.io/en/latest/guides/CONTRIBUTING/) in the documentation for more details.
 
 ## Related Projects
-- [EvoJax: Hardware-Accelerated Neuroevolution](https://github.com/google/evojax). EvoJAX is a scalable, general purpose, hardware-accelerated neuroevolution toolkit. [Paper](https://arxiv.org/abs/2202.05008)
+- [EvoJAX: Hardware-Accelerated Neuroevolution](https://github.com/google/evojax). EvoJAX is a scalable, general purpose, hardware-accelerated neuroevolution toolkit. [Paper](https://arxiv.org/abs/2202.05008)
 - [evosax: JAX-Based Evolution Strategies](https://github.com/RobertTLange/evosax)
 
 ## Citing QDax
@@ -160,15 +160,3 @@ QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab
 <a href="https://github.com/GRichard513" title="Guillaume Richard"><img src="https://github.com/GRichard513.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/flajolet" title="Arthur Flajolet"><img src="https://github.com/flajolet.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/remidebette" title="Rémi Debette"><img src="https://github.com/remidebette.png" height="auto" width="50" style="border-radius:50%"></a>
-
-<!-- - [Felix Chalumeau](https://www.linkedin.com/in/f%C3%A9lix-chalumeau-083457172/)
-- [Thomas Pierrot](https://scholar.google.fr/citations?user=0zBiyNUAAAAJ&hl=en)
-- [Raphaël Boige](https://www.linkedin.com/in/raphaelboige/)
-- [Valentin Macé](https://www.linkedin.com/in/valentinmace/)
-- [Arthur Flajolet](https://scholar.google.com/citations?user=YYwquKkAAAAJ&hl=en)
-- [Guillaume Richard](https://scholar.google.com/citations?user=viOjnmQAAAAJ&hl=fr)
-- [Rémi Debette](https://www.linkedin.com/in/remidebette/) -->
-<!-- - [Bryan Lim](https://limbryan.github.io/)
-- [Maxime Allard](https://www.imperial.ac.uk/people/m.allard20)
-- [Luca Grillotti](https://scholar.google.com/citations?user=gY9CmssAAAAJ&hl=fr&oi=sra)
-- [Antoine Cully](https://www.imperial.ac.uk/people/a.cully) -->
