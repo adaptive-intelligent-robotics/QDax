@@ -1,5 +1,5 @@
 # SMERL classes for DIAYN and DADS
 
-::: qdax.core.diayn_smerl.DIAYNSMERL
+::: qdax.baselines.diayn_smerl.DIAYNSMERL
 
-::: qdax.core.dads_smerl.DADSSMERL
+::: qdax.baselines.dads_smerl.DADSSMERL

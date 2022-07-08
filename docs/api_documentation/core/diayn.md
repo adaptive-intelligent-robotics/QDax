@@ -1,3 +1,3 @@
 # DIAYN class
 
-::: qdax.core.diayn.DIAYN
+::: qdax.baselines.diayn.DIAYN

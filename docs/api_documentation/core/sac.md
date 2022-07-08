@@ -1,3 +1,3 @@
 # SAC class
 
-::: qdax.core.sac.SAC
+::: qdax.baselines.sac.SAC
