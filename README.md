@@ -59,6 +59,7 @@ repertoire.genotypes, repertoire.fitnesses, repertoire.descriptors
 
 ## QDax core algorithms
 QDax currently supports the following algorithms:
+
 | Algorithm  | Example |
 | --- | --- |
 | [MAP-Elites](https://arxiv.org/abs/1504.04909) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/mapelites_example.ipynb) |
@@ -68,8 +69,10 @@ QDax currently supports the following algorithms:
 | [CMA-MEGA](https://arxiv.org/abs/2106.03894) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/cmamega_example.ipynb) |
 | [Multi-Objective Quality-Diversity (MOME)](https://arxiv.org/abs/2202.03057) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/mome_example.ipynb) |
 
+
 ## QDax baseline algorithms
 The QDax library also provides implementations for some useful baseline algorithms:
+
 | Algorithm  | Example |
 | --- | --- |
 | [DIAYN](https://arxiv.org/abs/1802.06070) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/diayn_example.ipynb) |
