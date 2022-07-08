@@ -18,7 +18,8 @@ def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
     last_index = jnp.int32(jnp.sum(1.0 - mask, axis=1)) - 1
     descriptors = jax.vmap(lambda x, y: x[y])(data.state_desc, last_index)
 
-    return descriptors.squeeze()
+    # remove the dim coming from the trajectory
+    return descriptors.squeeze(axis=1)
 
 
 def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
