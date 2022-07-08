@@ -8,8 +8,8 @@ import pytest
 from brax.envs import State as EnvState
 
 from qdax import environments
-from qdax.core.dads import DadsTrainingState
-from qdax.core.dads_smerl import DADSSMERL, DadsSmerlConfig
+from qdax.baselines.dads import DadsTrainingState
+from qdax.baselines.dads_smerl import DADSSMERL, DadsSmerlConfig
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer

@@ -7,14 +7,14 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from qdax.baselines.genetic_algorithm import GeneticAlgorithm
+from qdax.baselines.nsga2 import NSGA2
+from qdax.baselines.spea2 import SPEA2
 from qdax.core.emitters.mutation_operators import (
     polynomial_crossover,
     polynomial_mutation,
 )
 from qdax.core.emitters.standard_emitters import MixingEmitter
-from qdax.core.genetic_algorithm import GeneticAlgorithm
-from qdax.core.nsga2 import NSGA2
-from qdax.core.spea2 import SPEA2
 from qdax.types import ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_ga_metrics
 

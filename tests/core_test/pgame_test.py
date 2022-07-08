@@ -11,7 +11,7 @@ from qdax.core.containers.mapelites_repertoire import (
     compute_cvt_centroids,
 )
 from qdax.core.emitters.mutation_operators import isoline_variation
-from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGEmitter
+from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGAMEEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.mdp_utils import scoring_function
@@ -135,7 +135,7 @@ def test_pgame_elites() -> None:
     # Get the emitter
     variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
 
-    pg_emitter = PGEmitter(
+    pg_emitter = PGAMEEmitter(
         config=pga_emitter_config,
         policy_network=policy_network,
         env=env,

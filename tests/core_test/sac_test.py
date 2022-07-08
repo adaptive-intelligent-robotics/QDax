@@ -8,9 +8,9 @@ import jax
 import pytest
 
 from qdax import environments
+from qdax.baselines.sac import SAC, SacConfig, TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
-from qdax.core.sac import SAC, SacConfig, TrainingState
 
 
 def test_sac() -> None:

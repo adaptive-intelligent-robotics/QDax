@@ -20,7 +20,7 @@ To see how QDax works, you can run this [notebook](./notebooks/mapelites_example
 The simplest way to install QDax is to clone the repo and to install the requirements.
 
 ```bash
-pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git
+git clone https://github.com/adaptive-intelligent-robotics/QDax.git
 cd QDax
 pip install -r requirements.txt
 ```
