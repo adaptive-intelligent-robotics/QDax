@@ -99,7 +99,7 @@ If you use QDax in your research and want to cite it in your work, please use:
 
 QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/).
 
-<img align="center" src="./docs/images/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="./docs/images/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
+<img align="center" src="docs/images/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/images/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
 
 <a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
