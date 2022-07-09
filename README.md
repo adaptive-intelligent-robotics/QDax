@@ -15,11 +15,7 @@ QDax has been developed as a research framework: it is flexible and easy to exte
 
 ## Installation
 
-The latest stable release of QDax can be installed directly from PyPI with:
-```bash
-pip install qdax
-```
-Alternatively, to install QDax from source:
+The latest stable release of QDax can be installed directly from source with:
 ```bash
 pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
 ```
