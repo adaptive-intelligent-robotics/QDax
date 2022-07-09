@@ -65,6 +65,9 @@ markdown_extensions:
   - pymdownx.smartsymbols
   - pymdownx.snippets:
       base_path: ./
+  - pymdownx.pathconverter:
+      base_path: ./
+      relative_path: docs
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
