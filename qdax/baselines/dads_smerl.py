@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 
 import jax
 
-from qdax.core.dads import DADS, DadsConfig, DadsTrainingState
+from qdax.baselines.dads import DADS, DadsConfig, DadsTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.core.neuroevolution.normalization_utils import normalize_with_rmstd

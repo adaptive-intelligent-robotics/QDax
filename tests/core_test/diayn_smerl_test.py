@@ -9,7 +9,7 @@ import pytest
 from brax.envs import State as EnvState
 
 from qdax import environments
-from qdax.core.diayn_smerl import DIAYNSMERL, DiaynSmerlConfig, DiaynTrainingState
+from qdax.baselines.diayn_smerl import DIAYNSMERL, DiaynSmerlConfig, DiaynTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer

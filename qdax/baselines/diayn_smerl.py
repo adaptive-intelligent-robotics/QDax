@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 
 import jax
 
-from qdax.core.diayn import DIAYN, DiaynConfig, DiaynTrainingState
+from qdax.baselines.diayn import DIAYN, DiaynConfig, DiaynTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.types import Metrics, Reward

@@ -1,3 +1,3 @@
 # Genetic Algorithm class
 
-::: qdax.core.genetic_algorithm.GeneticAlgorithm
+::: qdax.baselines.genetic_algorithm.GeneticAlgorithm

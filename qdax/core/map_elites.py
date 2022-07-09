@@ -121,7 +121,7 @@ class MAPElites:
             emitter_state: state of the emitter
             random_key: a jax PRNG random key
 
-        Results:
+        Returns:
             the updated MAP-Elites repertoire
             the updated (if needed) emitter state
             metrics about the updated repertoire

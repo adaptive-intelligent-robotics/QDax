@@ -1,3 +1,3 @@
 # SPEA2 class
 
-::: qdax.core.spea2.SPEA2
+::: qdax.baselines.spea2.SPEA2

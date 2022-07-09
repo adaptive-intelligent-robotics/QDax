@@ -9,7 +9,7 @@ import pytest
 from brax.envs import State as EnvState
 
 from qdax import environments
-from qdax.core.dads import DADS, DadsConfig, DadsTrainingState
+from qdax.baselines.dads import DADS, DadsConfig, DadsTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
 

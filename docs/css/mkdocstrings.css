@@ -1,0 +1,37 @@
+.field-list {
+    margin-left: 2% !important;
+    padding: 4% !important;
+    border-left-style: solid !important;
+    border-left-color: #2980B9 !important;
+}
+
+.doc-method {
+    margin-top: 5%;
+    padding-top: 5%;
+    border-top-style: solid !important;
+    border-top-color: #c9c9c9 !important;
+}
+
+.doc-children {
+    margin-left: 2% !important;
+}
+
+.doc-class,
+.doc-function {
+    margin-bottom: 10% !important;
+    padding-bottom: 5%;
+    border-bottom-style: solid !important;
+    border-bottom-color: #4e4a4a !important;
+}
+
+.doc-attribute {
+    margin-bottom: 5% !important;
+}
+
+details.quote {
+    margin-top: 2%;
+}
+
+.wy-nav-content {
+    max-width: 1000px !important;
+}

@@ -1,8 +1,6 @@
-"""Core components of the SPEA2 algorithm.
+"""Core components of the NSGA2 algorithm.
 
-Link to paper: "https://www.semanticscholar.org/paper/SPEA2%3A
--Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/
-b13724cb54ae4171916f3f969d304b9e9752a57f"
+Link to paper: https://ieeexplore.ieee.org/document/996017
 """
 
 from __future__ import annotations
@@ -12,39 +10,26 @@ from typing import Optional, Tuple
 
 import jax
 
-from qdax.core.containers.spea2_repertoire import SPEA2Repertoire
+from qdax.baselines.genetic_algorithm import GeneticAlgorithm
+from qdax.core.containers.nsga2_repertoire import NSGA2Repertoire
 from qdax.core.emitters.emitter import EmitterState
-from qdax.core.genetic_algorithm import GeneticAlgorithm
 from qdax.types import Genotype, RNGKey
 
 
-class SPEA2(GeneticAlgorithm):
-    """Implements main functions of the SPEA2 algorithm.
+class NSGA2(GeneticAlgorithm):
+    """Implements main functions of the NSGA2 algorithm.
 
     This class inherits most functions from GeneticAlgorithm.
     The init function is overwritten in order to precise the type
-    of repertoire used in SPEA2.
+    of repertoire used in NSGA2.
 
-    Link to paper: "https://www.semanticscholar.org/paper/SPEA2%3A-
-    Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/
-    b13724cb54ae4171916f3f969d304b9e9752a57f"
+    Link to paper: https://ieeexplore.ieee.org/document/996017
     """
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "population_size",
-            "num_neighbours",
-        ),
-    )
+    @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
-        self,
-        init_genotypes: Genotype,
-        population_size: int,
-        num_neighbours: int,
-        random_key: RNGKey,
-    ) -> Tuple[SPEA2Repertoire, Optional[EmitterState], RNGKey]:
+        self, init_genotypes: Genotype, population_size: int, random_key: RNGKey
+    ) -> Tuple[NSGA2Repertoire, Optional[EmitterState], RNGKey]:
 
         # score initial genotypes
         fitnesses, extra_scores, random_key = self._scoring_function(
@@ -52,11 +37,10 @@ class SPEA2(GeneticAlgorithm):
         )
 
         # init the repertoire
-        repertoire = SPEA2Repertoire.init(
+        repertoire = NSGA2Repertoire.init(
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             population_size=population_size,
-            num_neighbours=num_neighbours,
         )
 
         # get initial state of the emitter

@@ -1,3 +1,3 @@
 # DADS class
 
-::: qdax.core.dads.DADS
+::: qdax.baselines.dads.DADS

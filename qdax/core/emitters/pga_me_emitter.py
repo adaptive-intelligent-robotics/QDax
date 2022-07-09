@@ -42,7 +42,7 @@ class PGAMEConfig:
     soft_tau_update: float = 0.005
 
 
-class PGEmitterState(EmitterState):
+class PGAMEEmitterState(EmitterState):
     """Contains training state for the learner."""
 
     critic_params: Params
@@ -57,7 +57,7 @@ class PGEmitterState(EmitterState):
     steps: jnp.ndarray
 
 
-class PGEmitter(Emitter):
+class PGAMEEmitter(Emitter):
     """
     A policy gradient emitter used to implement the Policy Gradient Assisted MAP-Elites
     (PGA-Map-Elites) algorithm.
@@ -104,7 +104,7 @@ class PGEmitter(Emitter):
 
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
-    ) -> Tuple[PGEmitterState, RNGKey]:
+    ) -> Tuple[PGAMEEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
@@ -112,7 +112,7 @@ class PGEmitter(Emitter):
             random_key: A random key.
 
         Returns:
-            The initial state of the PGEmitter, a new random key.
+            The initial state of the PGAMEEmitter, a new random key.
         """
 
         observation_size = self._env.observation_size
@@ -153,7 +153,7 @@ class PGEmitter(Emitter):
 
         # Initial training state
         random_key, subkey = jax.random.split(random_key)
-        emitter_state = PGEmitterState(
+        emitter_state = PGAMEEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             greedy_policy_params=greedy_policy_params,
@@ -175,7 +175,7 @@ class PGEmitter(Emitter):
     def emit(
         self,
         repertoire: Repertoire,
-        emitter_state: PGEmitterState,
+        emitter_state: PGAMEEmitterState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """Do a single PGA-ME iteration: train critics and greedy policy,
@@ -226,13 +226,13 @@ class PGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
-        emitter_state: PGEmitterState,
+        emitter_state: PGAMEEmitterState,
         repertoire: Optional[Repertoire],
         genotypes: Optional[Genotype],
         fitnesses: Optional[Fitness],
         descriptors: Optional[Descriptor],
         extra_scores: ExtraScores,
-    ) -> PGEmitterState:
+    ) -> PGAMEEmitterState:
         """This function gives an opportunity to update the emitter state
         after the genotypes have been scored.
 
@@ -263,8 +263,8 @@ class PGEmitter(Emitter):
         emitter_state = emitter_state.replace(replay_buffer=replay_buffer)
 
         def scan_train_critics(
-            carry: PGEmitterState, unused: Any
-        ) -> Tuple[PGEmitterState, Any]:
+            carry: PGAMEEmitterState, unused: Any
+        ) -> Tuple[PGAMEEmitterState, Any]:
             emitter_state = carry
             new_emitter_state = self._train_critics(emitter_state)
             return new_emitter_state, ()
@@ -280,7 +280,7 @@ class PGEmitter(Emitter):
         return emitter_state  # type: ignore
 
     @partial(jax.jit, static_argnames=("self",))
-    def _train_critics(self, emitter_state: PGEmitterState) -> PGEmitterState:
+    def _train_critics(self, emitter_state: PGAMEEmitterState) -> PGAMEEmitterState:
         """Apply one gradient step to critics and to the greedy policy
         (contained in carry in training_state), then soft update target critics
         and target greedy policy.
@@ -348,7 +348,7 @@ class PGEmitter(Emitter):
         )
 
         # Create new training state
-        new_state = PGEmitterState(
+        new_state = PGAMEEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             greedy_policy_params=greedy_policy_params,
@@ -367,7 +367,7 @@ class PGEmitter(Emitter):
     def _mutation_function_pg(
         self,
         controller_params: Genotype,
-        emitter_state: PGEmitterState,
+        emitter_state: PGAMEEmitterState,
     ) -> Genotype:
         """Apply pg mutation to a policy via multiple steps of gradient descent.
 
@@ -382,8 +382,8 @@ class PGEmitter(Emitter):
         """
 
         def scan_train_controller(
-            carry: Tuple[PGEmitterState, Genotype], unused: Any
-        ) -> Tuple[Tuple[PGEmitterState, Genotype], Any]:
+            carry: Tuple[PGAMEEmitterState, Genotype], unused: Any
+        ) -> Tuple[Tuple[PGAMEEmitterState, Genotype], Any]:
             emitter_state, controller_params = carry
             (
                 new_emitter_state,
@@ -403,9 +403,9 @@ class PGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def _train_controller(
         self,
-        emitter_state: PGEmitterState,
+        emitter_state: PGAMEEmitterState,
         controller_params: Params,
-    ) -> Tuple[PGEmitterState, Params]:
+    ) -> Tuple[PGAMEEmitterState, Params]:
         """Apply one gradient step to a policy (called controllers_params).
 
         Args:
@@ -435,7 +435,7 @@ class PGEmitter(Emitter):
         controller_params = optax.apply_updates(controller_params, policy_updates)
 
         # Create new training state
-        new_emitter_state = PGEmitterState(
+        new_emitter_state = PGAMEEmitterState(
             critic_params=emitter_state.critic_params,
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             greedy_policy_params=emitter_state.greedy_policy_params,
