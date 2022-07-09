@@ -63,7 +63,8 @@ markdown_extensions:
       repo: mkdocs-material
   - pymdownx.mark
   - pymdownx.smartsymbols
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      base_path: ./
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
