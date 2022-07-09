@@ -2,14 +2,14 @@
     margin-left: 2% !important;
     padding: 4% !important;
     border-left-style: solid !important;
-    border-left-color: deepskyblue !important;
+    border-left-color: #2980B9 !important;
 }
 
 .doc-method {
     margin-top: 5%;
     padding-top: 5%;
     border-top-style: solid !important;
-    border-top-color: silver !important;
+    border-top-color: #c9c9c9 !important;
 }
 
 .doc-children {
@@ -21,7 +21,7 @@
     margin-bottom: 10% !important;
     padding-bottom: 5%;
     border-bottom-style: solid !important;
-    border-bottom-color: dimgray !important;
+    border-bottom-color: #4e4a4a !important;
 }
 
 .doc-attribute {
