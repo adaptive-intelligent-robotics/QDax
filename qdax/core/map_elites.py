@@ -5,16 +5,26 @@ from functools import partial
 from typing import Any, Callable, Optional, Tuple
 
 import jax
-from chex import ArrayTree
 
-from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, RNGKey
+from qdax.types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    Metrics,
+    RNGKey,
+)
 
 
 class MAPElites:
-    """
-    Core elements of the MAP-Elites algorithm.
+    """Core elements of the MAP-Elites algorithm.
+
+    Note: Although very similar to the GeneticAlgorithm, we decided to keep the
+    MAPElites class independant of the GeneticAlgorithm class at the moment to keep
+    elements explicit.
 
     Args:
         scoring_function: a function that takes a batch of genotypes and compute
@@ -30,7 +40,7 @@ class MAPElites:
     def __init__(
         self,
         scoring_function: Callable[
-            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ArrayTree, RNGKey]
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
@@ -47,9 +57,9 @@ class MAPElites:
         random_key: RNGKey,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
         """
-        Initialize a Map-Elites grid with an initial population of genotypes. Requires
-        the definition of centroids that can be computed with any method such as
-        CVT or Euclidean mapping.
+        Initialize a Map-Elites repertoire with an initial population of genotypes.
+        Requires the definition of centroids that can be computed with any method
+        such as CVT or Euclidean mapping.
 
         Args:
             init_genotypes: initial genotypes, pytree in which leaves
@@ -58,18 +68,22 @@ class MAPElites:
             random_key: a random key used for stochastic operations.
 
         Returns:
-            an initialized MAP-Elite repertoire with the initial state of the emitter.
+            An initialized MAP-Elite repertoire with the initial state of the emitter,
+            and a random key.
         """
+        # score initial genotypes
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             init_genotypes, random_key
         )
 
+        # init the repertoire
         repertoire = MapElitesRepertoire.init(
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
         )
+
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
             init_genotypes=init_genotypes, random_key=random_key
@@ -78,6 +92,7 @@ class MAPElites:
         # update emitter state
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
+            repertoire=repertoire,
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
@@ -95,16 +110,18 @@ class MAPElites:
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics, RNGKey]:
         """
         Performs one iteration of the MAP-Elites algorithm.
-        1. A batch of genotypes is sampled in the archive and the genotypes are copied.
+        1. A batch of genotypes is sampled in the repertoire and the genotypes
+            are copied.
         2. The copies are mutated and crossed-over
-        3. The obtained offsprings are scored and then added to the archive.
+        3. The obtained offsprings are scored and then added to the repertoire.
+
 
         Args:
             repertoire: the MAP-Elites repertoire
             emitter_state: state of the emitter
             random_key: a jax PRNG random key
 
-        Results:
+        Returns:
             the updated MAP-Elites repertoire
             the updated (if needed) emitter state
             metrics about the updated repertoire
@@ -125,6 +142,7 @@ class MAPElites:
         # update emitter state after scoring is made
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
+            repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,

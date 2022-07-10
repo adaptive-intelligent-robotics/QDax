@@ -6,11 +6,14 @@ import jax.numpy as jnp
 import pytest
 
 from qdax import environments
-from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    compute_cvt_centroids,
+)
 from qdax.core.emitters.mutation_operators import isoline_variation
-from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGEmitter
+from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGAMEEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.core.neuroevolution.buffers.buffers import QDTransition
+from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.mdp_utils import scoring_function
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import EnvState, Params, RNGKey
@@ -132,7 +135,7 @@ def test_pgame_elites() -> None:
     # Get the emitter
     variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
 
-    pg_emitter = PGEmitter(
+    pg_emitter = PGAMEEmitter(
         config=pga_emitter_config,
         policy_network=policy_network,
         env=env,
@@ -156,12 +159,13 @@ def test_pgame_elites() -> None:
     )
 
     # Compute the centroids
-    centroids = compute_cvt_centroids(
+    centroids, random_key = compute_cvt_centroids(
         num_descriptors=env.behavior_descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_bd,
         maxval=max_bd,
+        random_key=random_key,
     )
 
     # Instantiate MAP Elites

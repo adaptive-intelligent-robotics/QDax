@@ -9,7 +9,7 @@ strict: false
 
 
 theme:
-  name: material
+  name: readthedocs
   language: en
   palette:
     # Light mode / dark mode
@@ -27,10 +27,7 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-  #logo: img/parl-logo.png
-  # favicon: img/parl-logo.png
-  # icon:
-  #   repo: fontawesome/brands/gitlab
+
   features:
     - navigation.tracking
     - navigation.tabs
@@ -55,8 +52,8 @@ markdown_extensions:
   - pymdownx.critic
   - pymdownx.details
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:materialx.emoji.twemoji
   - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.keys
@@ -66,6 +63,11 @@ markdown_extensions:
       repo: mkdocs-material
   - pymdownx.mark
   - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      base_path: ./
+  - pymdownx.pathconverter:
+      base_path: ./
+      relative_path: docs
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -78,32 +80,66 @@ markdown_extensions:
   - pymdownx.tabbed:
      alternate_style: true
 
+extra_css:
+  - css/mkdocstrings.css
 
 plugins:
-  - search
-  - autorefs  # Cross-links to headings
-  - git-revision-date
-  - mknotebooks  # enable Jupyter notebooks
-  - mkdocstrings:
-      handlers:
-        python:
-          docstring_style: google
-          selection:
-            inherited_members: true  # Allow looking up inherited methods
-            filters:
-              - '!^test'
-              - "!^_"  # exclude all members starting with _
-              - "^__init__$"  # but always include __init__ modules and methods
-          rendering:
-            show_source: false # don't include source code (too cumbersome)
-            members_order: source  # order methods according to their order of definition in the source code, not alphabetical order
+- search
+- autorefs  # Cross-links to headings
+- git-revision-date
+- mknotebooks  # enable Jupyter notebooks
+- mkdocstrings:
+    custom_templates: templates
+    handlers:
+      python:
+        docstring_style: google
+        selection:
+          inherited_members: true  # Allow looking up inherited methods
+          filters:
+            - '!^test'
+            - "!^_"  # exclude all members starting with _
+            - "^__init__$"  # but always include __init__ modules and methods
+        rendering:
+          show_source: true # don't include source code (too cumbersome)
+          show_root_heading: true
+          members_order: source  # order methods according to their order of definition in the source code, not alphabetical order
 
 
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Overview: overview.md
   - Guides:
     - Contributing: guides/CONTRIBUTING.md
   - Examples:
     - MAPElites: notebooks/mapelites_example.ipynb
     - PGAME: notebooks/pgame_example.ipynb
+    - OMG MEGA: notebooks/omgmega_example.ipynb
+    - CMA MEGA: notebooks/cmamega_example.ipynb
+    - MOME: notebooks/mome_example.ipynb
+    - DIAYN: notebooks/diayn_example.ipynb
+    - DADS: notebooks/dads_example.ipynb
+    - SMERL: notebooks/smerl_example.ipynb
+  - API documentation:
+    - Core:
+      - Core algorithms:
+        - MAP Elites: api_documentation/core/map_elites.md
+        - PGAME: api_documentation/core/pgame.md
+        - OMG MEGA: api_documentation/core/omg_mega.md
+        - CMA MEGA: api_documentation/core/cma_mega.md
+        - MOME: api_documentation/core/mome.md
+      - Baseline algorithms:
+        - SMERL: api_documentation/core/smerl.md
+        - DIAYN: api_documentation/core/diayn.md
+        - DADS: api_documentation/core/dads.md
+        - SAC: api_documentation/core/sac.md
+        - TD3: api_documentation/core/td3.md
+        - CMAES: api_documentation/core/cmaes.md
+        - Genetic Algorithm: api_documentation/core/genetic_algorithm.md
+        - NSGA2: api_documentation/core/nsga2.md
+        - SPEA2: api_documentation/core/spea2.md
+      - Containers: api_documentation/core/containers.md
+      - Emitters: api_documentation/core/emitters.md
+      - Neuroevolution: api_documentation/core/neuroevolution.md
+    - Environments: api_documentation/environments.md
+    - Utils: api_documentation/utils.md

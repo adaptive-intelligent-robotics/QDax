@@ -36,6 +36,7 @@ repos:
       - id: check-docstring-first # Check a common error of defining a docstring after code
       - id: check-merge-conflict # Check for files that contain merge conflict strings
       - id: check-yaml # Check yaml files
+        args: ["--unsafe"]
       - id: end-of-file-fixer # Ensure that a file is either empty, or ends with one newline
       - id: mixed-line-ending # Replace or checks mixed line ending
       - id: trailing-whitespace # This hook trims trailing whitespace

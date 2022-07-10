@@ -1,24 +1,33 @@
+"""Tests MAP Elites implementation"""
+
 import functools
-from typing import Any, Dict, Tuple
+from typing import Dict, Tuple
 
 import jax
 import jax.numpy as jnp
 import pytest
 
 from qdax import environments
-from qdax.core.containers.repertoire import MapElitesRepertoire, compute_cvt_centroids
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    compute_cvt_centroids,
+)
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.core.neuroevolution.buffers.buffers import QDTransition
+from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.mdp_utils import scoring_function
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import EnvState, Params, RNGKey
 
 
-def test_map_elites() -> None:
-    batch_size = 10
-    env_name = "walker2d_uni"
+@pytest.mark.parametrize(
+    "env_name, batch_size",
+    [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
+)
+def test_map_elites(env_name: str, batch_size: int) -> None:
+    batch_size = batch_size
+    env_name = env_name
     episode_length = 100
     num_iterations = 5
     seed = 42
@@ -95,7 +104,7 @@ def test_map_elites() -> None:
     # Define emitter
     variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
     mixing_emitter = MixingEmitter(
-        mutation_fn=None,
+        mutation_fn=lambda x, y: (x, y),
         variation_fn=variation_fn,
         variation_percentage=1.0,
         batch_size=batch_size,
@@ -125,34 +134,24 @@ def test_map_elites() -> None:
     )
 
     # Compute the centroids
-    centroids = compute_cvt_centroids(
+    centroids, random_key = compute_cvt_centroids(
         num_descriptors=env.behavior_descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_bd,
         maxval=max_bd,
+        random_key=random_key,
     )
 
     # Compute initial repertoire
-    repertoire, _, random_key = map_elites.init(init_variables, centroids, random_key)
-
-    # Prepare scan over map_elites update to perform several iterations at a time
-    @jax.jit
-    def update_scan_fn(carry: Any, unused: Any) -> Any:
-        # iterate over grid
-        repertoire, random_key = carry
-        (repertoire, _, metrics, random_key,) = map_elites.update(
-            repertoire,
-            None,
-            random_key,
-        )
-
-        return (repertoire, random_key), metrics
+    repertoire, emitter_state, random_key = map_elites.init(
+        init_variables, centroids, random_key
+    )
 
     # Run the algorithm
-    (repertoire, random_key,), metrics = jax.lax.scan(
-        update_scan_fn,
-        (repertoire, random_key),
+    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+        map_elites.scan_update,
+        (repertoire, emitter_state, random_key),
         (),
         length=num_iterations,
     )
@@ -161,4 +160,4 @@ def test_map_elites() -> None:
 
 
 if __name__ == "__main__":
-    test_map_elites()
+    test_map_elites(env_name="pointmaze", batch_size=10)

@@ -90,20 +90,18 @@ def polynomial_mutation(
     Polynomial mutation over several genotypes
 
     Parameters:
-        x (Genotypes): array of genotypes to transform (real values only)
-        random_key (RNGKey): RNG key for reproducibility.
+        x: array of genotypes to transform (real values only)
+        random_key: RNG key for reproducibility.
             Assumed to be of shape (batch_size, genotype_dim)
-
         proportion_to_mutate (float): proportion of variables to mutate in
             each genotype (must be in [0, 1]).
-        eta (float): scaling parameter, the larger the more spread the new
-        values will be.
-        minval (float): minimum value to clip the genotypes.
-        maxval (float): maximum value to clip the genotypes.
+        eta: scaling parameter, the larger the more spread the new
+            values will be.
+        minval: minimum value to clip the genotypes.
+        maxval: maximum value to clip the genotypes.
 
     Returns:
-        x (Genotypes): new genotypes - same shape as input
-        random_key (RNGKey): new RNG key
+        New genotypes - same shape as input and a new RNG key
     """
     random_key, subkey = jax.random.split(random_key)
     batch_size = jax.tree_leaves(x)[0].shape[0]
@@ -156,15 +154,14 @@ def polynomial_crossover(
     (batch_size, genotype_dim)
 
     Parameters:
-        x1 (Genotypes): first batch of genotypes
-        x2 (Genotypes): second batch of genotypes
-        random_key (RNGKey): RNG key for reproducibility
-        proportion_var_to_change (float): proportion of variables to exchange
-        between genotypes (must be [0, 1])
+        x1: first batch of genotypes
+        x2: second batch of genotypes
+        random_key: RNG key for reproducibility
+        proportion_var_to_change: proportion of variables to exchange
+            between genotypes (must be [0, 1])
 
     Returns:
-        x (Genotypes): new genotypes
-        random_key (RNGKey): new RNG key
+        New genotypes and a new RNG key
     """
 
     random_key, subkey = jax.random.split(random_key)

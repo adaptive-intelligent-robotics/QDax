@@ -26,7 +26,6 @@ COPY requirements-dev.txt ./
 RUN pip install -r requirements-dev.txt
 
 
-
 FROM nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04 as cuda-image
 ENV PATH=/opt/conda/envs/qdaxpy38/bin/:$PATH APP_FOLDER=/app
 ENV PYTHONPATH=$APP_FOLDER:$PYTHONPATH
@@ -42,8 +41,8 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-11.0/targets/x86_64-linux/l
 
 ENV TZ=Europe/Paris
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN pip --no-cache-dir install jaxlib==0.3.2+cuda11.cudnn82 \
-    -f https://storage.googleapis.com/jax-releases/jax_releases.html \
+RUN pip --no-cache-dir install jaxlib==0.3.10+cuda11.cudnn82 \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html \
     && rm -rf /tmp/*
 
 WORKDIR $APP_FOLDER

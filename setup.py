@@ -1,6 +1,13 @@
+import os
+
 from setuptools import find_packages, setup
 
 from qdax import __version__
+
+CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
+
+with open(os.path.join(CURRENT_DIR, "README.md"), encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="qdax",
@@ -8,24 +15,27 @@ setup(
     packages=find_packages(),
     url="https://github.com/adaptive-intelligent-robotics/QDax",
     license="MIT",
-    author="Bryan Lim and InstaDeep Ltd",
-    author_email="",
-    description="A Python Library for Quality Diversity and NeuroEvolution",
+    author="AIRL and InstaDeep Ltd",
+    author_email="adaptive.intelligent.robotics@gmail.com",
+    description="A Python Library for Quality-Diversity and NeuroEvolution",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     install_requires=[
-        "absl-py==1.0.0",
-        "jax==0.3.2",
-        "flax==0.4.1",
-        "brax==0.0.12",
-        "gym>=0.15",
-        "numpy>=1.19",
-        "scikit-learn>=1.0",
-        "scipy>=1.7",
+        "absl-py>=1.0.0",
+        "jax>=0.3.10",
+        "jaxlib>=0.3.10",  # necessary to build the doc atm
+        "flax>=0.4.1",
+        "brax>=0.0.12",
+        "gym>=0.23.1",
+        "numpy>=1.22.3",
+        "scikit-learn>=1.0.2",
+        "scipy>=1.8.0",
         "sklearn",
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
     ],
-    keywords="Quality Diversity NeuroEvolution Reinforcement Learning JAX",
+    keywords=["Quality-Diversity", "NeuroEvolution", "Reinforcement Learning", "JAX"],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Environment :: Console",
