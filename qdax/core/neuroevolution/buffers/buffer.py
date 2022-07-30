@@ -336,24 +336,52 @@ class ReplayBuffer(flax.struct.PyTreeNode):
             transitions: A transition object in which each field is assumed to have
                 a shape (batch_size, field_dim).
         """
+
         flattened_transitions = transitions.flatten()
         flattened_transitions = flattened_transitions.reshape(
             (-1, flattened_transitions.shape[-1])
         )
-        num_transitions = flattened_transitions.shape[0]
-        max_replay_size = self.buffer_size
 
+        # move dead transitions at the end of the transition array
+        is_done = jnp.clip(jnp.cumsum(transitions.dones, axis=1), 0, 1)
+        mask = jnp.roll(is_done, 1, axis=1)
+        mask = mask.at[:, 0].set(0).ravel()
+        flattened_indices = jnp.where(
+            mask == 0, jnp.arange(0, flattened_transitions.shape[0], step=1), jnp.inf
+        )
+        ordered_flattened_indices = jnp.argsort(
+            jnp.repeat(
+                jnp.expand_dims(flattened_indices, axis=1),
+                flattened_transitions.shape[-1],
+                axis=1,
+            ),
+            axis=0,
+        )
+        flattened_transitions = jnp.take_along_axis(
+            flattened_transitions, ordered_flattened_indices, axis=0
+        )
+        mask = jnp.take_along_axis(mask, jnp.argsort(flattened_indices, axis=0), axis=0)
+
+        # set an indice to each transition for addition
+        max_replay_size = self.buffer_size
+        addition_indices = (
+            jnp.arange(0, flattened_transitions.shape[0], step=1) % max_replay_size
+        )
+
+        # set dead transition indices to max_replay_size (out of bound)
+        addition_indices = jnp.where(mask == 0, addition_indices, max_replay_size)
+        num_transitions = jnp.sum(jnp.where(mask == 0, 1, 0))
+
+        # add transitions to data
+        start_indexe = self.current_position % max_replay_size
+        addition_indices = addition_indices + start_indexe
+        new_data = self.data.at[addition_indices].set(flattened_transitions)
+
+        # update replay buffer
         new_current_position = self.current_position + num_transitions
         new_current_size = jnp.minimum(
             self.current_size + num_transitions, max_replay_size
         )
-        new_data = jax.lax.dynamic_update_slice_in_dim(
-            self.data,
-            flattened_transitions,
-            start_index=self.current_position % max_replay_size,
-            axis=0,
-        )
-
         replay_buffer = self.replace(
             current_position=new_current_position,
             current_size=new_current_size,
