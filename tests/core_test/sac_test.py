@@ -3,7 +3,6 @@
 from functools import partial
 from typing import Any, Tuple
 
-import brax
 import jax
 import pytest
 
@@ -11,6 +10,7 @@ from qdax import environments
 from qdax.baselines.sac import SAC, SacConfig, TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
+from qdax.types import EnvState
 
 
 def test_sac() -> None:
@@ -129,9 +129,9 @@ def test_sac() -> None:
 
     @jax.jit
     def _scan_do_iteration(
-        carry: Tuple[TrainingState, brax.envs.State, ReplayBuffer],
+        carry: Tuple[TrainingState, EnvState, ReplayBuffer],
         unused_arg: Any,
-    ) -> Tuple[Tuple[TrainingState, brax.envs.State, ReplayBuffer], Any]:
+    ) -> Tuple[Tuple[TrainingState, EnvState, ReplayBuffer], Any]:
         (
             training_state,
             env_state,
