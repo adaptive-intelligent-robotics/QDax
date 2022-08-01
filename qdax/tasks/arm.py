@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
+
 def arm(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Compute the fitness and BD of one individual in the Planar Arm task.
@@ -36,6 +37,23 @@ def arm(params: Genotype) -> Tuple[Fitness, Descriptor]:
 def arm_scoring_function(
     params: Genotype,
     random_key: RNGKey,
+) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    """
+    Evaluate policies contained in params in parallel.
+    """
+    fitnesses, descriptors = jax.vmap(arm)(params)
+
+    return (
+        fitnesses,
+        descriptors,
+        {},
+        random_key,
+    )
+
+
+def noisy_arm_scoring_function(
+    params: Genotype,
+    random_key: RNGKey,
     fit_variance: float,
     desc_variance: float,
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
@@ -59,7 +77,3 @@ def arm_scoring_function(
         {},
         random_key,
     )
-
-
-
-
