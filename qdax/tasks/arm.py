@@ -15,11 +15,14 @@ def arm(params: Genotype) -> Tuple[Fitness, Descriptor]:
     Args:
         params: genotype of the individual to evaluate, corresponding to
             the normalised angles for each DoF of the arm.
+            Params should be between [0, 1].
 
     Returns:
         f: the fitness of the individual, given as the variance of the angles.
         bd: the bd of the individual, given as the [x, y] position of the
             end-effector of the arm.
+            BD is normalized to [0, 1] regardless of the num of DoF.
+            Arm is centered at 0.5, 0.5.
     """
 
     x = jnp.clip(params, 0, 1)
@@ -27,6 +30,7 @@ def arm(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
     f = jnp.sqrt(jnp.mean(jnp.square(x - jnp.mean(x))))
 
+    # Compute the end-effector position - forward kinemateics
     cum_angles = jnp.cumsum(2 * jnp.pi * x - jnp.pi)
     x_pos = jnp.sum(jnp.cos(cum_angles)) / (2 * size) + 0.5
     y_pos = jnp.sum(jnp.sin(cum_angles)) / (2 * size) + 0.5
