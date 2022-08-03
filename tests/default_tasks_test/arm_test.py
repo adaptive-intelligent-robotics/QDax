@@ -13,7 +13,7 @@ from qdax.tasks.arm import arm_scoring_function, noisy_arm_scoring_function
 from qdax.utils.metrics import default_qd_metrics
 
 scoring_functions = {
-    "arm": arm_scoring_function,
+    "arm": functools.partial(arm_scoring_function),
     "noisy_arm": functools.partial(
         noisy_arm_scoring_function, fit_variance=0.1, desc_variance=0.1
     ),

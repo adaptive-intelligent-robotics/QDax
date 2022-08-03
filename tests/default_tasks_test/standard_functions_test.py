@@ -17,9 +17,9 @@ from qdax.tasks.standard_functions import (
 from qdax.utils.metrics import default_qd_metrics
 
 scoring_functions = {
-    "rastrigin": rastrigin_scoring_function,
-    "sphere": sphere_scoring_function,
-    "rastrigin_proj": rastrigin_proj_scoring_function,
+    "rastrigin": functools.partial(rastrigin_scoring_function),
+    "sphere": functools.partial(sphere_scoring_function),
+    "rastrigin_proj": functools.partial(rastrigin_proj_scoring_function),
 }
 
 
