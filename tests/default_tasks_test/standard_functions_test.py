@@ -10,6 +10,7 @@ from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.tasks.standard_functions import (
+    rastrigin_proj_scoring_function,
     rastrigin_scoring_function,
     sphere_scoring_function,
 )
@@ -18,12 +19,13 @@ from qdax.utils.metrics import default_qd_metrics
 scoring_functions = {
     "rastrigin": rastrigin_scoring_function,
     "sphere": sphere_scoring_function,
+    "rastrigin_proj": rastrigin_proj_scoring_function,
 }
 
 
 @pytest.mark.parametrize(
     "task_name, batch_size",
-    [("rastrigin", 1), ("sphere", 10)],
+    [("rastrigin", 1), ("sphere", 10), ("rastrigin_proj", 20)],
 )
 def test_standard_functions(task_name: str, batch_size: int) -> None:
     seed = 42
