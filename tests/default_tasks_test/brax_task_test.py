@@ -18,8 +18,8 @@ from qdax.utils.metrics import default_qd_metrics
 @pytest.mark.parametrize(
     "env_name, batch_size, is_task_reset_based",
     [
-        ("walker2d_uni", 1, False),
-        ("walker2d_uni", 1, True),
+        ("walker2d_uni", 5, False),
+        ("walker2d_uni", 5, True),
     ],
 )
 def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -> None:
@@ -75,7 +75,7 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     )
 
     # Init population of controllers
-    init_variables = init_population_controllers(
+    init_variables, random_key = init_population_controllers(
         policy_network, env, batch_size, random_key
     )
 
@@ -96,4 +96,4 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
 
 
 if __name__ == "__main__":
-    test_map_elites(env_name="pointmaze", batch_size=10)
+    test_map_elites(env_name="walker2d_uni", batch_size=10, is_task_reset_based=False)
