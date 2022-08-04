@@ -1,13 +1,15 @@
 from functools import partial
 from typing import Any, Callable, Tuple
 
+import brax.envs
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
 from brax.envs import State as EnvState
 from flax.struct import PyTreeNode
 
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
-from qdax.types import Metrics, Params, RNGKey
+from qdax.types import Genotype, Metrics, Params, RNGKey
 
 
 class TrainingState(PyTreeNode):
@@ -194,3 +196,15 @@ def get_first_episode(transition: Transition) -> Transition:
         return jnp.where(mask.T, x.T, jnp.nan * jnp.ones_like(x).T).T
 
     return jax.tree_map(mask_episodes, transition)  # type: ignore
+
+
+def init_population_controllers(
+    policy_network: nn.Module, env: brax.envs.Env, batch_size: int, random_key: RNGKey
+) -> Tuple[Genotype, RNGKey]:
+    random_key, subkey = jax.random.split(random_key)
+
+    keys = jax.random.split(subkey, num=batch_size)
+    fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
+    init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
+
+    return init_variables, random_key
