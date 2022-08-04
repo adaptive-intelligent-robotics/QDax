@@ -31,6 +31,10 @@ ScoringFnType: TypeAlias = Callable[
     [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
 ]
 
+BehaviourDescriptorExtractorType: TypeAlias = Callable[
+    [QDTransition, jnp.ndarray], Descriptor
+]
+
 
 def create_policy_network_play_step_fn(
     env: brax.envs.Env,
@@ -81,7 +85,7 @@ def scoring_function_brax_envs(
     init_states: EnvState,
     episode_length: int,
     play_step_fn: PlayStepFnType,
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    behavior_descriptor_extractor: BehaviourDescriptorExtractorType,
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.
@@ -137,7 +141,7 @@ def reset_based_scoring_function_brax_envs(
     episode_length: int,
     play_reset_fn: Callable[[RNGKey], EnvState],
     play_step_fn: PlayStepFnType,
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    behavior_descriptor_extractor: BehaviourDescriptorExtractorType,
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel.
     The play_reset_fn function allows for a more general scoring_function that can be
@@ -173,7 +177,7 @@ def create_brax_scoring_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
     batch_size: int,
-    bd_extraction_fn: Callable[[EnvState], Descriptor],
+    bd_extraction_fn: BehaviourDescriptorExtractorType,
     random_key: RNGKey,
     play_step_fn: Optional[PlayStepFnType] = None,
     episode_length: int = 100,

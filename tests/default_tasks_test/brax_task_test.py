@@ -1,22 +1,18 @@
 """Tests MAP Elites implementation"""
 
 import functools
-from typing import Dict
 
 import jax
-import jax.numpy as jnp
 import pytest
 
-from qdax import environments
-from qdax.core.containers.mapelites_repertoire import (
-    MapElitesRepertoire,
-    compute_cvt_centroids,
-)
+import qdax.environments
+from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.mdp_utils import init_population_controllers
 from qdax.tasks.brax_envs import create_default_brax_task_components
+from qdax.utils.metrics import default_qd_metrics
 
 
 @pytest.mark.parametrize(
@@ -55,24 +51,11 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
         batch_size=batch_size,
     )
 
-    # Get minimum reward value to make sure qd_score are positive
-    reward_offset_for_qd_score_metric = environments.reward_offset[env_name]
-
-    # Define a metrics function
-    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict:
-        # Get metrics
-        grid_empty = repertoire.fitnesses == -jnp.inf
-        qd_score = jnp.sum(repertoire.fitnesses, where=~grid_empty)
-        # Add offset for positive qd_score
-        qd_score += (
-            reward_offset_for_qd_score_metric
-            * episode_length
-            * jnp.sum(1.0 - grid_empty)
-        )
-        coverage = 100 * jnp.mean(1.0 - grid_empty)
-        max_fitness = jnp.max(repertoire.fitnesses)
-
-        return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
+    # Define metrics function
+    metrics_fn = functools.partial(
+        default_qd_metrics,
+        qd_offset=qdax.environments.reward_offset[env_name] * episode_length,
+    )
 
     # Instantiate MAP-Elites
     map_elites = MAPElites(
