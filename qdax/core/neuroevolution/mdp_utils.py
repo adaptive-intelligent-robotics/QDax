@@ -199,8 +199,24 @@ def get_first_episode(transition: Transition) -> Transition:
 
 
 def init_population_controllers(
-    policy_network: nn.Module, env: brax.envs.Env, batch_size: int, random_key: RNGKey
+    policy_network: nn.Module,
+    env: brax.envs.Env,
+    batch_size: int,
+    random_key: RNGKey,
 ) -> Tuple[Genotype, RNGKey]:
+    """
+    Initializes the population of controllers using a policy_network.
+
+    Args:
+        policy_network: The policy network structure used for creating policy
+            controllers.
+        env: the BRAX environment.
+        batch_size: the number of environments we play simultaneously.
+        random_key: a JAX random key.
+
+    Returns:
+        A tuple of the initial population and the new random key.
+    """
     random_key, subkey = jax.random.split(random_key)
 
     keys = jax.random.split(subkey, num=batch_size)

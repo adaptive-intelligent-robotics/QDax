@@ -36,7 +36,7 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
 
-    env, policy_network, scoring_fn = create_default_brax_task_components(
+    env, policy_network, scoring_fn, random_key = create_default_brax_task_components(
         env_name=env_name,
         batch_size=batch_size,
         random_key=random_key,

@@ -40,14 +40,36 @@ def create_policy_network_play_step_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
 ) -> PlayStepFnType:
+    """
+    Creates a function that when called, plays a step of the environment.
+
+    Args:
+        env: The BRAX environment.
+        policy_network:  The policy network structure used for creating and evaluating
+            policy controllers.
+
+    Returns:
+        default_play_step_fn: A function that plays a step of the environment.
+    """
     # Define the function to play a step with the policy in the environment
-    def play_step_fn(
+    def default_play_step_fn(
         env_state: EnvState,
         policy_params: Params,
         random_key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
         """
         Play an environment step and return the updated EnvState and the transition.
+
+        Args: env_state: The state of the environment (containing for instance the
+        actor joint positions and velocities, the reward...). policy_params: The
+        parameters of policies/controllers. random_key: JAX random key.
+
+        Returns:
+            next_state: The updated environment state.
+            policy_params: The parameters of policies/controllers (unchanged).
+            random_key: The updated random key.
+            transition: containing some information about the transition: observation,
+                reward, next observation, policy action...
         """
 
         actions = policy_network.apply(policy_params, env_state.obs)
@@ -68,7 +90,7 @@ def create_policy_network_play_step_fn(
 
         return next_state, policy_params, random_key, transition
 
-    return play_step_fn
+    return default_play_step_fn
 
 
 @partial(
@@ -91,9 +113,22 @@ def scoring_function_brax_envs(
     deterministic or pseudo-deterministic environments.
 
     This rollout is only deterministic when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarly
+    If the init states are fixed but different, as a policy is not necessarily
     evaluated with the same environment everytime, this won't be determinist.
     When the init states are different, this is not purely stochastic.
+
+    Args:
+        policies_params: The parameters of closed-loop controllers/policies to evaluate.
+        random_key: A jax random key
+        episode_length: The maximal rollout length.
+        play_step_fn: The function to play a step of the environment.
+        behavior_descriptor_extractor: The function to extract the behavior descriptor.
+
+    Returns:
+        fitness: Array of fitnesses of all evaluated policies
+        descriptor: Behavioural descriptors of all evaluated policies
+        extra_scores: Additional information resulting from evaluation
+        random_key: The updated random key.
     """
 
     # Perform rollouts with each policy
@@ -154,6 +189,20 @@ def reset_based_scoring_function_brax_envs(
     To define purely deterministic environments, as in "scoring_function", generate
     a single init_state using "init_state = env.reset(random_key)", then use
     "play_reset_fn = lambda random_key: init_state".
+
+    Args:
+        policies_params: The parameters of closed-loop controllers/policies to evaluate.
+        random_key: A jax random key
+        episode_length: The maximal rollout length.
+        play_reset_fn: The function to reset the environment and obtain initial states.
+        play_step_fn: The function to play a step of the environment.
+        behavior_descriptor_extractor: The function to extract the behavior descriptor.
+
+    Returns:
+        fitness: Array of fitnesses of all evaluated policies
+        descriptor: Behavioural descriptors of all evaluated policies
+        extra_scores: Additional information resulting from the evaluation
+        random_key: The updated random key.
     """
 
     random_key, subkey = jax.random.split(random_key)
@@ -183,10 +232,30 @@ def create_brax_scoring_fn(
     episode_length: int = 100,
     is_reset_based: bool = False,
     play_reset_fn: Optional[Callable[[RNGKey], EnvState]] = None,
-) -> ScoringFnType:
-    """Returns a function that when called, creates a scoring function.
-    Please use namespace to avoid confusion between this function and
-    brax.envs.get_scoring_function_fn.
+) -> Tuple[ScoringFnType, RNGKey]:
+    """
+    Creates a scoring function to evaluate a policy in a BRAX task.
+
+    Args:
+        env: The BRAX environment.
+        policy_network: The policy network controller.
+        batch_size: the number of environments we play simultaneously.
+        bd_extraction_fn: The behaviour descriptor extraction function.
+        random_key: a random key used for stochastic operations.
+        play_step_fn: the function used to perform environment rollouts and collect
+            evaluation episodes. If None, we use create_policy_network_play_step_fn
+            to generate it.
+        episode_length: The maximal episode length.
+        is_reset_based: Whether we reset the initial state of the robot before each
+            evaluation or not.
+        play_reset_fn: the function used to reset the environment to an initial state.
+            Only used if is_reset_based is True. If None, we take env.reset as
+            default reset function.
+
+    Returns:
+        The scoring function: a function that takes a batch of genotypes and compute
+            their fitnesses and descriptors
+        The updated random key.
     """
     if play_step_fn is None:
         play_step_fn = create_policy_network_play_step_fn(env, policy_network)
@@ -216,7 +285,7 @@ def create_brax_scoring_fn(
             behavior_descriptor_extractor=bd_extraction_fn,
         )
 
-    return scoring_fn
+    return scoring_fn, random_key
 
 
 def create_default_brax_task_components(
@@ -226,7 +295,27 @@ def create_default_brax_task_components(
     episode_length: int = 100,
     mlp_policy_hidden_layer_sizes: Tuple[int, ...] = (64, 64),
     is_reset_based: bool = False,
-) -> Tuple[brax.envs.Env, MLP, ScoringFnType]:
+) -> Tuple[brax.envs.Env, MLP, ScoringFnType, RNGKey]:
+    """
+    Creates default environment, policy network and scoring function for a BRAX task.
+
+    Args:
+        env_name: Name of the BRAX environment (e.g. "ant_omni", "walker2d_uni"...).
+        batch_size: The number of environments we play simultaneously.
+        random_key: Jax random key
+        episode_length: The maximal rollout length.
+        mlp_policy_hidden_layer_sizes: Hidden layer sizes of the policy network.
+        is_reset_based: Whether we reset the initial state of the robot before each
+            evaluation or not.
+
+    Returns:
+        env: The BRAX environment.
+        policy_network: The policy network structure used for creating and evaluating
+            policy controllers.
+        scoring_fn: a function that takes a batch of genotypes and compute
+            their fitnesses and descriptors.
+        random_key: The updated random key.
+    """
     env = environments.create(env_name, episode_length=episode_length)
 
     # Init policy network
@@ -239,7 +328,7 @@ def create_default_brax_task_components(
 
     bd_extraction_fn = qdax.environments.behavior_descriptor_extractor[env_name]
 
-    scoring_fn = create_brax_scoring_fn(
+    scoring_fn, random_key = create_brax_scoring_fn(
         env,
         policy_network,
         batch_size,
@@ -249,4 +338,4 @@ def create_default_brax_task_components(
         is_reset_based=is_reset_based,
     )
 
-    return env, policy_network, scoring_fn
+    return env, policy_network, scoring_fn, random_key
