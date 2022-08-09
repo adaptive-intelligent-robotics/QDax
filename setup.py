@@ -37,7 +37,7 @@ setup(
     ],
     keywords=["Quality-Diversity", "NeuroEvolution", "Reinforcement Learning", "JAX"],
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",

@@ -17,7 +17,7 @@ QDax has been developed as a research framework: it is flexible and easy to exte
 
 The latest stable release of QDax can be installed directly from source with:
 ```bash
-pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
+pip install qdax
 ```
 
 However, we also provide and recommend using either Docker, Singularity or conda environments to use the repository. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
