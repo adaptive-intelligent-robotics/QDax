@@ -3,6 +3,7 @@ from functools import partial
 from typing import Optional, Tuple
 
 import jax
+import jax.numpy as jnp
 from flax.struct import PyTreeNode
 
 from qdax.core.containers.repertoire import Repertoire
@@ -105,3 +106,37 @@ class Emitter(ABC):
             The modified emitter state.
         """
         return emitter_state
+
+
+class MultiEmitterState(EmitterState):
+    emitters_state_tuple: Tuple[EmitterState]
+
+
+class MultiEmitter(Emitter):
+    def __init__(self, emitters_list: Tuple[Emitter]):
+        self.emitters_tuple = emitters_list
+
+    @partial
+    def emit(
+        self,
+        repertoire: Optional[Repertoire],
+        multi_emitter_state: MultiEmitterState,
+        random_key: RNGKey,
+    ) -> Tuple[Genotype, RNGKey]:
+        assert len(multi_emitter_state.emitters_state_tuple) == len(self.emitters_tuple)
+
+        random_key, *_keys_emitters = jax.random.split(
+            random_key, len(self.emitters_tuple)
+        )
+
+        all_genotypes = []
+        for emitter, emitter_state, _key_emitter in zip(
+            self.emitters_tuple,
+            multi_emitter_state.emitters_state_tuple,
+            _keys_emitters,
+        ):
+            genotype, _ = emitter.emit(repertoire, emitter_state, _key_emitter)
+            all_genotypes.append(genotype)
+
+        genotypes_tree = jax.tree_map(lambda *x: jnp.stack(x, axis=0), *all_genotypes)
+        return genotypes_tree, random_key
