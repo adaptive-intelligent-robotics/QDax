@@ -275,7 +275,6 @@ class CrossOver(VariationOperator, ABC):
 class IsolineVariationOperator(CrossOver):
     def __init__(
         self,
-        batch_size: int,
         iso_sigma: float,
         line_sigma: float,
         minval: Optional[float] = None,
@@ -285,7 +284,6 @@ class IsolineVariationOperator(CrossOver):
         self._line_sigma = line_sigma
         self._minval = minval
         self._maxval = maxval
-        self._batch_size = batch_size
 
     def apply(
         self, genotypes: Genotype, emitter_state: EmitterState, random_key: RNGKey
