@@ -180,87 +180,6 @@ def polynomial_crossover(
     return x, random_key
 
 
-class IsolineVariationEmitter(Emitter):
-    def __init__(
-        self,
-        batch_size: int,
-        iso_sigma: float,
-        line_sigma: float,
-        minval: Optional[float] = None,
-        maxval: Optional[float] = None,
-    ):
-        self._iso_sigma = iso_sigma
-        self._line_sigma = line_sigma
-        self._minval = minval
-        self._maxval = maxval
-        self._batch_size = batch_size
-
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
-    def emit(
-        self,
-        repertoire: Optional[Repertoire],
-        emitter_state: Optional[EmitterState],
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
-        """
-        Iso+Line-DD Variation Operator [1] over a set of pairs of genotypes
-
-        Parameters:
-            x1 (Genotypes): first batch of genotypes
-            x2 (Genotypes): second batch of genotypes
-            random_key (RNGKey): RNG key for reproducibility
-            iso_sigma (float): spread parameter (noise)
-            line_sigma (float): line parameter (direction of the new genotype)
-            minval (float, Optional): minimum value to clip the genotypes
-            maxval (float, Optional): maximum value to clip the genotypes
-
-        Returns:
-            x (Genotypes): new genotypes
-            random_key (RNGKey): new RNG key
-
-        [1] Vassiliades, Vassilis, and Jean-Baptiste Mouret. "Discovering the elite
-        hypervolume by leveraging interspecies correlation." Proceedings of the Genetic and
-        Evolutionary Computation Conference. 2018.
-        """
-
-        x1, random_key = repertoire.sample(random_key, self._batch_size)
-        x2, random_key = repertoire.sample(random_key, self._batch_size)
-
-        # Computing line_noise
-        random_key, key_line_noise = jax.random.split(random_key)
-        batch_size = jax.tree_leaves(x1)[0].shape[0]
-        line_noise = (
-            jax.random.normal(key_line_noise, shape=(batch_size,)) * self._line_sigma
-        )
-
-        def _variation_fn(
-            x1: jnp.ndarray, x2: jnp.ndarray, random_key: RNGKey
-        ) -> jnp.ndarray:
-            iso_noise = jax.random.normal(random_key, shape=x1.shape) * self._iso_sigma
-            x = (x1 + iso_noise) + jax.vmap(jnp.multiply)((x2 - x1), line_noise)
-
-            # Back in bounds if necessary (floating point issues)
-            if (self._minval is not None) or (self._maxval is not None):
-                x = jnp.clip(x, self._minval, self._maxval)
-            return x
-
-        # create a tree with random keys
-        nb_leaves = len(jax.tree_leaves(x1))
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, num=nb_leaves)
-        keys_tree = jax.tree_unflatten(jax.tree_structure(x1), subkeys)
-
-        # apply isolinedd to each branch of the tree
-        x = jax.tree_map(
-            lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree
-        )
-
-        return x, random_key
-
-
 def isoline_variation(
     x1: Genotype,
     x2: Genotype,
@@ -338,7 +257,7 @@ class VariationOperator(metaclass=abc.ABCMeta):
         self,
         genotypes: Genotype,
     ) -> Tuple[Genotype, ...]:
-        tuple_genotypes = (
+        tuple_genotypes = tuple(
             jax.tree_map(
                 lambda x: x[index_start :: self.number_parents_multiplier], genotypes
             )
@@ -435,10 +354,19 @@ class UniformSelector(Selector):
 
 
 class SelectionVariationEmitter(Emitter):
-    def __init__(self, batch_size: int, selector, variation_operator):
+    def __init__(
+        self,
+        batch_size: int,
+        variation_operator: VariationOperator,
+        selector: Selector = None,
+    ):
         self._batch_size = batch_size
-        self._selector = selector
         self._variation_operator = variation_operator
+
+        if selector is not None:
+            self._selector = selector
+        else:
+            self._selector = UniformSelector()
 
     def emit(
         self,
