@@ -160,15 +160,15 @@ class MultiEmitter(Emitter):
         for emitter, sub_emitter_state in zip(
             self.emitters_tuple, emitter_state.emitters_state_tuple
         ):
-            sub_emitter_state = emitter.state_update(
-                emitter_state,
+            new_sub_emitter_state = emitter.state_update(
+                sub_emitter_state,
                 repertoire,
                 genotypes,
                 fitnesses,
                 descriptors,
                 extra_scores,
             )
-            list_emitter_states.append(sub_emitter_state)
+            list_emitter_states.append(new_sub_emitter_state)
 
         return MultiEmitterState(tuple(list_emitter_states))
 
