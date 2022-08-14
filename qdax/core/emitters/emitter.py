@@ -116,13 +116,13 @@ class MultiEmitter(Emitter):
     def __init__(self, emitters_list: Tuple[Emitter]):
         self.emitters_tuple = emitters_list
 
-    @partial
     def emit(
         self,
         repertoire: Optional[Repertoire],
-        multi_emitter_state: MultiEmitterState,
+        multi_emitter_state: Optional[MultiEmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
+        assert multi_emitter_state is not None
         assert len(multi_emitter_state.emitters_state_tuple) == len(self.emitters_tuple)
 
         random_key, *_keys_emitters = jax.random.split(
