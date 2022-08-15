@@ -1,10 +1,13 @@
 """Core components of the MAP-Elites algorithm."""
 from __future__ import annotations
 
+import os
 from functools import partial
+from pathlib import Path
 from typing import Any, Callable, Optional, Tuple
 
 import jax
+import jax.numpy as jnp
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
@@ -36,6 +39,9 @@ class MAPElites:
         metrics_function: a function that takes a MAP-Elites repertoire and compute
             any useful metric to track its evolution
     """
+
+    REPERTOIRE_FOLDER = "repertoire"
+    EMITTER_STATE_FOLDER = "emitter_state"
 
     def __init__(
         self,
@@ -179,3 +185,52 @@ class MAPElites:
         )
 
         return (repertoire, emitter_state, random_key), metrics
+
+    @classmethod
+    def save(
+        cls,
+        repertoire: MapElitesRepertoire,
+        emitter_state: Optional[EmitterState],
+        path: str = os.curdir,
+    ) -> None:
+        # Save Repertoire, adding '' at the end of the path to add separator '/'
+        # as needed by repertoire.save().
+        path_folder_repertoire = os.path.join(path, cls.REPERTOIRE_FOLDER, "")
+        Path(path_folder_repertoire).mkdir(parents=True, exist_ok=True)
+        repertoire.save(path_folder_repertoire)
+
+        # Save Emitter State, adding '' at the end of the path to add separator '/'
+        # just in case.
+        path_folder_emitter_state = os.path.join(path, cls.EMITTER_STATE_FOLDER, "")
+        Path(path_folder_emitter_state).mkdir(parents=True, exist_ok=True)
+        if emitter_state is not None:
+            emitter_state.save(path_folder_emitter_state)
+
+    @classmethod
+    def load(
+        cls,
+        repertoire_instance: MapElitesRepertoire,
+        emitter_state_instance: Optional[EmitterState],
+        path: str = os.curdir,
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState]]:
+        def _genotype_reconstruction_fn(genotype: jnp.ndarray) -> Genotype:
+            genotype_tree_structure = jax.tree_structure(repertoire_instance.genotypes)
+            return jax.tree_unflatten(genotype_tree_structure, genotype)
+
+        # Load Repertoire, adding '' at the end of the path to add separator '/'
+        # as needed by repertoire.load().
+        path_folder_repertoire = os.path.join(path, cls.REPERTOIRE_FOLDER, "")
+        repertoire_loaded = repertoire_instance.load(
+            _genotype_reconstruction_fn, path_folder_repertoire
+        )
+
+        # Load Emitter State
+        path_folder_emitter_state = os.path.join(path, cls.EMITTER_STATE_FOLDER)
+        if emitter_state_instance is not None:
+            emitter_state_loaded = emitter_state_instance.load(
+                path_folder_emitter_state
+            )
+        else:
+            emitter_state_loaded = None
+
+        return repertoire_loaded, emitter_state_loaded

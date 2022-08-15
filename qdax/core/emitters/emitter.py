@@ -1,12 +1,16 @@
+from __future__ import annotations
+
+import os
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import jax
 from flax.struct import PyTreeNode
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.utils.serialization import pickle_load, pickle_save
 
 
 class EmitterState(PyTreeNode):
@@ -25,7 +29,24 @@ class EmitterState(PyTreeNode):
             @dataclass decorator.
     """
 
-    pass
+    NAME_FILE = "emitter_state.pkl"
+
+    def save(self, path: str = os.curdir) -> None:
+        """Save the emitter state to a file.
+        Args:
+            path: the path to the file where the state will be saved.
+        """
+        path_save = os.path.join(path, self.NAME_FILE)
+        pickle_save(self, path_save, overwrite=True)
+
+    @classmethod
+    def load(cls, path: str = os.curdir) -> Any:
+        """Load the emitter state from a file.
+        Args:
+            path: the path to the file where the state will be loaded.
+        """
+        path_load = os.path.join(path, cls.NAME_FILE)
+        return pickle_load(path_load)
 
 
 class Emitter(ABC):
