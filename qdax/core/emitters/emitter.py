@@ -29,14 +29,14 @@ class EmitterState(PyTreeNode):
             @dataclass decorator.
     """
 
-    NAME_FILE = "emitter_state.pkl"
+    NAME_SAVED_FILE = "emitter_state.pickle"
 
     def save(self, path: str = os.curdir) -> None:
         """Save the emitter state to a file.
         Args:
             path: the path to the file where the state will be saved.
         """
-        path_save = os.path.join(path, self.NAME_FILE)
+        path_save = os.path.join(path, self.NAME_SAVED_FILE)
         pickle_save(self, path_save, overwrite=True)
 
     @classmethod
@@ -45,7 +45,7 @@ class EmitterState(PyTreeNode):
         Args:
             path: the path to the file where the state will be loaded.
         """
-        path_load = os.path.join(path, cls.NAME_FILE)
+        path_load = os.path.join(path, cls.NAME_SAVED_FILE)
         return pickle_load(path_load)
 
 
