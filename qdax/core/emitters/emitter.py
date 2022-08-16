@@ -10,7 +10,7 @@ from flax.struct import PyTreeNode
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
-from qdax.utils.serialization import pickle_load, pickle_save
+from qdax.utils.serialization import SUFFIX_PICKLE, pickle_load, pickle_save
 
 
 class EmitterState(PyTreeNode):
@@ -29,7 +29,7 @@ class EmitterState(PyTreeNode):
             @dataclass decorator.
     """
 
-    NAME_SAVED_FILE = "emitter_state.pickle"
+    NAME_SAVED_FILE = "emitter_state" + SUFFIX_PICKLE
 
     def save(self, path: str = os.curdir) -> None:
         """Save the emitter state to a file.
