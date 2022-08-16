@@ -20,6 +20,7 @@ from qdax.types import (
     Metrics,
     RNGKey,
 )
+from qdax.utils.serialization import get_default_genotype_reconstruction_fn
 
 
 class MAPElites:
@@ -212,16 +213,19 @@ class MAPElites:
         repertoire_instance: MapElitesRepertoire,
         emitter_state_instance: Optional[EmitterState],
         path: str = os.curdir,
+        genotype_reconstruction_fn: Optional[Callable[[jnp.ndarray], Genotype]] = None,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState]]:
-        def _genotype_reconstruction_fn(genotype: jnp.ndarray) -> Genotype:
-            genotype_tree_structure = jax.tree_structure(repertoire_instance.genotypes)
-            return jax.tree_unflatten(genotype_tree_structure, genotype)
+
+        if genotype_reconstruction_fn is None:
+            genotype_reconstruction_fn = get_default_genotype_reconstruction_fn(
+                repertoire_instance.genotypes
+            )
 
         # Load Repertoire, adding '' at the end of the path to add separator '/'
         # as needed by repertoire.load().
         path_folder_repertoire = os.path.join(path, cls.REPERTOIRE_FOLDER, "")
         repertoire_loaded = repertoire_instance.load(
-            _genotype_reconstruction_fn, path_folder_repertoire
+            genotype_reconstruction_fn, path_folder_repertoire
         )
 
         # Load Emitter State
