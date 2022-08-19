@@ -114,7 +114,7 @@ class NSGA2Repertoire(GARepertoire):
 
         candidate_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
 
-        first_leaf = jax.tree_leaves(candidates)[0]
+        first_leaf = jax.tree_util.tree_leaves(candidates)[0]
         num_candidates = first_leaf.shape[0]
 
         def compute_current_front(

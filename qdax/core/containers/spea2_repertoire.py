@@ -3,6 +3,7 @@ from __future__ import annotations
 import flax
 import jax
 import jax.numpy as jnp
+from jax.tree_util import tree_map
 
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.types import Fitness, Genotype
@@ -72,7 +73,7 @@ class SPEA2Repertoire(GARepertoire):
             Updated repertoire.
         """
         # All the candidates
-        candidates = jax.tree_map(
+        candidates = tree_map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
             self.genotypes,
             batch_of_genotypes,
@@ -87,7 +88,7 @@ class SPEA2Repertoire(GARepertoire):
         indices = jnp.argsort(strength_scores)[: self.size]
 
         # keep the survivors
-        new_candidates = jax.tree_map(lambda x: x[indices], candidates)
+        new_candidates = tree_map(lambda x: x[indices], candidates)
         new_fitnesses = candidates_fitnesses[indices]
 
         new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_fitnesses)
@@ -121,7 +122,7 @@ class SPEA2Repertoire(GARepertoire):
         )
 
         # create default genotypes
-        default_genotypes = jax.tree_map(
+        default_genotypes = tree_map(
             lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
         )
 

@@ -34,7 +34,7 @@ class GARepertoire(Repertoire):
     @property
     def size(self) -> int:
         """Gives the size of the population."""
-        first_leaf = jax.tree_leaves(self.genotypes)[0]
+        first_leaf = jax.tree_util.tree_leaves(self.genotypes)[0]
         return int(first_leaf.shape[0])
 
     def save(self, path: str = "./") -> None:

@@ -5,6 +5,7 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+from jax.tree_util import tree_map
 
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
@@ -102,7 +103,7 @@ class CMAMEGAEmitter(Emitter):
         """
 
         # define init theta as 0
-        theta = jax.tree_map(
+        theta = tree_map(
             lambda x: jnp.zeros_like(x[:1, ...]),
             init_genotypes,
         )
@@ -161,7 +162,7 @@ class CMAMEGAEmitter(Emitter):
         update_grad = coeffs @ grads.T
 
         # Compute new candidates
-        new_thetas = jax.tree_map(lambda x, y: x + y, theta, update_grad)
+        new_thetas = tree_map(lambda x, y: x + y, theta, update_grad)
 
         return new_thetas, random_key
 
@@ -226,9 +227,7 @@ class CMAMEGAEmitter(Emitter):
         gradient_step = jnp.sum(self._weights[sorted_indices] * update_grad, axis=0)
 
         # update theta
-        theta = jax.tree_map(
-            lambda x, y: x + self._learning_rate * y, theta, gradient_step
-        )
+        theta = tree_map(lambda x, y: x + self._learning_rate * y, theta, gradient_step)
 
         # Update CMA Parameters
         sorted_candidates = coeffs[sorted_indices]
