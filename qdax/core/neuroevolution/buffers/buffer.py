@@ -343,20 +343,42 @@ class ReplayBuffer(flax.struct.PyTreeNode):
         num_transitions = flattened_transitions.shape[0]
         max_replay_size = self.buffer_size
 
-        new_current_position = self.current_position + num_transitions
-        new_current_size = jnp.minimum(
-            self.current_size + num_transitions, max_replay_size
-        )
+        # Make sure update is not larger than the maximum replay size.
+        if num_transitions > max_replay_size:
+            raise ValueError(
+                "Trying to insert a batch of samples larger than the maximum replay "
+                f"size. num_samples: {num_transitions}, "
+                f"max replay size {max_replay_size}"
+            )
+
+        # get current position
+        position = self.current_position
+
+        # check if there is an overlap
+        roll = jnp.minimum(0, max_replay_size - position - num_transitions)
+
+        # roll the data to avoid overlap
+        data = jnp.roll(self.data, roll, axis=0)
+
+        # update the position accordingly
+        new_position = position + roll
+
+        # replace old data by the new one
         new_data = jax.lax.dynamic_update_slice_in_dim(
-            self.data,
+            data,
             flattened_transitions,
-            start_index=self.current_position % max_replay_size,
+            start_index=new_position,
             axis=0,
         )
 
+        # update the position and the size
+        new_position = (new_position + num_transitions) % max_replay_size
+        new_size = jnp.minimum(self.current_size + num_transitions, max_replay_size)
+
+        # update the replay buffer
         replay_buffer = self.replace(
-            current_position=new_current_position,
-            current_size=new_current_size,
+            current_position=new_position,
+            current_size=new_size,
             data=new_data,
         )
 
