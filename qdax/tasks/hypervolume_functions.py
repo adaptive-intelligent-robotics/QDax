@@ -10,14 +10,11 @@ def square(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    GETTING THE EXPECTED RESULT BUT DIFFERENT FROM PAPER FUNCTION
-    - PAPER FUNCTION MIGHT BE WRONG
-    jnp.sin(coeff*params) --> params
+    TODO: CITE PAPER
     """
-    # coeff = 5
+    freq = 5
     f = 1 - jnp.prod(params)
-    # bd = jnp.sin(coeff*params) # from the paper but not working
-    bd = params
+    bd = jnp.sin(freq * params)
     return f, bd
 
 
@@ -25,12 +22,11 @@ def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    GETTING THE EXPECTED RESULT BUT DIFFERENT FROM PAPER FUNCTION
-    - PAPER FUNCTION MIGHT BE WRONG
+    TODO: CITE PAPER
     """
-    coeff = 10
-    f = jnp.prod(jnp.sin(coeff * params * jnp.pi))
-    bd = jnp.sin(params * jnp.pi)
+    freq = 5
+    f = jnp.prod(jnp.sin(params * 50))
+    bd = jnp.sin(params * freq)
     return f, bd
 
 
@@ -38,11 +34,17 @@ def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    TODO: NOT WORKING - PLOT DOESNT GIVE EXPECTED RESULT
+    TODO: CITE PAPER
     """
-    coeff = 40
-    f = jnp.exp(-((jnp.linalg.norm(params - jnp.ones_like(params) * 0.5) - 0.5) ** 2))
-    bd = jnp.sin(coeff * params * jnp.pi)
+
+    def _gaussian(x: jnp.ndarray, mu: float, sig: float) -> jnp.ndarray:
+        return jnp.exp(-jnp.power(x - mu, 2.0) / (2 * jnp.power(sig, 2.0)))
+
+    freq = 40
+    centre = jnp.ones_like(params) * 0.5
+    distance_from_centre = jnp.linalg.norm(params - centre)
+    f = _gaussian(distance_from_centre, mu=0.5, sig=0.3)
+    bd = jnp.sin(freq * params)
     return f, bd
 
 
@@ -50,6 +52,7 @@ def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
+    TODO: CITE PAPER
     """
     f = jnp.prod(params)
     bd = jnp.round(10 * params) / 10
@@ -60,13 +63,11 @@ def continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    GETTING THE EXPECTED RESULT BUT DIFFERENT FROM PAPER FUNCTION
-    - PAPER FUNCTION MIGHT BE WRONG
-    remove pi from denominator of BD inside the sin
+    TODO: CITE PAPER
     """
     coeff = 20
     f = jnp.prod(params)
-    bd = params - jnp.sin((coeff * jnp.pi * params) / 20)
+    bd = params - jnp.sin(coeff * jnp.pi * params) / (coeff * jnp.pi)
     return f, bd
 
 
