@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
-from qdax.tasks.archimedean_spiral import QDBenchmarkTask
+from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 from qdax.types import Descriptor, Fitness, Genotype
 
 
@@ -25,7 +25,7 @@ def multivariate_normal(
     ) ** (-params.shape[0] / 2)
 
 
-class DeceptiveEvolvabilityV0(QDBenchmarkTask):
+class DeceptiveEvolvabilityV0(QDSuiteTask):
     default_mu_1 = jnp.array([50.0, 125.0])
     default_sigma_1 = jnp.sqrt(70.0)
     default_beta = 20.0

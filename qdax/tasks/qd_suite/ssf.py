@@ -5,12 +5,12 @@ import jax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
-from qdax.tasks.archimedean_spiral import QDBenchmarkTask
 from qdax.tasks.hypervolume_functions import square_scoring_function
+from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 from qdax.types import Descriptor, Fitness, Genotype
 
 
-class SsfV0(QDBenchmarkTask):
+class SsfV0(QDSuiteTask):
     def __init__(
         self,
         param_size: int,

@@ -1,4 +1,3 @@
-import abc
 import time
 from enum import Enum
 from typing import Optional, Tuple, Union
@@ -7,7 +6,8 @@ import jax.lax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
+from qdax.types import Descriptor, Fitness, Genotype
 
 
 class ParameterizationGenotype(Enum):
@@ -20,56 +20,7 @@ class ArchimedeanBD(Enum):
     geodesic = "geodesic"
 
 
-class QDBenchmarkTask(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def evaluation(self, params: Genotype) -> Tuple[Fitness, Descriptor]:
-        ...
-
-    def scoring_function(
-        self,
-        params: Genotype,
-        random_key: RNGKey,
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
-        """
-        Evaluate params in parallel
-        """
-        fitnesses, descriptors = jax.vmap(self.evaluation)(params)
-
-        return fitnesses, descriptors, {}, random_key
-
-    @abc.abstractmethod
-    def get_bd_size(self) -> int:
-        ...
-
-    @abc.abstractmethod
-    def get_min_max_bd(
-        self,
-    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
-        ...
-
-    def get_bounded_min_max_bd(
-        self,
-    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
-        min_bd, max_bd = self.get_min_max_bd()
-        if jnp.isinf(max_bd) or jnp.isinf(min_bd):
-            raise NotImplementedError(
-                "Boundedness has not been implemented " "for this unbounded task"
-            )
-        else:
-            return min_bd, max_bd
-
-    @abc.abstractmethod
-    def get_min_max_params(
-        self,
-    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
-        ...
-
-    @abc.abstractmethod
-    def get_initial_parameters(self, batch_size: int) -> Genotype:
-        ...
-
-
-class ArchimedeanSpiralV0(QDBenchmarkTask):
+class ArchimedeanSpiralV0(QDSuiteTask):
     def __init__(
         self,
         parameterization: ParameterizationGenotype,
