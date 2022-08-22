@@ -66,7 +66,7 @@ def noisy_arm_scoring_function(
     Evaluate policies contained in params in parallel.
     """
 
-    random_key, f_subkey, d_subkey, p_subkey = jax.random.split(random_key)
+    random_key, f_subkey, d_subkey, p_subkey = jax.random.split(random_key, num=4)
 
     # Add noise to the parameters
     params = params + jax.random.normal(p_subkey, shape=params.shape) * params_variance

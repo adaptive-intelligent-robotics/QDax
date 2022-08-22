@@ -1,3 +1,8 @@
+'''
+Hypervolume Benchmark Functions in the paper by 
+J.B. Mouret, "Hypervolume-based Benchmark Functions for Quality Diversity Algorithms"
+'''
+
 from typing import Callable, Tuple
 
 import jax
@@ -10,7 +15,6 @@ def square(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    TODO: CITE PAPER
     """
     freq = 5
     f = 1 - jnp.prod(params)
@@ -22,7 +26,6 @@ def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    TODO: CITE PAPER
     """
     freq = 5
     f = jnp.prod(jnp.sin(params * 50))
@@ -34,7 +37,6 @@ def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    TODO: CITE PAPER
     """
 
     def _gaussian(x: jnp.ndarray, mu: float, sig: float) -> jnp.ndarray:
@@ -52,7 +54,6 @@ def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    TODO: CITE PAPER
     """
     f = jnp.prod(params)
     bd = jnp.round(10 * params) / 10
@@ -63,7 +64,6 @@ def continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
     BD space should be [0,1]^n
-    TODO: CITE PAPER
     """
     coeff = 20
     f = jnp.prod(params)
