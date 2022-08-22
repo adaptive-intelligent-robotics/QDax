@@ -4,55 +4,55 @@ The `tasks` directory provides default `scoring_function`'s to import easily to 
 The `tasks` directory also serves as a way to maintain a QD benchmark task suite that can be easily accesed. We implement several benchmark task across a range of domains. The tasks here are classical tasks from QD literature as well as more recent benchmarks tasks proposed at the [QD Benchmarks Workshop at GECCO 2022](https://quality-diversity.github.io/workshop).
 
 ## Arm
-| Task| Parameter Dimensions | Parameter Bounds |  Descriptor Dimensions |  Descriptor Bounds | Description  |
-|---|---|---|---|---|---|
-| Arm | n | $[0,1]^n$  | 2 | $[0,1]^2$ |   |
-| Stochastic Arm | n | $[0,1]^n$ | 2 | $[0,1]^2$ |   |
+| Task           | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
+|----------------|----------------------|------------------|-----------------------|-------------------|-------------|
+| Arm            | n                    | $[0,1]^n$        | 2                     | $[0,1]^2$         |             |
+| Stochastic Arm | n                    | $[0,1]^n$        | 2                     | $[0,1]^2$         |             |
 
 Notes:
 - the parameter space is normalized between $[0,1]$ which corresponds to $[0,2\pi]$
 - the descriptor space (end-effector x-y position) is normalized between $[0,1]$
 
 ## Standard Functions
-| Task| Parameter Dimensions | Parameter Bounds | Descriptor Dimensions |  Descriptor Bounds | Description  |
-|---|---|---|---|---|---|
-| Sphere | n | $[0,1]^n$  | 2 | $[0,1]^n$ |   |
-| Rastrigin | n | $[0,1]^n$ | 2 | $[0,1]^n$ |   |
-| Rastrigin-Projection | n | $[0,1]^n$ | 2 | $[0,1]^n$ |   |
+| Task                 | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
+|----------------------|----------------------|------------------|-----------------------|-------------------|-------------|
+| Sphere               | n                    | $[0,1]^n$        | 2                     | $[0,1]^n$         |             |
+| Rastrigin            | n                    | $[0,1]^n$        | 2                     | $[0,1]^n$         |             |
+| Rastrigin-Projection | n                    | $[0,1]^n$        | 2                     | $[0,1]^n$         |             |
 
 ## Hyper-Volume Functions
 "Hypervolume-based Benchmark Functions for Quality Diversity Algorithms" by Jean-Baptiste Mouret
 
-| Task| Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description  |
-|---|---|---|---|---|---|
-| Square | n | $[0,1]^n$ | n | $[0,1]^n$ |   |
-| Checkered | n | $[0,1]^n$ | n | $[0,1]^n$ |   |
-| Empty Circle  | n | $[0,1]^n$ | n | $[0,1]^n$ |   |
-| Non-continous Islands | n | $[0,1]^n$ | n | $[0,1]^n$ |   |
-| Continous Islands  | n | $[0,1]^n$ | n | $[0,1]^n$ |   |
+| Task                  | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
+|-----------------------|----------------------|------------------|-----------------------|-------------------|-------------|
+| Square                | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
+| Checkered             | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
+| Empty Circle          | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
+| Non-continous Islands | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
+| Continous Islands     | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
 
 ## QD Suite
 "Towards QD-suite: developing a set of benchmarks for Quality-Diversity algorithms" by Achkan Salehi and Stephane Doncieux
 
-| Task| Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
-|---|---|---|---|---|---|
-| ARCHIMEDEAN-SPIRAL-V0 |   |   |   |   |
-| SSF-V0 |   |   |   |   |
-| DECEPTIVE-EVOLVABILITY-V0 |   |   |   |   |
+| Task                           | Parameter Dimensions | Parameter Bounds                                                                 | Descriptor Dimensions                 | Descriptor Bounds                                                                       | Description |
+|--------------------------------|----------------------|----------------------------------------------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------------------|-------------|
+| archimedean-spiral-v0          | 1                    | $[0,\alpha\pi]^n$ (angle param.)<br/> $[0,max\_arc\_length]$ (arc length param.) | 1 (geodesic BD)<br/> 2 (euclidean BD) | $[0,max\_arc\_length]$ (geodesic BD)<br/> $[-radius\_end,radius\_end]^2$ (euclidean BD) |             |
+| SSF-v0                         | $n$                  | Unbounded                                                                        | 1                                     | $[0,$∞$)$                                                                               |             |
+| deceptive-evolvability-v0<br/> | $n$ (2 by default)   | Area including the two gaussian peaks                                            | 1                                     | $[0,max\_sum\_gaussians]$                                                               |             |
 
 ## Brax-RL
-| Task | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description
-|---|---|---|---|---|---|
-| pointmaze | NN params | Unbounded | 2 |   |   |
-| hopper_uni | NN params | Unbounded | 1 | $[0,1]$ |   |
-| walker2d_uni | NN params | Unbounded | 2 | $[0,1]^2$ |   |
-| halfcheetah_uni | NN params | Unbounded | 2 | $[0,1]^2$ |   |
-| ant_uni | NN params | Unbounded | 4 | $[0,1]^4$ |   |
-| humanoid_uni | NN params | Unbounded | 2 | $[0,1]^2$ |   |
-| ant_omni | NN params | Unbounded | 2 | $[-30,30]^2$ |   |
-| humanoid_omni | NN params| Unbounded | 2 | $[-30,30]^2$ |   |
-| anttrap | NN params | Unbounded | 2 |  |   |
-| antmaze | NN params | Unbounded | 2 |  |   |
+| Task            | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
+|-----------------|----------------------|------------------|-----------------------|-------------------|-------------|
+| pointmaze       | NN params            | Unbounded        | 2                     |                   |             |
+| hopper_uni      | NN params            | Unbounded        | 1                     | $[0,1]$           |             |
+| walker2d_uni    | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
+| halfcheetah_uni | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
+| ant_uni         | NN params            | Unbounded        | 4                     | $[0,1]^4$         |             |
+| humanoid_uni    | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
+| ant_omni        | NN params            | Unbounded        | 2                     | $[-30,30]^2$      |             |
+| humanoid_omni   | NN params            | Unbounded        | 2                     | $[-30,30]^2$      |             |
+| anttrap         | NN params            | Unbounded        | 2                     |                   |             |
+| antmaze         | NN params            | Unbounded        | 2                     |                   |             |
 
 Notes:
 - the parameter dimensions for default Brax-RL tasks depend on the size and architecture of the neural network used and can be customized and changed easily. If not set, a network size of two hidden layers of size 64 is used.
