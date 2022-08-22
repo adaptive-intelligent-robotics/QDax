@@ -603,7 +603,6 @@ def plot_multidimensional_map_elites_grid(
 ) -> Tuple[Optional[Figure], Axes]:
     """Plot a visual 2D representation of a multidimensional MAP-Elites repertoire
     (where the dimensionality of descriptors can be greater than 2).
-
     Args:
         repertoire: the MAP-Elites repertoire to plot.
         minval: minimum values for the descriptors
@@ -612,10 +611,8 @@ def plot_multidimensional_map_elites_grid(
         ax: a matplotlib axe for the figure to plot. Defaults to None.
         vmin: minimum value for the fitness. Defaults to None.
         vmax: maximum value for the fitness. Defaults to None.
-
     Raises:
         ValueError: the resolution should be an int or a tuple
-
     Returns:
         A figure and axes object, corresponding to the visualisation of the
         repertoire.
@@ -661,16 +658,16 @@ def plot_multidimensional_map_elites_grid(
     size_grid_y = np.prod(np.array(grid_shape[1::2]), dtype=int)
 
     # initialise the grid
-    grid_2d = jnp.full(
-        (size_grid_x, size_grid_y),
+    grid_2d = np.full(
+        (size_grid_x.item(), size_grid_y.item()),
         fill_value=jnp.nan,
     )
 
     # put solutions in the grid according to their projected 2-dimensional coordinates
-    for _, (desc, fit) in enumerate(zip(descriptors_integers, non_empty_fitnesses)):
+    for desc, fit in zip(descriptors_integers, non_empty_fitnesses):
         projection_2d = _get_projection_in_2d(desc, grid_shape)
         if jnp.isnan(grid_2d[projection_2d]) or fit.item() > grid_2d[projection_2d]:
-            grid_2d = grid_2d.at[projection_2d].set(fit.item())
+            grid_2d[projection_2d] = fit.item()
 
     # set plot parameters
     font_size = 12
@@ -724,11 +721,9 @@ def plot_multidimensional_map_elites_grid(
     ) -> jnp.ndarray:
         """
         Get the positions of the ticks on the grid axis.
-
         Args:
             total_size_grid_axis: total size of the grid axis
             step_ticks_on_axis: step of the ticks
-
         Returns:
             The positions of the ticks on the plot.
         """
@@ -777,23 +772,44 @@ def plot_multidimensional_map_elites_grid(
     )
 
     ax.grid(which="minor", alpha=1.0, color="#000000", linewidth=0.5)
-    ax.grid(which="major", alpha=1.0, color="#000000", linewidth=2.5)
+    if len(grid_shape) > 2:
+        ax.grid(which="major", alpha=1.0, color="#000000", linewidth=2.5)
 
-    ax.set_xticklabels(
-        [
-            f"{x:.2}"
-            for x in jnp.around(
-                jnp.linspace(minval[0], maxval[0], num=len(major_ticks_x)), decimals=2
+    def _get_positions_labels(
+        _minval: float, _maxval: float, _number_ticks: int, _step_labels_ticks: int
+    ) -> List[str]:
+        positions = jnp.linspace(_minval, _maxval, num=_number_ticks)
+
+        list_str_positions = []
+        for index_tick, position in enumerate(positions):
+            if index_tick % _step_labels_ticks != 0:
+                character = ""
+            else:
+                character = f"{position:.2E}"
+            list_str_positions.append(character)
+        # forcing the last tick label
+        list_str_positions[-1] = f"{positions[-1]:.2E}"
+        return list_str_positions
+
+    number_label_ticks = 4
+
+    if len(major_ticks_x) // number_label_ticks > 0:
+        ax.set_xticklabels(
+            _get_positions_labels(
+                _minval=minval[0],
+                _maxval=maxval[0],
+                _number_ticks=len(major_ticks_x),
+                _step_labels_ticks=len(major_ticks_x) // number_label_ticks,
             )
-        ]
-    )
-    ax.set_yticklabels(
-        [
-            f"{y:.2}"
-            for y in jnp.around(
-                jnp.linspace(minval[1], maxval[1], num=len(major_ticks_y)), decimals=2
+        )
+    if len(major_ticks_y) // number_label_ticks > 0:
+        ax.set_yticklabels(
+            _get_positions_labels(
+                _minval=minval[1],
+                _maxval=maxval[1],
+                _number_ticks=len(major_ticks_y),
+                _step_labels_ticks=len(major_ticks_y) // number_label_ticks,
             )
-        ]
-    )
+        )
 
     return fig, ax
