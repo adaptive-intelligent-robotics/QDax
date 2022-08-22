@@ -15,7 +15,10 @@ from qdax.utils.metrics import default_qd_metrics
 scoring_functions = {
     "arm": functools.partial(arm_scoring_function),
     "noisy_arm": functools.partial(
-        noisy_arm_scoring_function, fit_variance=0.1, desc_variance=0.1
+        noisy_arm_scoring_function,
+        fit_variance=0.1,
+        desc_variance=0.1,
+        params_variance=0.05,
     ),
 }
 

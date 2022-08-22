@@ -60,19 +60,27 @@ def noisy_arm_scoring_function(
     random_key: RNGKey,
     fit_variance: float,
     desc_variance: float,
+    params_variance: float,
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """
     Evaluate policies contained in params in parallel.
     """
+
+    random_key, f_subkey, d_subkey, p_subkey = jax.random.split(random_key)
+
+    # Add noise to the parameters
+    params = params + jax.random.normal(p_subkey, shape=params.shape) * params_variance
+
+    # Evaluate
     fitnesses, descriptors = jax.vmap(arm)(params)
 
-    # Add noise
-    random_key, subkey = jax.random.split(random_key)
+    # Add noise to the fitnesses and descriptors
     fitnesses = (
-        fitnesses + jax.random.normal(subkey, shape=fitnesses.shape) * fit_variance
+        fitnesses + jax.random.normal(f_subkey, shape=fitnesses.shape) * fit_variance
     )
     descriptors = (
-        descriptors + jax.random.normal(subkey, shape=descriptors.shape) * desc_variance
+        descriptors
+        + jax.random.normal(d_subkey, shape=descriptors.shape) * desc_variance
     )
 
     return (
