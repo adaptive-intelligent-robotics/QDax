@@ -1,14 +1,13 @@
 import abc
 import time
 from enum import Enum
-from functools import partial
-from typing import Tuple, Optional
+from typing import Optional, Tuple, Union
 
 import jax.lax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
-from qdax.types import Fitness, Descriptor, Genotype
+from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class ParameterizationGenotype(Enum):
@@ -23,27 +22,46 @@ class ArchimedeanBD(Enum):
 
 class QDBenchmarkTask(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def scoring_function(self, params: Genotype) -> Tuple[Fitness, Descriptor]:
+    def evaluation(self, params: Genotype) -> Tuple[Fitness, Descriptor]:
+        ...
+
+    def scoring_function(
+        self,
+        params: Genotype,
+        random_key: RNGKey,
+    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+        """
+        Evaluate params in parallel
+        """
+        fitnesses, descriptors = jax.vmap(self.evaluation)(params)
+
+        return fitnesses, descriptors, {}, random_key
+
+    @abc.abstractmethod
+    def get_bd_size(self) -> int:
         ...
 
     @abc.abstractmethod
-    def get_bd_size(self):
+    def get_min_max_bd(
+        self,
+    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
         ...
 
-    @abc.abstractmethod
-    def get_min_max_bd(self):
-        ...
-
-    def get_bounded_min_max_bd(self):
+    def get_bounded_min_max_bd(
+        self,
+    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
         min_bd, max_bd = self.get_min_max_bd()
         if jnp.isinf(max_bd) or jnp.isinf(min_bd):
-            raise NotImplementedError("Boundedness has not been implemented "
-                                      "for this unbounded task")
+            raise NotImplementedError(
+                "Boundedness has not been implemented " "for this unbounded task"
+            )
         else:
             return min_bd, max_bd
 
     @abc.abstractmethod
-    def get_min_max_params(self):
+    def get_min_max_params(
+        self,
+    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
         ...
 
     @abc.abstractmethod
@@ -52,13 +70,14 @@ class QDBenchmarkTask(metaclass=abc.ABCMeta):
 
 
 class ArchimedeanSpiralV0(QDBenchmarkTask):
-    def __init__(self,
-                 parameterization: ParameterizationGenotype,
-                 archimedean_bd: ArchimedeanBD,
-                 parameter: float = 0.01,
-                 precision: Optional[float] = None,
-                 alpha: float = 40.,
-                 ):
+    def __init__(
+        self,
+        parameterization: ParameterizationGenotype,
+        archimedean_bd: ArchimedeanBD,
+        parameter: float = 0.01,
+        precision: Optional[float] = None,
+        alpha: float = 40.0,
+    ):
         self.parameterization = parameterization
         self.archimedean_bd = archimedean_bd
         self.parameter = parameter
@@ -68,14 +87,19 @@ class ArchimedeanSpiralV0(QDBenchmarkTask):
             self.precision = precision
         self.alpha = alpha
 
-    def _gamma(self, angle):
-        return jnp.asarray([self.parameter * angle * jnp.cos(angle),
-                            self.parameter * angle * jnp.sin(angle)])
+    def _gamma(self, angle: float) -> jnp.ndarray:
+        return jnp.hstack(
+            [
+                self.parameter * angle * jnp.cos(angle),
+                self.parameter * angle * jnp.sin(angle),
+            ]
+        )
 
-    def get_arc_length(self, angle):
-        return (self.parameter / 2) * \
-               (angle * jnp.sqrt(1 + jnp.power(angle,2))
-                + jnp.log(angle + jnp.sqrt(1 + jnp.power(angle, 2))))
+    def get_arc_length(self, angle: Union[float, jnp.ndarray]) -> jnp.ndarray:
+        return (self.parameter / 2) * (
+            angle * jnp.sqrt(1 + jnp.power(angle, 2))
+            + jnp.log(angle + jnp.sqrt(1 + jnp.power(angle, 2)))
+        )
 
     def _cond_fun(self, elem: Tuple[float, float, float]) -> jnp.bool_:
         inf, sup, target = elem
@@ -83,45 +107,54 @@ class ArchimedeanSpiralV0(QDBenchmarkTask):
 
     def _body_fun(self, elem: Tuple[float, float, float]) -> Tuple[float, float, float]:
         inf, sup, target_angle_length = elem
-        middle = (sup + inf) / 2.
+        middle = (sup + inf) / 2.0
         arc_length_middle = self.get_arc_length(middle)
-        new_inf, new_sup = jax.lax.cond(target_angle_length < arc_length_middle,
-                                        lambda: (inf, middle),
-                                        lambda: (middle, sup))
+        new_inf, new_sup = jax.lax.cond(
+            target_angle_length < arc_length_middle,
+            lambda: (inf, middle),
+            lambda: (middle, sup),
+        )
         return new_inf, new_sup, target_angle_length
 
-    def _approximate_angle_from_arc_length(self,
-                                           target_arc_length: float
-                                           ) -> jnp.ndarray:
-        inf, sup, _ = jax.lax.while_loop(self._cond_fun,
-                                         self._body_fun,
-                                         init_val=(0.,
-                                                   self.alpha * jnp.pi,
-                                                   target_arc_length)
-                                         )
-        middle = (sup + inf) / 2.
+    def _approximate_angle_from_arc_length(
+        self, target_arc_length: float
+    ) -> jnp.ndarray:
+        inf, sup, _ = jax.lax.while_loop(
+            self._cond_fun,
+            self._body_fun,
+            init_val=(0.0, self.alpha * jnp.pi, target_arc_length),
+        )
+        middle = (sup + inf) / 2.0
         return jnp.asarray(middle)
 
-    def scoring_function(self, params: Genotype) -> Tuple[Fitness, Descriptor]:
-        constant_fitness = jnp.asarray(1.)
+    def evaluation(self, params: Genotype) -> Tuple[Fitness, Descriptor]:
+        constant_fitness = jnp.asarray(1.0)
 
-        if self.archimedean_bd == ArchimedeanBD.geodesic \
-          and self.parameterization == ParameterizationGenotype.arc_length:
+        if (
+            self.archimedean_bd == ArchimedeanBD.geodesic
+            and self.parameterization == ParameterizationGenotype.arc_length
+        ):
             arc_length = params
             return constant_fitness, arc_length
-        elif self.archimedean_bd == ArchimedeanBD.geodesic \
-          and self.parameterization == ParameterizationGenotype.angle:
+        elif (
+            self.archimedean_bd == ArchimedeanBD.geodesic
+            and self.parameterization == ParameterizationGenotype.angle
+        ):
             angle = params
             arc_length = self.get_arc_length(angle)
             return constant_fitness, arc_length
-        elif self.archimedean_bd == ArchimedeanBD.euclidean \
-          and self.parameterization == ParameterizationGenotype.arc_length:
+        elif (
+            self.archimedean_bd == ArchimedeanBD.euclidean
+            and self.parameterization == ParameterizationGenotype.arc_length
+        ):
             arc_length = params
             angle = self._approximate_angle_from_arc_length(arc_length[0])
             euclidean_bd = self._gamma(angle)
             return constant_fitness, euclidean_bd
-        elif self.archimedean_bd == ArchimedeanBD.euclidean \
-          and self.parameterization == ParameterizationGenotype.angle:
+        elif (
+            self.archimedean_bd == ArchimedeanBD.euclidean
+            and self.parameterization == ParameterizationGenotype.angle
+        ):
             angle = params
             return constant_fitness, self._gamma(angle)
         else:
@@ -135,7 +168,7 @@ class ArchimedeanSpiralV0(QDBenchmarkTask):
         else:
             raise ValueError("Invalid BD")
 
-    def get_min_max_bd(self) -> Tuple[Optional[float], Optional[float]]:
+    def get_min_max_bd(self) -> Tuple[float, float]:
         max_angle = self.alpha * jnp.pi
         max_norm = jnp.linalg.norm(self._gamma(max_angle))
 
@@ -143,14 +176,14 @@ class ArchimedeanSpiralV0(QDBenchmarkTask):
             return -max_norm, max_norm
         elif self.archimedean_bd == ArchimedeanBD.geodesic:
             max_arc_length = self.get_arc_length(max_angle)
-            return 0., max_arc_length
+            return 0.0, max_arc_length
         else:
             raise ValueError("Invalid BD")
 
-    def get_min_max_params(self) -> Tuple[Optional[float], Optional[float]]:
+    def get_min_max_params(self) -> Tuple[float, float]:
         if self.parameterization == ParameterizationGenotype.angle:
             max_angle = self.alpha * jnp.pi
-            return 0., max_angle
+            return 0.0, max_angle
         elif self.parameterization == ParameterizationGenotype.arc_length:
             max_angle = self.alpha * jnp.pi
             max_arc_length = self.get_arc_length(max_angle)
@@ -160,8 +193,8 @@ class ArchimedeanSpiralV0(QDBenchmarkTask):
 
     def get_initial_parameters(self, batch_size: int) -> Genotype:
         max_angle = self.alpha * jnp.pi
-        mid_angle = max_angle / 2.
-        mid_number_turns = 1 + int(mid_angle / (2. * jnp.pi))
+        mid_angle = max_angle / 2.0
+        mid_number_turns = 1 + int(mid_angle / (2.0 * jnp.pi))
         horizontal_left_mid_angle = mid_number_turns * jnp.pi * 2
 
         if self.parameterization == ParameterizationGenotype.angle:
@@ -175,12 +208,33 @@ class ArchimedeanSpiralV0(QDBenchmarkTask):
             raise ValueError("Invalid parameterization")
 
 
-if __name__ == '__main__':
-    # parameter = 200
-    # alpha = 10
-    task = ArchimedeanSpiralV0(parameterization=ParameterizationGenotype.arc_length,
-                               archimedean_bd=ArchimedeanBD.euclidean)
-    archimedean_spiral_fn = task.scoring_function
+archimedean_spiral_v0_angle_euclidean_task = ArchimedeanSpiralV0(
+    ParameterizationGenotype.angle,
+    ArchimedeanBD.euclidean,
+)
+
+archimedean_spiral_v0_angle_geodesic_task = ArchimedeanSpiralV0(
+    ParameterizationGenotype.angle,
+    ArchimedeanBD.geodesic,
+)
+
+archimedean_spiral_v0_arc_length_euclidean_task = ArchimedeanSpiralV0(
+    ParameterizationGenotype.arc_length,
+    ArchimedeanBD.euclidean,
+)
+
+archimedean_spiral_v0_arc_length_geodesic_task = ArchimedeanSpiralV0(
+    ParameterizationGenotype.arc_length,
+    ArchimedeanBD.geodesic,
+)
+
+
+if __name__ == "__main__":
+    task = ArchimedeanSpiralV0(
+        parameterization=ParameterizationGenotype.arc_length,
+        archimedean_bd=ArchimedeanBD.euclidean,
+    )
+    archimedean_spiral_fn = task.evaluation
 
     # max_length = task.get_arc_length(jnp.pi * task.alpha)
     x = jnp.linspace(*task.get_min_max_params(), num=16000).reshape((-1, 1))
@@ -194,7 +248,6 @@ if __name__ == '__main__':
 
     print(res)
     print("time taken: {}".format(time.time() - start))
-    plt.plot(res[1][:, 0],
-             res[1][:, 1])
-    plt.scatter(red_point[1][0, 0], red_point[1][0, 1], c='r')
+    plt.plot(res[1][:, 0], res[1][:, 1])
+    plt.scatter(red_point[1][0, 0], red_point[1][0, 1], c="r")
     plt.show()
