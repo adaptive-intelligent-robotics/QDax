@@ -36,9 +36,9 @@ Notes:
 
 | Task                           | Parameter Dimensions | Parameter Bounds                                                               | Descriptor Dimensions                 | Descriptor Bounds                                                           | Description |
 |--------------------------------|----------------------|--------------------------------------------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------|-------------|
-| archimedean-spiral-v0          | 1                    | $[0,\alpha\pi]^n$ (angle param.)<br/> $[0,max arc length]$ (arc length param.) | 1 (geodesic BD)<br/> 2 (euclidean BD) | $[0,max arc length]$ (geodesic BD)<br/> $[-radius,radius]^2$ (euclidean BD) |             |
-| SSF-v0                         | $n$                  | Unbounded                                                                      | 1                                     | $[0,$∞$)$                                                                   |             |
-| deceptive-evolvability-v0<br/> | $n$ (2 by default)   | Bounded area including the two gaussian peaks                                  | 1                                     | $[0,max sum gaussians]$                                                     |             |
+| archimedean-spiral-v0          | 1                    | $[0,\alpha\pi]^n$ (angle param.)<br/> $[0,max-arc-length]$ (arc length param.) | 1 (geodesic BD)<br/> 2 (euclidean BD) | $[0,max-arc-length]$ (geodesic BD)<br/> $[-radius,radius]^2$ (euclidean BD) |             |
+| SSF-v0                         | $n$                  | Unbounded                                                                      | 1                                     | $[ 0 ,$ ∞ $)$                                                               |             |
+| deceptive-evolvability-v0<br/> | $n$ (2 by default)   | Bounded area including the two gaussian peaks                                  | 1                                     | $[0,max-sum-gaussians]$                                                     |             |
 
 ## Brax-RL
 | Task            | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
