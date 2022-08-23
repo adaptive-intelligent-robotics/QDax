@@ -80,7 +80,7 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
 
         return considered_points[index_min]
 
-    def get_bd_size(self) -> int:
+    def get_descriptor_size(self) -> int:
         return 1
 
     def get_min_max_descriptor(self) -> Tuple[float, float]:

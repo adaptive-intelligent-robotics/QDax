@@ -26,10 +26,10 @@ class SsfV0(QDSuiteTask):
         index = jnp.floor(norm / r_2k_plus_1)
         bd = jax.lax.cond(index == 0.0, lambda: norm, lambda: r_2k_plus_1)
         constant_fitness = jnp.asarray(1.0)
-        bd = jnp.asarray(bd).reshape((self.get_bd_size(),))
+        bd = jnp.asarray(bd).reshape((self.get_descriptor_size(),))
         return constant_fitness, bd
 
-    def get_bd_size(self) -> int:
+    def get_descriptor_size(self) -> int:
         return 1
 
     def get_min_max_descriptor(self) -> Tuple[float, float]:
