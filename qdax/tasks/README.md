@@ -31,6 +31,36 @@ Notes:
 | Non-continous Islands | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
 | Continous Islands     | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
 
+### Example Usage
+
+```python
+import jax
+from qdax.tasks.hypervolume_functions import square_scoring_function
+
+random_key = jax.random.PRNGKey(0)
+
+# Get scoring function
+scoring_fn = square_scoring_function
+
+# Get Task Properties (parameter space, descriptor space, etc.)
+min_param, max_param = 0., 1.
+min_desc, max_desc = 0., 1.
+
+# Get initial batch of parameters
+num_param_dimensions = 2
+init_batch_size = ...
+random_key, _subkey = jax.random.split(random_key)
+initial_params = jax.random.uniform(
+    _subkey,
+    shape=(init_batch_size, num_param_dimensions),
+    minval=min_param,
+    maxval=max_param,
+)
+
+# Get number of descriptor dimensions
+desc_size = num_param_dimensions
+```
+
 ## QD Suite
 "Towards QD-suite: developing a set of benchmarks for Quality-Diversity algorithms" by Achkan Salehi and Stephane Doncieux
 
@@ -39,6 +69,8 @@ Notes:
 | archimedean-spiral-v0          | 1                    | $[0,\alpha\pi]^n$ (angle param.)<br/> $[0,max-arc-length]$ (arc length param.) | 1 (geodesic BD)<br/> 2 (euclidean BD) | $[0,max-arc-length]$ (geodesic BD)<br/> $[-radius,radius]^2$ (euclidean BD) |             |
 | SSF-v0                         | $n$                  | Unbounded                                                                      | 1                                     | $[ 0 ,$ ∞ $)$                                                               |             |
 | deceptive-evolvability-v0<br/> | $n$ (2 by default)   | Bounded area including the two gaussian peaks                                  | 1                                     | $[0,max-sum-gaussians]$                                                     |             |
+
+### Example Usage
 
 ```python
 import math
@@ -52,21 +84,14 @@ scoring_fn = task.scoring_function
 # Get initial batch of parameters
 initial_params = task.get_initial_parameters(batch_size=...)
 
-# Get Task Properties (parameter space, descriptor space, and grid_shape)
+# Get Task Properties (parameter space, descriptor space, and descriptor size)
 min_param, max_param = task.get_min_max_params()
 min_desc, max_desc = task.get_bounded_min_max_descriptor()  # To consider bounded Descriptor space
 # If the task has a descriptor space that is not bounded, then the unbounded descriptor
 # space can be obtained via the following:
 # min_bd, max_bd = task.get_min_max_bd()
 
-bd_size = task.get_bd_size()
-if bd_size == 1:
-    grid_shape = (100,)
-elif bd_size == 2:
-    grid_shape = (100, 100)
-else:
-    resolution_per_axis = math.floor(math.pow(10000., 1. / bd_size))
-    grid_shape = tuple([resolution_per_axis for _ in range(bd_size)])
+desc_size = task.get_descriptor_size()
 ```
 
 ## Brax-RL

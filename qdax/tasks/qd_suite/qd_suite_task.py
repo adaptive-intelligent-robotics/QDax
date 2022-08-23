@@ -25,7 +25,7 @@ class QDSuiteTask(metaclass=abc.ABCMeta):
         return fitnesses, descriptors, {}, random_key
 
     @abc.abstractmethod
-    def get_bd_size(self) -> int:
+    def get_descriptor_size(self) -> int:
         ...
 
     @abc.abstractmethod

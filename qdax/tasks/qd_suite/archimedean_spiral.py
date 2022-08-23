@@ -111,7 +111,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         else:
             raise ValueError("Invalid parameterization and/or BD")
 
-    def get_bd_size(self) -> int:
+    def get_descriptor_size(self) -> int:
         if self.archimedean_bd == ArchimedeanBD.euclidean:
             return 2
         elif self.archimedean_bd == ArchimedeanBD.geodesic:
