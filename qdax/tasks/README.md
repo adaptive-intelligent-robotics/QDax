@@ -13,12 +13,73 @@ Notes:
 - the parameter space is normalized between $[0,1]$ which corresponds to $[0,2\pi]$
 - the descriptor space (end-effector x-y position) is normalized between $[0,1]$
 
+### Example Usage
+
+```python
+import jax
+from qdax.tasks.arm import arm_scoring_function
+
+random_key = jax.random.PRNGKey(0)
+
+# Get scoring function
+scoring_fn = arm_scoring_function
+
+# Get Task Properties (parameter space, descriptor space, etc.)
+min_param, max_param = 0., 1.
+min_desc, max_desc = 0., 1.
+
+# Get initial batch of parameters
+num_param_dimensions = ...
+init_batch_size = ...
+random_key, _subkey = jax.random.split(random_key)
+initial_params = jax.random.uniform(
+    _subkey,
+    shape=(init_batch_size, num_param_dimensions),
+    minval=min_param,
+    maxval=max_param,
+)
+
+# Get number of descriptor dimensions
+desc_size = 2
+```
+
 ## Standard Functions
 | Task                 | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
 |----------------------|----------------------|------------------|-----------------------|-------------------|-------------|
 | Sphere               | n                    | $[0,1]^n$        | 2                     | $[0,1]^n$         |             |
 | Rastrigin            | n                    | $[0,1]^n$        | 2                     | $[0,1]^n$         |             |
 | Rastrigin-Projection | n                    | $[0,1]^n$        | 2                     | $[0,1]^n$         |             |
+
+### Example Usage
+
+```python
+import jax
+from qdax.tasks.standard_functions import sphere_scoring_function
+
+random_key = jax.random.PRNGKey(0)
+
+# Get scoring function
+scoring_fn = sphere_scoring_function
+
+# Get Task Properties (parameter space, descriptor space, etc.)
+min_param, max_param = 0., 1.
+min_desc, max_desc = 0., 1.
+
+# Get initial batch of parameters
+num_param_dimensions = ...
+init_batch_size = ...
+random_key, _subkey = jax.random.split(random_key)
+initial_params = jax.random.uniform(
+    _subkey,
+    shape=(init_batch_size, num_param_dimensions),
+    minval=min_param,
+    maxval=max_param,
+)
+
+# Get number of descriptor dimensions
+desc_size = 2
+```
+
 
 ## Hyper-Volume Functions
 "Hypervolume-based Benchmark Functions for Quality Diversity Algorithms" by Jean-Baptiste Mouret
@@ -47,7 +108,7 @@ min_param, max_param = 0., 1.
 min_desc, max_desc = 0., 1.
 
 # Get initial batch of parameters
-num_param_dimensions = 2
+num_param_dimensions = ...
 init_batch_size = ...
 random_key, _subkey = jax.random.split(random_key)
 initial_params = jax.random.uniform(
@@ -81,16 +142,17 @@ task = archimedean_spiral_v0_angle_euclidean_task
 # Get scoring function
 scoring_fn = task.scoring_function
 
-# Get initial batch of parameters
-initial_params = task.get_initial_parameters(batch_size=...)
-
-# Get Task Properties (parameter space, descriptor space, and descriptor size)
+# Get Task Properties (parameter space, descriptor space, etc.)
 min_param, max_param = task.get_min_max_params()
 min_desc, max_desc = task.get_bounded_min_max_descriptor()  # To consider bounded Descriptor space
 # If the task has a descriptor space that is not bounded, then the unbounded descriptor
 # space can be obtained via the following:
 # min_bd, max_bd = task.get_min_max_bd()
 
+# Get initial batch of parameters
+initial_params = task.get_initial_parameters(batch_size=...)
+
+# Get number of descriptor dimensions
 desc_size = task.get_descriptor_size()
 ```
 
