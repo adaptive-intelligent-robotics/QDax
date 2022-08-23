@@ -172,3 +172,7 @@ desc_size = task.get_descriptor_size()
 
 Notes:
 - the parameter dimensions for default Brax-RL tasks depend on the size and architecture of the neural network used and can be customized and changed easily. If not set, a network size of two hidden layers of size 64 is used.
+
+### Example Usage
+
+See [Example in Notebook](../../notebooks/mapelites_example.ipynb)
