@@ -119,7 +119,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         else:
             raise ValueError("Invalid BD")
 
-    def get_min_max_bd(self) -> Tuple[float, float]:
+    def get_min_max_descriptor(self) -> Tuple[float, float]:
         max_angle = self.alpha * jnp.pi
         max_norm = jnp.linalg.norm(self._gamma(max_angle))
 

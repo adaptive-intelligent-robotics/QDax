@@ -40,6 +40,35 @@ Notes:
 | SSF-v0                         | $n$                  | Unbounded                                                                      | 1                                     | $[ 0 ,$ ∞ $)$                                                               |             |
 | deceptive-evolvability-v0<br/> | $n$ (2 by default)   | Bounded area including the two gaussian peaks                                  | 1                                     | $[0,max-sum-gaussians]$                                                     |             |
 
+```python
+import math
+from qdax.tasks.qd_suite import archimedean_spiral_v0_angle_euclidean_task
+
+task = archimedean_spiral_v0_angle_euclidean_task
+
+# Get scoring function
+scoring_fn = task.scoring_function
+
+# Get initial batch of parameters
+initial_params = task.get_initial_parameters(batch_size=...)
+
+# Get Task Properties (parameter space, descriptor space, and grid_shape)
+min_param, max_param = task.get_min_max_params()
+min_desc, max_desc = task.get_bounded_min_max_descriptor()  # To consider bounded Descriptor space
+# If the task has a descriptor space that is not bounded, then the unbounded descriptor
+# space can be obtained via the following:
+# min_bd, max_bd = task.get_min_max_bd()
+
+bd_size = task.get_bd_size()
+if bd_size == 1:
+    grid_shape = (100,)
+elif bd_size == 2:
+    grid_shape = (100, 100)
+else:
+    resolution_per_axis = math.floor(math.pow(10000., 1. / bd_size))
+    grid_shape = tuple([resolution_per_axis for _ in range(bd_size)])
+```
+
 ## Brax-RL
 | Task            | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
 |-----------------|----------------------|------------------|-----------------------|-------------------|-------------|

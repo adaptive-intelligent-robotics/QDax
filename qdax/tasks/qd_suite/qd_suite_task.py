@@ -29,15 +29,15 @@ class QDSuiteTask(metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    def get_min_max_bd(
+    def get_min_max_descriptor(
         self,
     ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
         ...
 
-    def get_bounded_min_max_bd(
+    def get_bounded_min_max_descriptor(
         self,
     ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
-        min_bd, max_bd = self.get_min_max_bd()
+        min_bd, max_bd = self.get_min_max_descriptor()
         if jnp.isinf(max_bd) or jnp.isinf(min_bd):
             raise NotImplementedError(
                 "Boundedness has not been implemented " "for this unbounded task"

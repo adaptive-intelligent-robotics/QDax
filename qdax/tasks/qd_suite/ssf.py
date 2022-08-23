@@ -32,10 +32,10 @@ class SsfV0(QDSuiteTask):
     def get_bd_size(self) -> int:
         return 1
 
-    def get_min_max_bd(self) -> Tuple[float, float]:
+    def get_min_max_descriptor(self) -> Tuple[float, float]:
         return 0.0, jnp.inf
 
-    def get_bounded_min_max_bd(self) -> Tuple[float, float]:
+    def get_bounded_min_max_descriptor(self) -> Tuple[float, float]:
         return 0.0, 1000.0
 
     def get_min_max_params(self) -> Tuple[float, float]:

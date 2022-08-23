@@ -83,7 +83,7 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
     def get_bd_size(self) -> int:
         return 1
 
-    def get_min_max_bd(self) -> Tuple[float, float]:
+    def get_min_max_descriptor(self) -> Tuple[float, float]:
         potential_max_1 = self.evaluation(self.mu_1)[1]
         potential_max_2 = self.evaluation(self.mu_2)[1]
         return 0.0, jnp.maximum(potential_max_1, potential_max_2)[0]
