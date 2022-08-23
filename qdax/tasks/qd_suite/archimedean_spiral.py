@@ -159,27 +159,6 @@ class ArchimedeanSpiralV0(QDSuiteTask):
             raise ValueError("Invalid parameterization")
 
 
-archimedean_spiral_v0_angle_euclidean_task = ArchimedeanSpiralV0(
-    ParameterizationGenotype.angle,
-    ArchimedeanBD.euclidean,
-)
-
-archimedean_spiral_v0_angle_geodesic_task = ArchimedeanSpiralV0(
-    ParameterizationGenotype.angle,
-    ArchimedeanBD.geodesic,
-)
-
-archimedean_spiral_v0_arc_length_euclidean_task = ArchimedeanSpiralV0(
-    ParameterizationGenotype.arc_length,
-    ArchimedeanBD.euclidean,
-)
-
-archimedean_spiral_v0_arc_length_geodesic_task = ArchimedeanSpiralV0(
-    ParameterizationGenotype.arc_length,
-    ArchimedeanBD.geodesic,
-)
-
-
 if __name__ == "__main__":
     task = ArchimedeanSpiralV0(
         parameterization=ParameterizationGenotype.arc_length,

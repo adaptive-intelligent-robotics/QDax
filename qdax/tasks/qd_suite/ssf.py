@@ -74,9 +74,6 @@ class SsfV0(QDSuiteTask):
         return 2 * ((k - 1) ** 3) + 1
 
 
-ssf_v0_param_size_1_task = SsfV0(param_size=1)
-ssf_v0_param_size_2_task = SsfV0(param_size=2)
-
 if __name__ == "__main__":
     key = jax.random.PRNGKey(0)
 

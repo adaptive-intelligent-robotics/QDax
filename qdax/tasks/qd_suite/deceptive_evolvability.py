@@ -103,9 +103,6 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
         return jnp.repeat(jnp.expand_dims(saddle_point, axis=0), batch_size, axis=0)
 
 
-deceptive_evolvability_v0_task = DeceptiveEvolvabilityV0()
-
-
 def function_test() -> None:
     task = DeceptiveEvolvabilityV0()
     saddle_point = task.get_saddle_point()
