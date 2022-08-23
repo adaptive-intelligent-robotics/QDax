@@ -55,7 +55,7 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
     num_iterations = 5
     min_param, max_param = task.get_min_max_params()
     min_bd, max_bd = task.get_bounded_min_max_descriptor()
-    bd_size = task.get_bd_size()
+    bd_size = task.get_descriptor_size()
     if bd_size == 1:
         grid_shape = (100,)
     elif bd_size == 2:
@@ -64,7 +64,6 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
         resolution_per_axis = math.floor(math.pow(10000., 1. / bd_size))
         grid_shape = tuple([resolution_per_axis for _ in range(bd_size)])
     
-
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
 
