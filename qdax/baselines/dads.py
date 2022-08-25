@@ -144,7 +144,7 @@ class DADS(SAC):
         random_key, subkey = jax.random.split(random_key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
@@ -382,7 +382,7 @@ class DADS(SAC):
 
         true_returns = jnp.nansum(transitions.rewards, axis=0)
 
-        reshaped_transitions = jax.tree_map(
+        reshaped_transitions = jax.tree_util.tree_map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
             transitions,
         )

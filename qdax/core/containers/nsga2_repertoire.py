@@ -106,7 +106,7 @@ class NSGA2Repertoire(GARepertoire):
             The updated repertoire.
         """
         # All the candidates
-        candidates = jax.tree_map(
+        candidates = jax.tree_util.tree_map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
             self.genotypes,
             batch_of_genotypes,
@@ -237,7 +237,7 @@ class NSGA2Repertoire(GARepertoire):
         indices = indices - 1
 
         # keep only the survivors
-        new_candidates = jax.tree_map(lambda x: x[indices], candidates)
+        new_candidates = jax.tree_util.tree_map(lambda x: x[indices], candidates)
         new_scores = candidate_fitnesses[indices]
 
         new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_scores)

@@ -9,7 +9,6 @@ from typing import Any, Tuple
 
 import jax
 import jax.numpy as jnp
-from jax.tree_util import tree_map
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -81,7 +80,7 @@ class MOMERepertoire(MapElitesRepertoire):
         """
         p = (1.0 - mask) / jnp.sum(1.0 - mask)
 
-        genotype_sample = tree_map(
+        genotype_sample = jax.tree_util.tree_map(
             lambda x: jax.random.choice(random_key, x, shape=(1,), p=p),
             pareto_front_genotypes,
         )
@@ -117,7 +116,9 @@ class MOMERepertoire(MapElitesRepertoire):
         cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
 
         # get genotypes (front) from the chosen indices
-        pareto_front_genotypes = tree_map(lambda x: x[cells_idx], self.genotypes)
+        pareto_front_genotypes = jax.tree_util.tree_map(
+            lambda x: x[cells_idx], self.genotypes
+        )
 
         # prepare second sampling function
         sample_in_fronts = jax.vmap(self._sample_in_masked_pareto_front)
@@ -132,7 +133,9 @@ class MOMERepertoire(MapElitesRepertoire):
         )
 
         # remove the dim coming from pareto front
-        sampled_genotypes = tree_map(lambda x: x.squeeze(axis=1), sampled_genotypes)
+        sampled_genotypes = jax.tree_util.tree_map(
+            lambda x: x.squeeze(axis=1), sampled_genotypes
+        )
 
         return sampled_genotypes, random_key
 
@@ -183,7 +186,7 @@ class MOMERepertoire(MapElitesRepertoire):
         cat_fitnesses = jnp.concatenate(
             [pareto_front_fitnesses, new_batch_of_fitnesses], axis=0
         )
-        cat_genotypes = tree_map(
+        cat_genotypes = jax.tree_util.tree_map(
             lambda x, y: jnp.concatenate([x, y], axis=0),
             pareto_front_genotypes,
             new_batch_of_genotypes,
@@ -206,7 +209,7 @@ class MOMERepertoire(MapElitesRepertoire):
 
         # get new fitness, genotypes and descriptors
         new_front_fitness = jnp.take(cat_fitnesses, indices, axis=0)
-        new_front_genotypes = tree_map(
+        new_front_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.take(x, indices, axis=0), cat_genotypes
         )
         new_front_descriptors = jnp.take(cat_descriptors, indices, axis=0)
@@ -233,10 +236,12 @@ class MOMERepertoire(MapElitesRepertoire):
         genotypes_mask = jnp.repeat(
             jnp.expand_dims(new_mask, axis=-1), genotypes_dim, axis=-1
         )
-        new_front_genotypes = tree_map(
+        new_front_genotypes = jax.tree_util.tree_map(
             lambda x: x * genotypes_mask, new_front_genotypes
         )
-        new_front_genotypes = tree_map(lambda x: x[:front_size, :], new_front_genotypes)
+        new_front_genotypes = jax.tree_util.tree_map(
+            lambda x: x[:front_size, :], new_front_genotypes
+        )
 
         descriptors_mask = jnp.repeat(
             jnp.expand_dims(new_mask, axis=-1), descriptors_dim, axis=-1
@@ -288,7 +293,7 @@ class MOMERepertoire(MapElitesRepertoire):
             index = index.astype(jnp.int32)
 
             # get cell data
-            cell_genotype = tree_map(lambda x: x[index], carry.genotypes)
+            cell_genotype = jax.tree_util.tree_map(lambda x: x[index], carry.genotypes)
             cell_fitness = carry.fitnesses[index]
             cell_descriptor = carry.descriptors[index]
             cell_mask = jnp.any(cell_fitness == -jnp.inf, axis=-1)
@@ -314,7 +319,7 @@ class MOMERepertoire(MapElitesRepertoire):
             cell_fitness = cell_fitness - jnp.inf * jnp.expand_dims(cell_mask, axis=-1)
 
             # update grid
-            new_genotypes = tree_map(
+            new_genotypes = jax.tree_util.tree_map(
                 lambda x, y: x.at[index].set(y), carry.genotypes, cell_genotype
             )
             new_fitnesses = carry.fitnesses.at[index].set(cell_fitness)
@@ -382,7 +387,7 @@ class MOMERepertoire(MapElitesRepertoire):
         default_fitnesses = -jnp.inf * jnp.ones(
             shape=(num_centroids, pareto_front_max_length, num_criteria)
         )
-        default_genotypes = tree_map(
+        default_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.zeros(
                 shape=(
                     num_centroids,

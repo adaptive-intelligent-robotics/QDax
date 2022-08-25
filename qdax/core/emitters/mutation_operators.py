@@ -114,7 +114,7 @@ def polynomial_mutation(
         maxval=maxval,
     )
     mutation_fn = jax.vmap(mutation_fn)
-    x = jax.tree_map(lambda x_: mutation_fn(x_, mutation_key), x)
+    x = jax.tree_util.tree_map(lambda x_: mutation_fn(x_, mutation_key), x)
     return x, random_key
 
 
@@ -173,7 +173,9 @@ def polynomial_crossover(
     )
     crossover_fn = jax.vmap(crossover_fn)
     # TODO: check that key usage is correct
-    x = jax.tree_map(lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2)
+    x = jax.tree_util.tree_map(
+        lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2
+    )
     return x, random_key
 
 
@@ -230,6 +232,8 @@ def isoline_variation(
     keys_tree = jax.tree_util.tree_unflatten(jax.tree_util.tree_structure(x1), subkeys)
 
     # apply isolinedd to each branch of the tree
-    x = jax.tree_map(lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree)
+    x = jax.tree_util.tree_map(
+        lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree
+    )
 
     return x, random_key
