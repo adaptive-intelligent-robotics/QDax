@@ -19,6 +19,7 @@ The latest stable release of QDax can be installed directly from source with:
 ```bash
 pip install qdax
 ```
+To use QDax with NVidia GPUs, you must first install [CUDA, CuDNN, and JAX with GPU support](https://github.com/google/jax#installation).
 
 However, we also provide and recommend using either Docker, Singularity or conda environments to use the repository. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
 
