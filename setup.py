@@ -22,9 +22,11 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "absl-py>=1.0.0",
-        "jax>=0.3.16",
+        "jax==0.3.15",
         "jaxlib>=0.3.15",  # necessary to build the doc atm
-        "flax>=0.6.0",
+        # if flax>=0.6, then requires jax==0.3.16,
+        # which is incompatible with all versions of brax
+        "flax>=0.5.0,<0.6",
         "brax>=0.0.12",
         "gym>=0.23.1",
         "numpy>=1.22.3",
