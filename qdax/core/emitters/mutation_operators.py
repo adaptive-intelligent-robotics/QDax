@@ -1,11 +1,12 @@
 """File defining mutation and crossover functions."""
 import abc
-from abc import ABC
+import math
 from functools import partial
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+from chex import ArrayTree
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
@@ -239,37 +240,294 @@ def isoline_variation(
 
 
 class VariationOperator(metaclass=abc.ABCMeta):
+    def __init__(self, minval: Optional[float] = None, maxval: Optional[float] = None):
+        self._minval = minval
+        self._maxval = maxval
+
     @property
     @abc.abstractmethod
-    def number_parents_multiplier(self) -> int:
+    def number_parents_to_select(self) -> int:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def number_genotypes_returned(self) -> int:
         ...
 
     def calculate_number_parents_to_select(self, batch_size: int) -> int:
-        return self.number_parents_multiplier * batch_size
+        assert batch_size % self.number_genotypes_returned == 0, (
+            "The batch size should be a multiple of the "
+            "number of genotypes returned after each variation"
+        )
+        return (
+            self.number_parents_to_select * batch_size // self.number_genotypes_returned
+        )
 
     @abc.abstractmethod
-    def apply(
+    def apply_without_clip(
         self, genotypes: Genotype, emitter_state: EmitterState, random_key: RNGKey
     ) -> Tuple[Genotype, RNGKey]:
         ...
 
-    def divide_genotypes(
+    def _clip(self, gen: Genotype) -> Genotype:
+        if (self._minval is not None) or (self._maxval is not None):
+            gen = jax.tree_map(
+                lambda _gen: jnp.clip(_gen, self._minval, self._maxval), gen
+            )
+        return gen
+
+    def apply_with_clip(
+        self,
+        genotypes: Genotype,
+        emitter_state: EmitterState,
+        random_key: RNGKey,
+    ) -> Tuple[Genotype, RNGKey]:
+        new_genotypes, random_key = self.apply_without_clip(
+            genotypes, emitter_state, random_key
+        )
+        new_genotypes = self._clip(new_genotypes)
+        return new_genotypes, random_key
+
+    def _divide_genotypes(
         self,
         genotypes: Genotype,
     ) -> Tuple[Genotype, ...]:
         tuple_genotypes = tuple(
             jax.tree_map(
-                lambda x: x[index_start :: self.number_parents_multiplier], genotypes
+                lambda x: x[index_start :: self.number_parents_to_select], genotypes
             )
-            for index_start in range(self.number_parents_multiplier)
+            for index_start in range(self.number_parents_to_select)
         )
         return tuple_genotypes
 
+    @staticmethod
+    def get_tree_keys(
+        genotype: Genotype, random_key: RNGKey
+    ) -> Tuple[ArrayTree, RNGKey]:
+        nb_leaves = len(jax.tree_leaves(genotype))
+        random_key, subkey = jax.random.split(random_key)
+        subkeys = jax.random.split(subkey, num=nb_leaves)
+        keys_tree = jax.tree_unflatten(jax.tree_structure(genotype), subkeys)
+        return keys_tree, random_key
 
-class CrossOver(VariationOperator, ABC):
+    @staticmethod
+    def _get_random_positions_to_change(
+        genotypes_tree: Genotype,
+        variation_rate: float,
+        random_key: RNGKey,
+    ) -> Tuple[Genotype, RNGKey]:
+        def _get_indexes_positions_cross_over(
+            _gen: Genotype, _key: RNGKey
+        ) -> jnp.ndarray:
+            num_positions = _gen.shape[0]
+            positions = jnp.arange(start=0, stop=num_positions)
+            num_positions_to_change = int(variation_rate * num_positions)
+            _key, subkey = jax.random.split(_key)
+            selected_positions = jax.random.choice(
+                key=subkey, a=positions, shape=(num_positions_to_change,), replace=False
+            )
+            return selected_positions
+
+        def _get_array_keys(_key: RNGKey, _gen: Genotype) -> jnp.ndarray:
+            _key, *_subkeys = jax.random.split(_key, num=_gen.shape[0] + 1)
+            return jnp.asarray(_subkeys)
+
+        random_key, _subkey = jax.random.split(random_key)
+        print()
+        key_arrays_tree = jax.tree_map(
+            _get_array_keys,
+            VariationOperator.get_tree_keys(genotypes_tree, _subkey)[0],
+            genotypes_tree,
+        )
+
+        return (
+            jax.tree_map(
+                jax.vmap(_get_indexes_positions_cross_over),
+                genotypes_tree,
+                key_arrays_tree,
+            ),
+            random_key,
+        )
+
+    @staticmethod
+    def _get_sub_genotypes(
+        genotypes_tree: Genotype,
+        selected_positions: jnp.ndarray,
+    ) -> Genotype:
+        return jax.tree_map(
+            jax.vmap(lambda _x, _i: _x[_i]), genotypes_tree, selected_positions
+        )
+
+    @staticmethod
+    def _set_sub_genotypes(
+        genotypes_tree: Genotype,
+        selected_positions: jnp.ndarray,
+        new_genotypes: Genotype,
+    ) -> Genotype:
+        return jax.tree_map(
+            jax.vmap(lambda _x, _i, _y: _x.at[_i].set(_y)),
+            genotypes_tree,
+            selected_positions,
+            new_genotypes,
+        )
+
+
+class ComposerVariations(VariationOperator):
+    def __init__(
+        self,
+        variations_operators_list: List[VariationOperator],
+        minval: Optional[float] = None,
+        maxval: Optional[float] = None,
+    ):
+        super().__init__(minval, maxval)
+        self.variations_list = variations_operators_list
+
     @property
-    def number_parents_multiplier(self) -> int:
+    def number_parents_to_select(self) -> int:
+        numbers_to_select = map(
+            lambda x: x.number_parents_to_select, self.variations_list
+        )
+        return math.prod(numbers_to_select)
+
+    @property
+    def number_genotypes_returned(self) -> int:
+        numbers_to_return = map(
+            lambda x: x.number_genotypes_returned, self.variations_list
+        )
+        return math.prod(numbers_to_return)
+
+    def apply_without_clip(
+        self, genotypes: Genotype, emitter_state: EmitterState, random_key: RNGKey
+    ) -> Tuple[Genotype, RNGKey]:
+        for variation in self.variations_list:
+            genotypes, random_key = variation.apply_with_clip(
+                genotypes, emitter_state, random_key
+            )
+        return genotypes, random_key
+
+
+class Mutation(VariationOperator, abc.ABC):
+    def __init__(
+        self,
+        mutation_rate: float,
+        minval: Optional[float] = None,
+        maxval: Optional[float] = None,
+    ):
+        super().__init__(minval, maxval)
+        self.mutation_rate = mutation_rate
+
+    @property
+    def number_parents_to_select(self) -> int:
+        return 1
+
+    @property
+    def number_genotypes_returned(self) -> int:
+        return 1
+
+    def apply_without_clip(
+        self,
+        genotypes: Genotype,
+        emitter_state: EmitterState,
+        random_key: RNGKey,
+    ) -> Tuple[Genotype, RNGKey]:
+        selected_indices, random_key = self._get_random_positions_to_change(
+            genotypes, self.mutation_rate, random_key
+        )
+        selected_gens = self._get_sub_genotypes(
+            genotypes, selected_positions=selected_indices
+        )
+        selected_gens_mutated, random_key = self._mutate(selected_gens, random_key)
+        new_genotypes = self._set_sub_genotypes(
+            genotypes, selected_indices, selected_gens_mutated
+        )
+        return new_genotypes, random_key
+
+    @abc.abstractmethod
+    def _mutate(self, gen: Genotype, random_key: RNGKey) -> Tuple[Genotype, RNGKey]:
+        ...
+
+
+class Normal(Mutation):
+    def __init__(
+        self,
+        sigma: float,
+        mutation_rate: float = 1.0,
+        minval: Optional[float] = None,
+        maxval: Optional[float] = None,
+    ):
+        super().__init__(mutation_rate=mutation_rate, minval=minval, maxval=maxval)
+        self.sigma = sigma
+
+    def _mutate(self, gen: Genotype, random_key: RNGKey) -> Tuple[Genotype, RNGKey]:
+        array_keys, random_key = self.get_tree_keys(gen, random_key)
+
+        def _variation_fn(_gen: Genotype, _key: RNGKey) -> Genotype:
+            return _gen + jax.random.normal(key=_key, shape=_gen.shape) * self.sigma
+
+        return jax.tree_map(_variation_fn, gen, array_keys), random_key
+
+
+class CrossOver(VariationOperator, abc.ABC):
+    def __init__(
+        self,
+        cross_over_rate: float = 1.0,
+        returns_single_genotype: bool = True,
+        minval: Optional[float] = None,
+        maxval: Optional[float] = None,
+    ):
+        super().__init__(minval, maxval)
+        self.cross_over_rate = cross_over_rate
+        self.returns_single_genotype = returns_single_genotype
+
+    @property
+    def number_parents_to_select(self) -> int:
         return 2
+
+    @property
+    def number_genotypes_returned(self) -> int:
+        if self.returns_single_genotype:
+            return 1
+        else:
+            return 2
+
+    def apply_without_clip(
+        self,
+        genotypes: Genotype,
+        emitter_state: EmitterState,
+        random_key: RNGKey,
+    ) -> Tuple[Genotype, RNGKey]:
+        gen_1, gen_2 = self._divide_genotypes(genotypes)
+        selected_indices, random_key = self._get_random_positions_to_change(
+            gen_1, self.cross_over_rate, random_key
+        )
+        subgen_1 = self._get_sub_genotypes(gen_1, selected_positions=selected_indices)
+        subgen_2 = self._get_sub_genotypes(gen_2, selected_positions=selected_indices)
+
+        if self.returns_single_genotype:
+            new_subgen, random_key = self._cross_over(subgen_1, subgen_2, random_key)
+            new_gen = self._set_sub_genotypes(gen_1, selected_indices, new_subgen)
+            return new_gen, random_key
+        else:
+            # Not changing random key here to keep same noise for gen_tilde_1 and
+            # gen_tilde_2 (as done in the literature)
+            new_subgen_1, _ = self._cross_over(subgen_1, subgen_2, random_key)
+            new_subgen_2, random_key = self._cross_over(subgen_2, subgen_1, random_key)
+
+            new_gen_1 = self._set_sub_genotypes(gen_1, selected_indices, new_subgen_1)
+            new_gen_2 = self._set_sub_genotypes(gen_2, selected_indices, new_subgen_2)
+
+            new_gen = jax.tree_util.tree_map(
+                lambda x_1, x_2: jnp.concatenate([x_1, x_2], axis=0),
+                new_gen_1,
+                new_gen_2,
+            )
+            return new_gen, random_key
+
+    @abc.abstractmethod
+    def _cross_over(
+        self, gen_1: Genotype, gen_2: Genotype, random_key: RNGKey
+    ) -> Tuple[Genotype, RNGKey]:
+        ...
 
 
 class IsolineVariationOperator(CrossOver):
@@ -277,22 +535,26 @@ class IsolineVariationOperator(CrossOver):
         self,
         iso_sigma: float,
         line_sigma: float,
+        cross_over_rate: float = 1.0,
+        returns_single_genotype: bool = True,
         minval: Optional[float] = None,
         maxval: Optional[float] = None,
     ):
+        super().__init__(
+            cross_over_rate=cross_over_rate,
+            returns_single_genotype=returns_single_genotype,
+            minval=minval,
+            maxval=maxval,
+        )
         self._iso_sigma = iso_sigma
         self._line_sigma = line_sigma
-        self._minval = minval
-        self._maxval = maxval
 
-    def apply(
-        self, genotypes: Genotype, emitter_state: EmitterState, random_key: RNGKey
+    def _cross_over(
+        self, gen_1: Genotype, gen_2: Genotype, random_key: RNGKey
     ) -> Tuple[Genotype, RNGKey]:
-        x1, x2 = self.divide_genotypes(genotypes)
-
         # Computing line_noise
         random_key, key_line_noise = jax.random.split(random_key)
-        batch_size = jax.tree_leaves(x1)[0].shape[0]
+        batch_size = jax.tree_leaves(gen_1)[0].shape[0]
         line_noise = (
             jax.random.normal(key_line_noise, shape=(batch_size,)) * self._line_sigma
         )
@@ -311,15 +573,12 @@ class IsolineVariationOperator(CrossOver):
             return x
 
         # create a tree with random keys
-        nb_leaves = len(jax.tree_leaves(x1))
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, num=nb_leaves)
-        keys_tree = jax.tree_unflatten(jax.tree_structure(x1), subkeys)
+        keys_tree, random_key = self.get_tree_keys(gen_1, random_key)
 
         # apply isolinedd to each branch of the tree
-        x = jax.tree_map(_variation_fn, x1, x2, keys_tree)
+        gen_new = jax.tree_map(_variation_fn, gen_1, gen_2, keys_tree)
 
-        return x, random_key
+        return gen_new, random_key
 
 
 class Selector(metaclass=abc.ABCMeta):
@@ -380,7 +639,33 @@ class SelectionVariationEmitter(Emitter):
         genotypes, emitter_state, random_key = self._selector.select(
             number_parents_to_select, repertoire, emitter_state, random_key
         )
-        new_genotypes, random_key = self._variation_operator.apply(
+        new_genotypes, random_key = self._variation_operator.apply_with_clip(
             genotypes, emitter_state, random_key
         )
         return new_genotypes, random_key
+
+
+def _test() -> None:
+    v1 = Normal(
+        mutation_rate=0.5,
+        sigma=0.1,
+        minval=None,
+        maxval=None,
+    )
+    v2 = IsolineVariationOperator(
+        iso_sigma=0.1,
+        line_sigma=0.1,
+        cross_over_rate=0.5,
+        returns_single_genotype=False,
+        minval=None,
+        maxval=None,
+    )
+    v = ComposerVariations(variations_operators_list=[v1, v2], minval=None, maxval=None)
+    gen_1 = {"a": jnp.zeros((2, 10))}
+    # gen_2 = {"a": jnp.array([[0., -1.], [0.5, 0.5]])}
+    random_key = jax.random.PRNGKey(4)
+    print(v.apply_with_clip(gen_1, None, random_key)[0])
+
+
+if __name__ == "__main__":
+    _test()
