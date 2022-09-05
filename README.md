@@ -14,14 +14,17 @@ QDax has been developed as a research framework: it is flexible and easy to exte
 
 
 ## Installation
-
-The latest stable release of QDax can be installed directly from source with:
+QDax is available on PyPI and can be installed with:  
 ```bash
 pip install qdax
 ```
-To use QDax with NVidia GPUs, you must first install [CUDA, CuDNN, and JAX with GPU support](https://github.com/google/jax#installation).
+Alternatively, the latest commit of QDax can be installed directly from source with:
+```bash
+pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
+```
+Installing QDax via ```pip``` installs a CPU-only version of JAX by default. To use QDax with NVidia GPUs, you must first install [CUDA, CuDNN, and JAX with GPU support](https://github.com/google/jax#installation).
 
-However, we also provide and recommend using either Docker, Singularity or conda environments to use the repository. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
+However, we also provide and recommend using either Docker, Singularity or conda environments to use the repository which by default provide GPU support. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
 
 ## Basic API Usage
 For a full and interactive example to see how QDax works, we recommend starting with the tutorial-style [Colab notebook](./notebooks/mapelites_example.ipynb). It is an example of the MAP-Elites algorithm used to evolve a population of controllers on a chosen Brax environment (Walker by default).
