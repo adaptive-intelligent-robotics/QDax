@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Gradient, RNGKey
+from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class CMAMEState(EmitterState):
@@ -27,6 +28,10 @@ class CMAMEState(EmitterState):
 
     random_key: RNGKey
     cmaes_state: CMAESState
+
+
+# TODO: add the minimum number of sampled individuals before any replacement
+# of the emitter
 
 
 class CMAMEEmitter(Emitter):
