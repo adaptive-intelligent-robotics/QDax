@@ -14,7 +14,7 @@ QDax has been developed as a research framework: it is flexible and easy to exte
 
 
 ## Installation
-QDax is available on PyPI and can be installed with:  
+QDax is available on PyPI and can be installed with:
 ```bash
 pip install qdax
 ```
