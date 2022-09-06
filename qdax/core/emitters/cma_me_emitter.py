@@ -11,7 +11,7 @@ from qdax.core.containers.mapelites_repertoire import (
     get_cells_indices,
 )
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class CMAMEState(EmitterState):
@@ -27,6 +27,7 @@ class CMAMEState(EmitterState):
 
     random_key: RNGKey
     cmaes_state: CMAESState
+    previous_repertoire: MapElitesRepertoire
     emit_count: int
 
 
@@ -41,6 +42,8 @@ class CMAMEState(EmitterState):
 # I think yes!!!
 # CMA MEGA should be updated as well i think!
 
+# among the new cells, are they prioritized based on fitness or not?
+
 # TODO: refactoring
 
 # TODO: think about the naming
@@ -51,6 +54,7 @@ class CMAMEImprovementEmitter(Emitter):
         self,
         batch_size: int,
         genotype_dim: int,
+        centroids: Centroid,
         sigma_g: float,
         step_size: Optional[float] = None,
         min_count: Optional[int] = None,
@@ -92,6 +96,8 @@ class CMAMEImprovementEmitter(Emitter):
 
         self._min_count = min_count
 
+        self._centroids = centroids
+
         self._cma_initial_state = self._cmaes.init()
 
     @partial(jax.jit, static_argnames=("self",))
@@ -110,12 +116,31 @@ class CMAMEImprovementEmitter(Emitter):
             The initial state of the emitter.
         """
 
+        # Initialize repertoire with default values
+        num_centroids = self._centroids.shape[0]
+        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_genotypes = jax.tree_util.tree_map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
+            init_genotypes,
+        )
+        default_descriptors = jnp.zeros(
+            shape=(num_centroids, self._centroids.shape[-1])
+        )
+
+        repertoire = MapElitesRepertoire(
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            descriptors=default_descriptors,
+            centroids=self._centroids,
+        )
+
         # return the initial state
         random_key, subkey = jax.random.split(random_key)
         return (
             CMAMEState(
-                cmaes_state=self._cma_initial_state,
                 random_key=subkey,
+                cmaes_state=self._cma_initial_state,
+                previous_repertoire=repertoire,
                 emit_count=0,
             ),
             random_key,
@@ -189,7 +214,9 @@ class CMAMEImprovementEmitter(Emitter):
 
         # Compute the improvements - needed for re-init condition
         indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - repertoire.fitnesses[indices]
+        improvements = fitnesses - emitter_state.previous_repertoire.fitnesses[indices]
+
+        print("Improvements : ", improvements)
 
         sorting_criteria = self._sorting_criteria(
             fitnesses=fitnesses,
@@ -245,7 +272,10 @@ class CMAMEImprovementEmitter(Emitter):
 
         # create new emitter state
         emitter_state = CMAMEState(
-            cmaes_state=cmaes_state, random_key=random_key, emit_count=emit_count
+            random_key=random_key,
+            cmaes_state=cmaes_state,
+            previous_repertoire=repertoire,
+            emit_count=emit_count,
         )
 
         return emitter_state
