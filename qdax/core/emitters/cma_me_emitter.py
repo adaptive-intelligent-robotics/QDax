@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -28,20 +27,33 @@ class CMAMEState(EmitterState):
 
     random_key: RNGKey
     cmaes_state: CMAESState
+    emit_count: int
 
 
-# TODO: add the minimum number of sampled individuals before any replacement
-# of the emitter
+# TODO: add the pool of emitter - select the one with least emissions
+# no pool in CMA-MEGA - did they realize it was not necessary?
+
+# TODO: in paper pseudo-code, only indiv that have been added are used to update
+# the distribution. Is it a mistake from the pseudo code or is it the desired
+# behavior?
+
+# TODO: is there a prioritizing of new cells before fitness improvement
+# I think yes!!!
+# CMA MEGA should be updated as well i think!
+
+# TODO: refactoring
+
+# TODO: think about the naming
 
 
-class CMAMEEmitter(Emitter):
+class CMAMEImprovementEmitter(Emitter):
     def __init__(
         self,
         batch_size: int,
-        learning_rate: float,
         genotype_dim: int,
         sigma_g: float,
         step_size: Optional[float] = None,
+        min_count: Optional[int] = None,
     ):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
@@ -54,7 +66,6 @@ class CMAMEEmitter(Emitter):
             sigma_g: standard deviation for the coefficients
             step_size: size of the steps used in CMAES updates
         """
-        self._learning_rate = learning_rate
         self._weights = jnp.expand_dims(
             jnp.log(batch_size + 0.5) - jnp.log(jnp.arange(1, batch_size + 1)), axis=-1
         )
@@ -74,6 +85,12 @@ class CMAMEEmitter(Emitter):
             init_step_size=step_size,
             bias_weights=True,
         )
+
+        # minimum number of emitted solution before an emitter can be re-initialized
+        if min_count is None:
+            min_count = 0
+
+        self._min_count = min_count
 
         self._cma_initial_state = self._cmaes.init()
 
@@ -99,6 +116,7 @@ class CMAMEEmitter(Emitter):
             CMAMEState(
                 cmaes_state=self._cma_initial_state,
                 random_key=subkey,
+                emit_count=0,
             ),
             random_key,
         )
@@ -169,11 +187,18 @@ class CMAMEEmitter(Emitter):
         # retrieve elements from the emitter state
         cmaes_state = emitter_state.cmaes_state
 
-        # Compute the improvements
+        # Compute the improvements - needed for re-init condition
         indices = get_cells_indices(descriptors, repertoire.centroids)
         improvements = fitnesses - repertoire.fitnesses[indices]
 
-        sorted_indices = jnp.argsort(improvements)[::-1]
+        sorting_criteria = self._sorting_criteria(
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            repertoire=repertoire,
+            improvements=improvements,
+        )
+
+        sorted_indices = jnp.argsort(sorting_criteria)[::-1]
 
         # Update CMA Parameters
         # TODO: only works for array atm
@@ -181,7 +206,8 @@ class CMAMEEmitter(Emitter):
         cmaes_state = self._cmaes.update_state(cmaes_state, sorted_candidates)
 
         # If no improvement draw randomly and re-initialize parameters
-        reinitialize = jnp.all(improvements < 0)
+        emit_count = emitter_state.emit_count + fitnesses.shape[0]
+        reinitialize = jnp.all(improvements < 0) * (emit_count > self._min_count)
 
         # re-sample
         random_genotype, random_key = repertoire.sample(emitter_state.random_key, 1)
@@ -219,8 +245,32 @@ class CMAMEEmitter(Emitter):
 
         # create new emitter state
         emitter_state = CMAMEState(
-            cmaes_state=cmaes_state,
-            random_key=random_key,
+            cmaes_state=cmaes_state, random_key=random_key, emit_count=emit_count
         )
 
         return emitter_state
+
+    def _sorting_criteria(self, fitnesses, descriptors, repertoire, improvements):
+        """Defines how the genotypes should be sorted. Imapcts the update
+        of the CMAES state. In the end, this defines the type of CMAES emitter
+        used (optimizing, random direction or improvement)."""
+
+        return improvements
+
+
+class CMAMEOptimizingEmitter(CMAMEImprovementEmitter):
+    def _sorting_criteria(self, fitnesses, descriptors, repertoire, improvements):
+        """Defines how the genotypes should be sorted. Imapcts the update
+        of the CMAES state. In the end, this defines the type of CMAES emitter
+        used (optimizing, random direction or improvement)."""
+
+        return fitnesses
+
+
+class CMAMERandomDirectionEmitter(CMAMEImprovementEmitter):
+    def _sorting_criteria(self, fitnesses, descriptors, repertoire, improvements):
+        """Defines how the genotypes should be sorted. Imapcts the update
+        of the CMAES state. In the end, this defines the type of CMAES emitter
+        used (optimizing, random direction or improvement)."""
+
+        return None
