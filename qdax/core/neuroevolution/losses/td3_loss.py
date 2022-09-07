@@ -46,7 +46,7 @@ def make_td3_loss_fn(
         q_value = critic_fn(
             critic_params, obs=transitions.obs, actions=action  # type: ignore
         )
-        q1_action = q_value[:, 0]
+        q1_action = jnp.take(q_value, jnp.asarray([0]), axis=-1)
         policy_loss = -jnp.mean(q1_action)
         return policy_loss
 
@@ -83,9 +83,12 @@ def make_td3_loss_fn(
         q_error = q_old_action - jnp.expand_dims(target_q, -1)
 
         # Better bootstrapping for truncated episodes.
-        q_error *= jnp.expand_dims(1 - transitions.truncations, -1)
+        q_error = q_error * jnp.expand_dims(1.0 - transitions.truncations, -1)
 
-        q_loss = 0.5 * jnp.mean(jnp.square(q_error))
+        # compute the loss
+        q_losses = jnp.mean(jnp.square(q_error), axis=-2)
+        q_loss = jnp.sum(q_losses, axis=-1)
+
         return q_loss
 
     return _policy_loss_fn, _critic_loss_fn
