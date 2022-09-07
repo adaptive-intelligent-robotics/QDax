@@ -31,6 +31,9 @@ class CMAMEState(EmitterState):
     emit_count: int
 
 
+# TODO: wait for confirmation before doing so.
+# TODO: current implem not adapted to pool of emitter
+# TODO: we should need emitters and schedulers for clean implem
 # TODO: add the pool of emitter - select the one with least emissions
 # no pool in CMA-MEGA - did they realize it was not necessary?
 
@@ -47,6 +50,10 @@ class CMAMEState(EmitterState):
 # TODO: refactoring
 
 # TODO: think about the naming
+
+# TODO: implement the random direction emitter
+
+# TODO: should we have an option in cmaes to update the weights?
 
 
 class CMAMEImprovementEmitter(Emitter):
@@ -218,18 +225,15 @@ class CMAMEImprovementEmitter(Emitter):
 
         print("Improvements : ", improvements)
 
-        sorting_criteria = self._sorting_criteria(
+        sorted_candidates = self._sort_genotypes(
+            repertoire=repertoire,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            repertoire=repertoire,
             improvements=improvements,
         )
 
-        sorted_indices = jnp.argsort(sorting_criteria)[::-1]
-
         # Update CMA Parameters
-        # TODO: only works for array atm
-        sorted_candidates = genotypes[sorted_indices]
         cmaes_state = self._cmaes.update_state(cmaes_state, sorted_candidates)
 
         # If no improvement draw randomly and re-initialize parameters
@@ -243,32 +247,42 @@ class CMAMEImprovementEmitter(Emitter):
         # TODO: this is very ugly here
 
         # update - new state or init state if reinitialize is 1
-        mean = random_genotype * reinitialize + jnp.nan_to_num(cmaes_state.mean) * (
-            1 - reinitialize
-        )
-        cov = self._cma_initial_state.cov_matrix * reinitialize + jnp.nan_to_num(
-            cmaes_state.cov_matrix
-        ) * (1 - reinitialize)
-        p_c = self._cma_initial_state.p_c * reinitialize + jnp.nan_to_num(
-            cmaes_state.p_c
-        ) * (1 - reinitialize)
-        p_s = self._cma_initial_state.p_s * reinitialize + jnp.nan_to_num(
-            cmaes_state.p_s
-        ) * (1 - reinitialize)
-        step_size = self._cma_initial_state.step_size * reinitialize + jnp.nan_to_num(
-            cmaes_state.step_size
-        ) * (1 - reinitialize)
-        num_updates = 1 * reinitialize + cmaes_state.num_updates * (1 - reinitialize)
+        # mean = random_genotype * reinitialize + jnp.nan_to_num(cmaes_state.mean) * (
+        #     1 - reinitialize
+        # )
+        # cov = self._cma_initial_state.cov_matrix * reinitialize + jnp.nan_to_num(
+        #     cmaes_state.cov_matrix
+        # ) * (1 - reinitialize)
+        # p_c = self._cma_initial_state.p_c * reinitialize + jnp.nan_to_num(
+        #     cmaes_state.p_c
+        # ) * (1 - reinitialize)
+        # p_s = self._cma_initial_state.p_s * reinitialize + jnp.nan_to_num(
+        #     cmaes_state.p_s
+        # ) * (1 - reinitialize)
+        # step_size = self._cma_initial_state.step_size * reinitialize + jnp.nan_to_num(
+        #     cmaes_state.step_size
+        # ) * (1 - reinitialize)
+        # num_updates = 1 * reinitialize + cmaes_state.num_updates * (1 - reinitialize)
 
-        # define new cmaes state
-        cmaes_state = CMAESState(
-            mean=mean,
-            cov_matrix=cov,
-            p_c=p_c,
-            p_s=p_s,
-            step_size=step_size,
-            num_updates=num_updates,
+        cmaes_init_state = self._cma_initial_state.replace(
+            mean=random_genotype, num_updates=1
         )
+
+        cmaes_state = jax.tree_util.tree_map(
+            lambda x, y: x * reinitialize + y,
+            cmaes_init_state,
+            cmaes_state,
+        )
+
+        # # define new cmaes state
+        # cmaes_state = CMAESState(
+        #     mean=mean,
+        #     cov_matrix=cov,
+        #     p_c=p_c,
+        #     p_s=p_s,
+        #     step_size=step_size,
+        #     num_updates=num_updates,
+        # )
 
         # create new emitter state
         emitter_state = CMAMEState(
@@ -280,12 +294,35 @@ class CMAMEImprovementEmitter(Emitter):
 
         return emitter_state
 
-    def _sorting_criteria(self, fitnesses, descriptors, repertoire, improvements):
+    def _sort_genotypes(
+        self, repertoire, genotypes, fitnesses, descriptors, improvements
+    ):
         """Defines how the genotypes should be sorted. Imapcts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
         used (optimizing, random direction or improvement)."""
 
-        return improvements
+        # condition for being a new cell
+        condition = improvements == jnp.inf
+
+        # criteria: fitness if new cell, improvement else
+        sorting_criteria = jnp.where(condition, x=fitnesses, y=improvements)
+
+        # make sure to have all the new cells first
+        new_cell_offset = jnp.max(sorting_criteria)
+
+        sorting_criteria = jnp.where(
+            condition, x=sorting_criteria + new_cell_offset, y=sorting_criteria
+        )
+
+        # get the indices
+        sorted_indices = jnp.argsort(sorting_criteria)[::-1]
+
+        # sort the candidates
+        sorted_candidates = jax.tree_util.tree_map(
+            lambda x: x[sorted_indices], genotypes
+        )
+
+        return sorted_candidates
 
 
 class CMAMEOptimizingEmitter(CMAMEImprovementEmitter):
