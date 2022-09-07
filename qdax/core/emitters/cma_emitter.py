@@ -48,17 +48,7 @@ class CMAEmitterState(EmitterState):
 
 # among the new cells, are they prioritized based on fitness or not?
 
-# TODO: refactoring
-
-# TODO: think about the naming
-
-# TODO: implement the random direction emitter
-
 # TODO: should we have an option in cmaes to update the weights?
-
-# TODO: introduce a method for reinitialization
-
-# TODO: back to sorting criteria
 
 # TODO: I want to introduce a init_void in MAPElitesRepertoire
 # it could be used at least three time in the package
@@ -67,8 +57,6 @@ class CMAEmitterState(EmitterState):
 # and not precised in its name - is ok for everyone
 
 # TODO: shouldn't we start with num_updates=0 ???
-
-# TODO: emit count should be re-initialised as well!
 
 
 class CMAEmitter(Emitter):
