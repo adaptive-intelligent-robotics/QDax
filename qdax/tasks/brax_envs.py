@@ -6,7 +6,6 @@ import brax.envs
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
-from typing_extensions import TypeAlias
 
 import qdax.environments
 from qdax import environments
@@ -23,23 +22,13 @@ from qdax.types import (
     RNGKey,
 )
 
-PlayStepFnType: TypeAlias = Callable[
-    [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
-]
-
-ScoringFnType: TypeAlias = Callable[
-    [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
-]
-
-BehaviourDescriptorExtractorType: TypeAlias = Callable[
-    [QDTransition, jnp.ndarray], Descriptor
-]
-
 
 def create_policy_network_play_step_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
-) -> PlayStepFnType:
+) -> Callable[
+    [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
+]:
     """
     Creates a function that when called, plays a step of the environment.
 
@@ -106,8 +95,10 @@ def scoring_function_brax_envs(
     random_key: RNGKey,
     init_states: EnvState,
     episode_length: int,
-    play_step_fn: PlayStepFnType,
-    behavior_descriptor_extractor: BehaviourDescriptorExtractorType,
+    play_step_fn: Callable[
+        [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
+    ],
+    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.
@@ -175,8 +166,10 @@ def reset_based_scoring_function_brax_envs(
     random_key: RNGKey,
     episode_length: int,
     play_reset_fn: Callable[[RNGKey], EnvState],
-    play_step_fn: PlayStepFnType,
-    behavior_descriptor_extractor: BehaviourDescriptorExtractorType,
+    play_step_fn: Callable[
+        [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
+    ],
+    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel.
     The play_reset_fn function allows for a more general scoring_function that can be
@@ -226,13 +219,20 @@ def create_brax_scoring_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
     batch_size: int,
-    bd_extraction_fn: BehaviourDescriptorExtractorType,
+    bd_extraction_fn: Callable[[QDTransition, jnp.ndarray], Descriptor],
     random_key: RNGKey,
-    play_step_fn: Optional[PlayStepFnType] = None,
+    play_step_fn: Optional[
+        Callable[
+            [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
+        ]
+    ] = None,
     episode_length: int = 100,
     is_reset_based: bool = False,
     play_reset_fn: Optional[Callable[[RNGKey], EnvState]] = None,
-) -> Tuple[ScoringFnType, RNGKey]:
+) -> Tuple[
+    Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]],
+    RNGKey,
+]:
     """
     Creates a scoring function to evaluate a policy in a BRAX task.
 
@@ -295,7 +295,12 @@ def create_default_brax_task_components(
     episode_length: int = 100,
     mlp_policy_hidden_layer_sizes: Tuple[int, ...] = (64, 64),
     is_reset_based: bool = False,
-) -> Tuple[brax.envs.Env, MLP, ScoringFnType, RNGKey]:
+) -> Tuple[
+    brax.envs.Env,
+    MLP,
+    Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]],
+    RNGKey,
+]:
     """
     Creates default environment, policy network and scoring function for a BRAX task.
 
