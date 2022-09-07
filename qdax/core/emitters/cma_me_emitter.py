@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -54,6 +55,8 @@ class CMAMEState(EmitterState):
 # TODO: implement the random direction emitter
 
 # TODO: should we have an option in cmaes to update the weights?
+
+# TODO: introduce a method for reinitialization
 
 
 class CMAMEImprovementEmitter(Emitter):
@@ -226,10 +229,12 @@ class CMAMEImprovementEmitter(Emitter):
         print("Improvements : ", improvements)
 
         sorted_candidates = self._sort_genotypes(
+            emitter_state=emitter_state,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
+            extra_scores=extra_scores,
             improvements=improvements,
         )
 
@@ -247,42 +252,42 @@ class CMAMEImprovementEmitter(Emitter):
         # TODO: this is very ugly here
 
         # update - new state or init state if reinitialize is 1
-        # mean = random_genotype * reinitialize + jnp.nan_to_num(cmaes_state.mean) * (
-        #     1 - reinitialize
-        # )
-        # cov = self._cma_initial_state.cov_matrix * reinitialize + jnp.nan_to_num(
-        #     cmaes_state.cov_matrix
-        # ) * (1 - reinitialize)
-        # p_c = self._cma_initial_state.p_c * reinitialize + jnp.nan_to_num(
-        #     cmaes_state.p_c
-        # ) * (1 - reinitialize)
-        # p_s = self._cma_initial_state.p_s * reinitialize + jnp.nan_to_num(
-        #     cmaes_state.p_s
-        # ) * (1 - reinitialize)
-        # step_size = self._cma_initial_state.step_size * reinitialize + jnp.nan_to_num(
-        #     cmaes_state.step_size
-        # ) * (1 - reinitialize)
-        # num_updates = 1 * reinitialize + cmaes_state.num_updates * (1 - reinitialize)
-
-        cmaes_init_state = self._cma_initial_state.replace(
-            mean=random_genotype, num_updates=1
+        mean = random_genotype * reinitialize + jnp.nan_to_num(cmaes_state.mean) * (
+            1 - reinitialize
         )
+        cov = self._cma_initial_state.cov_matrix * reinitialize + jnp.nan_to_num(
+            cmaes_state.cov_matrix
+        ) * (1 - reinitialize)
+        p_c = self._cma_initial_state.p_c * reinitialize + jnp.nan_to_num(
+            cmaes_state.p_c
+        ) * (1 - reinitialize)
+        p_s = self._cma_initial_state.p_s * reinitialize + jnp.nan_to_num(
+            cmaes_state.p_s
+        ) * (1 - reinitialize)
+        step_size = self._cma_initial_state.step_size * reinitialize + jnp.nan_to_num(
+            cmaes_state.step_size
+        ) * (1 - reinitialize)
+        num_updates = 1 * reinitialize + cmaes_state.num_updates * (1 - reinitialize)
 
-        cmaes_state = jax.tree_util.tree_map(
-            lambda x, y: x * reinitialize + y,
-            cmaes_init_state,
-            cmaes_state,
-        )
-
-        # # define new cmaes state
-        # cmaes_state = CMAESState(
-        #     mean=mean,
-        #     cov_matrix=cov,
-        #     p_c=p_c,
-        #     p_s=p_s,
-        #     step_size=step_size,
-        #     num_updates=num_updates,
+        # cmaes_init_state = self._cma_initial_state.replace(
+        #     mean=random_genotype, num_updates=1
         # )
+
+        # cmaes_state = jax.tree_util.tree_map(
+        #     lambda x, y: x * reinitialize + y,
+        #     cmaes_init_state,
+        #     cmaes_state,
+        # )
+
+        # define new cmaes state
+        cmaes_state = CMAESState(
+            mean=mean,
+            cov_matrix=cov,
+            p_c=p_c,
+            p_s=p_s,
+            step_size=step_size,
+            num_updates=num_updates,
+        )
 
         # create new emitter state
         emitter_state = CMAMEState(
@@ -295,27 +300,44 @@ class CMAMEImprovementEmitter(Emitter):
         return emitter_state
 
     def _sort_genotypes(
-        self, repertoire, genotypes, fitnesses, descriptors, improvements
+        self,
+        emitter_state,
+        repertoire,
+        genotypes,
+        fitnesses,
+        descriptors,
+        extra_scores,
+        improvements,
     ):
         """Defines how the genotypes should be sorted. Imapcts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
         used (optimizing, random direction or improvement)."""
 
-        # condition for being a new cell
-        condition = improvements == jnp.inf
+        # # condition for being a new cell
+        # condition = improvements == jnp.inf
 
-        # criteria: fitness if new cell, improvement else
-        sorting_criteria = jnp.where(condition, x=fitnesses, y=improvements)
+        # print("COndition : ", condition)
 
-        # make sure to have all the new cells first
-        new_cell_offset = jnp.max(sorting_criteria)
+        # # criteria: fitness if new cell, improvement else
+        # sorting_criteria = jnp.where(condition, x=fitnesses, y=improvements)
 
-        sorting_criteria = jnp.where(
-            condition, x=sorting_criteria + new_cell_offset, y=sorting_criteria
-        )
+        # print("Sorting criteria : ", sorting_criteria)
+
+        # # make sure to have all the new cells first
+        # new_cell_offset = jnp.max(sorting_criteria) - jnp.min(sorting_criteria)
+
+        # sorting_criteria = jnp.where(
+        #     condition, x=sorting_criteria + new_cell_offset, y=sorting_criteria
+        # )
+
+        # print("Sorting criteria : ", sorting_criteria)
+
+        sorting_criteria = improvements
 
         # get the indices
         sorted_indices = jnp.argsort(sorting_criteria)[::-1]
+
+        print("Sorting indices : ", sorted_indices)
 
         # sort the candidates
         sorted_candidates = jax.tree_util.tree_map(
@@ -326,18 +348,125 @@ class CMAMEImprovementEmitter(Emitter):
 
 
 class CMAMEOptimizingEmitter(CMAMEImprovementEmitter):
-    def _sorting_criteria(self, fitnesses, descriptors, repertoire, improvements):
+    def _sort_genotypes(
+        self,
+        emitter_state,
+        repertoire,
+        genotypes,
+        fitnesses,
+        descriptors,
+        extra_scores,
+        improvements,
+    ):
         """Defines how the genotypes should be sorted. Imapcts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
         used (optimizing, random direction or improvement)."""
 
-        return fitnesses
+        # get the indices
+        sorted_indices = jnp.argsort(fitnesses)[::-1]
+
+        # sort the candidates
+        sorted_candidates = jax.tree_util.tree_map(
+            lambda x: x[sorted_indices], genotypes
+        )
+
+        return sorted_candidates
+
+
+class CMAMERandomDirectionState(CMAMEState):
+    """
+    Emitter state for the CMA-ME emitter.
+
+    # TODO: update
+
+    Args:
+        random_key: a random key to handle stochastic operations. Used for
+            state update only, another key is used to emit. This might be
+            subject to refactoring discussions in the future.
+        cmaes_state: state of the underlying CMA-ES algorithm
+    """
+
+    random_direction: Descriptor
 
 
 class CMAMERandomDirectionEmitter(CMAMEImprovementEmitter):
-    def _sorting_criteria(self, fitnesses, descriptors, repertoire, improvements):
+    @partial(jax.jit, static_argnames=("self",))
+    def init(
+        self, init_genotypes: Genotype, random_key: RNGKey
+    ) -> Tuple[CMAMERandomDirectionState, RNGKey]:
+        """
+        Initializes the CMA-MEGA emitter
+
+
+        Args:
+            init_genotypes: initial genotypes to add to the grid.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            The initial state of the emitter.
+        """
+
+        # Initialize repertoire with default values
+        num_centroids = self._centroids.shape[0]
+        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_genotypes = jax.tree_util.tree_map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
+            init_genotypes,
+        )
+        default_descriptors = jnp.zeros(
+            shape=(num_centroids, self._centroids.shape[-1])
+        )
+
+        repertoire = MapElitesRepertoire(
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            descriptors=default_descriptors,
+            centroids=self._centroids,
+        )
+
+        # take a random direction
+        random_key, subkey = jax.random.split(random_key)
+        random_direction = jax.random.uniform(
+            subkey,
+            shape=(self._centroids.shape[-1],),
+        )
+
+        # return the initial state
+        random_key, subkey = jax.random.split(random_key)
+        return (
+            CMAMERandomDirectionState(
+                random_key=subkey,
+                cmaes_state=self._cma_initial_state,
+                previous_repertoire=repertoire,
+                emit_count=0,
+                random_direction=random_direction,
+            ),
+            random_key,
+        )
+
+    def _sort_genotypes(
+        self,
+        emitter_state,
+        repertoire,
+        genotypes,
+        fitnesses,
+        descriptors,
+        extra_scores,
+        improvements,
+    ):
         """Defines how the genotypes should be sorted. Imapcts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
         used (optimizing, random direction or improvement)."""
 
-        return None
+        # projection of the descriptors along the random direction
+        sorting_criteria = jnp.dot(descriptors, emitter_state.random_direction)
+
+        # get the indices
+        sorted_indices = jnp.argsort(sorting_criteria)[::-1]
+
+        # sort the candidates
+        sorted_candidates = jax.tree_util.tree_map(
+            lambda x: x[sorted_indices], genotypes
+        )
+
+        return sorted_candidates
