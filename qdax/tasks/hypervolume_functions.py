@@ -1,7 +1,7 @@
-'''
-Hypervolume Benchmark Functions in the paper by 
+"""
+Hypervolume Benchmark Functions in the paper by
 J.B. Mouret, "Hypervolume-based Benchmark Functions for Quality Diversity Algorithms"
-'''
+"""
 
 from typing import Callable, Tuple
 
