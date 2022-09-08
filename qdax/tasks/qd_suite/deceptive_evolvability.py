@@ -2,7 +2,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from matplotlib import pyplot as plt
 
 from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 from qdax.types import Descriptor, Fitness, Genotype
@@ -40,6 +39,17 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
         mu_2: Optional[Genotype] = None,
         sigma_2: Optional[float] = None,
     ):
+        """
+        Initialize the deceptive evolvability task
+        from Achkan Salehi and Stephane Doncieux
+
+        Args:
+            mu_1: The mean of the first Gaussian.
+            sigma_1: The standard deviation of the first Gaussian.
+            beta: The weight of the second Gaussian.
+            mu_2: The mean of the second Gaussian.
+            sigma_2: The standard deviation of the second Gaussian.
+        """
         if mu_1 is None:
             mu_1 = self.default_mu_1
         if sigma_1 is None:
@@ -58,6 +68,17 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
         self.sigma_2 = sigma_2
 
     def evaluation(self, params: Genotype) -> Tuple[Fitness, Descriptor]:
+        """
+        Compute the fitness and descriptor of the deceptive evolvability task.
+
+        The fitness is always 1.0, as no elitism is considered.
+
+        Args:
+            params: The parameters to evaluate.
+
+        Returns:
+            The fitness and descriptor.
+        """
         bd = multivariate_normal(
             params, self.mu_1, self.sigma_1
         ) + self.beta * multivariate_normal(params, self.mu_2, self.sigma_2)
@@ -65,6 +86,13 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
         return constant_fitness, bd
 
     def get_saddle_point(self) -> Genotype:
+        """
+        Compute the saddle point of the deceptive evolvability task.
+
+        Returns:
+            The saddle point.
+        """
+
         def _func_to_minimize(theta: Genotype) -> Descriptor:
             return self.evaluation(theta)[1]
 
@@ -81,14 +109,32 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
         return considered_points[index_min]
 
     def get_descriptor_size(self) -> int:
+        """
+        Get the size of the descriptor.
+
+        Returns:
+            The size of the descriptor.
+        """
         return 1
 
     def get_min_max_descriptor(self) -> Tuple[float, float]:
+        """
+        Get the minimum and maximum descriptor values.
+
+        Returns:
+            The minimum and maximum descriptor values.
+        """
         potential_max_1 = self.evaluation(self.mu_1)[1]
         potential_max_2 = self.evaluation(self.mu_2)[1]
         return 0.0, jnp.maximum(potential_max_1, potential_max_2)[0]
 
     def get_min_max_params(self) -> Tuple[float, float]:
+        """
+        Get the minimum and maximum parameter values.
+
+        Returns:
+            The minimum and maximum parameter values.
+        """
         potential_max_1 = jnp.max(self.mu_1 + 3 * self.sigma_1)
         potential_max_2 = jnp.max(self.mu_2 + 3 * self.sigma_2)
         max_final = jnp.maximum(potential_max_1, potential_max_2)
@@ -99,33 +145,14 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
         return min_final, max_final
 
     def get_initial_parameters(self, batch_size: int) -> Genotype:
+        """
+        Get the initial parameters.
+
+        Args:
+            batch_size: The batch size.
+
+        Returns:
+            The initial parameters.
+        """
         saddle_point = self.get_saddle_point()
         return jnp.repeat(jnp.expand_dims(saddle_point, axis=0), batch_size, axis=0)
-
-
-def function_test() -> None:
-    task = DeceptiveEvolvabilityV0()
-    saddle_point = task.get_saddle_point()
-    min_final, max_final = task.get_min_max_params()
-    x = jnp.linspace(min_final, max_final, 200)
-
-    # numpy.linspace creates an array of
-    # 9 linearly placed elements between
-    # -4 and 4, both inclusive
-    y = jnp.linspace(min_final, max_final, 200)
-
-    # The meshgrid function returns
-    # two 2-dimensional arrays
-    x_1, y_1 = jnp.meshgrid(x, y)
-
-    all_points = jnp.stack((x_1, y_1), axis=2)
-    results = jax.vmap(jax.vmap(lambda theta: task.evaluation(theta)[1]))(all_points)
-    print(results.shape)
-    plt.pcolor(x_1, y_1, results.squeeze(axis=2))
-    print(results)
-    plt.scatter(saddle_point[0], saddle_point[1], c="r")
-    plt.show()
-
-
-if __name__ == "__main__":
-    function_test()

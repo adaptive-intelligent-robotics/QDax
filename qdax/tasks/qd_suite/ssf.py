@@ -1,11 +1,8 @@
-import time
 from typing import Tuple
 
 import jax
 import jax.numpy as jnp
-from matplotlib import pyplot as plt
 
-from qdax.tasks.hypervolume_functions import square_scoring_function
 from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 from qdax.types import Descriptor, Fitness, Genotype
 
@@ -15,12 +12,30 @@ class SsfV0(QDSuiteTask):
         self,
         param_size: int,
     ):
+        """
+        Implements the Self-Similar Function (SSF) task
+        from Achkan Salehi and Stephane Doncieux.
+
+        Args:
+            param_size: The number of parameters in the genotype.
+        """
         self.param_size = param_size
 
     def evaluation(
         self,
         params: Genotype,
     ) -> Tuple[Fitness, Descriptor]:
+        """
+        The function evaluation computes the fitness and the descriptor of the
+        parameters passed as input. The fitness is always 1.0 as the task does
+        not consider elitism.
+
+        Args:
+            params: The batch of parameters to evaluate
+
+        Returns:
+            The fitnesses and the descriptors of the parameters.
+        """
         norm = jnp.linalg.norm(params, ord=2)
         r_2k_plus_1, _, k = self._get_k(params)
         index = jnp.floor(norm / r_2k_plus_1)
@@ -30,21 +45,52 @@ class SsfV0(QDSuiteTask):
         return constant_fitness, bd
 
     def get_descriptor_size(self) -> int:
+        """
+        Returns:
+            The descriptor size.
+        """
         return 1
 
     def get_min_max_descriptor(self) -> Tuple[float, float]:
+        """
+        Returns:
+            The minimum and maximum descriptor.
+        """
         return 0.0, jnp.inf
 
     def get_bounded_min_max_descriptor(self) -> Tuple[float, float]:
+        """
+        Returns:
+            The minimum and maximum descriptor assuming that
+            the descriptor space is bounded.
+        """
         return 0.0, 1000.0
 
     def get_min_max_params(self) -> Tuple[float, float]:
+        """
+        Returns:
+            The minimum and maximum parameters (here
+            the parameter space is unbounded).
+        """
         return -jnp.inf, jnp.inf
 
     def get_initial_parameters(self, batch_size: int) -> Genotype:
+        """
+        Returns:
+            The initial parameters (of size batch_size x param_size).
+        """
         return jnp.zeros(shape=(batch_size, self.param_size))
 
     def _get_k(self, params: Genotype) -> Tuple[float, float, int]:
+        """
+        Computes the k-th level of the SSF.
+
+        Args:
+            params: The parameters to evaluate.
+
+        Returns:
+            (R_2k_plus_1, norm of params, k)
+        """
         norm_params = jnp.linalg.norm(params, ord=2)
         init_k = 0
         r_0 = 0.0
@@ -72,22 +118,3 @@ class SsfV0(QDSuiteTask):
 
     def _get_r_add_even(self, k: int) -> float:
         return 2 * ((k - 1) ** 3) + 1
-
-
-if __name__ == "__main__":
-    key = jax.random.PRNGKey(0)
-
-    ssf_v0 = SsfV0(param_size=1).evaluation
-
-    print(ssf_v0(jnp.array([4])))
-    x = jnp.linspace(0, 2000, 2048)
-    x = jnp.reshape(x, (-1, 1))
-    print(jax.vmap(ssf_v0)(x))
-
-    f = square_scoring_function
-    print(jax.vmap(ssf_v0)(x))
-    start = time.time()
-    print(jax.vmap(ssf_v0)(x))
-    print("Time elapsed:", time.time() - start)
-    plt.plot(x, jax.vmap(ssf_v0)(x)[1])
-    plt.show()
