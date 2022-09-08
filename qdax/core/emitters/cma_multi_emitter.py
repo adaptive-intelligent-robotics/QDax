@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
@@ -11,11 +11,14 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
+from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
+from qdax.core.emitters.cma_opt_emitter import CMAOptimizingEmitter
+from qdax.core.emitters.cma_rnd_emitter import CMARndEmitter, CMARndEmitterState
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
-class CMAEmitterState(EmitterState):
+class CMAMultiEmitterState(EmitterState):
     """
     Emitter state for the CMA-ME emitter.
 
@@ -26,55 +29,11 @@ class CMAEmitterState(EmitterState):
         cmaes_state: state of the underlying CMA-ES algorithm
     """
 
-    random_key: RNGKey
-    cmaes_state: CMAESState
-    previous_repertoire: MapElitesRepertoire
-    emit_count: int
+    emitter_states: Tuple[Union[CMAEmitterState, CMARndEmitterState], ...]
 
 
-# TODO: wait for confirmation before doing so.
-# TODO: current implem not adapted to pool of emitter
-# TODO: we should need emitters and schedulers for clean implem
-# TODO: add the pool of emitter - select the one with least emissions
-# no pool in CMA-MEGA - did they realize it was not necessary?
-
-# TODO: in paper pseudo-code, only indiv that have been added are used to update
-# the distribution. Is it a mistake from the pseudo code or is it the desired
-# behavior? - for some emitters
-
-# TODO: should we have an option in cmaes to update the weights?
-# my answer: yes, we should
-
-# TODO: is there a prioritizing of new cells before fitness improvement
-# I think yes!!!
-# CMA MEGA should be updated as well i think!
-
-# among the new cells, are they prioritized based on fitness or not?
-
-# TODO: I want to introduce a init_void in MAPElitesRepertoire
-# it could be used at least three time in the package
-
-# TODO: make sure my decision to have the improvement emitter the default one
-# and not precised in its name - is ok for everyone
-
-# TODO: shouldn't we start with num_updates=0 ???
-
-# TODO: my min_count condition is not well used
-# it's not only for reinit but also for update
-
-# TODO: try CMAES alone on sphere and rastrigin
-
-
-class CMAEmitter(Emitter):
-    def __init__(
-        self,
-        batch_size: int,
-        genotype_dim: int,
-        centroids: Centroid,
-        sigma_g: float,
-        step_size: Optional[float] = None,
-        min_count: Optional[int] = None,
-    ):
+class CMAMultiEmitter(Emitter):
+    def __init__(self, emitters: Tuple[Union[CMAEmitter, CMARndEmitter], ...]):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
         Rapid Illumination of Behavior Space" by Fontaine et al.
@@ -86,42 +45,12 @@ class CMAEmitter(Emitter):
             sigma_g: standard deviation for the coefficients
             step_size: size of the steps used in CMAES updates
         """
-        self._batch_size = batch_size
-
-        self._weights = jnp.expand_dims(
-            jnp.log(batch_size + 0.5) - jnp.log(jnp.arange(1, batch_size + 1)), axis=-1
-        )
-        self._weights = self._weights / (self._weights.sum())
-
-        if step_size is None:
-            step_size = 1.0
-
-        # define a CMAES instance
-        self._cmaes = CMAES(
-            population_size=batch_size,
-            search_dim=genotype_dim,
-            # no need for fitness function in that specific case
-            fitness_function=None,  # type: ignore
-            num_best=batch_size,
-            init_sigma=sigma_g,
-            init_step_size=step_size,
-            bias_weights=True,
-        )
-
-        # minimum number of emitted solution before an emitter can be re-initialized
-        if min_count is None:
-            min_count = 0
-
-        self._min_count = min_count
-
-        self._centroids = centroids
-
-        self._cma_initial_state = self._cmaes.init()
+        self._emitters = emitters
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
-    ) -> Tuple[CMAEmitterState, RNGKey]:
+    ) -> Tuple[CMAMultiEmitterState, RNGKey]:
         """
         Initializes the CMA-MEGA emitter
 
@@ -133,34 +62,15 @@ class CMAEmitter(Emitter):
         Returns:
             The initial state of the emitter.
         """
+        emitter_states = []
+        for emitter in self._emitters:
+            emitter_state, random_key = emitter.init(init_genotypes, random_key)
+            emitter_states.append(emitter_state)
 
-        # Initialize repertoire with default values
-        num_centroids = self._centroids.shape[0]
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-        default_genotypes = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
-            init_genotypes,
-        )
-        default_descriptors = jnp.zeros(
-            shape=(num_centroids, self._centroids.shape[-1])
-        )
+        emitter_state = CMAMultiEmitterState(emitter_states=tuple(emitter_states))
 
-        repertoire = MapElitesRepertoire(
-            genotypes=default_genotypes,
-            fitnesses=default_fitnesses,
-            descriptors=default_descriptors,
-            centroids=self._centroids,
-        )
-
-        # return the initial state
-        random_key, subkey = jax.random.split(random_key)
         return (
-            CMAEmitterState(
-                random_key=subkey,
-                cmaes_state=self._cma_initial_state,
-                previous_repertoire=repertoire,
-                emit_count=0,
-            ),
+            emitter_state,
             random_key,
         )
 
@@ -168,7 +78,7 @@ class CMAEmitter(Emitter):
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
-        emitter_state: CMAEmitterState,
+        emitter_state: CMAMultiEmitterState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
@@ -184,9 +94,17 @@ class CMAEmitter(Emitter):
         Returns:
             New genotypes and a new random key.
         """
-        # emit from CMA-ES
-        offsprings, _ = self._cmaes.sample(
-            cmaes_state=emitter_state.cmaes_state, random_key=emitter_state.random_key
+        emit_counts = [
+            emitter_s.emit_count for emitter_s in emitter_state.emitter_states
+        ]
+
+        index = jnp.argmin(emit_counts)
+
+        used_emitter = self._emitters[index]
+        used_emitter_state = emitter_state.emitter_states[index]
+
+        offsprings, random_key = used_emitter.emit(
+            repertoire, used_emitter_state, random_key
         )
 
         return offsprings, random_key

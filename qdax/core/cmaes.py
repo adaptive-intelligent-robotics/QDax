@@ -9,7 +9,7 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Fitness, Genotype, RNGKey
+from qdax.types import Fitness, Genotype, Mask, RNGKey
 
 
 class CMAESState(flax.struct.PyTreeNode):
@@ -37,14 +37,12 @@ class CMAES:
         search_dim: int,
         fitness_function: Callable[[Genotype], Fitness],
         num_best: Optional[int] = None,
-        weight_decay: float = 0.01,
         init_sigma: float = 1e-3,
         mean_init: Optional[jnp.ndarray] = None,
         bias_weights: bool = True,
         init_step_size: float = 1e-3,
     ):
         self._population_size = population_size
-        self._weight_decay = weight_decay
         self._search_dim = search_dim
         self._fitness_function = fitness_function
         self._init_sigma = init_sigma
@@ -134,7 +132,41 @@ class CMAES:
 
     @functools.partial(jax.jit, static_argnames=("self",))
     def update_state(
-        self, cmaes_state: CMAESState, sorted_candidates: Genotype
+        self,
+        cmaes_state: CMAESState,
+        sorted_candidates: Genotype,
+    ) -> CMAESState:
+        return self._update_state(
+            cmaes_state=cmaes_state,
+            sorted_candidates=sorted_candidates,
+            weights=self._weights,
+        )
+
+    @functools.partial(jax.jit, static_argnames=("self",))
+    def update_state_with_mask(
+        self, cmaes_state: CMAESState, sorted_candidates: Genotype, mask: Mask
+    ) -> CMAESState:
+
+        # print("Mask: ", mask)
+        # print("Weights: ", self._weights)
+
+        weights = jnp.multiply(self._weights, mask)
+        weights = weights / (weights.sum())
+
+        # print("Weights: ", weights)
+
+        return self._update_state(
+            cmaes_state=cmaes_state,
+            sorted_candidates=sorted_candidates,
+            weights=weights,
+        )
+
+    @functools.partial(jax.jit, static_argnames=("self",))
+    def _update_state(
+        self,
+        cmaes_state: CMAESState,
+        sorted_candidates: Genotype,
+        weights: jnp.ndarray,
     ) -> CMAESState:
 
         """
@@ -147,6 +179,10 @@ class CMAES:
         Returns:
             An updated algorithm state
         """
+
+        # if mask is None:
+        #     mask = jnp.ones_like(self._weights)
+
         # retrieve elements from the current state
         p_c = cmaes_state.p_c
         p_s = cmaes_state.p_s
@@ -155,9 +191,17 @@ class CMAES:
         cov = cmaes_state.cov_matrix
         mean = cmaes_state.mean
 
+        # print("Mask: ", mask)
+        # print("Weights: ", self._weights)
+
+        # weights = jnp.multiply(self._weights, mask)
+        # weights = weights / (weights.sum())
+
+        # print("New weights: ", weights)
+
         # update mean
         old_mean = mean
-        mean = self._weights @ sorted_candidates
+        mean = weights @ sorted_candidates
         z = 1 / step_size * (mean - old_mean).T
         eig, u = jnp.linalg.eigh(cov)
         invsqrt = u @ jnp.diag(1 / jnp.sqrt(eig)) @ u.T
@@ -179,7 +223,7 @@ class CMAES:
         # update covariance matrix
         pp_c = jnp.expand_dims(p_c, axis=1)
         coeff_tmp = 1 / step_size * (sorted_candidates - mean)
-        cov_rank = coeff_tmp.T @ jnp.diag(self._weights.squeeze()) @ coeff_tmp
+        cov_rank = coeff_tmp.T @ jnp.diag(weights.squeeze()) @ coeff_tmp
 
         cov = (
             (1 - self._c_cov - self._c_1) * cov
