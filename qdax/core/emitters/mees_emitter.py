@@ -111,7 +111,7 @@ class MEESEmitter(Emitter):
         """
         assert (
             jax.tree_leaves(init_genotypes)[0].shape[0] == 1
-        ), "!!!ERROR!!! MAP-Elites-ES generates one individual per generation, i.e. batch_size = 1."
+        ), "ERROR MAP-Elites-ES generates 1 individual per generation (batch_size=1)."
 
         learning_rate = self._config.learning_rate
 
@@ -266,7 +266,9 @@ class MEESEmitter(Emitter):
             """Sample uniformly from the 2 highest fitness cells."""
 
             max_fitnesses, _ = jax.lax.top_k(fitnesses, 2)
-            min_fitness = jnp.nanmin(jnp.where(max_fitnesses > -jnp.inf, max_fitnesses, jnp.inf))
+            min_fitness = jnp.nanmin(
+                jnp.where(max_fitnesses > -jnp.inf, max_fitnesses, jnp.inf)
+            )
             genotypes_empty = fitnesses < min_fitness
             p = (1.0 - genotypes_empty) / jnp.sum(1.0 - genotypes_empty)
             random_key, subkey = jax.random.split(random_key)
@@ -328,7 +330,9 @@ class MEESEmitter(Emitter):
 
         # Sample uniformaly for the 5 most novel cells
         max_novelties, _ = jax.lax.top_k(novelties, 5)
-        min_novelty = jnp.nanmin(jnp.where(max_novelties > -jnp.inf, max_novelties, jnp.inf))
+        min_novelty = jnp.nanmin(
+            jnp.where(max_novelties > -jnp.inf, max_novelties, jnp.inf)
+        )
         repertoire_empty = novelties < min_novelty
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
         random_key, subkey = jax.random.split(random_key)
@@ -370,7 +374,7 @@ class MEESEmitter(Emitter):
 
         assert (
             jax.tree_leaves(genotypes)[0].shape[0] == 1
-        ), "!!!ERROR!!! MAP-Elites-ES generates one individual per generation, i.e. batch_size = 1."
+        ), "ERROR MAP-Elites-ES generates 1 individual per generation (batch_size=1)."
 
         ############################
         # Updating novelty archive #
