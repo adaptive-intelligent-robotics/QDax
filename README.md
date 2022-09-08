@@ -28,7 +28,7 @@ For a full and interactive example to see how QDax works, we recommend starting 
 However, a summary of the main API usage is provided below:
 ```python
 import jax
-import qdax
+import functools
 from qdax.core.map_elites import MAPElites
 from qdax.core.containers.mapelites_repertoire import compute_euclidean_centroids
 from qdax.tasks.arm import arm_scoring_function
@@ -133,6 +133,11 @@ The QDax library also provides implementations for some useful baseline algorith
 | [SMERL](https://arxiv.org/abs/2010.14484) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/smerl_example.ipynb) |
 | [NSGA2](https://ieeexplore.ieee.org/document/996017) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/nsga2_spea2_example.ipynb) |
 | [SPEA2](https://www.semanticscholar.org/paper/SPEA2%3A-Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/b13724cb54ae4171916f3f969d304b9e9752a57f) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/nsga2_spea2_example.ipynb) |
+
+## QDax Tasks
+The QDax library also provides numerous implementations for several standard Quality-Diversity tasks.
+
+All those implementations, and their descriptions are provided in the [tasks directory](./qdax/tasks).
 
 ## Contributing
 Issues and contributions are welcome. Please refer to the [contribution guide](https://qdax.readthedocs.io/en/latest/guides/CONTRIBUTING/) in the documentation for more details.
