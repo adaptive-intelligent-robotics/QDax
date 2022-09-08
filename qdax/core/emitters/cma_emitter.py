@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -40,15 +39,15 @@ class CMAEmitterState(EmitterState):
 
 # TODO: in paper pseudo-code, only indiv that have been added are used to update
 # the distribution. Is it a mistake from the pseudo code or is it the desired
-# behavior?
+# behavior? - for some emitters
+
+# TODO: should we have an option in cmaes to update the weights?
 
 # TODO: is there a prioritizing of new cells before fitness improvement
 # I think yes!!!
 # CMA MEGA should be updated as well i think!
 
 # among the new cells, are they prioritized based on fitness or not?
-
-# TODO: should we have an option in cmaes to update the weights?
 
 # TODO: I want to introduce a init_void in MAPElitesRepertoire
 # it could be used at least three time in the package
