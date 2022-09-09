@@ -4,10 +4,10 @@ The `tasks` directory provides default `scoring_function`'s to import easily to 
 The `tasks` directory also serves as a way to maintain a QD benchmark task suite that can be easily accesed. We implement several benchmark task across a range of domains. The tasks here are classical tasks from QD literature as well as more recent benchmarks tasks proposed at the [QD Benchmarks Workshop at GECCO 2022](https://quality-diversity.github.io/workshop).
 
 ## Arm
-| Task           | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
-|----------------|----------------------|------------------|-----------------------|-------------------|-------------|
-| Arm            | n                    | $[0,1]^n$        | 2                     | $[0,1]^2$         |             |
-| Stochastic Arm | n                    | $[0,1]^n$        | 2                     | $[0,1]^2$         |             |
+| Task      | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
+|-----------|----------------------|------------------|-----------------------|-------------------|-------------|
+| Arm       | n                    | $[0,1]^n$        | 2                     | $[0,1]^2$         |             |
+| Noisy Arm | n                    | $[0,1]^n$        | 2                     | $[0,1]^2$         |             |
 
 Notes:
 - the parameter space is normalized between $[0,1]$ which corresponds to $[0,2\pi]$
