@@ -5,7 +5,7 @@ dm-haiku==0.0.5
 flax==0.4.1
 gym==0.23.1
 ipython
-jax==0.3.10
+jax==0.3.14
 jupyter
 numpy==1.22.3
 protobuf==3.19.4
