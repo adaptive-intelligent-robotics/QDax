@@ -9,7 +9,7 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class MultiEmitterState(EmitterState):
-    emitters_state_tuple: Tuple[EmitterState]
+    emitters_state_tuple: Tuple[EmitterState, ...]
 
 
 class MultiEmitter(Emitter):
