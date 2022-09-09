@@ -1,21 +1,17 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Optional, Tuple, Union
+from typing import Any, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 
-from qdax.core.cmaes import CMAES, CMAESState
-from qdax.core.containers.mapelites_repertoire import (
-    MapElitesRepertoire,
-    get_cells_indices,
-)
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
-from qdax.core.emitters.cma_opt_emitter import CMAOptimizingEmitter
-from qdax.core.emitters.cma_rnd_emitter import CMARndEmitter, CMARndEmitterState
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+
+# TODO: change name for CMAPoolEmitter
 
 
 class CMAMultiEmitterState(EmitterState):
@@ -29,11 +25,12 @@ class CMAMultiEmitterState(EmitterState):
         cmaes_state: state of the underlying CMA-ES algorithm
     """
 
-    emitter_states: Tuple[Union[CMAEmitterState, CMARndEmitterState], ...]
+    current_index: int
+    emitter_states: CMAEmitterState
 
 
 class CMAMultiEmitter(Emitter):
-    def __init__(self, emitters: Tuple[Union[CMAEmitter, CMARndEmitter], ...]):
+    def __init__(self, num_states: int, emitter: CMAEmitter):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
         Rapid Illumination of Behavior Space" by Fontaine et al.
@@ -45,7 +42,8 @@ class CMAMultiEmitter(Emitter):
             sigma_g: standard deviation for the coefficients
             step_size: size of the steps used in CMAES updates
         """
-        self._emitters = emitters
+        self._num_states = num_states
+        self._emitter = emitter
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
@@ -62,12 +60,21 @@ class CMAMultiEmitter(Emitter):
         Returns:
             The initial state of the emitter.
         """
-        emitter_states = []
-        for emitter in self._emitters:
-            emitter_state, random_key = emitter.init(init_genotypes, random_key)
-            emitter_states.append(emitter_state)
 
-        emitter_state = CMAMultiEmitterState(emitter_states=tuple(emitter_states))
+        def scan_emitter_init(
+            carry: RNGKey, unused: Any
+        ) -> Tuple[RNGKey, CMAEmitterState]:
+            random_key = carry
+            emitter_state, random_key = self._emitter.init(init_genotypes, random_key)
+            return random_key, emitter_state
+
+        random_key, emitter_states = jax.lax.scan(
+            scan_emitter_init, random_key, (), length=self._num_states
+        )
+
+        emitter_state = CMAMultiEmitterState(
+            current_index=0, emitter_states=emitter_states
+        )
 
         return (
             emitter_state,
@@ -94,16 +101,12 @@ class CMAMultiEmitter(Emitter):
         Returns:
             New genotypes and a new random key.
         """
-        emit_counts = [
-            emitter_s.emit_count for emitter_s in emitter_state.emitter_states
-        ]
+        current_index = emitter_state.current_index
+        used_emitter_state = jax.tree_util.tree_map(
+            lambda x: x[current_index], emitter_state.emitter_states
+        )
 
-        index = jnp.argmin(emit_counts)
-
-        used_emitter = self._emitters[index]
-        used_emitter_state = emitter_state.emitter_states[index]
-
-        offsprings, random_key = used_emitter.emit(
+        offsprings, random_key = self._emitter.emit(
             repertoire, used_emitter_state, random_key
         )
 
@@ -115,7 +118,7 @@ class CMAMultiEmitter(Emitter):
     )
     def state_update(
         self,
-        emitter_state: CMAEmitterState,
+        emitter_state: CMAMultiEmitterState,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -145,152 +148,36 @@ class CMAMultiEmitter(Emitter):
             The updated emitter state.
         """
 
-        # retrieve elements from the emitter state
-        cmaes_state = emitter_state.cmaes_state
+        # retrieve the emitter that has been used and it's emitter state
+        current_index = emitter_state.current_index
+        emitter_states = emitter_state.emitter_states
 
-        # Compute the improvements - needed for re-init condition
-        indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - emitter_state.previous_repertoire.fitnesses[indices]
+        used_emitter_state = jax.tree_util.tree_map(
+            lambda x: x[current_index], emitter_states
+        )
 
-        ranking_criteria = self._ranking_criteria(
-            emitter_state=emitter_state,
+        # update the used emitter state
+        used_emitter_state = self._emitter.state_update(
+            emitter_state=used_emitter_state,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             extra_scores=extra_scores,
-            improvements=improvements,
         )
 
-        # get the indices
-        sorted_indices = jnp.flip(jnp.argsort(ranking_criteria))
-
-        # sort the candidates
-        sorted_candidates = jax.tree_util.tree_map(
-            lambda x: x[sorted_indices], genotypes
+        # update the emitter state
+        emitter_states = jax.tree_util.tree_map(
+            lambda x, y: x.at[current_index].set(y), emitter_states, used_emitter_state
         )
-        sorted_improvements = improvements[sorted_indices]
 
-        # # Update CMA Parameters
-        # cmaes_state = self._cmaes.update_state(
-        #     cmaes_state, sorted_candidates, mask=(improvements >= 0)
-        # )
+        # determine the next emitter to be used
+        emit_counts = emitter_states.emit_count
 
-        # If no improvement draw randomly and re-initialize parameters
-        emit_count = emitter_state.emit_count + fitnesses.shape[0]
-        reinitialize = jnp.all(improvements < 0) * (emit_count > self._min_count)
-
-        def update_and_reinit(
-            operand: Tuple[
-                CMAESState, CMAEmitterState, MapElitesRepertoire, int, RNGKey
-            ],
-        ) -> Tuple[CMAEmitterState, RNGKey]:
-            print("Reinit event happened.")
-            return self._update_and_init_emitter_state(*operand)
-
-        def update_wo_reinit(
-            operand: Tuple[
-                CMAESState, CMAEmitterState, MapElitesRepertoire, int, RNGKey
-            ],
-        ) -> Tuple[CMAEmitterState, RNGKey]:
-
-            (cmaes_state, emitter_state, repertoire, emit_count, random_key) = operand
-
-            # Update CMA Parameters
-            mask = sorted_improvements >= 0
-            # mask = jnp.ones_like(sorted_improvements) * (sorted_improvements >= 0)
-            mask = mask + 0.000001
-
-            # weights = jnp.log(
-            #     (self._batch_size + 1)
-            #     / jnp.arange(start=1, stop=(self._batch_size + 1))
-            # )
-
-            # print("Weights : ", weights)
-
-            # weights = jnp.multiply(weights, mask)
-            # weights = weights / (weights.sum())
-
-            # print("Weights : ", weights)
-
-            cmaes_state = self._cmaes.update_state_with_mask(
-                cmaes_state, sorted_candidates, mask=mask
-            )
-
-            emitter_state = emitter_state.replace(
-                cmaes_state=cmaes_state,
-                emit_count=emit_count,
-            )
-
-            return emitter_state, random_key
-
-        emitter_state, random_key = jax.lax.cond(
-            reinitialize,
-            update_and_reinit,
-            update_wo_reinit,
-            operand=(
-                cmaes_state,
-                emitter_state,
-                repertoire,
-                emit_count,
-                emitter_state.random_key,
-            ),
-        )
+        new_index = jnp.argmin(emit_counts)
 
         emitter_state = emitter_state.replace(
-            random_key=random_key, previous_repertoire=repertoire
+            current_index=new_index, emitter_states=emitter_states
         )
 
         return emitter_state
-
-    def _update_and_init_emitter_state(
-        self,
-        cmaes_state: CMAESState,
-        emitter_state: CMAEmitterState,
-        repertoire: MapElitesRepertoire,
-        emit_count: int,
-        random_key: RNGKey,
-    ) -> Tuple[CMAEmitterState, RNGKey]:
-
-        # re-sample
-        random_genotype, random_key = repertoire.sample(random_key, 1)
-
-        # remove the batch dim
-        new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
-
-        cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=1)
-
-        emitter_state = emitter_state.replace(
-            cmaes_state=cmaes_init_state, emit_count=0
-        )
-
-        return emitter_state, random_key
-
-    def _ranking_criteria(
-        self,
-        emitter_state: CMAEmitterState,
-        repertoire: MapElitesRepertoire,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
-        extra_scores: Optional[ExtraScores],
-        improvements: jnp.ndarray,
-    ) -> jnp.ndarray:
-        """Defines how the genotypes should be sorted. Imapcts the update
-        of the CMAES state. In the end, this defines the type of CMAES emitter
-        used (optimizing, random direction or improvement)."""
-
-        # condition for being a new cell
-        condition = improvements == jnp.inf
-
-        # criteria: fitness if new cell, improvement else
-        ranking_criteria = jnp.where(condition, x=fitnesses, y=improvements)
-
-        # make sure to have all the new cells first
-        new_cell_offset = jnp.max(ranking_criteria) - jnp.min(ranking_criteria)
-
-        ranking_criteria = jnp.where(
-            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
-        )
-
-        return ranking_criteria  # type: ignore

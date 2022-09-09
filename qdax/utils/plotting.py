@@ -777,7 +777,7 @@ def plot_multidimensional_map_elites_grid(
     )
 
     ax.grid(which="minor", alpha=1.0, color="#000000", linewidth=0.5)
-    ax.grid(which="major", alpha=1.0, color="#000000", linewidth=2.5)
+    ax.grid(which="major", alpha=1.0, color="#000000", linewidth=1.0)
 
     ax.set_xticklabels(
         [

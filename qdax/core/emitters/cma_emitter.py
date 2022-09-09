@@ -32,11 +32,12 @@ class CMAEmitterState(EmitterState):
     emit_count: int
 
 
-# TODO: wait for confirmation before doing so.
-# TODO: current implem not adapted to pool of emitter
-# TODO: we should need emitters and schedulers for clean implem
-# TODO: add the pool of emitter - select the one with least emissions
 # no pool in CMA-MEGA - did they realize it was not necessary?
+
+# TODO: fix the issue in CMA MEGA!!!!
+
+# TODO: check performance of CMAES alone
+# it is strange that the opt cannot find the better solutions
 
 # TODO: in paper pseudo-code, only indiv that have been added are used to update
 # the distribution. Is it a mistake from the pseudo code or is it the desired
@@ -45,19 +46,11 @@ class CMAEmitterState(EmitterState):
 # TODO: should we have an option in cmaes to update the weights?
 # my answer: yes, we should
 
-# TODO: is there a prioritizing of new cells before fitness improvement
-# I think yes!!!
-# CMA MEGA should be updated as well i think!
-
-# among the new cells, are they prioritized based on fitness or not?
-
 # TODO: I want to introduce a init_void in MAPElitesRepertoire
 # it could be used at least three time in the package
 
 # TODO: make sure my decision to have the improvement emitter the default one
 # and not precised in its name - is ok for everyone
-
-# TODO: shouldn't we start with num_updates=0 ???
 
 # TODO: my min_count condition is not well used
 # it's not only for reinit but also for update
@@ -87,11 +80,6 @@ class CMAEmitter(Emitter):
             step_size: size of the steps used in CMAES updates
         """
         self._batch_size = batch_size
-
-        self._weights = jnp.expand_dims(
-            jnp.log(batch_size + 0.5) - jnp.log(jnp.arange(1, batch_size + 1)), axis=-1
-        )
-        self._weights = self._weights / (self._weights.sum())
 
         if step_size is None:
             step_size = 1.0
@@ -267,7 +255,6 @@ class CMAEmitter(Emitter):
                 CMAESState, CMAEmitterState, MapElitesRepertoire, int, RNGKey
             ],
         ) -> Tuple[CMAEmitterState, RNGKey]:
-            print("Reinit event happened.")
             return self._update_and_init_emitter_state(*operand)
 
         def update_wo_reinit(
@@ -280,20 +267,7 @@ class CMAEmitter(Emitter):
 
             # Update CMA Parameters
             mask = sorted_improvements >= 0
-            # mask = jnp.ones_like(sorted_improvements) * (sorted_improvements >= 0)
             mask = mask + 0.000001
-
-            # weights = jnp.log(
-            #     (self._batch_size + 1)
-            #     / jnp.arange(start=1, stop=(self._batch_size + 1))
-            # )
-
-            # print("Weights : ", weights)
-
-            # weights = jnp.multiply(weights, mask)
-            # weights = weights / (weights.sum())
-
-            # print("Weights : ", weights)
 
             cmaes_state = self._cmaes.update_state_with_mask(
                 cmaes_state, sorted_candidates, mask=mask
