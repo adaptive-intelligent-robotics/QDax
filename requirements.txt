@@ -1,11 +1,11 @@
 absl-py==1.0.0
-brax==0.0.12
+brax==0.0.15
 chex==0.1.4
 dm-haiku==0.0.5
-flax==0.5.3
+flax==0.6.0
 gym==0.23.1
 ipython
-jax==0.3.15
+jax==0.3.17
 jupyter
 numpy==1.22.3
 protobuf==3.19.4
