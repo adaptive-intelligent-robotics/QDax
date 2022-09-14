@@ -197,32 +197,18 @@ class MEESEmitter(Emitter):
         """
 
         # Compute all distances with novelty_archive content
-        num_indivs = descriptors.shape[0]
-        distances = jnp.repeat(
-            jnp.expand_dims(descriptors, axis=1),
-            self._total_generations,
-            axis=1,
-            total_repeat_length=self._total_generations,
-        )
-        distances = distances - jnp.repeat(
-            jnp.expand_dims(novelty_archive, axis=0),
-            num_indivs,
-            axis=0,
-            total_repeat_length=num_indivs,
-        )
-        distances = jnp.sqrt(jnp.sum(jnp.square(distances), axis=2))
+        def distance(x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sqrt(jnp.sum(jnp.square(x - y)))
+
+        distances = jax.vmap(
+            jax.vmap(partial(distance), in_axes=(None, 0)), in_axes=(0, None)
+        )(descriptors, novelty_archive)
 
         # Filter distance with empty slot of novelty archive
-        all_indices = jnp.repeat(
-            jnp.expand_dims(
-                jnp.arange(0, self._total_generations, step=1),
-                axis=0,
-            ),
-            num_indivs,
-            axis=0,
-            total_repeat_length=num_indivs,
+        indices = jnp.arange(0, self._total_generations, step=1) < generation_count
+        distances = jax.vmap(lambda distance: jnp.where(indices, distance, jnp.inf))(
+            distances
         )
-        distances = jnp.where(all_indices >= generation_count, jnp.inf, distances)
 
         # Find k neirest neighbours
         _, indices = jax.lax.top_k(-distances, self._config.novelty_nearest_neighbors)
