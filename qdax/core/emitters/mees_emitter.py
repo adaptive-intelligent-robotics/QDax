@@ -26,7 +26,7 @@ class MEESConfig:
     adam_optimizer: bool = True  # if 1 use ADAM, if 0 use SGD
     learning_rate: float = 0.01
     learning_rate_decay: float = 1.0  # only applied when no ADAM
-    l2_coefficient: float = 0.0  # coefficient for regularisation
+    l2_coefficient: float = 0.02  # coefficient for regularisation
     novelty_nearest_neighbors: int = 10
     use_explore: bool = True  # if 0, use only fitness gradient
 
