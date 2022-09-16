@@ -20,6 +20,7 @@ from qdax.core.neuroevolution.losses.diayn_loss import make_diayn_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.diayn_networks import make_diayn_networks
 from qdax.core.neuroevolution.sac_utils import generate_unroll
+from qdax.environments import CompletedEvalWrapper
 from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
@@ -316,9 +317,10 @@ class DIAYN(SAC):
             play_step_fn=play_step_fn,
         )
 
+        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
         true_return = (
-            state.info["eval_metrics"].completed_episodes_metrics["reward"]
-            / state.info["eval_metrics"].completed_episodes
+            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
+            / state.info[eval_metrics_key].completed_episodes
         )
 
         transitions = get_first_episode(transitions)

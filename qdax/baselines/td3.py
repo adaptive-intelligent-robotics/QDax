@@ -19,6 +19,7 @@ from qdax.core.neuroevolution.mdp_utils import (
     get_first_episode,
 )
 from qdax.core.neuroevolution.networks.td3_networks import make_td3_networks
+from qdax.environments import CompletedEvalWrapper
 from qdax.types import Action, Metrics, Observation, Params, Reward, RNGKey
 
 
@@ -251,9 +252,10 @@ class TD3:
             play_step_fn=play_step_fn,
         )
 
+        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
         true_return = (
-            state.info["eval_metrics"].completed_episodes_metrics["reward"]
-            / state.info["eval_metrics"].completed_episodes
+            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
+            / state.info[eval_metrics_key].completed_episodes
         )
 
         transitions = get_first_episode(transitions)

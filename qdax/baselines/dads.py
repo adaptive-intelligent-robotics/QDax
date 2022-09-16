@@ -25,6 +25,7 @@ from qdax.core.neuroevolution.normalization_utils import (
     update_running_mean_std,
 )
 from qdax.core.neuroevolution.sac_utils import generate_unroll
+from qdax.environments import CompletedEvalWrapper
 from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
@@ -373,9 +374,10 @@ class DADS(SAC):
             play_step_fn=play_step_fn,
         )
 
+        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
         true_return = (
-            state.info["eval_metrics"].completed_episodes_metrics["reward"]
-            / state.info["eval_metrics"].completed_episodes
+            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
+            / state.info[eval_metrics_key].completed_episodes
         )
 
         transitions = get_first_episode(transitions)
