@@ -22,8 +22,10 @@ class CompletedEvalWrapper(brax.envs.env.Wrapper):
         reset_state = self.env.reset(rng)
         reset_state.metrics["reward"] = reset_state.reward
         eval_metrics = CompletedEvalMetrics(
-            current_episode_metrics=jax.tree_map(jp.zeros_like, reset_state.metrics),
-            completed_episodes_metrics=jax.tree_map(
+            current_episode_metrics=jax.tree_util.tree_map(
+                jp.zeros_like, reset_state.metrics
+            ),
+            completed_episodes_metrics=jax.tree_util.tree_map(
                 lambda x: jp.zeros_like(jp.sum(x)), reset_state.metrics
             ),
             completed_episodes=jp.zeros(()),
@@ -46,16 +48,16 @@ class CompletedEvalWrapper(brax.envs.env.Wrapper):
         completed_episodes_steps = state_metrics.completed_episodes_steps + jp.sum(
             nstate.info["steps"] * nstate.done
         )
-        current_episode_metrics = jax.tree_multimap(
+        current_episode_metrics = jax.tree_util.tree_map(
             lambda a, b: a + b, state_metrics.current_episode_metrics, nstate.metrics
         )
         completed_episodes = state_metrics.completed_episodes + jp.sum(nstate.done)
-        completed_episodes_metrics = jax.tree_multimap(
+        completed_episodes_metrics = jax.tree_util.tree_map(
             lambda a, b: a + jp.sum(b * nstate.done),
             state_metrics.completed_episodes_metrics,
             current_episode_metrics,
         )
-        current_episode_metrics = jax.tree_multimap(
+        current_episode_metrics = jax.tree_util.tree_map(
             lambda a, b: a * (1 - nstate.done) + b * nstate.done,
             current_episode_metrics,
             nstate.metrics,
