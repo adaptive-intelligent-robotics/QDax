@@ -10,9 +10,6 @@ COPY requirements.txt /tmp/requirements.txt
 COPY requirements-dev.txt /tmp/requirements-dev.txt
 COPY environment.yaml /tmp/environment.yaml
 
-USER ROOT
-RUN apt update && apt install -y g++
-
 RUN micromamba create -y --file /tmp/environment.yaml \
     && micromamba clean --all --yes \
     && find /opt/conda/ -follow -type f -name '*.pyc' -delete
