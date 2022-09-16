@@ -10,6 +10,7 @@ COPY requirements.txt /tmp/requirements.txt
 COPY requirements-dev.txt /tmp/requirements-dev.txt
 COPY environment.yaml /tmp/environment.yaml
 
+RUN apt update && apt install -y g++
 
 RUN micromamba create -y --file /tmp/environment.yaml \
     && micromamba clean --all --yes \
