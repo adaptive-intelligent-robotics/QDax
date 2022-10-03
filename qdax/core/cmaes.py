@@ -8,7 +8,6 @@ from typing import Callable, Optional, Tuple
 import flax
 import jax
 import jax.numpy as jnp
-
 from qdax.types import Fitness, Genotype, Mask, RNGKey
 
 
@@ -205,15 +204,21 @@ class CMAES:
 
         # print("New weights: ", weights)
 
-        # update mean
+        # update mean by recombination
         old_mean = mean
         mean = weights @ sorted_candidates
-        z = 1 / step_size * (mean - old_mean).T
+
+        # decomposition of cov
+        # TODO: there is a step here that is done in WIKIPEDIA but not here
+        # TODO: the step "enforce symmetry"
+        # TODO: additionnaly, we should consider having the lazy to update to achieve 0(n^2)
+        # TODO: pyribs implem does the same (as wikipedia)
         eig, u = jnp.linalg.eigh(cov)
         invsqrt = u @ jnp.diag(1 / jnp.sqrt(eig)) @ u.T
+        z = 1 / step_size * (mean - old_mean).T
         z_w = invsqrt @ z
 
-        # update evolution paths
+        # update evolution paths - cumulation
         p_s = (1 - self._c_s) * p_s + jnp.sqrt(
             self._c_s * (2 - self._c_s) * self._parents_eff
         ) * z_w.squeeze()
