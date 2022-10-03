@@ -62,7 +62,7 @@ class CMAES:
         # weights parameters
         if bias_weights:
             self._weights = jnp.log(
-                (self._num_best + 1) / jnp.arange(start=1, stop=(self._num_best + 1))
+                (self._num_best + 0.5) / jnp.arange(start=1, stop=(self._num_best + 1))
             )
         else:
             self._weights = jnp.ones(self._num_best)
@@ -76,14 +76,20 @@ class CMAES:
         self._c_c = (4 + self._parents_eff / self._search_dim) / (
             self._search_dim + 4 + 2 * self._parents_eff / self._search_dim
         )
-        tmp = self._parents_eff - 2 + 1 / self._parents_eff
+
+        # learning rate for rank-1 update of C
         self._c_1 = 2 / (self._parents_eff + (self._search_dim + jnp.sqrt(2)) ** 2)
+
+        # learning rate for rank-(num best) updates
+        tmp = 2 * (self._parents_eff - 2 + 1 / self._parents_eff)
         self._c_cov = min(
             1 - self._c_1, tmp / (self._parents_eff + (self._search_dim + 2) ** 2)
         )
+
+        # damping for sigma
         self._d_s = (
             1
-            + 2 * max(0, jnp.sqrt((self._parents_eff - 1) / (self._search_dim + 1) - 1))
+            + 2 * max(0, jnp.sqrt((self._parents_eff - 1) / (self._search_dim + 1)) - 1)
             + self._c_s
         )
         self._chi = jnp.sqrt(self._search_dim) * (
