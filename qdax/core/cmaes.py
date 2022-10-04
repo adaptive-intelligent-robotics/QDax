@@ -26,6 +26,15 @@ class CMAESState(flax.struct.PyTreeNode):
     p_s: jnp.ndarray
 
 
+# TODO:
+# - add termination conditions
+# - and/or handle small values to avoid NaNs when too small
+# - add the option to be O(n^2)
+
+# TODO:
+# - remark: the num best impacts a lot!!
+
+
 class CMAES:
     """
     Class to run the CMA-ES algorithm.
@@ -220,11 +229,9 @@ class CMAES:
         # enfore symmetry - did not change anything
         cov = jnp.triu(cov) + jnp.triu(cov, 1).T
         eig, u = jnp.linalg.eigh(cov)  # eigenvalues, eigenvectors
-        print("u before diag: ", eig)
-        eig = jnp.diag(eig)  # - game changer
-        print("u after diag: ", eig)
+        diag_eig = jnp.diag(eig)
 
-        invsqrt = u @ jnp.diag(1 / jnp.sqrt(eig)) @ u.T
+        invsqrt = u @ jnp.diag(1 / jnp.sqrt(diag_eig)) @ u.T
         # z = 1 / step_size * (mean - old_mean).T
         z = (1 / step_size) * (mean - old_mean)  # .T
         z_w = invsqrt @ z
@@ -275,6 +282,7 @@ class CMAES:
             p_c=p_c,
             p_s=p_s,
         )
+
         return cmaes_state
 
     @functools.partial(jax.jit, static_argnames=("self",))
@@ -297,3 +305,20 @@ class CMAES:
         new_state = self.update_state(cmaes_state, sorted_candidates)
 
         return new_state  # type: ignore
+
+    @functools.partial(jax.jit, static_argnames=("self",))
+    def _stop_condition(self, eigenvalues: jnp.ndarray, step_size: float) -> bool:
+        """Inspired from pyribs implementation.
+
+        TODO: should we add the third condition implemented in pyribs?
+
+        # TODO: make it use the state, to be a non invasive function
+        """
+
+        eig_dispersion = jnp.max(eigenvalues) / jnp.min(eigenvalues)
+        first_condition = eig_dispersion > 1e14
+
+        area = step_size * jnp.sqrt(jnp.max(eigenvalues))
+        second_condition = area < 1e-11
+
+        return first_condition or second_condition
