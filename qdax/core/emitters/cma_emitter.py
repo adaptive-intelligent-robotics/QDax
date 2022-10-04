@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -84,6 +83,9 @@ class CMAEmitter(Emitter):
         if step_size is None:
             step_size = 1.0
 
+        # TODO: check mean init- i think it's ok but should
+        # double check
+
         # define a CMAES instance
         self._cmaes = CMAES(
             population_size=batch_size,
@@ -92,8 +94,9 @@ class CMAEmitter(Emitter):
             fitness_function=None,  # type: ignore
             num_best=batch_size,
             init_sigma=sigma_g,
-            init_step_size=step_size,
+            mean_init=None,  # will be init at zeros in cmaes
             bias_weights=True,
+            init_step_size=step_size,
         )
 
         # minimum number of emitted solution before an emitter can be re-initialized

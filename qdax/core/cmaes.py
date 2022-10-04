@@ -3,6 +3,7 @@ Definition of CMAES class, containing main functions necessary to build
 a CMA optimization script. Link to the paper: https://arxiv.org/abs/1604.00772
 """
 import functools
+from inspect import CO_VARARGS
 from typing import Callable, Optional, Tuple
 
 import flax
@@ -213,27 +214,45 @@ class CMAES:
         # TODO: the step "enforce symmetry"
         # TODO: additionnaly, we should consider having the lazy to update to achieve 0(n^2)
         # TODO: pyribs implem does the same (as wikipedia)
-        eig, u = jnp.linalg.eigh(cov)
+
+        # get eigen decomposition
+        print("Cov: ", cov)
+        # enfore symmetry - did not change anything
+        cov = jnp.triu(cov) + jnp.triu(cov, 1).T
+        eig, u = jnp.linalg.eigh(cov)  # eigenvalues, eigenvectors
+        print("u before diag: ", eig)
+        eig = jnp.diag(eig)  # - game changer
+        print("u after diag: ", eig)
+
         invsqrt = u @ jnp.diag(1 / jnp.sqrt(eig)) @ u.T
-        z = 1 / step_size * (mean - old_mean).T
+        # z = 1 / step_size * (mean - old_mean).T
+        z = (1 / step_size) * (mean - old_mean)  # .T
         z_w = invsqrt @ z
 
         # update evolution paths - cumulation
         p_s = (1 - self._c_s) * p_s + jnp.sqrt(
             self._c_s * (2 - self._c_s) * self._parents_eff
-        ) * z_w.squeeze()
+        ) * z_w  # .squeeze()
 
         tmp_1 = jnp.linalg.norm(p_s) / jnp.sqrt(
             1 - (1 - self._c_s) ** (2 * num_updates)
         ) <= self._chi * (1.4 + 2 / (self._search_dim + 1))
 
-        p_c = (1 - self._c_c) * p_c + 1 * jnp.sqrt(
+        print("tmp_1: ", tmp_1)
+
+        # TODO: WARNING - we are missing a term here!
+        # TODO: I added it. - did not solve the issue
+        p_c = (1 - self._c_c) * p_c + tmp_1 * jnp.sqrt(
             self._c_c * (2 - self._c_c) * self._parents_eff
-        ) * z.squeeze()
+        ) * z  # .squeeze()
 
         # update covariance matrix
         pp_c = jnp.expand_dims(p_c, axis=1)
-        coeff_tmp = 1 / step_size * (sorted_candidates - mean)
+
+        # TODO: supposed to use the old mean here - fixed
+        # coeff_tmp = 1 / step_size * (sorted_candidates - mean)
+        coeff_tmp = (sorted_candidates - old_mean) / step_size  # - game changer
+        # coeff_tmp = (sorted_candidates - mean) / step_size
         cov_rank = coeff_tmp.T @ jnp.diag(weights.squeeze()) @ coeff_tmp
 
         cov = (
