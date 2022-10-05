@@ -25,6 +25,7 @@ class CMAESState(flax.struct.PyTreeNode):
     p_c: jnp.ndarray
     p_s: jnp.ndarray
     eigen_updates: int
+    eigenvalues: jnp.ndarray
     invsqrt_cov: jnp.ndarray
 
 
@@ -149,6 +150,7 @@ class CMAES:
             p_c=jnp.zeros(shape=(self._search_dim,)),
             p_s=jnp.zeros(shape=(self._search_dim,)),
             eigen_updates=1,
+            eigenvalues=self._init_sigma * jnp.ones(shape=(self._search_dim,)),
             invsqrt_cov=invsqrt_cov,
         )
 
@@ -238,6 +240,7 @@ class CMAES:
         mean = cmaes_state.mean
 
         eigen_updates = cmaes_state.eigen_updates
+        eigenvalues = cmaes_state.eigenvalues
         invsqrt_cov = cmaes_state.invsqrt_cov
 
         # print("Mask: ", mask)
@@ -258,7 +261,9 @@ class CMAES:
         # TODO: additionnaly, we should consider having the lazy to update to achieve 0(n^2)
         # TODO: pyribs implem does the same (as wikipedia)
 
-        def update_eigen(operand: Tuple[jnp.ndarray, int]) -> Tuple[jnp.ndarray, int]:
+        def update_eigen(
+            operand: Tuple[jnp.ndarray, int]
+        ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
 
             # unpack data
             cov, num_updates = operand
@@ -283,7 +288,7 @@ class CMAES:
             # and update the eigen value decomposition tracker
             eigen_updates = num_updates
 
-            return invsqrt, eigen_updates
+            return eigen_updates, eig, invsqrt
 
         print("Inv sqrt cov before: ", invsqrt_cov)
 
@@ -292,10 +297,10 @@ class CMAES:
 
         print("Eigen condition's value: ", eigen_condition)
 
-        invsqrt, eigen_updates = jax.lax.cond(
+        eigen_updates, eigenvalues, invsqrt = jax.lax.cond(
             eigen_condition,
             update_eigen,
-            lambda _: (invsqrt_cov, eigen_updates),
+            lambda _: (eigen_updates, eigenvalues, invsqrt_cov),
             operand=(cov, num_updates),
         )
 
@@ -351,6 +356,7 @@ class CMAES:
             p_c=p_c,
             p_s=p_s,
             eigen_updates=eigen_updates,
+            eigenvalues=eigenvalues,
             invsqrt_cov=invsqrt,
         )
 
@@ -378,18 +384,22 @@ class CMAES:
         return new_state  # type: ignore
 
     @functools.partial(jax.jit, static_argnames=("self",))
-    def _stop_condition(self, eigenvalues: jnp.ndarray, step_size: float) -> bool:
+    def stop_condition(self, cmaes_state: CMAESState) -> bool:
         """Inspired from pyribs implementation.
 
         TODO: should we add the third condition implemented in pyribs?
-
-        # TODO: make it use the state, to be a non invasive function
         """
+        # NaN appear because of float precision is reached
+        nan_condition = jnp.sum(jnp.isnan(cmaes_state.eigenvalues)) > 0
 
-        eig_dispersion = jnp.max(eigenvalues) / jnp.min(eigenvalues)
+        eig_dispersion = jnp.max(cmaes_state.eigenvalues) / jnp.min(
+            cmaes_state.eigenvalues
+        )
         first_condition = eig_dispersion > 1e14
 
-        area = step_size * jnp.sqrt(jnp.max(eigenvalues))
-        second_condition = area < 1e-11
+        # area = cmaes_state.step_size * jnp.sqrt(jnp.max(cmaes_state.eigenvalues))
+        # second_condition = area < 1e-6
 
-        return first_condition or second_condition
+        second_condition = jnp.max(cmaes_state.eigenvalues) < 1e-6  # 1e-9
+
+        return nan_condition + first_condition + second_condition

@@ -251,8 +251,13 @@ class CMAEmitter(Emitter):
         # )
 
         # If no improvement draw randomly and re-initialize parameters
+        # or if emitter converged
         emit_count = emitter_state.emit_count + fitnesses.shape[0]
-        reinitialize = jnp.all(improvements < 0) * (emit_count > self._min_count)
+        reinitialize = jnp.all(improvements < 0) * (
+            emit_count > self._min_count
+        ) + self._cmaes.stop_condition(cmaes_state)
+
+        # print("Reinit: ", reinitialize)
 
         def update_and_reinit(
             operand: Tuple[
