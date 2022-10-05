@@ -97,6 +97,7 @@ class CMAEmitter(Emitter):
             mean_init=None,  # will be init at zeros in cmaes
             bias_weights=True,
             init_step_size=step_size,
+            delay_eigen_decomposition=True,
         )
 
         # minimum number of emitted solution before an emitter can be re-initialized

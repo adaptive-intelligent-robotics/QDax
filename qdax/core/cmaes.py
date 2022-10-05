@@ -53,7 +53,7 @@ class CMAES:
         mean_init: Optional[jnp.ndarray] = None,
         bias_weights: bool = True,
         init_step_size: float = 1e-3,
-        delay_eigen_decomposition: bool = True,
+        delay_eigen_decomposition: bool = False,
     ):
         self._population_size = population_size
         self._search_dim = search_dim
@@ -110,11 +110,20 @@ class CMAES:
         )
 
         # threshold for new eigen decomposition
+        # the sqrt is introduced in our implementation - hasn't been found elsewhere
+        # reason for that was that the wikipedia heuristic was giving a period that
+        # was getting way too big
+
+        # TODO: should i simply use the one from pyribs???
         self._eigen_comput_period = 1
         if delay_eigen_decomposition:
             self._eigen_comput_period = (
-                0.5 * self._search_dim / (10 * (self._c_1 + self._c_cov))
+                0.5 * jnp.sqrt(self._search_dim) / (10 * (self._c_1 + self._c_cov))
             )
+
+        print("c1: ", self._c_1)
+        print("c cov: ", self._c_cov)
+        print("Eigen decomposition delay: ", self._eigen_comput_period)
 
     def init(self) -> CMAESState:
         """
@@ -127,7 +136,10 @@ class CMAES:
         cov_matrix = self._init_sigma * jnp.eye(self._search_dim)
 
         # cov is already diag
-        invsqrt_cov = 1 / jnp.sqrt(cov_matrix)
+        invsqrt_cov = jnp.diag(1 / jnp.sqrt(jnp.diag(cov_matrix)))
+
+        print("Initial cov: ", cov_matrix)
+        print("Initial invsqrt cov: ", invsqrt_cov)
 
         return CMAESState(
             mean=self._mean_init,
@@ -255,25 +267,39 @@ class CMAES:
             print("Cov: ", cov)
             # enfore symmetry - did not change anything
             cov = jnp.triu(cov) + jnp.triu(cov, 1).T
-            eig, u = jnp.linalg.eigh(cov)  # eigenvalues, eigenvectors
-            diag_eig = jnp.diag(eig)
+            # eigenvalues, eigenvectors
+            eig, u = jnp.linalg.eigh(cov)
+            # diag_eig = jnp.diag(eig)
+
+            print("eig: ", eig)
+            # print("Diag eig: ", diag_eig)
 
             # compute new invsqrt
-            invsqrt = u @ jnp.diag(1 / jnp.sqrt(diag_eig)) @ u.T
+            invsqrt = u @ jnp.diag(1 / jnp.sqrt(eig)) @ u.T
+
+            # print("Inv sqrt: ", invsqrt)
+            # print("Diag Inv sqrt: ", jnp.diag(invsqrt))
 
             # and update the eigen value decomposition tracker
             eigen_updates = num_updates
 
             return invsqrt, eigen_updates
 
+        print("Inv sqrt cov before: ", invsqrt_cov)
+
         # condition for recomputing the eig decomposition
         eigen_condition = (num_updates - eigen_updates) >= self._eigen_comput_period
+
+        print("Eigen condition's value: ", eigen_condition)
+
         invsqrt, eigen_updates = jax.lax.cond(
             eigen_condition,
             update_eigen,
             lambda _: (invsqrt_cov, eigen_updates),
-            operand=(invsqrt_cov, num_updates),
+            operand=(cov, num_updates),
         )
+
+        print("Inv sqrt cov after: ", invsqrt)
 
         # z = 1 / step_size * (mean - old_mean).T
         z = (1 / step_size) * (mean - old_mean)  # .T
