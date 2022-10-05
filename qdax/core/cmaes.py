@@ -24,15 +24,18 @@ class CMAESState(flax.struct.PyTreeNode):
     step_size: float
     p_c: jnp.ndarray
     p_s: jnp.ndarray
+    eigen_updates: int
+    invsqrt_cov: jnp.ndarray
 
 
 # TODO:
+# - add the option to be O(n^2)
 # - add termination conditions
 # - and/or handle small values to avoid NaNs when too small
-# - add the option to be O(n^2)
 
 # TODO:
 # - remark: the num best impacts a lot!!
+# - remark: the batch size as well (a lot, even for fixed nb computations)
 
 
 class CMAES:
@@ -50,6 +53,7 @@ class CMAES:
         mean_init: Optional[jnp.ndarray] = None,
         bias_weights: bool = True,
         init_step_size: float = 1e-3,
+        delay_eigen_decomposition: bool = True,
     ):
         self._population_size = population_size
         self._search_dim = search_dim
@@ -105,6 +109,13 @@ class CMAES:
             1 - 1 / (4 * self._search_dim) + 1 / (21 * self._search_dim**2)
         )
 
+        # threshold for new eigen decomposition
+        self._eigen_comput_period = 1
+        if delay_eigen_decomposition:
+            self._eigen_comput_period = (
+                0.5 * self._search_dim / (10 * (self._c_1 + self._c_cov))
+            )
+
     def init(self) -> CMAESState:
         """
         Init the CMA-ES algorithm.
@@ -112,13 +123,21 @@ class CMAES:
         Returns:
             an initial state for the algorithm
         """
+
+        cov_matrix = self._init_sigma * jnp.eye(self._search_dim)
+
+        # cov is already diag
+        invsqrt_cov = 1 / jnp.sqrt(cov_matrix)
+
         return CMAESState(
             mean=self._mean_init,
-            cov_matrix=self._init_sigma * jnp.eye(self._search_dim),
+            cov_matrix=cov_matrix,
             step_size=self._init_step_size,
             num_updates=1,
             p_c=jnp.zeros(shape=(self._search_dim,)),
             p_s=jnp.zeros(shape=(self._search_dim,)),
+            eigen_updates=1,
+            invsqrt_cov=invsqrt_cov,
         )
 
     @functools.partial(jax.jit, static_argnames=("self",))
@@ -206,6 +225,9 @@ class CMAES:
         cov = cmaes_state.cov_matrix
         mean = cmaes_state.mean
 
+        eigen_updates = cmaes_state.eigen_updates
+        invsqrt_cov = cmaes_state.invsqrt_cov
+
         # print("Mask: ", mask)
         # print("Weights: ", self._weights)
 
@@ -224,14 +246,35 @@ class CMAES:
         # TODO: additionnaly, we should consider having the lazy to update to achieve 0(n^2)
         # TODO: pyribs implem does the same (as wikipedia)
 
-        # get eigen decomposition
-        print("Cov: ", cov)
-        # enfore symmetry - did not change anything
-        cov = jnp.triu(cov) + jnp.triu(cov, 1).T
-        eig, u = jnp.linalg.eigh(cov)  # eigenvalues, eigenvectors
-        diag_eig = jnp.diag(eig)
+        def update_eigen(operand: Tuple[jnp.ndarray, int]) -> Tuple[jnp.ndarray, int]:
 
-        invsqrt = u @ jnp.diag(1 / jnp.sqrt(diag_eig)) @ u.T
+            # unpack data
+            cov, num_updates = operand
+
+            # get eigen decomposition
+            print("Cov: ", cov)
+            # enfore symmetry - did not change anything
+            cov = jnp.triu(cov) + jnp.triu(cov, 1).T
+            eig, u = jnp.linalg.eigh(cov)  # eigenvalues, eigenvectors
+            diag_eig = jnp.diag(eig)
+
+            # compute new invsqrt
+            invsqrt = u @ jnp.diag(1 / jnp.sqrt(diag_eig)) @ u.T
+
+            # and update the eigen value decomposition tracker
+            eigen_updates = num_updates
+
+            return invsqrt, eigen_updates
+
+        # condition for recomputing the eig decomposition
+        eigen_condition = (num_updates - eigen_updates) >= self._eigen_comput_period
+        invsqrt, eigen_updates = jax.lax.cond(
+            eigen_condition,
+            update_eigen,
+            lambda _: (invsqrt_cov, eigen_updates),
+            operand=(invsqrt_cov, num_updates),
+        )
+
         # z = 1 / step_size * (mean - old_mean).T
         z = (1 / step_size) * (mean - old_mean)  # .T
         z_w = invsqrt @ z
@@ -281,6 +324,8 @@ class CMAES:
             num_updates=num_updates + 1,
             p_c=p_c,
             p_s=p_s,
+            eigen_updates=eigen_updates,
+            invsqrt_cov=invsqrt,
         )
 
         return cmaes_state
