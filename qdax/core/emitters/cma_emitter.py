@@ -31,19 +31,7 @@ class CMAEmitterState(EmitterState):
     emit_count: int
 
 
-# no pool in CMA-MEGA - did they realize it was not necessary?
-
 # TODO: fix the issue in CMA MEGA!!!!
-
-# TODO: check performance of CMAES alone
-# it is strange that the opt cannot find the better solutions
-
-# TODO: in paper pseudo-code, only indiv that have been added are used to update
-# the distribution. Is it a mistake from the pseudo code or is it the desired
-# behavior? - for some emitters
-
-# TODO: should we have an option in cmaes to update the weights?
-# my answer: yes, we should
 
 # TODO: I want to introduce a init_void in MAPElitesRepertoire
 # it could be used at least three time in the package
@@ -54,7 +42,7 @@ class CMAEmitterState(EmitterState):
 # TODO: my min_count condition is not well used
 # it's not only for reinit but also for update
 
-# TODO: try CMAES alone on sphere and rastrigin
+# TODO: check perfs on sphere (i've only tried ragistrin yet)
 
 
 class CMAEmitter(Emitter):
@@ -82,9 +70,6 @@ class CMAEmitter(Emitter):
 
         if step_size is None:
             step_size = 1.0
-
-        # TODO: check mean init- i think it's ok but should
-        # double check
 
         # define a CMAES instance
         self._cmaes = CMAES(
@@ -245,19 +230,12 @@ class CMAEmitter(Emitter):
         )
         sorted_improvements = improvements[sorted_indices]
 
-        # # Update CMA Parameters
-        # cmaes_state = self._cmaes.update_state(
-        #     cmaes_state, sorted_candidates, mask=(improvements >= 0)
-        # )
-
         # If no improvement draw randomly and re-initialize parameters
         # or if emitter converged
         emit_count = emitter_state.emit_count + fitnesses.shape[0]
         reinitialize = jnp.all(improvements < 0) * (
             emit_count > self._min_count
         ) + self._cmaes.stop_condition(cmaes_state)
-
-        # print("Reinit: ", reinitialize)
 
         def update_and_reinit(
             operand: Tuple[
@@ -276,7 +254,7 @@ class CMAEmitter(Emitter):
 
             # Update CMA Parameters
             mask = sorted_improvements >= 0
-            mask = mask + 0.000001
+            mask = mask + 1e-6
 
             cmaes_state = self._cmaes.update_state_with_mask(
                 cmaes_state, sorted_candidates, mask=mask
@@ -289,6 +267,7 @@ class CMAEmitter(Emitter):
 
             return emitter_state, random_key
 
+        # Update CMA Parameters
         emitter_state, random_key = jax.lax.cond(
             reinitialize,
             update_and_reinit,
@@ -302,6 +281,7 @@ class CMAEmitter(Emitter):
             ),
         )
 
+        # update the emitter state
         emitter_state = emitter_state.replace(
             random_key=random_key, previous_repertoire=repertoire
         )

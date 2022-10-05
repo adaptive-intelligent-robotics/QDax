@@ -11,10 +11,8 @@ from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
-# TODO: change name for CMAPoolEmitter
 
-
-class CMAMultiEmitterState(EmitterState):
+class CMAPoolEmitterState(EmitterState):
     """
     Emitter state for the CMA-ME emitter.
 
@@ -29,7 +27,7 @@ class CMAMultiEmitterState(EmitterState):
     emitter_states: CMAEmitterState
 
 
-class CMAMultiEmitter(Emitter):
+class CMAPoolEmitter(Emitter):
     def __init__(self, num_states: int, emitter: CMAEmitter):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
@@ -48,7 +46,7 @@ class CMAMultiEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
-    ) -> Tuple[CMAMultiEmitterState, RNGKey]:
+    ) -> Tuple[CMAPoolEmitterState, RNGKey]:
         """
         Initializes the CMA-MEGA emitter
 
@@ -72,7 +70,7 @@ class CMAMultiEmitter(Emitter):
             scan_emitter_init, random_key, (), length=self._num_states
         )
 
-        emitter_state = CMAMultiEmitterState(
+        emitter_state = CMAPoolEmitterState(
             current_index=0, emitter_states=emitter_states
         )
 
@@ -85,7 +83,7 @@ class CMAMultiEmitter(Emitter):
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
-        emitter_state: CMAMultiEmitterState,
+        emitter_state: CMAPoolEmitterState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
@@ -118,7 +116,7 @@ class CMAMultiEmitter(Emitter):
     )
     def state_update(
         self,
-        emitter_state: CMAMultiEmitterState,
+        emitter_state: CMAPoolEmitterState,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -180,4 +178,4 @@ class CMAMultiEmitter(Emitter):
             current_index=new_index, emitter_states=emitter_states
         )
 
-        return emitter_state
+        return emitter_state  # type: ignore

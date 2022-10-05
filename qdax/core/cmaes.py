@@ -3,7 +3,6 @@ Definition of CMAES class, containing main functions necessary to build
 a CMA optimization script. Link to the paper: https://arxiv.org/abs/1604.00772
 """
 import functools
-from inspect import CO_VARARGS
 from typing import Callable, Optional, Tuple
 
 import flax
@@ -27,16 +26,6 @@ class CMAESState(flax.struct.PyTreeNode):
     eigen_updates: int
     eigenvalues: jnp.ndarray
     invsqrt_cov: jnp.ndarray
-
-
-# TODO:
-# - add the option to be O(n^2)
-# - add termination conditions
-# - and/or handle small values to avoid NaNs when too small
-
-# TODO:
-# - remark: the num best impacts a lot!!
-# - remark: the batch size as well (a lot, even for fixed nb computations)
 
 
 class CMAES:
@@ -122,10 +111,6 @@ class CMAES:
                 0.5 * jnp.sqrt(self._search_dim) / (10 * (self._c_1 + self._c_cov))
             )
 
-        print("c1: ", self._c_1)
-        print("c cov: ", self._c_cov)
-        print("Eigen decomposition delay: ", self._eigen_comput_period)
-
     def init(self) -> CMAESState:
         """
         Init the CMA-ES algorithm.
@@ -138,9 +123,6 @@ class CMAES:
 
         # cov is already diag
         invsqrt_cov = jnp.diag(1 / jnp.sqrt(jnp.diag(cov_matrix)))
-
-        print("Initial cov: ", cov_matrix)
-        print("Initial invsqrt cov: ", invsqrt_cov)
 
         return CMAESState(
             mean=self._mean_init,
@@ -184,7 +166,7 @@ class CMAES:
         cmaes_state: CMAESState,
         sorted_candidates: Genotype,
     ) -> CMAESState:
-        return self._update_state(
+        return self._update_state(  # type: ignore
             cmaes_state=cmaes_state,
             sorted_candidates=sorted_candidates,
             weights=self._weights,
@@ -195,15 +177,10 @@ class CMAES:
         self, cmaes_state: CMAESState, sorted_candidates: Genotype, mask: Mask
     ) -> CMAESState:
 
-        # print("Mask: ", mask)
-        # print("Weights: ", self._weights)
-
         weights = jnp.multiply(self._weights, mask)
         weights = weights / (weights.sum())
 
-        # print("Weights: ", weights)
-
-        return self._update_state(
+        return self._update_state(  # type: ignore
             cmaes_state=cmaes_state,
             sorted_candidates=sorted_candidates,
             weights=weights,
@@ -228,9 +205,6 @@ class CMAES:
             An updated algorithm state
         """
 
-        # if mask is None:
-        #     mask = jnp.ones_like(self._weights)
-
         # retrieve elements from the current state
         p_c = cmaes_state.p_c
         p_s = cmaes_state.p_s
@@ -243,23 +217,11 @@ class CMAES:
         eigenvalues = cmaes_state.eigenvalues
         invsqrt_cov = cmaes_state.invsqrt_cov
 
-        # print("Mask: ", mask)
-        # print("Weights: ", self._weights)
-
-        # weights = jnp.multiply(self._weights, mask)
-        # weights = weights / (weights.sum())
-
-        # print("New weights: ", weights)
-
         # update mean by recombination
         old_mean = mean
         mean = weights @ sorted_candidates
 
         # decomposition of cov
-        # TODO: there is a step here that is done in WIKIPEDIA but not here
-        # TODO: the step "enforce symmetry"
-        # TODO: additionnaly, we should consider having the lazy to update to achieve 0(n^2)
-        # TODO: pyribs implem does the same (as wikipedia)
 
         def update_eigen(
             operand: Tuple[jnp.ndarray, int]
@@ -274,28 +236,17 @@ class CMAES:
             cov = jnp.triu(cov) + jnp.triu(cov, 1).T
             # eigenvalues, eigenvectors
             eig, u = jnp.linalg.eigh(cov)
-            # diag_eig = jnp.diag(eig)
-
-            print("eig: ", eig)
-            # print("Diag eig: ", diag_eig)
 
             # compute new invsqrt
             invsqrt = u @ jnp.diag(1 / jnp.sqrt(eig)) @ u.T
-
-            # print("Inv sqrt: ", invsqrt)
-            # print("Diag Inv sqrt: ", jnp.diag(invsqrt))
 
             # and update the eigen value decomposition tracker
             eigen_updates = num_updates
 
             return eigen_updates, eig, invsqrt
 
-        print("Inv sqrt cov before: ", invsqrt_cov)
-
         # condition for recomputing the eig decomposition
         eigen_condition = (num_updates - eigen_updates) >= self._eigen_comput_period
-
-        print("Eigen condition's value: ", eigen_condition)
 
         eigen_updates, eigenvalues, invsqrt = jax.lax.cond(
             eigen_condition,
@@ -304,36 +255,26 @@ class CMAES:
             operand=(cov, num_updates),
         )
 
-        print("Inv sqrt cov after: ", invsqrt)
-
-        # z = 1 / step_size * (mean - old_mean).T
-        z = (1 / step_size) * (mean - old_mean)  # .T
+        z = (1 / step_size) * (mean - old_mean)
         z_w = invsqrt @ z
 
         # update evolution paths - cumulation
         p_s = (1 - self._c_s) * p_s + jnp.sqrt(
             self._c_s * (2 - self._c_s) * self._parents_eff
-        ) * z_w  # .squeeze()
+        ) * z_w
 
         tmp_1 = jnp.linalg.norm(p_s) / jnp.sqrt(
             1 - (1 - self._c_s) ** (2 * num_updates)
         ) <= self._chi * (1.4 + 2 / (self._search_dim + 1))
 
-        print("tmp_1: ", tmp_1)
-
-        # TODO: WARNING - we are missing a term here!
-        # TODO: I added it. - did not solve the issue
         p_c = (1 - self._c_c) * p_c + tmp_1 * jnp.sqrt(
             self._c_c * (2 - self._c_c) * self._parents_eff
-        ) * z  # .squeeze()
+        ) * z
 
         # update covariance matrix
         pp_c = jnp.expand_dims(p_c, axis=1)
 
-        # TODO: supposed to use the old mean here - fixed
-        # coeff_tmp = 1 / step_size * (sorted_candidates - mean)
-        coeff_tmp = (sorted_candidates - old_mean) / step_size  # - game changer
-        # coeff_tmp = (sorted_candidates - mean) / step_size
+        coeff_tmp = (sorted_candidates - old_mean) / step_size
         cov_rank = coeff_tmp.T @ jnp.diag(weights.squeeze()) @ coeff_tmp
 
         cov = (
@@ -402,4 +343,4 @@ class CMAES:
 
         second_condition = jnp.max(cmaes_state.eigenvalues) < 1e-6  # 1e-9
 
-        return nan_condition + first_condition + second_condition
+        return nan_condition + first_condition + second_condition  # type: ignore
