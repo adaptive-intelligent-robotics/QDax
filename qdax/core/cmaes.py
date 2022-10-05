@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple
 import flax
 import jax
 import jax.numpy as jnp
+
 from qdax.types import Fitness, Genotype, Mask, RNGKey
 
 
@@ -221,8 +222,6 @@ class CMAES:
         old_mean = mean
         mean = weights @ sorted_candidates
 
-        # decomposition of cov
-
         def update_eigen(
             operand: Tuple[jnp.ndarray, int]
         ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
@@ -230,17 +229,16 @@ class CMAES:
             # unpack data
             cov, num_updates = operand
 
-            # get eigen decomposition
-            print("Cov: ", cov)
             # enfore symmetry - did not change anything
             cov = jnp.triu(cov) + jnp.triu(cov, 1).T
-            # eigenvalues, eigenvectors
+
+            # get eigen decomposition: eigenvalues, eigenvectors
             eig, u = jnp.linalg.eigh(cov)
 
             # compute new invsqrt
             invsqrt = u @ jnp.diag(1 / jnp.sqrt(eig)) @ u.T
 
-            # and update the eigen value decomposition tracker
+            # update the eigen value decomposition tracker
             eigen_updates = num_updates
 
             return eigen_updates, eig, invsqrt
@@ -248,6 +246,7 @@ class CMAES:
         # condition for recomputing the eig decomposition
         eigen_condition = (num_updates - eigen_updates) >= self._eigen_comput_period
 
+        # decomposition of cov
         eigen_updates, eigenvalues, invsqrt = jax.lax.cond(
             eigen_condition,
             update_eigen,

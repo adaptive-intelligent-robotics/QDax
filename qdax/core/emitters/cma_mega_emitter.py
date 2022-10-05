@@ -12,7 +12,15 @@ from qdax.core.containers.mapelites_repertoire import (
     get_cells_indices,
 )
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Gradient, RNGKey
+from qdax.types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    Gradient,
+    RNGKey,
+)
 
 
 class CMAMEGAState(EmitterState):
@@ -32,6 +40,7 @@ class CMAMEGAState(EmitterState):
     theta_grads: Gradient
     random_key: RNGKey
     cmaes_state: CMAESState
+    previous_repertoire: MapElitesRepertoire
 
 
 class CMAMEGAEmitter(Emitter):
@@ -43,6 +52,7 @@ class CMAMEGAEmitter(Emitter):
         batch_size: int,
         learning_rate: float,
         num_descriptors: int,
+        centroids: Centroid,
         sigma_g: float,
         step_size: Optional[float] = None,
     ):
@@ -83,6 +93,8 @@ class CMAMEGAEmitter(Emitter):
             bias_weights=True,
         )
 
+        self._centroids = centroids
+
         self._cma_initial_state = self._cmaes.init()
 
     @partial(jax.jit, static_argnames=("self",))
@@ -111,14 +123,33 @@ class CMAMEGAEmitter(Emitter):
         _, _, extra_score, random_key = self._scoring_function(theta, random_key)
         theta_grads = extra_score["normalized_grads"]
 
+        # Initialize repertoire with default values
+        num_centroids = self._centroids.shape[0]
+        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_genotypes = jax.tree_util.tree_map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
+            init_genotypes,
+        )
+        default_descriptors = jnp.zeros(
+            shape=(num_centroids, self._centroids.shape[-1])
+        )
+
+        repertoire = MapElitesRepertoire(
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            descriptors=default_descriptors,
+            centroids=self._centroids,
+        )
+
         # return the initial state
         random_key, subkey = jax.random.split(random_key)
         return (
             CMAMEGAState(
                 theta=theta,
                 theta_grads=theta_grads,
-                cmaes_state=self._cma_initial_state,
                 random_key=subkey,
+                cmaes_state=self._cma_initial_state,
+                previous_repertoire=repertoire,
             ),
             random_key,
         )
@@ -208,7 +239,7 @@ class CMAMEGAEmitter(Emitter):
 
         # Update the archive and compute the improvements
         indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - repertoire.fitnesses[indices]
+        improvements = fitnesses - emitter_state.previous_repertoire.fitnesses[indices]
 
         sorted_indices = jnp.argsort(improvements)[::-1]
 
@@ -258,6 +289,11 @@ class CMAMEGAEmitter(Emitter):
             cmaes_state.step_size
         ) * (1 - reinitialize)
         num_updates = 1 * reinitialize + cmaes_state.num_updates * (1 - reinitialize)
+        eigen_updates = 1 * reinitialize + cmaes_state.eigen_updates * (
+            1 - reinitialize
+        )
+        eigenvalues = 1 * reinitialize + cmaes_state.eigenvalues * (1 - reinitialize)
+        invsqrt_cov = 1 * reinitialize + cmaes_state.invsqrt_cov * (1 - reinitialize)
 
         # define new cmaes state
         cmaes_state = CMAESState(
@@ -267,6 +303,9 @@ class CMAMEGAEmitter(Emitter):
             p_s=p_s,
             step_size=step_size,
             num_updates=num_updates,
+            eigen_updates=eigen_updates,
+            eigenvalues=eigenvalues,
+            invsqrt_cov=invsqrt_cov,
         )
 
         # score theta
@@ -276,8 +315,9 @@ class CMAMEGAEmitter(Emitter):
         emitter_state = CMAMEGAState(
             theta=theta,
             theta_grads=extra_score["normalized_grads"],
-            cmaes_state=cmaes_state,
             random_key=random_key,
+            cmaes_state=cmaes_state,
+            previous_repertoire=repertoire,
         )
 
         return emitter_state
