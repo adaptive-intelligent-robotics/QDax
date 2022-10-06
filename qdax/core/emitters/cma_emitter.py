@@ -24,15 +24,16 @@ class CMAEmitterState(EmitterState):
             state update only, another key is used to emit. This might be
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
+        previous_fitnesses: store last fitnesses of the repertoire. Used to
+            compute the improvment.
+        emit_count: count the number of emission events.
     """
 
     random_key: RNGKey
     cmaes_state: CMAESState
-    previous_repertoire: MapElitesRepertoire
+    previous_fitnesses: Fitness
     emit_count: int
 
-
-# TODO: fix the issue in CMA MEGA!!!!
 
 # TODO: I want to introduce a init_void in MAPElitesRepertoire
 # it could be used at least three time in the package
@@ -64,6 +65,7 @@ class CMAEmitter(Emitter):
             batch_size: number of solutions sampled at each iteration
             learning_rate: rate at which the mean of the distribution is updated.
             genotype_dim: dimension of the genotype space.
+            centroids: centroids used for the repertoire.
             sigma_g: standard deviation for the coefficients
             step_size: size of the steps used in CMAES updates
         """
@@ -115,20 +117,6 @@ class CMAEmitter(Emitter):
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-        default_genotypes = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
-            init_genotypes,
-        )
-        default_descriptors = jnp.zeros(
-            shape=(num_centroids, self._centroids.shape[-1])
-        )
-
-        repertoire = MapElitesRepertoire(
-            genotypes=default_genotypes,
-            fitnesses=default_fitnesses,
-            descriptors=default_descriptors,
-            centroids=self._centroids,
-        )
 
         # return the initial state
         random_key, subkey = jax.random.split(random_key)
@@ -136,7 +124,7 @@ class CMAEmitter(Emitter):
             CMAEmitterState(
                 random_key=subkey,
                 cmaes_state=self._cma_initial_state,
-                previous_repertoire=repertoire,
+                previous_fitnesses=default_fitnesses,
                 emit_count=0,
             ),
             random_key,
@@ -210,7 +198,7 @@ class CMAEmitter(Emitter):
 
         # Compute the improvements - needed for re-init condition
         indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - emitter_state.previous_repertoire.fitnesses[indices]
+        improvements = fitnesses - emitter_state.previous_fitnesses[indices]
 
         ranking_criteria = self._ranking_criteria(
             emitter_state=emitter_state,
@@ -284,7 +272,7 @@ class CMAEmitter(Emitter):
 
         # update the emitter state
         emitter_state = emitter_state.replace(
-            random_key=random_key, previous_repertoire=repertoire
+            random_key=random_key, previous_fitnesses=repertoire.fitnesses
         )
 
         return emitter_state
@@ -297,6 +285,20 @@ class CMAEmitter(Emitter):
         emit_count: int,
         random_key: RNGKey,
     ) -> Tuple[CMAEmitterState, RNGKey]:
+        """Update the emitter state in the case of a reinit event.
+        Reinit the cmaes state and use an individual from the repertoire
+        as the starting mean.
+
+        Args:
+            cmaes_state: current cmaes state
+            emitter_state: current cmame state
+            repertoire: most recent repertoire
+            emit_count: counter of the emitter
+            random_key: key to handle stochastic events
+
+        Returns:
+            The updated emitter state.
+        """
 
         # re-sample
         random_genotype, random_key = repertoire.sample(random_key, 1)
@@ -322,9 +324,27 @@ class CMAEmitter(Emitter):
         extra_scores: Optional[ExtraScores],
         improvements: jnp.ndarray,
     ) -> jnp.ndarray:
-        """Defines how the genotypes should be sorted. Imapcts the update
+        """Defines how the genotypes should be sorted. Impacts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
-        used (optimizing, random direction or improvement)."""
+        used (optimizing, random direction or improvement).
+
+        Args:
+            emitter_state: current state of the emitter.
+            repertoire: latest repertoire of genotypes.
+            genotypes: emitted genotypes.
+            fitnesses: corresponding fitnesses.
+            descriptors: corresponding fitnesses.
+            extra_scores: corresponding extra scores.
+            improvements: improvments of the emitted genotypes. This corresponds
+                to the difference between their fitness and the fitness of the
+                individual occupying the cell of corresponding fitness.
+
+        Returns:
+            The values to take into account in order to rank the emitted genotypes.
+            Here, it's the improvement, or the fitness when the cell was previously
+            unoccupied. Additionally, genotypes that discovered a new cell are
+            given on offset to be ranked in front of other genotypes.
+        """
 
         # condition for being a new cell
         condition = improvements == jnp.inf

@@ -34,13 +34,15 @@ class CMAMEGAState(EmitterState):
             state update only, another key is used to emit. This might be
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
+        previous_fitnesses: store last fitnesses of the repertoire. Used to
+            compute the improvment.
     """
 
     theta: Genotype
     theta_grads: Gradient
     random_key: RNGKey
     cmaes_state: CMAESState
-    previous_repertoire: MapElitesRepertoire
+    previous_fitnesses: Fitness
 
 
 class CMAMEGAEmitter(Emitter):
@@ -67,6 +69,7 @@ class CMAMEGAEmitter(Emitter):
             batch_size: number of solutions sampled at each iteration
             learning_rate: rate at which the mean of the distribution is updated.
             num_descriptors: number of descriptors
+            centroids: centroids of the repertoire used to store the genotypes
             sigma_g: standard deviation for the coefficients
             step_size: size of the steps used in CMAES updates
         """
@@ -89,8 +92,9 @@ class CMAMEGAEmitter(Emitter):
             fitness_function=None,  # type: ignore
             num_best=batch_size,
             init_sigma=sigma_g,
-            init_step_size=step_size,
             bias_weights=True,
+            init_step_size=step_size,
+            delay_eigen_decomposition=True,
         )
 
         self._centroids = centroids
@@ -126,20 +130,6 @@ class CMAMEGAEmitter(Emitter):
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-        default_genotypes = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
-            init_genotypes,
-        )
-        default_descriptors = jnp.zeros(
-            shape=(num_centroids, self._centroids.shape[-1])
-        )
-
-        repertoire = MapElitesRepertoire(
-            genotypes=default_genotypes,
-            fitnesses=default_fitnesses,
-            descriptors=default_descriptors,
-            centroids=self._centroids,
-        )
 
         # return the initial state
         random_key, subkey = jax.random.split(random_key)
@@ -149,7 +139,7 @@ class CMAMEGAEmitter(Emitter):
                 theta_grads=theta_grads,
                 random_key=subkey,
                 cmaes_state=self._cma_initial_state,
-                previous_repertoire=repertoire,
+                previous_fitnesses=default_fitnesses,
             ),
             random_key,
         )
@@ -239,7 +229,7 @@ class CMAMEGAEmitter(Emitter):
 
         # Update the archive and compute the improvements
         indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - emitter_state.previous_repertoire.fitnesses[indices]
+        improvements = fitnesses - emitter_state.previous_fitnesses[indices]
 
         sorted_indices = jnp.argsort(improvements)[::-1]
 
@@ -266,46 +256,21 @@ class CMAMEGAEmitter(Emitter):
         cmaes_state = self._cmaes.update_state(cmaes_state, sorted_candidates)
 
         # If no improvement draw randomly and re-initialize parameters
-        reinitialize = jnp.all(improvements < 0)
+        reinitialize = jnp.all(improvements < 0) + self._cmaes.stop_condition(
+            cmaes_state
+        )
 
         # re-sample
         random_theta, random_key = repertoire.sample(random_key, 1)
 
-        # update - new state or init state if reinitialize is 1
-        theta = jnp.nan_to_num(theta) * (1 - reinitialize) + random_theta * reinitialize
-        mean = self._cma_initial_state.mean * reinitialize + jnp.nan_to_num(
-            cmaes_state.mean
-        ) * (1 - reinitialize)
-        cov = self._cma_initial_state.cov_matrix * reinitialize + jnp.nan_to_num(
-            cmaes_state.cov_matrix
-        ) * (1 - reinitialize)
-        p_c = self._cma_initial_state.p_c * reinitialize + jnp.nan_to_num(
-            cmaes_state.p_c
-        ) * (1 - reinitialize)
-        p_s = self._cma_initial_state.p_s * reinitialize + jnp.nan_to_num(
-            cmaes_state.p_s
-        ) * (1 - reinitialize)
-        step_size = self._cma_initial_state.step_size * reinitialize + jnp.nan_to_num(
-            cmaes_state.step_size
-        ) * (1 - reinitialize)
-        num_updates = 1 * reinitialize + cmaes_state.num_updates * (1 - reinitialize)
-        eigen_updates = 1 * reinitialize + cmaes_state.eigen_updates * (
-            1 - reinitialize
+        theta = jax.tree_util.tree_map(
+            lambda x, y: jnp.where(reinitialize, x=x, y=y), random_theta, theta
         )
-        eigenvalues = 1 * reinitialize + cmaes_state.eigenvalues * (1 - reinitialize)
-        invsqrt_cov = 1 * reinitialize + cmaes_state.invsqrt_cov * (1 - reinitialize)
 
-        # define new cmaes state
-        cmaes_state = CMAESState(
-            mean=mean,
-            cov_matrix=cov,
-            p_c=p_c,
-            p_s=p_s,
-            step_size=step_size,
-            num_updates=num_updates,
-            eigen_updates=eigen_updates,
-            eigenvalues=eigenvalues,
-            invsqrt_cov=invsqrt_cov,
+        cmaes_state = jax.tree_util.tree_map(
+            lambda x, y: jnp.where(reinitialize, x=x, y=y),
+            cmaes_state,
+            self._cma_initial_state,
         )
 
         # score theta
@@ -317,7 +282,7 @@ class CMAMEGAEmitter(Emitter):
             theta_grads=extra_score["normalized_grads"],
             random_key=random_key,
             cmaes_state=cmaes_state,
-            previous_repertoire=repertoire,
+            previous_fitnesses=repertoire.fitnesses,
         )
 
         return emitter_state

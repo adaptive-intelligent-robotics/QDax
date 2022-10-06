@@ -14,15 +14,19 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 class CMARndEmitterState(CMAEmitterState):
     """
-    Emitter state for the CMA-ME emitter.
+    Emitter state for the CMA-ME random direction emitter.
 
-    # TODO: update
 
     Args:
         random_key: a random key to handle stochastic operations. Used for
             state update only, another key is used to emit. This might be
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
+        previous_fitnesses: store last fitnesses of the repertoire. Used to
+            compute the improvment.
+        emit_count: count the number of emission events.
+        random_direction: direction of the behavior space we are trying to
+            explore.
     """
 
     random_direction: Descriptor
@@ -48,20 +52,6 @@ class CMARndEmitter(CMAEmitter):
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-        default_genotypes = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
-            init_genotypes,
-        )
-        default_descriptors = jnp.zeros(
-            shape=(num_centroids, self._centroids.shape[-1])
-        )
-
-        repertoire = MapElitesRepertoire(
-            genotypes=default_genotypes,
-            fitnesses=default_fitnesses,
-            descriptors=default_descriptors,
-            centroids=self._centroids,
-        )
 
         # take a random direction
         random_key, subkey = jax.random.split(random_key)
@@ -77,7 +67,7 @@ class CMARndEmitter(CMAEmitter):
             CMARndEmitterState(
                 random_key=subkey,
                 cmaes_state=self._cma_initial_state,
-                previous_repertoire=repertoire,
+                previous_fitnesses=default_fitnesses,
                 emit_count=0,
                 random_direction=random_direction,
             ),
@@ -92,6 +82,20 @@ class CMARndEmitter(CMAEmitter):
         emit_count: int,
         random_key: RNGKey,
     ) -> Tuple[CMAEmitterState, RNGKey]:
+        """Update the emitter state in the case of a reinit event.
+        Reinit the cmaes state and use an individual from the repertoire
+        as the starting mean.
+
+        Args:
+            cmaes_state: current cmaes state
+            emitter_state: current cmame state
+            repertoire: most recent repertoire
+            emit_count: counter of the emitter
+            random_key: key to handle stochastic events
+
+        Returns:
+            The updated emitter state.
+        """
 
         # re-sample
         random_genotype, random_key = repertoire.sample(random_key, 1)
@@ -128,7 +132,24 @@ class CMARndEmitter(CMAEmitter):
     ) -> jnp.ndarray:
         """Defines how the genotypes should be sorted. Imapcts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
-        used (optimizing, random direction or improvement)."""
+        used (optimizing, random direction or improvement).
+
+        Args:
+            emitter_state: current state of the emitter.
+            repertoire: latest repertoire of genotypes.
+            genotypes: emitted genotypes.
+            fitnesses: corresponding fitnesses.
+            descriptors: corresponding fitnesses.
+            extra_scores: corresponding extra scores.
+            improvements: improvments of the emitted genotypes. This corresponds
+                to the difference between their fitness and the fitness of the
+                individual occupying the cell of corresponding fitness.
+
+        Returns:
+            The values to take into account in order to rank the emitted genotypes.
+            Here, it is the dot product of the descriptor with the current random
+            direction.
+        """
 
         # projection of the descriptors along the random direction
         return jnp.dot(descriptors, emitter_state.random_direction)
