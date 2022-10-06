@@ -104,7 +104,7 @@ def polynomial_mutation(
         New genotypes - same shape as input and a new RNG key
     """
     random_key, subkey = jax.random.split(random_key)
-    batch_size = jax.tree_leaves(x)[0].shape[0]
+    batch_size = jax.tree_util.tree_leaves(x)[0].shape[0]
     mutation_key = jax.random.split(subkey, num=batch_size)
     mutation_fn = partial(
         _polynomial_mutation,
@@ -114,7 +114,7 @@ def polynomial_mutation(
         maxval=maxval,
     )
     mutation_fn = jax.vmap(mutation_fn)
-    x = jax.tree_map(lambda x_: mutation_fn(x_, mutation_key), x)
+    x = jax.tree_util.tree_map(lambda x_: mutation_fn(x_, mutation_key), x)
     return x, random_key
 
 
@@ -165,7 +165,7 @@ def polynomial_crossover(
     """
 
     random_key, subkey = jax.random.split(random_key)
-    batch_size = jax.tree_leaves(x2)[0].shape[0]
+    batch_size = jax.tree_util.tree_leaves(x2)[0].shape[0]
     crossover_keys = jax.random.split(subkey, num=batch_size)
     crossover_fn = partial(
         _polynomial_crossover,
@@ -173,7 +173,9 @@ def polynomial_crossover(
     )
     crossover_fn = jax.vmap(crossover_fn)
     # TODO: check that key usage is correct
-    x = jax.tree_map(lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2)
+    x = jax.tree_util.tree_map(
+        lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2
+    )
     return x, random_key
 
 
@@ -209,7 +211,7 @@ def isoline_variation(
 
     # Computing line_noise
     random_key, key_line_noise = jax.random.split(random_key)
-    batch_size = jax.tree_leaves(x1)[0].shape[0]
+    batch_size = jax.tree_util.tree_leaves(x1)[0].shape[0]
     line_noise = jax.random.normal(key_line_noise, shape=(batch_size,)) * line_sigma
 
     def _variation_fn(
@@ -224,12 +226,14 @@ def isoline_variation(
         return x
 
     # create a tree with random keys
-    nb_leaves = len(jax.tree_leaves(x1))
+    nb_leaves = len(jax.tree_util.tree_leaves(x1))
     random_key, subkey = jax.random.split(random_key)
     subkeys = jax.random.split(subkey, num=nb_leaves)
-    keys_tree = jax.tree_unflatten(jax.tree_structure(x1), subkeys)
+    keys_tree = jax.tree_util.tree_unflatten(jax.tree_util.tree_structure(x1), subkeys)
 
     # apply isolinedd to each branch of the tree
-    x = jax.tree_map(lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree)
+    x = jax.tree_util.tree_map(
+        lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree
+    )
 
     return x, random_key
