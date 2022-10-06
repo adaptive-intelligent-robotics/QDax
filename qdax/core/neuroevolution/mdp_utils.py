@@ -217,7 +217,9 @@ def reset_based_scoring_function(
     """
 
     random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey, jax.tree_leaves(policies_params)[0].shape[0])
+    keys = jax.random.split(
+        subkey, jax.tree_util.tree_leaves(policies_params)[0].shape[0]
+    )
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)
 
@@ -314,4 +316,4 @@ def get_first_episode(transition: Transition) -> Transition:
         # the double transpose trick is here to allow easy broadcasting
         return jnp.where(mask.T, x.T, jnp.nan * jnp.ones_like(x).T).T
 
-    return jax.tree_map(mask_episodes, transition)  # type: ignore
+    return jax.tree_util.tree_map(mask_episodes, transition)  # type: ignore

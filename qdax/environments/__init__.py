@@ -2,6 +2,7 @@ import functools
 from typing import Any, Callable, List, Optional, Union
 
 import brax
+import brax.envs
 
 from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
 from qdax.environments.bd_extractors import (
@@ -15,6 +16,7 @@ from qdax.environments.locomotion_wrappers import (
     XYPositionWrapper,
 )
 from qdax.environments.pointmaze import PointMaze
+from qdax.environments.wrappers import CompletedEvalWrapper
 
 # experimentally determinated offset (except for antmaze)
 # should be sufficient to have only positive rewards but no guarantee
@@ -109,7 +111,7 @@ def create(
     eval_metrics: bool = False,
     qdax_wrappers_kwargs: Optional[List] = None,
     **kwargs: Any,
-) -> Union[brax.envs.Env, QDEnv]:
+) -> Union[brax.envs.env.Env, QDEnv]:
     """Creates an Env with a specified brax system.
     Please use namespace to avoid confusion between this function and
     brax.envs.create.
@@ -145,6 +147,7 @@ def create(
             env = StateDescriptorResetWrapper(env)
     if eval_metrics:
         env = brax.envs.wrappers.EvalWrapper(env)
+        env = CompletedEvalWrapper(env)
     return env
 
 

@@ -22,10 +22,10 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "absl-py>=1.0.0",
-        "jax>=0.3.10",
-        "jaxlib>=0.3.10",  # necessary to build the doc atm
-        "flax>=0.4.1",
-        "brax>=0.0.12",
+        "jax>=0.3.16",
+        "jaxlib>=0.3.15",  # necessary to build the doc atm
+        "flax>=0.6",
+        "brax>=0.0.15",
         "gym>=0.23.1",
         "numpy>=1.22.3",
         "scikit-learn>=1.0.2",
