@@ -173,8 +173,8 @@ class CMAMEGAEmitter(Emitter):
         grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze(axis=0))
 
         # Draw random coefficients - use the emitter state key
-        coeffs, _ = self._cmaes.sample(
-            cmaes_state=cmaes_state, random_key=emitter_state.random_key
+        coeffs, random_key = self._cmaes.sample(
+            cmaes_state=cmaes_state, random_key=random_key
         )
 
         # make sure the fitness coefficient is positive

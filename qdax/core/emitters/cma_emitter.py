@@ -56,6 +56,7 @@ class CMAEmitter(Emitter):
         sigma_g: float,
         step_size: Optional[float] = None,
         min_count: Optional[int] = None,
+        max_count: Optional[float] = None,
     ):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
@@ -93,6 +94,11 @@ class CMAEmitter(Emitter):
             min_count = 0
 
         self._min_count = min_count
+
+        if max_count is None:
+            max_count = jnp.inf
+
+        self._max_count = max_count
 
         self._centroids = centroids
 
@@ -151,8 +157,8 @@ class CMAEmitter(Emitter):
             New genotypes and a new random key.
         """
         # emit from CMA-ES
-        offsprings, _ = self._cmaes.sample(
-            cmaes_state=emitter_state.cmaes_state, random_key=emitter_state.random_key
+        offsprings, random_key = self._cmaes.sample(
+            cmaes_state=emitter_state.cmaes_state, random_key=random_key
         )
 
         return offsprings, random_key
@@ -222,9 +228,11 @@ class CMAEmitter(Emitter):
         # If no improvement draw randomly and re-initialize parameters
         # or if emitter converged
         emit_count = emitter_state.emit_count + fitnesses.shape[0]
-        reinitialize = jnp.all(improvements < 0) * (
-            emit_count > self._min_count
-        ) + self._cmaes.stop_condition(cmaes_state)
+        reinitialize = (
+            jnp.all(improvements < 0) * (emit_count > self._min_count)
+            + (emit_count > self._max_count)
+            + self._cmaes.stop_condition(cmaes_state)
+        )
 
         def update_and_reinit(
             operand: Tuple[
