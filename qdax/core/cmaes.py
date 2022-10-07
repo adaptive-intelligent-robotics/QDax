@@ -8,7 +8,6 @@ from typing import Callable, Optional, Tuple
 import flax
 import jax
 import jax.numpy as jnp
-
 from qdax.types import Fitness, Genotype, Mask, RNGKey
 
 
@@ -337,9 +336,16 @@ class CMAES:
         )
         first_condition = eig_dispersion > 1e14
 
-        # area = cmaes_state.step_size * jnp.sqrt(jnp.max(cmaes_state.eigenvalues))
-        # second_condition = area < 1e-6
+        area = cmaes_state.step_size * jnp.sqrt(jnp.max(cmaes_state.eigenvalues))
+        second_condition = area < 1e-11
 
-        second_condition = jnp.max(cmaes_state.eigenvalues) < 1e-6  # 1e-9
+        third_condition = jnp.max(cmaes_state.eigenvalues) < 1e-6  # 1e-9
+        fourth_condition = jnp.min(cmaes_state.eigenvalues) > 1e6
 
-        return nan_condition + first_condition + second_condition  # type: ignore
+        return (  # type: ignore
+            nan_condition
+            + first_condition
+            + second_condition
+            + third_condition
+            + fourth_condition
+        )
