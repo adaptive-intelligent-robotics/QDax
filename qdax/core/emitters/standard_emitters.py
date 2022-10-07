@@ -69,7 +69,7 @@ class MixingEmitter(Emitter):
         elif n_mutation == 0:
             genotypes = x_variation
         else:
-            genotypes = jax.tree_map(
+            genotypes = jax.tree_util.tree_map(
                 lambda x_1, x_2: jnp.concatenate([x_1, x_2], axis=0),
                 x_variation,
                 x_mutation,
