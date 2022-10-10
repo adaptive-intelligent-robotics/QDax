@@ -40,6 +40,27 @@ class QDSystem(System):
         return qp, info
 
 
+class FixedInitialStateWrapper(QDEnv):
+    """
+    Wrapper to make the initial state of the environment deterministic and fixed.
+    This is done by removing the random noise from the DoF positions and velocities.
+    """
+    
+    def reset(self, rng: jp.ndarray) -> State:
+        # Run the default reset method of parent environment
+        state = self.env.reset(rng)
+
+        # Compute new initial positions and velicities
+        qpos = self.sys.default_angle()
+        qvel = jp.zeros((self.sys.num_joint_dof,))
+
+        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        obs = self._get_obs(qp, self.sys.info(qp))
+
+        state = state.replace(qp=qp, obs=obs)
+        return state
+
+
 class FeetContactWrapper(QDEnv):
     """Wraps gym environments to add the feet contact data.
 
