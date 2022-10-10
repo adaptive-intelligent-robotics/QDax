@@ -40,7 +40,7 @@ class QDSystem(System):
         return qp, info
 
 
-class FixedInitialStateWrapper(QDEnv):
+class FixedInitialStateWrapper(Wrapper):
     """
     Wrapper to make the initial state of the environment deterministic and fixed.
     This is done by removing the random noise from the DoF positions and velocities.
@@ -55,7 +55,9 @@ class FixedInitialStateWrapper(QDEnv):
         qvel = jp.zeros((self.sys.num_joint_dof,))
 
         qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-        obs = self._get_obs(qp, self.sys.info(qp))
+        obs = self._get_obs(qp, self.sys.info(qp)) # for ant and halfcheetah
+        # self._get_obs(qp) # for walker2d and hopper
+        # obs = self._get_obs(qp, self.sys.info(qp), jp.zeros(self.action_size)) # for humanoid
 
         state = state.replace(qp=qp, obs=obs)
         return state
