@@ -227,7 +227,7 @@ class CMAEmitter(Emitter):
 
         # If no improvement draw randomly and re-initialize parameters
         # or if emitter converged
-        emit_count = emitter_state.emit_count + fitnesses.shape[0]
+        emit_count = emitter_state.emit_count
         reinitialize = (
             jnp.all(improvements < 0) * (emit_count > self._min_count)
             + (emit_count > self._max_count)
