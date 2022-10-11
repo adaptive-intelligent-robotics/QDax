@@ -111,7 +111,7 @@ def create(
     auto_reset: bool = True,
     batch_size: Optional[int] = None,
     eval_metrics: bool = False,
-    fixed_init_state: bool = True,
+    fixed_init_state: bool = False,
     qdax_wrappers_kwargs: Optional[List] = None,
     **kwargs: Any,
 ) -> Union[brax.envs.env.Env, QDEnv]:
