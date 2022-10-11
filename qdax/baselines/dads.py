@@ -25,6 +25,7 @@ from qdax.core.neuroevolution.normalization_utils import (
     update_running_mean_std,
 )
 from qdax.core.neuroevolution.sac_utils import generate_unroll
+from qdax.environments import CompletedEvalWrapper
 from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
@@ -144,7 +145,7 @@ class DADS(SAC):
         random_key, subkey = jax.random.split(random_key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
@@ -373,16 +374,17 @@ class DADS(SAC):
             play_step_fn=play_step_fn,
         )
 
+        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
         true_return = (
-            state.info["eval_metrics"].completed_episodes_metrics["reward"]
-            / state.info["eval_metrics"].completed_episodes
+            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
+            / state.info[eval_metrics_key].completed_episodes
         )
 
         transitions = get_first_episode(transitions)
 
         true_returns = jnp.nansum(transitions.rewards, axis=0)
 
-        reshaped_transitions = jax.tree_map(
+        reshaped_transitions = jax.tree_util.tree_map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
             transitions,
         )

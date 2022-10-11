@@ -24,6 +24,7 @@ from qdax.core.neuroevolution.normalization_utils import (
     update_running_mean_std,
 )
 from qdax.core.neuroevolution.sac_utils import generate_unroll
+from qdax.environments import CompletedEvalWrapper
 from qdax.types import Action, Metrics, Observation, Params, Reward, RNGKey
 
 
@@ -115,7 +116,7 @@ class SAC:
         random_key, subkey = jax.random.split(random_key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
@@ -298,9 +299,10 @@ class SAC:
             play_step_fn=play_step_fn,
         )
 
+        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
         true_return = (
-            state.info["eval_metrics"].completed_episodes_metrics["reward"]
-            / state.info["eval_metrics"].completed_episodes
+            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
+            / state.info[eval_metrics_key].completed_episodes
         )
 
         transitions = get_first_episode(transitions)
@@ -389,7 +391,7 @@ class SAC:
         critic_params = optax.apply_updates(
             training_state.critic_params, critic_updates
         )
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
             training_state.target_critic_params,
             critic_params,
