@@ -5,7 +5,6 @@ from typing import Any, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
 from qdax.core.emitters.emitter import Emitter, EmitterState
@@ -172,7 +171,8 @@ class CMAPoolEmitter(Emitter):
         # determine the next emitter to be used
         emit_counts = emitter_states.emit_count
 
-        new_index = jnp.argmin(emit_counts)
+        # new_index = jnp.argmin(emit_counts)
+        new_index = (current_index + 1) % len(emit_counts)
 
         emitter_state = emitter_state.replace(
             current_index=new_index, emitter_states=emitter_states

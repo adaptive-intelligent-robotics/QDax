@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -227,7 +226,7 @@ class CMAEmitter(Emitter):
 
         # If no improvement draw randomly and re-initialize parameters
         # or if emitter converged
-        emit_count = emitter_state.emit_count
+        emit_count = emitter_state.emit_count + 1
         reinitialize = (
             jnp.all(improvements < 0) * (emit_count > self._min_count)
             + (emit_count > self._max_count)
