@@ -106,7 +106,6 @@ def test_arm(task_name: str, batch_size: int) -> None:
     pytest.assume(repertoire is not None)
 
 
-
 def test_arm_scoring_function() -> None:
 
     # Init a random key
@@ -116,30 +115,62 @@ def test_arm_scoring_function() -> None:
     # arm has xy BD centered at 0.5 0.5 and min max range is [0,1]
     # 0 params of first genotype is horizontal and points towards negative x axis
     # angles move in anticlockwise direction
-    genotypes_1 = jnp.ones(shape=(1, 4))*0.5 # 0.5
-    genotypes_2 = jnp.zeros(shape=(1, 6)) # zeros - this folds upon itself (if even number ends up at origin)
-    genotypes_3 = jnp.ones(shape=(1, 10)) # ones - this also folds upon itself (if even number ends up at origin)
+    genotypes_1 = jnp.ones(shape=(1, 4)) * 0.5  # 0.5
+    genotypes_2 = jnp.zeros(
+        shape=(1, 6)
+    )  # zeros - this folds upon itself (if even number ends up at origin)
+    genotypes_3 = jnp.ones(
+        shape=(1, 10)
+    )  # ones - this also folds upon itself (if even number ends up at origin)
     genotypes_4 = jnp.array([[0, 0.5]])
     genotypes_5 = jnp.array([[0.25, 0.5]])
     genotypes_6 = jnp.array([[0.5, 0.5]])
     genotypes_7 = jnp.array([[0.75, 0.5]])
 
-    fitness_1, descriptors_1, _, random_key = arm_scoring_function(genotypes_1, random_key)
-    fitness_2, descriptors_2, _, random_key = arm_scoring_function(genotypes_2, random_key)
-    fitness_3, descriptors_3, _, random_key = arm_scoring_function(genotypes_3, random_key)
-    fitness_4, descriptors_4, _, random_key = arm_scoring_function(genotypes_4, random_key)
-    fitness_5, descriptors_5, _, random_key = arm_scoring_function(genotypes_5, random_key)
-    fitness_6, descriptors_6, _, random_key = arm_scoring_function(genotypes_6, random_key)
-    fitness_7, descriptors_7, _, random_key = arm_scoring_function(genotypes_7, random_key)
-    
+    fitness_1, descriptors_1, _, random_key = arm_scoring_function(
+        genotypes_1, random_key
+    )
+    fitness_2, descriptors_2, _, random_key = arm_scoring_function(
+        genotypes_2, random_key
+    )
+    fitness_3, descriptors_3, _, random_key = arm_scoring_function(
+        genotypes_3, random_key
+    )
+    fitness_4, descriptors_4, _, random_key = arm_scoring_function(
+        genotypes_4, random_key
+    )
+    fitness_5, descriptors_5, _, random_key = arm_scoring_function(
+        genotypes_5, random_key
+    )
+    fitness_6, descriptors_6, _, random_key = arm_scoring_function(
+        genotypes_6, random_key
+    )
+    fitness_7, descriptors_7, _, random_key = arm_scoring_function(
+        genotypes_7, random_key
+    )
+
     # use rounding to avoid some numerical floating point errors
-    pytest.assume(jnp.array_equal(jnp.around(descriptors_1, decimals=1), jnp.array([[1.0, 0.5]])))
-    pytest.assume(jnp.array_equal(jnp.around(descriptors_2, decimals=1), jnp.array([[0.5, 0.5]])))
-    pytest.assume(jnp.array_equal(jnp.around(descriptors_3, decimals=1), jnp.array([[0.5, 0.5]])))
-    pytest.assume(jnp.array_equal(jnp.around(descriptors_4, decimals=1), jnp.array([[0.0, 0.5]])))
-    pytest.assume(jnp.array_equal(jnp.around(descriptors_5, decimals=1), jnp.array([[0.5, 0.0]])))
-    pytest.assume(jnp.array_equal(jnp.around(descriptors_6, decimals=1), jnp.array([[1.0, 0.5]])))
-    pytest.assume(jnp.array_equal(jnp.around(descriptors_7, decimals=1), jnp.array([[0.5, 1.0]])))
+    pytest.assume(
+        jnp.array_equal(jnp.around(descriptors_1, decimals=1), jnp.array([[1.0, 0.5]]))
+    )
+    pytest.assume(
+        jnp.array_equal(jnp.around(descriptors_2, decimals=1), jnp.array([[0.5, 0.5]]))
+    )
+    pytest.assume(
+        jnp.array_equal(jnp.around(descriptors_3, decimals=1), jnp.array([[0.5, 0.5]]))
+    )
+    pytest.assume(
+        jnp.array_equal(jnp.around(descriptors_4, decimals=1), jnp.array([[0.0, 0.5]]))
+    )
+    pytest.assume(
+        jnp.array_equal(jnp.around(descriptors_5, decimals=1), jnp.array([[0.5, 0.0]]))
+    )
+    pytest.assume(
+        jnp.array_equal(jnp.around(descriptors_6, decimals=1), jnp.array([[1.0, 0.5]]))
+    )
+    pytest.assume(
+        jnp.array_equal(jnp.around(descriptors_7, decimals=1), jnp.array([[0.5, 1.0]]))
+    )
 
 
 if __name__ == "__main__":
