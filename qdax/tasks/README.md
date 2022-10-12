@@ -159,7 +159,7 @@ desc_size = task.get_descriptor_size()
 ## Brax-RL
 | Task            | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
 |-----------------|----------------------|------------------|-----------------------|-------------------|-------------|
-| pointmaze       | NN params            | Unbounded        | 2                     |                   |             |
+| pointmaze       | NN params            | Unbounded        | 2                     | $[-1,1]^2$        |             |
 | hopper_uni      | NN params            | Unbounded        | 1                     | $[0,1]$           |             |
 | walker2d_uni    | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
 | halfcheetah_uni | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
@@ -167,8 +167,8 @@ desc_size = task.get_descriptor_size()
 | humanoid_uni    | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
 | ant_omni        | NN params            | Unbounded        | 2                     | $[-30,30]^2$      |             |
 | humanoid_omni   | NN params            | Unbounded        | 2                     | $[-30,30]^2$      |             |
-| anttrap         | NN params            | Unbounded        | 2                     |                   |             |
-| antmaze         | NN params            | Unbounded        | 2                     |                   |             |
+| anttrap         | NN params            | Unbounded        | 2                     | $[-8,8]\times[0,30]$   |             |
+| antmaze         | NN params            | Unbounded        | 2                     | $[-5,40]\times[-5,40]$ |             |
 
 Notes:
 - the parameter dimensions for default Brax-RL tasks depend on the size and architecture of the neural network used and can be customized and changed easily. If not set, a network size of two hidden layers of size 64 is used.
