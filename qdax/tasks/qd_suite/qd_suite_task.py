@@ -7,7 +7,7 @@ from jax import numpy as jnp
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
-class QDSuiteTask(metaclass=abc.ABCMeta):
+class QDSuiteTask(abc.ABC):
     @abc.abstractmethod
     def evaluation(self, params: Genotype) -> Tuple[Fitness, Descriptor]:
         """
