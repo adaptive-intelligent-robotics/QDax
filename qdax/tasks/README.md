@@ -175,4 +175,4 @@ Notes:
 
 ### Example Usage
 
-See [Example in Notebook](../../notebooks/mapelites_example.ipynb)
+See [Example in Notebook](../../examples/notebooks/mapelites_example.ipynb)
