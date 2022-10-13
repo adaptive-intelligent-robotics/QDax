@@ -1,6 +1,5 @@
-from typing import Any, Callable, List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
-import brax
 import jax.numpy as jnp
 from brax import jumpy as jp
 from brax.envs import Env, State, Wrapper
@@ -39,53 +38,6 @@ class QDSystem(System):
         qp, info = super().step(qp, act)
         self.aux_info = info
         return qp, info
-
-
-class FixedInitialStateWrapper(Wrapper):
-    """
-    Wrapper to make the initial state of the environment deterministic and fixed.
-    This is done by removing the random noise from the DoF positions and velocities.
-    """
-
-    def __init__(
-        self,
-        env: Env,
-        base_env_name: str,
-        get_obs_fn: Callable[[brax.QP, brax.Info, jp.ndarray], jp.ndarray] = None,
-    ):
-        dict_env_get_obs_fn = {
-            "ant": lambda qp, info, action: self._get_obs(qp, info),
-            "halfcheetah": lambda qp, info, action: self._get_obs(qp, info),
-            "walker2d": lambda qp, info, action: self._get_obs(qp),
-            "hopper": lambda qp, info, action: self._get_obs(qp),
-            "humanoid": lambda qp, info, action: self._get_obs(qp, info, action),
-        }
-
-        super().__init__(env)
-
-        if get_obs_fn is not None:
-            self._get_obs_fn = get_obs_fn
-        elif base_env_name in dict_env_get_obs_fn.keys():
-            self._get_obs_fn = dict_env_get_obs_fn[base_env_name]
-        else:
-            raise NotImplementedError(
-                f"This wrapper does not support {base_env_name} yet."
-            )
-
-    def reset(self, rng: jp.ndarray) -> State:
-        # Run the default reset method of parent environment
-        state = self.env.reset(rng)
-
-        # Compute new initial positions and velicities
-        qpos = self.sys.default_angle()
-        qvel = jp.zeros((self.sys.num_joint_dof,))
-
-        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-
-        obs = self._get_obs_fn(qp, self.sys.info(qp), jp.zeros(self.action_size))
-
-        state = state.replace(qp=qp, obs=obs)
-        return state
 
 
 class FeetContactWrapper(QDEnv):
