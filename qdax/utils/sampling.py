@@ -67,7 +67,7 @@ def sampling(
     """
 
     random_key, subkey = jax.random.split(random_key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=num_samples, axis=0)
+    keys = jax.random.split(subkey, num=num_samples)
 
     # evaluate
     sample_scoring_fn = jax.vmap(scoring_fn, (None, 0), 1)
