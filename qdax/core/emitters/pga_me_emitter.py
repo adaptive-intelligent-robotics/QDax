@@ -8,7 +8,6 @@ import flax.linen as nn
 import jax
 import optax
 from jax import numpy as jnp
-from jax.tree_util import tree_map
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
@@ -126,10 +125,12 @@ class PGAMEEmitter(Emitter):
         critic_params = self._critic_network.init(
             subkey, obs=fake_obs, actions=fake_action
         )
-        target_critic_params = tree_map(lambda x: x, critic_params)
+        target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
 
-        greedy_policy_params = tree_map(lambda x: x[0], init_genotypes)
-        target_greedy_policy_params = tree_map(lambda x: x[0], init_genotypes)
+        greedy_policy_params = jax.tree_util.tree_map(lambda x: x[0], init_genotypes)
+        target_greedy_policy_params = jax.tree_util.tree_map(
+            lambda x: x[0], init_genotypes
+        )
 
         # Prepare init optimizer states
         critic_optimizer_state = self._critic_optimizer.init(critic_params)
@@ -209,12 +210,12 @@ class PGAMEEmitter(Emitter):
         x_mutation_pg = jax.vmap(mutation_fn)(x1)
 
         # Add dimension for concatenation
-        greedy_policy_params = jax.tree_map(
+        greedy_policy_params = jax.tree_util.tree_map(
             lambda x: jnp.expand_dims(x, axis=0), emitter_state.greedy_policy_params
         )
 
         # gather offspring
-        genotypes = jax.tree_map(
+        genotypes = jax.tree_util.tree_map(
             lambda x, y, z: jnp.concatenate([x, y, z], axis=0),
             x_mutation_ga,
             x_mutation_pg,
@@ -316,7 +317,7 @@ class PGAMEEmitter(Emitter):
         )
         critic_params = optax.apply_updates(emitter_state.critic_params, critic_updates)
         # Soft update of target critic network
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             emitter_state.target_critic_params,
@@ -340,7 +341,7 @@ class PGAMEEmitter(Emitter):
             emitter_state.greedy_policy_params, policy_updates
         )
         # Soft update of target greedy policy
-        target_greedy_policy_params = jax.tree_map(
+        target_greedy_policy_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             emitter_state.target_greedy_policy_params,

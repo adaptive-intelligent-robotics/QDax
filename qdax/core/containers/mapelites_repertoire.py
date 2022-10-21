@@ -220,7 +220,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
         random_key, subkey = jax.random.split(random_key)
-        samples = jax.tree_map(
+        samples = jax.tree_util.tree_map(
             lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
@@ -283,7 +283,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new repertoire
-        new_repertoire_genotypes = jax.tree_map(
+        new_repertoire_genotypes = jax.tree_util.tree_map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
@@ -337,7 +337,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         # Initialize repertoire with default values
         num_centroids = centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-        default_genotypes = jax.tree_map(
+        default_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
             genotypes,
         )

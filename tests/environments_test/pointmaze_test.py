@@ -1,12 +1,14 @@
 from typing import Any, Tuple
 
 import brax
+import brax.envs
 import jax
 import pytest
 from brax import jumpy as jp
 
 import qdax
 from qdax.environments.pointmaze import PointMaze
+from qdax.types import EnvState
 
 
 def test_pointmaze() -> None:
@@ -61,8 +63,8 @@ def test_pointmaze() -> None:
     state = qd_env.reset(rng=jp.random_prngkey(seed=0))
 
     @jax.jit
-    def run_n_steps(state: brax.envs.State) -> brax.envs.State:
-        def run_step(carry: brax.envs.State, _: Any) -> Tuple[brax.envs.State, Any]:
+    def run_n_steps(state: EnvState) -> EnvState:
+        def run_step(carry: Tuple[EnvState], _: Any) -> Tuple[Tuple[EnvState], Any]:
             (state,) = carry
             action = jp.zeros((qd_env.action_size,))
             state = qd_env.step(state, action)

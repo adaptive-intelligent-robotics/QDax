@@ -14,27 +14,88 @@ QDax has been developed as a research framework: it is flexible and easy to exte
 
 
 ## Installation
-
-The latest stable release of QDax can be installed directly from source with:
+QDax is available on PyPI and can be installed with:
 ```bash
 pip install qdax
 ```
+Alternatively, the latest commit of QDax can be installed directly from source with:
+```bash
+pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
+```
+Installing QDax via ```pip``` installs a CPU-only version of JAX by default. To use QDax with NVidia GPUs, you must first install [CUDA, CuDNN, and JAX with GPU support](https://github.com/google/jax#installation).
 
-However, we also provide and recommend using either Docker, Singularity or conda environments to use the repository. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
+However, we also provide and recommend using either Docker, Singularity or conda environments to use the repository which by default provides GPU support. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
 
 ## Basic API Usage
-For a full and interactive example to see how QDax works, we recommend starting with the tutorial-style [Colab notebook](./notebooks/mapelites_example.ipynb). It is an example of the MAP-Elites algorithm used to evolve a population of controllers on a chosen Brax environment (Walker by default).
+For a full and interactive example to see how QDax works, we recommend starting with the tutorial-style [Colab notebook](./examples/notebooks/mapelites_example.ipynb). It is an example of the MAP-Elites algorithm used to evolve a population of controllers on a chosen Brax environment (Walker by default).
 
 However, a summary of the main API usage is provided below:
 ```python
-import qdax
+import jax
+import functools
 from qdax.core.map_elites import MAPElites
+from qdax.core.containers.mapelites_repertoire import compute_euclidean_centroids
+from qdax.tasks.arm import arm_scoring_function
+from qdax.core.emitters.mutation_operators import isoline_variation
+from qdax.core.emitters.standard_emitters import MixingEmitter
+from qdax.utils.metrics import default_qd_metrics
+
+seed = 42
+num_param_dimensions = 100  # num DoF arm
+init_batch_size = 100
+batch_size = 1024
+num_iterations = 50
+grid_shape = (100, 100)
+min_param = 0.0
+max_param = 1.0
+min_bd = 0.0
+max_bd = 1.0
+
+# Init a random key
+random_key = jax.random.PRNGKey(seed)
+
+# Init population of controllers
+random_key, subkey = jax.random.split(random_key)
+init_variables = jax.random.uniform(
+    subkey,
+    shape=(init_batch_size, num_param_dimensions),
+    minval=min_param,
+    maxval=max_param,
+)
+
+# Define emitter
+variation_fn = functools.partial(
+    isoline_variation,
+    iso_sigma=0.05,
+    line_sigma=0.1,
+    minval=min_param,
+    maxval=max_param,
+)
+mixing_emitter = MixingEmitter(
+    mutation_fn=lambda x, y: (x, y),
+    variation_fn=variation_fn,
+    variation_percentage=1.0,
+    batch_size=batch_size,
+)
+
+# Define a metrics function
+metrics_fn = functools.partial(
+    default_qd_metrics,
+    qd_offset=0.0,
+)
 
 # Instantiate MAP-Elites
 map_elites = MAPElites(
-    scoring_function=scoring_fn,
+    scoring_function=arm_scoring_function,
     emitter=mixing_emitter,
-    metrics_function=metrics_function,
+    metrics_function=metrics_fn,
+)
+
+# Compute the centroids
+centroids = compute_euclidean_centroids(
+    grid_shape=grid_shape,
+    minval=min_bd,
+    maxval=max_bd,
 )
 
 # Initializes repertoire and emitter state
@@ -76,6 +137,11 @@ The QDax library also provides implementations for some useful baseline algorith
 | [SMERL](https://arxiv.org/abs/2010.14484) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/smerl_example.ipynb) |
 | [NSGA2](https://ieeexplore.ieee.org/document/996017) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/nsga2_spea2_example.ipynb) |
 | [SPEA2](https://www.semanticscholar.org/paper/SPEA2%3A-Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/b13724cb54ae4171916f3f969d304b9e9752a57f) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/nsga2_spea2_example.ipynb) |
+
+## QDax Tasks
+The QDax library also provides numerous implementations for several standard Quality-Diversity tasks.
+
+All those implementations, and their descriptions are provided in the [tasks directory](./qdax/tasks).
 
 ## Contributing
 Issues and contributions are welcome. Please refer to the [contribution guide](https://qdax.readthedocs.io/en/latest/guides/CONTRIBUTING/) in the documentation for more details.

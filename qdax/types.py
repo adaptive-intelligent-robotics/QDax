@@ -2,6 +2,7 @@
 
 from typing import Dict, Generic, TypeVar, Union
 
+import brax.envs
 import jax
 import jax.numpy as jnp
 from chex import ArrayTree
@@ -12,7 +13,7 @@ Observation: TypeAlias = jnp.ndarray
 Action: TypeAlias = jnp.ndarray
 Reward: TypeAlias = jnp.ndarray
 Done: TypeAlias = jnp.ndarray
-EnvState: TypeAlias = jnp.ndarray
+EnvState: TypeAlias = brax.envs.State
 Params: TypeAlias = ArrayTree
 
 # Evolution types
