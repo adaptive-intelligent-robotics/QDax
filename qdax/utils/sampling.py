@@ -11,7 +11,7 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 @partial(jax.jit, static_argnames=("num_samples"))
 def dummy_extra_scores_extractor(
     extra_scores: ExtraScores,
-    num_sample: int,
+    num_samples: int,
 ) -> ExtraScores:
     """
     Extract the final extra scores of a policy from multiple samples of
@@ -21,7 +21,7 @@ def dummy_extra_scores_extractor(
 
     Args:
         extra_scores: extra scores of the samples
-        num_sample: the number of samples used
+        num_samples: the number of samples used
 
     Returns:
         the new extra scores after extraction

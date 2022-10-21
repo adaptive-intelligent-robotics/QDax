@@ -7,8 +7,8 @@ import pytest
 
 from qdax import environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.core.neuroevolution.mdp_utils import scoring_function
 from qdax.core.neuroevolution.networks.networks import MLP
+from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.types import EnvState, Params, RNGKey
 from qdax.utils.sampling import sampling
 
@@ -77,7 +77,7 @@ def test_sampling() -> None:
     # Compare scoring against perforing a single sample
     bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function,
+        scoring_function_brax_envs,
         init_states=init_states,
         episode_length=episode_length,
         play_step_fn=play_step_fn,

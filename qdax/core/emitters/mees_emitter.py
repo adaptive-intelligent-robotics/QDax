@@ -110,7 +110,7 @@ class MEESEmitter(Emitter):
             The initial state of the MEESEmitter, a new random key.
         """
         assert (
-            jax.tree_leaves(init_genotypes)[0].shape[0] == 1
+            jax.tree_util.tree_leaves(init_genotypes)[0].shape[0] == 1
         ), "ERROR MAP-Elites-ES generates 1 individual per generation (batch_size=1)."
 
         learning_rate = self._config.learning_rate
@@ -359,7 +359,7 @@ class MEESEmitter(Emitter):
         """
 
         assert (
-            jax.tree_leaves(genotypes)[0].shape[0] == 1
+            jax.tree_util.tree_leaves(genotypes)[0].shape[0] == 1
         ), "ERROR MAP-Elites-ES generates 1 individual per generation (batch_size=1)."
 
         ############################
