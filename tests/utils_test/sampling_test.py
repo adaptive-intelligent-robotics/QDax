@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Dict, Tuple
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
@@ -9,18 +9,15 @@ from qdax import environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.mdp_utils import scoring_function
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.utils.sampling import sampling
 from qdax.types import EnvState, Params, RNGKey
+from qdax.utils.sampling import sampling
 
 
 def test_sampling() -> None:
     env_name = "walker2d_uni"
     episode_length = 100
-    num_iterations = 10
     seed = 42
     policy_hidden_layer_sizes = (64, 64)
-    num_init_cvt_samples = 1000
-    num_centroids = 50
     sample_number = 32
 
     # Init environment
@@ -94,7 +91,9 @@ def test_sampling() -> None:
 
     # Evaluate individuals using the scoring functions
     descriptors, fitnesses, _, _ = scoring_fn(init_variables, random_key)
-    sample_descriptors, sample_fitnesses, _, _ = scoring_1_sample_fn(init_variables, random_key)
+    sample_descriptors, sample_fitnesses, _, _ = scoring_1_sample_fn(
+        init_variables, random_key
+    )
 
     # Compare
     pytest.assume(jnp.allclose(descriptors, sample_descriptors, rtol=1e-05, atol=1e-08))
@@ -108,7 +107,9 @@ def test_sampling() -> None:
     )
 
     # Evaluate individuals using the scoring functions
-    sample_descriptors, sample_fitnesses, _, _ = scoring_multi_sample_fn(init_variables, random_key)
+    sample_descriptors, sample_fitnesses, _, _ = scoring_multi_sample_fn(
+        init_variables, random_key
+    )
 
     # Compare
     pytest.assume(jnp.allclose(descriptors, sample_descriptors, rtol=1e-05, atol=1e-08))
