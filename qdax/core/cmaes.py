@@ -8,19 +8,27 @@ from typing import Callable, Optional, Tuple
 import flax
 import jax
 import jax.numpy as jnp
+
 from qdax.types import Fitness, Genotype, Mask, RNGKey
 
 
 class CMAESState(flax.struct.PyTreeNode):
-    """
-    Describe a state of the Covariance matrix adaptation evolution strategy
+    """Describe a state of the Covariance matrix adaptation evolution strategy
     (CMA-ES) algorithm.
+
+    Args:
+        mean: mean of the gaussian distribution used to generate solutions
+        cov_matrix: covariance matrix of the gaussian distribution used to
+            generate solutions.
+        num_updates: number of updates made by the CMAES optimizer since the
+            beginning of the process.
+        sigma: the step size of the optimization steps
     """
 
     mean: jnp.ndarray
     cov_matrix: jnp.ndarray
     num_updates: int
-    step_size: float
+    sigma: float
     p_c: jnp.ndarray
     p_s: jnp.ndarray
     eigen_updates: int
@@ -42,14 +50,12 @@ class CMAES:
         init_sigma: float = 1e-3,
         mean_init: Optional[jnp.ndarray] = None,
         bias_weights: bool = True,
-        init_step_size: float = 1e-3,
         delay_eigen_decomposition: bool = False,
     ):
         self._population_size = population_size
         self._search_dim = search_dim
         self._fitness_function = fitness_function
         self._init_sigma = init_sigma
-        self._init_step_size = init_step_size
 
         # Default values if values are not provided
         if num_best is None:
@@ -119,7 +125,7 @@ class CMAES:
             an initial state for the algorithm
         """
 
-        cov_matrix = self._init_sigma * jnp.eye(self._search_dim)
+        cov_matrix = jnp.eye(self._search_dim)
 
         # cov is already diag
         invsqrt_cov = jnp.diag(1 / jnp.sqrt(jnp.diag(cov_matrix)))
@@ -127,12 +133,12 @@ class CMAES:
         return CMAESState(
             mean=self._mean_init,
             cov_matrix=cov_matrix,
-            step_size=self._init_step_size,
-            num_updates=1,
+            sigma=self._init_sigma,
+            num_updates=0,
             p_c=jnp.zeros(shape=(self._search_dim,)),
             p_s=jnp.zeros(shape=(self._search_dim,)),
-            eigen_updates=1,
-            eigenvalues=self._init_sigma * jnp.ones(shape=(self._search_dim,)),
+            eigen_updates=0,
+            eigenvalues=jnp.ones(shape=(self._search_dim,)),
             invsqrt_cov=invsqrt_cov,
         )
 
@@ -156,7 +162,7 @@ class CMAES:
             subkey,
             shape=(self._population_size,),
             mean=cmaes_state.mean,
-            cov=cmaes_state.cov_matrix,
+            cov=(cmaes_state.sigma**2) * cmaes_state.cov_matrix,
         )
         return samples, random_key
 
@@ -208,7 +214,7 @@ class CMAES:
         # retrieve elements from the current state
         p_c = cmaes_state.p_c
         p_s = cmaes_state.p_s
-        step_size = cmaes_state.step_size
+        sigma = cmaes_state.sigma
         num_updates = cmaes_state.num_updates
         cov = cmaes_state.cov_matrix
         mean = cmaes_state.mean
@@ -253,7 +259,7 @@ class CMAES:
             operand=(cov, num_updates),
         )
 
-        z = (1 / step_size) * (mean - old_mean)
+        z = (1 / sigma) * (mean - old_mean)
         z_w = invsqrt @ z
 
         # update evolution paths - cumulation
@@ -272,7 +278,7 @@ class CMAES:
         # update covariance matrix
         pp_c = jnp.expand_dims(p_c, axis=1)
 
-        coeff_tmp = (sorted_candidates - old_mean) / step_size
+        coeff_tmp = (sorted_candidates - old_mean) / sigma
         cov_rank = coeff_tmp.T @ jnp.diag(weights.squeeze()) @ coeff_tmp
 
         cov = (
@@ -283,14 +289,14 @@ class CMAES:
         )
 
         # update step size
-        step_size = step_size * jnp.exp(
+        sigma = sigma * jnp.exp(
             (self._c_s / self._d_s) * (jnp.linalg.norm(p_s) / self._chi - 1)
         )
 
         cmaes_state = CMAESState(
             mean=mean,
             cov_matrix=cov,
-            step_size=step_size,
+            sigma=sigma,
             num_updates=num_updates + 1,
             p_c=p_c,
             p_s=p_s,
@@ -336,7 +342,7 @@ class CMAES:
         )
         first_condition = eig_dispersion > 1e14
 
-        area = cmaes_state.step_size * jnp.sqrt(jnp.max(cmaes_state.eigenvalues))
+        area = cmaes_state.sigma * jnp.sqrt(jnp.max(cmaes_state.eigenvalues))
         second_condition = area < 1e-11
 
         third_condition = jnp.max(cmaes_state.eigenvalues) < 1e-6  # 1e-9
