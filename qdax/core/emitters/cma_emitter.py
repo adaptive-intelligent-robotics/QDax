@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
