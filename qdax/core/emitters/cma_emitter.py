@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -54,7 +53,6 @@ class CMAEmitter(Emitter):
         genotype_dim: int,
         centroids: Centroid,
         sigma_g: float,
-        step_size: Optional[float] = None,
         min_count: Optional[int] = None,
         max_count: Optional[float] = None,
     ):
@@ -68,12 +66,8 @@ class CMAEmitter(Emitter):
             genotype_dim: dimension of the genotype space.
             centroids: centroids used for the repertoire.
             sigma_g: standard deviation for the coefficients
-            step_size: size of the steps used in CMAES updates
         """
         self._batch_size = batch_size
-
-        if step_size is None:
-            step_size = 1.0
 
         # define a CMAES instance
         self._cmaes = CMAES(
@@ -85,7 +79,6 @@ class CMAEmitter(Emitter):
             init_sigma=sigma_g,
             mean_init=None,  # will be init at zeros in cmaes
             bias_weights=True,
-            init_step_size=step_size,
             delay_eigen_decomposition=True,
         )
 
@@ -250,8 +243,10 @@ class CMAEmitter(Emitter):
             (cmaes_state, emitter_state, repertoire, emit_count, random_key) = operand
 
             # Update CMA Parameters
-            mask = sorted_improvements >= 0
-            mask = mask + 1e-6
+            # mask = sorted_improvements >= 0
+            mask = jnp.ones_like(sorted_improvements)
+            # mask = mask.at[len(sorted_improvements) // 2 :].set(0)
+            # mask = mask + 1e-6
 
             cmaes_state = self._cmaes.update_state_with_mask(
                 cmaes_state, sorted_candidates, mask=mask
@@ -314,7 +309,7 @@ class CMAEmitter(Emitter):
         # remove the batch dim
         new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
 
-        cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=1)
+        cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=0)
 
         emitter_state = emitter_state.replace(
             cmaes_state=cmaes_init_state, emit_count=0

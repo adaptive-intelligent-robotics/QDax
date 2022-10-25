@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAESState
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
@@ -103,7 +102,7 @@ class CMARndEmitter(CMAEmitter):
         # remove the batch dim
         new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
 
-        cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=1)
+        cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=0)
 
         # take a new random direction
         random_key, subkey = jax.random.split(random_key)
