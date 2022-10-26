@@ -219,15 +219,23 @@ class CMAEmitter(Emitter):
         )
         sorted_improvements = improvements[sorted_indices]
 
-        # If no improvement draw randomly and re-initialize parameters
-        # or if emitter converged
-        emit_count = emitter_state.emit_count + fitnesses.shape[0]
+        # compute reinitialize condition
+        emit_count = emitter_state.emit_count + 1
+
+        sorted_criteria = ranking_criteria[sorted_indices]
+        flat_criteria_condition = (
+            jnp.linalg.norm(sorted_criteria[0] - sorted_criteria[-1]) < 1e-12
+        )
+
+        # check all conditions
         reinitialize = (
             jnp.all(improvements < 0) * (emit_count > self._min_count)
             + (emit_count > self._max_count)
             + self._cmaes.stop_condition(cmaes_state)
+            + flat_criteria_condition
         )
 
+        # If true, draw randomly and re-initialize parameters
         def update_and_reinit(
             operand: Tuple[
                 CMAESState, CMAEmitterState, MapElitesRepertoire, int, RNGKey
@@ -245,9 +253,9 @@ class CMAEmitter(Emitter):
 
             # Update CMA Parameters
             # mask = sorted_improvements >= 0
+            # mask = mask + 1e-6
             mask = jnp.ones_like(sorted_improvements)
             # mask = mask.at[len(sorted_improvements) // 2 :].set(0)
-            # mask = mask + 1e-6
 
             cmaes_state = self._cmaes.update_state_with_mask(
                 cmaes_state, sorted_candidates, mask=mask
