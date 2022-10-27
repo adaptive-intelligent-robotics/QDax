@@ -255,7 +255,9 @@ class CMAEmitter(Emitter):
             # mask = sorted_improvements >= 0
             # mask = mask + 1e-6
             mask = jnp.ones_like(sorted_improvements)
-            # mask = mask.at[len(sorted_improvements) // 2 :].set(0)
+            # print("Mask: ", mask)
+            # mask = mask.at[int(0.5 * len(sorted_improvements)) :].set(0)
+            # print("Mask: ", mask)
 
             cmaes_state = self._cmaes.update_state_with_mask(
                 cmaes_state, sorted_candidates, mask=mask

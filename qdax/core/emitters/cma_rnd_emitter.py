@@ -151,5 +151,17 @@ class CMARndEmitter(CMAEmitter):
             direction.
         """
 
-        # projection of the descriptors along the random direction
-        return jnp.dot(descriptors, emitter_state.random_direction)
+        # criteria: projection of the descriptors along the random direction
+        ranking_criteria = jnp.dot(descriptors, emitter_state.random_direction)
+
+        # make sure to have all the new cells first
+        new_cell_offset = jnp.max(ranking_criteria) - jnp.min(ranking_criteria)
+
+        # condition for being a new cell
+        condition = improvements == jnp.inf
+
+        ranking_criteria = jnp.where(
+            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
+        )
+
+        return ranking_criteria  # type: ignore

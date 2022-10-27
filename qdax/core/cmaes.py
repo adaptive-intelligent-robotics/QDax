@@ -183,8 +183,12 @@ class CMAES:
         self, cmaes_state: CMAESState, sorted_candidates: Genotype, mask: Mask
     ) -> CMAESState:
 
+        print("Weights: ", self._weights)
+
         weights = jnp.multiply(self._weights, mask)
         weights = weights / (weights.sum())
+
+        print("Weights: ", weights)
 
         return self._update_state(  # type: ignore
             cmaes_state=cmaes_state,
