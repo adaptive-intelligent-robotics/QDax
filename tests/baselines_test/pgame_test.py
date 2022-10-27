@@ -48,6 +48,7 @@ def test_pgame_elites() -> None:
     soft_tau_update = 0.005
     num_critic_training_steps = 5
     num_pg_training_steps = 5
+    policy_delay = 2
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
@@ -130,6 +131,7 @@ def test_pgame_elites() -> None:
         soft_tau_update=soft_tau_update,
         num_critic_training_steps=num_critic_training_steps,
         num_pg_training_steps=num_pg_training_steps,
+        policy_delay=policy_delay,
     )
 
     # Get the emitter
