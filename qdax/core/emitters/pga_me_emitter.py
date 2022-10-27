@@ -326,7 +326,7 @@ class PGAMEEmitter(Emitter):
         )
 
         def update_policy_step(emitter_state: PGAMEEmitterState) -> PGAMEEmitterState:
-            
+
             # Update greedy policy
             policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
                 emitter_state.greedy_policy_params,
@@ -350,14 +350,16 @@ class PGAMEEmitter(Emitter):
                 greedy_policy_params,
             )
 
-            return emitter_state.replace(
+            emitter_state = emitter_state.replace(
                 greedy_policy_params=greedy_policy_params,
                 greedy_policy_opt_state=policy_optimizer_state,
                 target_greedy_policy_params=target_greedy_policy_params,
             )
 
+            return emitter_state
+
         # Delayed policy update - just use the emitter state
-        emitter_state= jax.lax.cond(
+        emitter_state = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
             update_policy_step,
             lambda e_state: e_state,
