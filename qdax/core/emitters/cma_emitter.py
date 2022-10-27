@@ -35,18 +35,6 @@ class CMAEmitterState(EmitterState):
     emit_count: int
 
 
-# TODO: I want to introduce a init_void in MAPElitesRepertoire
-# it could be used at least three time in the package
-
-# TODO: make sure my decision to have the improvement emitter the default one
-# and not precised in its name - is ok for everyone
-
-# TODO: my min_count condition is not well used
-# it's not only for reinit but also for update
-
-# TODO: check perfs on sphere (i've only tried ragistrin yet)
-
-
 class CMAEmitter(Emitter):
     def __init__(
         self,
@@ -248,6 +236,19 @@ class CMAEmitter(Emitter):
                 CMAESState, CMAEmitterState, MapElitesRepertoire, int, RNGKey
             ],
         ) -> Tuple[CMAEmitterState, RNGKey]:
+            """Update the emitter when no reinit event happened.
+
+            Here lies a divergence compared to the original implementation. We
+            are getting better results when using no mask and doing the update
+            with the whole batch of individuals rather than keeping only the one
+            than were added to the archive.
+
+            Interestingly, keeping the best half was doing better. We think that
+            this might be due to the small batch size used.
+
+            This applies for the setting from the paper CMA-ME. Those facts might
+            not be true with other problems and hyperparameters.
+            """
 
             (cmaes_state, emitter_state, repertoire, emit_count, random_key) = operand
 
@@ -255,9 +256,6 @@ class CMAEmitter(Emitter):
             # mask = sorted_improvements >= 0
             # mask = mask + 1e-6
             mask = jnp.ones_like(sorted_improvements)
-            # print("Mask: ", mask)
-            # mask = mask.at[int(0.5 * len(sorted_improvements)) :].set(0)
-            # print("Mask: ", mask)
 
             cmaes_state = self._cmaes.update_state_with_mask(
                 cmaes_state, sorted_candidates, mask=mask

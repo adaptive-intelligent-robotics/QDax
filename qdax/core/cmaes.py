@@ -183,12 +183,8 @@ class CMAES:
         self, cmaes_state: CMAESState, sorted_candidates: Genotype, mask: Mask
     ) -> CMAESState:
 
-        print("Weights: ", self._weights)
-
         weights = jnp.multiply(self._weights, mask)
         weights = weights / (weights.sum())
-
-        print("Weights: ", weights)
 
         return self._update_state(  # type: ignore
             cmaes_state=cmaes_state,
@@ -349,13 +345,13 @@ class CMAES:
         area = cmaes_state.sigma * jnp.sqrt(jnp.max(cmaes_state.eigenvalues))
         second_condition = area < 1e-11
 
-        # third_condition = jnp.max(cmaes_state.eigenvalues) < 1e-9
-        # fourth_condition = jnp.min(cmaes_state.eigenvalues) > 1e9
+        third_condition = jnp.max(cmaes_state.eigenvalues) < 1e-7
+        fourth_condition = jnp.min(cmaes_state.eigenvalues) > 1e7
 
         return (  # type: ignore
             nan_condition
             + first_condition
             + second_condition
-            # + third_condition
-            # + fourth_condition
+            + third_condition
+            + fourth_condition
         )
