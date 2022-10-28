@@ -356,7 +356,7 @@ class PGAMEEmitter(Emitter):
                 target_greedy_policy_params=target_greedy_policy_params,
             )
 
-            return emitter_state
+            return emitter_state  # type: ignore
 
         # Delayed policy update - just use the emitter state
         emitter_state = jax.lax.cond(
