@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -51,10 +50,12 @@ class CMAEmitter(Emitter):
 
         Args:
             batch_size: number of solutions sampled at each iteration
-            learning_rate: rate at which the mean of the distribution is updated.
             genotype_dim: dimension of the genotype space.
             centroids: centroids used for the repertoire.
-            sigma_g: standard deviation for the coefficients
+            sigma_g: standard deviation for the coefficients - called step size.
+            min_count: minimum number of CMAES opt step before being considered for
+                reinitialisation.
+            max_count: maximum number of CMAES opt step authorized.
         """
         self._batch_size = batch_size
 
@@ -118,7 +119,7 @@ class CMAEmitter(Emitter):
             random_key,
         )
 
-    @partial(jax.jit, static_argnames=("self", "batch_size"))
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
@@ -126,7 +127,7 @@ class CMAEmitter(Emitter):
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
-        Emits new individuals. Interestingly, this method does not directly modify
+        Emits new individuals. Interestingly, this method does not directly modifies
         individuals from the repertoire but sample from a distribution. Hence the
         repertoire is not used in the emit function.
 
@@ -161,10 +162,7 @@ class CMAEmitter(Emitter):
         """
         Updates the CMA-MEGA emitter state.
 
-        Note: in order to recover the coeffs that where used to sample the genotypes,
-        we reuse the emitter state's random key in this function.
-
-        Note: we use the update_state function from CMAES, a function that suppose
+        Note: we use the update_state function from CMAES, a function that assumes
         that the candidates are already sorted. We do this because we have to sort
         them in this function anyway, in order to apply the right weights to the
         terms when update theta.

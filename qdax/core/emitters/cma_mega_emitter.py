@@ -5,7 +5,6 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -56,7 +55,6 @@ class CMAMEGAEmitter(Emitter):
         num_descriptors: int,
         centroids: Centroid,
         sigma_g: float,
-        step_size: Optional[float] = None,
     ):
         """
         Class for the emitter of CMA Mega from "Differentiable Quality Diversity" by
@@ -71,20 +69,19 @@ class CMAMEGAEmitter(Emitter):
             num_descriptors: number of descriptors
             centroids: centroids of the repertoire used to store the genotypes
             sigma_g: standard deviation for the coefficients
-            step_size: size of the steps used in CMAES updates
         """
+
         self._scoring_function = scoring_function
         self._batch_size = batch_size
         self._learning_rate = learning_rate
+
+        # weights used to update the gradient direction through a linear combination
         self._weights = jnp.expand_dims(
             jnp.log(batch_size + 0.5) - jnp.log(jnp.arange(1, batch_size + 1)), axis=-1
         )
         self._weights = self._weights / (self._weights.sum())
 
-        if step_size is None:
-            step_size = 1.0
-
-        # define a CMAES instance
+        # define a CMAES instance - used to update the coeffs
         self._cmaes = CMAES(
             population_size=batch_size,
             search_dim=num_descriptors + 1,
@@ -93,7 +90,6 @@ class CMAMEGAEmitter(Emitter):
             num_best=batch_size,
             init_sigma=sigma_g,
             bias_weights=True,
-            init_step_size=step_size,
             delay_eigen_decomposition=True,
         )
 
@@ -106,7 +102,7 @@ class CMAMEGAEmitter(Emitter):
         self, init_genotypes: Genotype, random_key: RNGKey
     ) -> Tuple[CMAMEGAState, RNGKey]:
         """
-        Initializes the CMA-MEGA emitter
+        Initializes the CMA-MEGA emitter.
 
 
         Args:
@@ -152,7 +148,7 @@ class CMAMEGAEmitter(Emitter):
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
-        Emits new individuals. Interestingly, this method does not directly modify
+        Emits new individuals. Interestingly, this method does not directly modifies
         individuals from the repertoire but sample from a distribution. Hence the
         repertoire is not used in the emit function.
 
@@ -174,7 +170,7 @@ class CMAMEGAEmitter(Emitter):
 
         # Draw random coefficients - use the emitter state key
         coeffs, random_key = self._cmaes.sample(
-            cmaes_state=cmaes_state, random_key=random_key
+            cmaes_state=cmaes_state, random_key=emitter_state.random_key
         )
 
         # make sure the fitness coefficient is positive
@@ -231,7 +227,21 @@ class CMAMEGAEmitter(Emitter):
         indices = get_cells_indices(descriptors, repertoire.centroids)
         improvements = fitnesses - emitter_state.previous_fitnesses[indices]
 
-        sorted_indices = jnp.argsort(improvements)[::-1]
+        # condition for being a new cell
+        condition = improvements == jnp.inf
+
+        # criteria: fitness if new cell, improvement else
+        ranking_criteria = jnp.where(condition, x=fitnesses, y=improvements)
+
+        # make sure to have all the new cells first
+        new_cell_offset = jnp.max(ranking_criteria) - jnp.min(ranking_criteria)
+
+        ranking_criteria = jnp.where(
+            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
+        )
+
+        # sort indices according to the criteria
+        sorted_indices = jnp.flip(jnp.argsort(ranking_criteria))
 
         # Draw the coeffs - reuse the emitter state key to get same coeffs
         coeffs, random_key = self._cmaes.sample(
@@ -263,14 +273,16 @@ class CMAMEGAEmitter(Emitter):
         # re-sample
         random_theta, random_key = repertoire.sample(random_key, 1)
 
+        # update theta in case of reinit
         theta = jax.tree_util.tree_map(
             lambda x, y: jnp.where(reinitialize, x=x, y=y), random_theta, theta
         )
 
+        # update cmaes state in case of reinit
         cmaes_state = jax.tree_util.tree_map(
             lambda x, y: jnp.where(reinitialize, x=x, y=y),
-            cmaes_state,
             self._cma_initial_state,
+            cmaes_state,
         )
 
         # score theta

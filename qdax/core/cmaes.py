@@ -2,27 +2,32 @@
 Definition of CMAES class, containing main functions necessary to build
 a CMA optimization script. Link to the paper: https://arxiv.org/abs/1604.00772
 """
-import functools
+from functools import partial
 from typing import Callable, Optional, Tuple
 
 import flax
 import jax
 import jax.numpy as jnp
-
 from qdax.types import Fitness, Genotype, Mask, RNGKey
 
 
 class CMAESState(flax.struct.PyTreeNode):
-    """Describe a state of the Covariance matrix adaptation evolution strategy
+    """Describe a state of the Covariance Matrix Adaptation Evolution Strategy
     (CMA-ES) algorithm.
 
     Args:
         mean: mean of the gaussian distribution used to generate solutions
         cov_matrix: covariance matrix of the gaussian distribution used to
-            generate solutions.
+            generate solutions - (multiplied by sigma for sampling).
         num_updates: number of updates made by the CMAES optimizer since the
             beginning of the process.
-        sigma: the step size of the optimization steps
+        sigma: the step size of the optimization steps. Multiplies the cov matrix
+            to get the real cov matrix used for the sampling process.
+        p_c: evolution path
+        p_s: evolution path
+        eigen_updates: track the latest update to know when to do the next one.
+        eigenvalues: latest eigenvalues
+        invsqrt_cov: latest inv sqrt value of the cov matrix.
     """
 
     mean: jnp.ndarray
@@ -52,6 +57,23 @@ class CMAES:
         bias_weights: bool = True,
         delay_eigen_decomposition: bool = False,
     ):
+        """Instantiate a CMA-ES optimizer.
+
+        Args:
+            population_size: size of the running population.
+            search_dim: number of dimensions in the search space.
+            fitness_function: fitness function that is being optimized.
+            num_best: number of best individuals in the population being considered
+                for the update of the distributions. Defaults to None.
+            init_sigma: Initial value of the step size. Defaults to 1e-3.
+            mean_init: Initial value of the distribution mean. Defaults to None.
+            bias_weights: Should the weights be biased towards best individuals.
+                Defaults to True.
+            delay_eigen_decomposition: should the update of the inverse of the
+                cov matrix be delayed. As this operation is a time bottleneck, having
+                it delayed improves the time perfs by a significant margin.
+                Defaults to False.
+        """
         self._population_size = population_size
         self._search_dim = search_dim
         self._fitness_function = fitness_function
@@ -70,6 +92,7 @@ class CMAES:
 
         # weights parameters
         if bias_weights:
+            # heuristic from Nicolas Hansen original implementation
             self._weights = jnp.log(
                 (self._num_best + 0.5) / jnp.arange(start=1, stop=(self._num_best + 1))
             )
@@ -105,16 +128,13 @@ class CMAES:
             1 - 1 / (4 * self._search_dim) + 1 / (21 * self._search_dim**2)
         )
 
-        # threshold for new eigen decomposition
-        # the sqrt is introduced in our implementation - hasn't been found elsewhere
-        # reason for that was that the wikipedia heuristic was giving a period that
-        # was getting way too big
-
-        # TODO: should i simply use the one from pyribs???
+        # threshold for new eigen decomposition - from pyribs
         self._eigen_comput_period = 1
         if delay_eigen_decomposition:
             self._eigen_comput_period = (
-                0.5 * jnp.sqrt(self._search_dim) / (10 * (self._c_1 + self._c_cov))
+                0.5
+                * self._population_size
+                / (self._search_dim * (self._c_1 + self._c_cov))
             )
 
     def init(self) -> CMAESState:
@@ -125,9 +145,10 @@ class CMAES:
             an initial state for the algorithm
         """
 
+        # initial cov matrix
         cov_matrix = jnp.eye(self._search_dim)
 
-        # cov is already diag
+        # initial inv sqrt of the cov matrix - cov is already diag
         invsqrt_cov = jnp.diag(1 / jnp.sqrt(jnp.diag(cov_matrix)))
 
         return CMAESState(
@@ -142,7 +163,7 @@ class CMAES:
             invsqrt_cov=invsqrt_cov,
         )
 
-    @functools.partial(jax.jit, static_argnames=("self",))
+    @partial(jax.jit, static_argnames=("self",))
     def sample(
         self, cmaes_state: CMAESState, random_key: RNGKey
     ) -> Tuple[Genotype, RNGKey]:
@@ -166,7 +187,7 @@ class CMAES:
         )
         return samples, random_key
 
-    @functools.partial(jax.jit, static_argnames=("self",))
+    @partial(jax.jit, static_argnames=("self",))
     def update_state(
         self,
         cmaes_state: CMAESState,
@@ -178,11 +199,16 @@ class CMAES:
             weights=self._weights,
         )
 
-    @functools.partial(jax.jit, static_argnames=("self",))
+    @partial(jax.jit, static_argnames=("self",))
     def update_state_with_mask(
         self, cmaes_state: CMAESState, sorted_candidates: Genotype, mask: Mask
     ) -> CMAESState:
+        """Update weights with a mask, then update the state.
 
+        Convention: 1 stays, 0 a removed.
+        """
+
+        # update weights by multiplying by a mask
         weights = jnp.multiply(self._weights, mask)
         weights = weights / (weights.sum())
 
@@ -192,20 +218,20 @@ class CMAES:
             weights=weights,
         )
 
-    @functools.partial(jax.jit, static_argnames=("self",))
+    @partial(jax.jit, static_argnames=("self",))
     def _update_state(
         self,
         cmaes_state: CMAESState,
         sorted_candidates: Genotype,
         weights: jnp.ndarray,
     ) -> CMAESState:
-
-        """
-        Updates the state when candidates have already been sorted and selected.
+        """Updates the state when candidates have already been
+        sorted and selected.
 
         Args:
             cmaes_state: current state of the algorithm
             sorted_candidates: a batch of sorted and selected genotypes
+            weights: weights used to recombine the candidates
 
         Returns:
             An updated algorithm state
@@ -307,10 +333,9 @@ class CMAES:
 
         return cmaes_state
 
-    @functools.partial(jax.jit, static_argnames=("self",))
+    @partial(jax.jit, static_argnames=("self",))
     def update(self, cmaes_state: CMAESState, samples: Genotype) -> CMAESState:
-        """
-        Updates the distribution.
+        """Updates the distribution.
 
         Args:
             cmaes_state: current state of the algorithm
@@ -328,13 +353,23 @@ class CMAES:
 
         return new_state  # type: ignore
 
-    @functools.partial(jax.jit, static_argnames=("self",))
+    @partial(jax.jit, static_argnames=("self",))
     def stop_condition(self, cmaes_state: CMAESState) -> bool:
-        """Inspired from pyribs implementation.
+        """Determines if the current optimization path must be stopped.
 
-        TODO: should we add the third condition implemented in pyribs?
+        A set of 5 conditions are computed, one condition is enough to
+        stop the process. This function does not stop the process but simply
+        retrieves the value. It is not called in the update function but can be
+        used to manually stopped the process (see example in CMA ME emitter).
+
+        Args:
+            cmaes_state: current CMAES state
+
+        Returns:
+            A boolean stating if the process should be stopped.
         """
-        # NaN appear because of float precision is reached
+
+        # NaN appears because of float precision is reached
         nan_condition = jnp.sum(jnp.isnan(cmaes_state.eigenvalues)) > 0
 
         eig_dispersion = jnp.max(cmaes_state.eigenvalues) / jnp.min(
