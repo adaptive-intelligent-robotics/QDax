@@ -9,12 +9,12 @@ from qdax.core.cmaes import CMAES
 
 def test_cmaes() -> None:
 
-    num_iterations = 10000  # @param {type:"integer"}
-    num_dimensions = 100  # 100 #1000 #@param {type:"integer"} # try 20 and 100
-    batch_size = 36  # @param {type:"integer"}
-    num_best = 36  # @param {type:"integer"}
-    sigma_g = 0.5  # 0.5 #@param {type:"number"}
-    minval = -5.12  # @param {type:"number"}
+    num_iterations = 10000
+    num_dimensions = 100
+    batch_size = 36
+    num_best = 36
+    sigma_g = 0.5
+    minval = -5.12
 
     def sphere_scoring(x: jnp.ndarray) -> jnp.ndarray:
         return -jnp.sum((x + minval * 0.4) * (x + minval * 0.4), axis=-1)
