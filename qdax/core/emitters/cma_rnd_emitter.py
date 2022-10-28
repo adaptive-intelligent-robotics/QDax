@@ -100,9 +100,10 @@ class CMARndEmitter(CMAEmitter):
         # re-sample
         random_genotype, random_key = repertoire.sample(random_key, 1)
 
-        # remove the batch dim
+        # get new mean - remove the batch dim
         new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
 
+        # define the corresponding cmaes init state
         cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=0)
 
         # take a new random direction
@@ -130,7 +131,7 @@ class CMARndEmitter(CMAEmitter):
         extra_scores: Optional[ExtraScores],
         improvements: jnp.ndarray,
     ) -> jnp.ndarray:
-        """Defines how the genotypes should be sorted. Imapcts the update
+        """Defines how the genotypes should be sorted. Impacts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
         used (optimizing, random direction or improvement).
 

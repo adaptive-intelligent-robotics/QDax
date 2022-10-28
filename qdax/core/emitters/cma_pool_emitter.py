@@ -14,13 +14,13 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 class CMAPoolEmitterState(EmitterState):
     """
-    Emitter state for the CMA-ME emitter.
+    Emitter state for the pool of CMA emitters.
+
+    This is for a pool of homogeneous emitters.
 
     Args:
-        random_key: a random key to handle stochastic operations. Used for
-            state update only, another key is used to emit. This might be
-            subject to refactoring discussions in the future.
-        cmaes_state: state of the underlying CMA-ES algorithm
+        current_index: the index of the current emitter state used.
+        emitter_states: the batch of emitter states currently used.
     """
 
     current_index: int
@@ -29,16 +29,12 @@ class CMAPoolEmitterState(EmitterState):
 
 class CMAPoolEmitter(Emitter):
     def __init__(self, num_states: int, emitter: CMAEmitter):
-        """
-        Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
-        Rapid Illumination of Behavior Space" by Fontaine et al.
+        """Instantiate a pool of homogeneous emitters.
 
         Args:
-            batch_size: number of solutions sampled at each iteration
-            learning_rate: rate at which the mean of the distribution is updated.
-            genotype_dim: dimension of the genotype space.
-            sigma_g: standard deviation for the coefficients
-            step_size: size of the steps used in CMAES updates
+            num_states: the number of emitters to consider. We can use a
+                single emitter object and a batched emitter state.
+            emitter: the type of emitter for the pool.
         """
         self._num_states = num_states
         self._emitter = emitter
@@ -66,10 +62,12 @@ class CMAPoolEmitter(Emitter):
             emitter_state, random_key = self._emitter.init(init_genotypes, random_key)
             return random_key, emitter_state
 
+        # init all the emitter states
         random_key, emitter_states = jax.lax.scan(
             scan_emitter_init, random_key, (), length=self._num_states
         )
 
+        # define the emitter state of the pool
         emitter_state = CMAPoolEmitterState(
             current_index=0, emitter_states=emitter_states
         )
@@ -87,9 +85,7 @@ class CMAPoolEmitter(Emitter):
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
-        Emits new individuals. Interestingly, this method does not directly modify
-        individuals from the repertoire but sample from a distribution. Hence the
-        repertoire is not used in the emit function.
+        Emits new individuals.
 
         Args:
             repertoire: a repertoire of genotypes (unused).
@@ -99,11 +95,14 @@ class CMAPoolEmitter(Emitter):
         Returns:
             New genotypes and a new random key.
         """
+
+        # retrieve the relevant emitter state
         current_index = emitter_state.current_index
         used_emitter_state = jax.tree_util.tree_map(
             lambda x: x[current_index], emitter_state.emitter_states
         )
 
+        # use it to emit offsprings
         offsprings, random_key = self._emitter.emit(
             repertoire, used_emitter_state, random_key
         )
@@ -124,15 +123,7 @@ class CMAPoolEmitter(Emitter):
         extra_scores: Optional[ExtraScores] = None,
     ) -> Optional[EmitterState]:
         """
-        Updates the CMA-MEGA emitter state.
-
-        Note: in order to recover the coeffs that where used to sample the genotypes,
-        we reuse the emitter state's random key in this function.
-
-        Note: we use the update_state function from CMAES, a function that suppose
-        that the candidates are already sorted. We do this because we have to sort
-        them in this function anyway, in order to apply the right weights to the
-        terms when update theta.
+        Updates the emitter state.
 
         Args:
             emitter_state: current emitter state

@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -160,7 +161,7 @@ class CMAEmitter(Emitter):
         extra_scores: Optional[ExtraScores] = None,
     ) -> Optional[EmitterState]:
         """
-        Updates the CMA-MEGA emitter state.
+        Updates the CMA-ME emitter state.
 
         Note: we use the update_state function from CMAES, a function that assumes
         that the candidates are already sorted. We do this because we have to sort
@@ -208,6 +209,7 @@ class CMAEmitter(Emitter):
         # compute reinitialize condition
         emit_count = emitter_state.emit_count + 1
 
+        # check if the criteria are too similar
         sorted_criteria = ranking_criteria[sorted_indices]
         flat_criteria_condition = (
             jnp.linalg.norm(sorted_criteria[0] - sorted_criteria[-1]) < 1e-12
