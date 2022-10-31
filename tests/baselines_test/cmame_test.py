@@ -1,6 +1,6 @@
 """Tests CMA ME implementation"""
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Type
 
 import jax
 import jax.numpy as jnp
@@ -22,7 +22,7 @@ from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
     "emitter_type",
     [CMAOptimizingEmitter, CMARndEmitter, CMAEmitter],
 )
-def test_cma_me(emitter_type: CMAEmitter) -> None:
+def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
 
     num_iterations = 1000
     num_dimensions = 20
@@ -100,7 +100,7 @@ def test_cma_me(emitter_type: CMAEmitter) -> None:
         "max_count": None,
     }
 
-    emitter = emitter_type(**emitter_kwargs)  # type: ignore
+    emitter = emitter_type(**emitter_kwargs)
 
     emitter = CMAPoolEmitter(num_states=pool_size, emitter=emitter)
 
@@ -125,4 +125,4 @@ def test_cma_me(emitter_type: CMAEmitter) -> None:
 
 
 if __name__ == "__main__":
-    test_cma_me(emitter_type="imp")
+    test_cma_me(emitter_type=CMAEmitter)
