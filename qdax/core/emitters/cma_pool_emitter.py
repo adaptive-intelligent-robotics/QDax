@@ -77,7 +77,7 @@ class CMAPoolEmitter(Emitter):
             random_key,
         )
 
-    @partial(jax.jit, static_argnames=("self", "batch_size"))
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],

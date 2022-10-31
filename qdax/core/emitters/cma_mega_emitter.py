@@ -5,6 +5,7 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from qdax.core.cmaes import CMAES, CMAESState
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -140,7 +141,7 @@ class CMAMEGAEmitter(Emitter):
             random_key,
         )
 
-    @partial(jax.jit, static_argnames=("self", "batch_size"))
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
