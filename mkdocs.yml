@@ -110,6 +110,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Overview: overview.md
+  - Caveats: caveats.md
   - Guides:
     - Contributing: guides/CONTRIBUTING.md
   - Examples:
