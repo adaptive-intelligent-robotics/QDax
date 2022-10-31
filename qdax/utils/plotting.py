@@ -772,15 +772,6 @@ def plot_multidimensional_map_elites_grid(
     )
 
     ax.grid(which="minor", alpha=1.0, color="#000000", linewidth=0.5)
-<<<<<<< HEAD
-    ax.grid(which="major", alpha=1.0, color="#000000", linewidth=1.0)
-
-    ax.set_xticklabels(
-        [
-            f"{x:.2}"
-            for x in jnp.around(
-                jnp.linspace(minval[0], maxval[0], num=len(major_ticks_x)), decimals=2
-=======
     if len(grid_shape) > 2:
         ax.grid(which="major", alpha=1.0, color="#000000", linewidth=2.5)
 
@@ -809,7 +800,6 @@ def plot_multidimensional_map_elites_grid(
                 _maxval=maxval[0],
                 _number_ticks=len(major_ticks_x),
                 _step_labels_ticks=len(major_ticks_x) // number_label_ticks,
->>>>>>> develop
             )
         )
     if len(major_ticks_y) // number_label_ticks > 0:

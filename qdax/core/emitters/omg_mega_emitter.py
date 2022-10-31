@@ -65,9 +65,9 @@ class OMGMEGAEmitter(Emitter):
 
         Args:
             batch_size: number of solutions sampled at each iteration
-            sigma_g: CAUTION - square of the standard deviation for the coefficients. This
-                notation can be misleading as, although it's called sigma, it refers to the
-                variance and not the standard deviation.
+            sigma_g: CAUTION - square of the standard deviation for the coefficients.
+                This notation can be misleading as, although it's called sigma, it
+                refers to the variance and not the standard deviation.
             num_descriptors: number of descriptors
             centroids: centroids used to create the repertoire of solutions.
                 This will be used to create the repertoire of gradients.

@@ -20,9 +20,9 @@ from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
 
 @pytest.mark.parametrize(
     "emitter_type",
-    ["opt", "rnd", "imp"],
+    [CMAOptimizingEmitter, CMARndEmitter, CMAEmitter],
 )
-def test_cma_me(emitter_type: str) -> None:
+def test_cma_me(emitter_type: CMAEmitter) -> None:
 
     num_iterations = 1000
     num_dimensions = 20
@@ -100,14 +100,7 @@ def test_cma_me(emitter_type: str) -> None:
         "max_count": None,
     }
 
-    if emitter_type == "opt":
-        emitter = CMAOptimizingEmitter(**emitter_kwargs)
-    elif emitter_type == "imp":
-        emitter = CMAEmitter(**emitter_kwargs)
-    elif emitter_type == "rnd":
-        emitter = CMARndEmitter(**emitter_kwargs)
-    else:
-        raise Exception("Invalid emitter type")
+    emitter = emitter_type(**emitter_kwargs)  # type: ignore
 
     emitter = CMAPoolEmitter(num_states=pool_size, emitter=emitter)
 
