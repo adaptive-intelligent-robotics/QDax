@@ -16,8 +16,8 @@ from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.core.neuroevolution.mdp_utils import scoring_function
 from qdax.core.neuroevolution.networks.networks import MLP
+from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.types import EnvState, Params, RNGKey
 
 
@@ -94,7 +94,7 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     # Prepare the scoring function
     bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function,
+        scoring_function_brax_envs,
         init_states=init_states,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
