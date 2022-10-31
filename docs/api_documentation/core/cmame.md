@@ -5,8 +5,8 @@ To create an instance of CMAME, one need to use an instance of [MAP-Elites](map_
 Three emitter types:
 
 ::: qdax.core.emitters.cma_emitter.CMAEmitter
-::: qdax.core.emitters.cma_emitter.CMARndEmitter
-::: qdax.core.emitters.cma_emitter.CMAOptimizingEmitter
+::: qdax.core.emitters.cma_rnd_emitter.CMARndEmitter
+::: qdax.core.emitters.cma_opt_emitter.CMAOptimizingEmitter
 
 Pool of homogeneous emitters:
 
