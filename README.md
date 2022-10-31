@@ -1,5 +1,5 @@
 <div align="center">
-<img src="https://raw.githubusercontent.com/adaptive-intelligent-robotics/QDax/develop/docs/qdax_logo.png" alt="logo"></img>
+<img src="https://raw.githubusercontent.com/adaptive-intelligent-robotics/QDax/develop/docs/images/qdax_logo.png" alt="logo"></img>
 </div>
 
 # QDax: Accelerated Quality-Diversity
