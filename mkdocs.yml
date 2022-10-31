@@ -125,6 +125,7 @@ nav:
       - Core algorithms:
         - MAP Elites: api_documentation/core/map_elites.md
         - PGAME: api_documentation/core/pgame.md
+        - CMA ME: api_documentation/core/cmame.md
         - OMG MEGA: api_documentation/core/omg_mega.md
         - CMA MEGA: api_documentation/core/cma_mega.md
         - MOME: api_documentation/core/mome.md
