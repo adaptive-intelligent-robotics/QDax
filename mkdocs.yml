@@ -27,7 +27,8 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-
+  logo: images/qdax_logo.png
+  favicon: images/qdax_logo.png
   features:
     - navigation.tracking
     - navigation.tabs
