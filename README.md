@@ -170,8 +170,11 @@ If you use QDax in your research and want to cite it in your work, please use:
 
 QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/).
 
+<div align="center">
 <img align="center" src="docs/images/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/images/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
+</div>
 
+<div align="center">
 <a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
@@ -184,3 +187,4 @@ QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab
 <a href="https://github.com/GRichard513" title="Guillaume Richard"><img src="https://github.com/GRichard513.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/flajolet" title="Arthur Flajolet"><img src="https://github.com/flajolet.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/remidebette" title="Rémi Debette"><img src="https://github.com/remidebette.png" height="auto" width="50" style="border-radius:50%"></a>
+</div>
