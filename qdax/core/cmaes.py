@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple
 import flax
 import jax
 import jax.numpy as jnp
+
 from qdax.types import Fitness, Genotype, Mask, RNGKey
 
 
