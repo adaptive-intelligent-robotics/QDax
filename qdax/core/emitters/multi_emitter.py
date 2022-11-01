@@ -9,39 +9,38 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class MultiEmitterState(EmitterState):
-    emitters_state_tuple: Tuple[EmitterState, ...]
+    emitter_states: Tuple[EmitterState, ...]
 
 
 class MultiEmitter(Emitter):
-    def __init__(self, emitters_tuple: Tuple[Emitter, ...]):
-        self.emitters_tuple = emitters_tuple
+    def __init__(self, emitters: Tuple[Emitter, ...]):
+        self.emitters = emitters
 
     def emit(
         self,
         repertoire: Optional[Repertoire],
-        multi_emitter_state: Optional[MultiEmitterState],
+        emitter_state: Optional[MultiEmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
-        assert multi_emitter_state is not None
-        assert len(multi_emitter_state.emitters_state_tuple) == len(self.emitters_tuple)
+        assert emitter_state is not None
+        assert len(emitter_state.emitter_states) == len(self.emitters)
 
-        random_key, *_keys_emitters = jax.random.split(
-            random_key, len(self.emitters_tuple) + 1
-        )
+        random_key, subkey = jax.random.split(random_key)
+        subkeys = jax.random.split(subkey, len(self.emitters))
 
-        all_genotypes = []
-        for emitter, emitter_state, _key_emitter in zip(
-            self.emitters_tuple,
-            multi_emitter_state.emitters_state_tuple,
-            _keys_emitters,
+        all_offsprings = []
+        for emitter, sub_emitter_state, _key_emitter in zip(
+            self.emitters,
+            emitter_state.emitter_states,
+            subkeys,
         ):
-            genotype, _ = emitter.emit(repertoire, emitter_state, _key_emitter)
-            all_genotypes.append(genotype)
+            genotype, _ = emitter.emit(repertoire, sub_emitter_state, _key_emitter)
+            all_offsprings.append(genotype)
 
-        genotypes_tree = jax.tree_map(
-            lambda *x: jnp.concatenate(x, axis=0), *all_genotypes
+        offsprings = jax.tree_map(
+            lambda *x: jnp.concatenate(x, axis=0), *all_offsprings
         )
-        return genotypes_tree, random_key
+        return offsprings, random_key
 
     def state_update(
         self,
@@ -58,7 +57,7 @@ class MultiEmitter(Emitter):
         list_emitter_states = []
 
         for emitter, sub_emitter_state in zip(
-            self.emitters_tuple, emitter_state.emitters_state_tuple
+            self.emitters, emitter_state.emitter_states
         ):
             new_sub_emitter_state = emitter.state_update(
                 sub_emitter_state,
@@ -75,12 +74,12 @@ class MultiEmitter(Emitter):
     def init(
         self, init_genotypes: Optional[Genotype], random_key: RNGKey
     ) -> Tuple[Optional[EmitterState], RNGKey]:
-        random_key, *_keys_emitters_list = jax.random.split(
-            random_key, len(self.emitters_tuple) + 1
-        )
+
+        random_key, subkey = jax.random.split(random_key)
+        subkeys = jax.random.split(subkey, len(self.emitters))
 
         list_emitter_states = []
-        for emitter, _key_emitter in zip(self.emitters_tuple, _keys_emitters_list):
+        for emitter, _key_emitter in zip(self.emitters, subkeys):
             emitter_state, _ = emitter.init(init_genotypes, _key_emitter)
             list_emitter_states.append(emitter_state)
 
