@@ -19,6 +19,7 @@ from qdax.core.neuroevolution.mdp_utils import (
     get_first_episode,
 )
 from qdax.core.neuroevolution.networks.td3_networks import make_td3_networks
+from qdax.environments import CompletedEvalWrapper
 from qdax.types import Action, Metrics, Observation, Params, Reward, RNGKey
 
 
@@ -113,10 +114,10 @@ class TD3:
         policy_params = self._policy.init(subkey_2, fake_obs)
 
         # Initialize target networks
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
-        target_policy_params = jax.tree_map(
+        target_policy_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), policy_params
         )
 
@@ -251,9 +252,10 @@ class TD3:
             play_step_fn=play_step_fn,
         )
 
+        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
         true_return = (
-            state.info["eval_metrics"].completed_episodes_metrics["reward"]
-            / state.info["eval_metrics"].completed_episodes
+            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
+            / state.info[eval_metrics_key].completed_episodes
         )
 
         transitions = get_first_episode(transitions)
@@ -303,7 +305,7 @@ class TD3:
             training_state.critic_params, critic_updates
         )
         # Soft update of target critic network
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             training_state.target_critic_params,
@@ -325,7 +327,7 @@ class TD3:
                 training_state.policy_params, policy_updates
             )
             # Soft update of target policy
-            target_policy_params = jax.tree_map(
+            target_policy_params = jax.tree_util.tree_map(
                 lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
                 + self._config.soft_tau_update * x2,
                 training_state.target_policy_params,
