@@ -1,5 +1,5 @@
 <div align="center">
-<img src="docs/images/qdax_logo.png" alt="qdax_logo" width="140"></img>
+<img src="docs/img/qdax_logo.png" alt="qdax_logo" width="140"></img>
 </div>
 
 # QDax: Accelerated Quality-Diversity
@@ -171,7 +171,7 @@ If you use QDax in your research and want to cite it in your work, please use:
 QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/).
 
 <div align="center">
-<img align="center" src="docs/images/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/images/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
+<img align="center" src="docs/img/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/img/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
 </div>
 
 <div align="center">
