@@ -1,10 +1,15 @@
+<div align="center">
+<img src="docs/img/qdax_logo.png" alt="qdax_logo" width="140"></img>
+</div>
+
+# QDax: Accelerated Quality-Diversity
+
 [![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
 ![pytest](https://github.com/adaptive-intelligent-robotics/QDax/actions/workflows/ci.yaml/badge.svg?branch=main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/adaptive-intelligent-robotics/QDax/blob/main/LICENSE)
 [![codecov](https://codecov.io/gh/adaptive-intelligent-robotics/QDax/branch/feat/add-codecov/graph/badge.svg)](https://codecov.io/gh/adaptive-intelligent-robotics/QDax)
 
 
-# QDax: Accelerated Quality-Diversity
 QDax is a tool to accelerate Quality-Diversity (QD) and neuro-evolution algorithms through hardware accelerators and massive parallelization. QD algorithms usually take days/weeks to run on large CPU clusters. With QDax, QD algorithms can now be run in minutes! ⏩ ⏩ 🕛
 
 QDax has been developed as a research framework: it is flexible and easy to extend and build on and can be used for any problem setting. Get started with simple example and run a QD algorithm in minutes here! [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/notebooks/mapelites_example.ipynb)
@@ -165,8 +170,11 @@ If you use QDax in your research and want to cite it in your work, please use:
 
 QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/).
 
-<img align="center" src="docs/images/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/images/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
+<div align="center">
+<img align="center" src="docs/img/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/img/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
+</div>
 
+<div align="center">
 <a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
@@ -179,3 +187,4 @@ QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab
 <a href="https://github.com/GRichard513" title="Guillaume Richard"><img src="https://github.com/GRichard513.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/flajolet" title="Arthur Flajolet"><img src="https://github.com/flajolet.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/remidebette" title="Rémi Debette"><img src="https://github.com/remidebette.png" height="auto" width="50" style="border-radius:50%"></a>
+</div>
