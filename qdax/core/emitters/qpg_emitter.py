@@ -1,5 +1,8 @@
-""" Implements the PGA-ME algorithm in jax for brax environments, based on:
-https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf"""
+"""Implements the PG Emitter from PGA-ME algorithm in jax for brax environments,
+based on:
+https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf
+"""
+
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Optional, Tuple
@@ -19,8 +22,8 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKe
 
 
 @dataclass
-class QPGConfig:
-    """Configuration for QPG Emitter"""
+class QualityPGConfig:
+    """Configuration for QualityPG Emitter"""
 
     env_batch_size: int = 100
     num_critic_training_steps: int = 300
@@ -40,7 +43,7 @@ class QPGConfig:
     soft_tau_update: float = 0.005
 
 
-class QPGEmitterState(EmitterState):
+class QualityPGEmitterState(EmitterState):
     """Contains training state for the learner."""
 
     critic_params: Params
@@ -55,7 +58,7 @@ class QPGEmitterState(EmitterState):
     steps: jnp.ndarray
 
 
-class QPGEmitter(Emitter):
+class QualityPGEmitter(Emitter):
     """
     A policy gradient emitter used to implement the Policy Gradient Assisted MAP-Elites
     (PGA-Map-Elites) algorithm.
@@ -63,7 +66,7 @@ class QPGEmitter(Emitter):
 
     def __init__(
         self,
-        config: QPGConfig,
+        config: QualityPGConfig,
         policy_network: nn.Module,
         env: QDEnv,
     ) -> None:
@@ -100,7 +103,7 @@ class QPGEmitter(Emitter):
 
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
-    ) -> Tuple[QPGEmitterState, RNGKey]:
+    ) -> Tuple[QualityPGEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
@@ -151,7 +154,7 @@ class QPGEmitter(Emitter):
 
         # Initial training state
         random_key, subkey = jax.random.split(random_key)
-        emitter_state = QPGEmitterState(
+        emitter_state = QualityPGEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             greedy_policy_params=greedy_policy_params,
@@ -173,7 +176,7 @@ class QPGEmitter(Emitter):
     def emit(
         self,
         repertoire: Repertoire,
-        emitter_state: QPGEmitterState,
+        emitter_state: QualityPGEmitterState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """Do a step of PG emission.
@@ -215,13 +218,13 @@ class QPGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
-        emitter_state: QPGEmitterState,
+        emitter_state: QualityPGEmitterState,
         repertoire: Optional[Repertoire],
         genotypes: Optional[Genotype],
         fitnesses: Optional[Fitness],
         descriptors: Optional[Descriptor],
         extra_scores: ExtraScores,
-    ) -> QPGEmitterState:
+    ) -> QualityPGEmitterState:
         """This function gives an opportunity to update the emitter state
         after the genotypes have been scored.
 
@@ -252,8 +255,8 @@ class QPGEmitter(Emitter):
         emitter_state = emitter_state.replace(replay_buffer=replay_buffer)
 
         def scan_train_critics(
-            carry: QPGEmitterState, unused: Any
-        ) -> Tuple[QPGEmitterState, Any]:
+            carry: QualityPGEmitterState, unused: Any
+        ) -> Tuple[QualityPGEmitterState, Any]:
             emitter_state = carry
             new_emitter_state = self._train_critics(emitter_state)
             return new_emitter_state, ()
@@ -269,7 +272,9 @@ class QPGEmitter(Emitter):
         return emitter_state  # type: ignore
 
     @partial(jax.jit, static_argnames=("self",))
-    def _train_critics(self, emitter_state: QPGEmitterState) -> QPGEmitterState:
+    def _train_critics(
+        self, emitter_state: QualityPGEmitterState
+    ) -> QualityPGEmitterState:
         """Apply one gradient step to critics and to the greedy policy
         (contained in carry in training_state), then soft update target critics
         and target greedy policy.
@@ -287,62 +292,46 @@ class QPGEmitter(Emitter):
         # Sample a batch of transitions in the buffer
         random_key = emitter_state.random_key
         replay_buffer = emitter_state.replay_buffer
-        samples, random_key = replay_buffer.sample(
+        transitions, random_key = replay_buffer.sample(
             random_key, sample_size=self._config.batch_size
         )
 
         # Update Critic
-        random_key, subkey = jax.random.split(random_key)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
-            emitter_state.critic_params,
-            emitter_state.target_greedy_policy_params,
-            emitter_state.target_critic_params,
-            samples,
-            subkey,
-        )
-        critic_updates, critic_optimizer_state = self._critic_optimizer.update(
-            critic_gradient, emitter_state.critic_optimizer_state
-        )
-        critic_params = optax.apply_updates(emitter_state.critic_params, critic_updates)
-        # Soft update of target critic network
-        target_critic_params = jax.tree_util.tree_map(
-            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
-            + self._config.soft_tau_update * x2,
-            emitter_state.target_critic_params,
+        (
+            critic_optimizer_state,
             critic_params,
+            target_critic_params,
+            random_key,
+        ) = self._update_critic(
+            critic_params=emitter_state.critic_params,
+            target_critic_params=emitter_state.target_critic_params,
+            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
+            critic_optimizer_state=emitter_state.critic_optimizer_state,
+            transitions=transitions,
+            random_key=random_key,
         )
 
         # Update greedy policy
-        random_key, subkey = jax.random.split(random_key)
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            emitter_state.greedy_policy_params,
-            emitter_state.critic_params,
-            samples,
-        )
         (
-            policy_updates,
             policy_optimizer_state,
-        ) = self._greedy_policy_optimizer.update(
-            policy_gradient, emitter_state.greedy_policy_opt_state
-        )
-        greedy_policy_params = optax.apply_updates(
-            emitter_state.greedy_policy_params, policy_updates
-        )
-        # Soft update of target greedy policy
-        target_greedy_policy_params = jax.tree_util.tree_map(
-            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
-            + self._config.soft_tau_update * x2,
-            emitter_state.target_greedy_policy_params,
             greedy_policy_params,
+            target_greedy_policy_params,
+            random_key,
+        ) = self._update_greedy(
+            greedy_policy_params=emitter_state.greedy_policy_params,
+            greedy_policy_opt_state=emitter_state.greedy_policy_opt_state,
+            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
+            critic_params=emitter_state.critic_params,
+            transitions=transitions,
+            random_key=random_key,
         )
 
         # Create new training state
-        new_state = QPGEmitterState(
+        new_emitter_state = emitter_state.replace(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             greedy_policy_params=greedy_policy_params,
             greedy_policy_opt_state=policy_optimizer_state,
-            controllers_optimizer_state=emitter_state.controllers_optimizer_state,
             target_critic_params=target_critic_params,
             target_greedy_policy_params=target_greedy_policy_params,
             random_key=random_key,
@@ -350,15 +339,93 @@ class QPGEmitter(Emitter):
             replay_buffer=replay_buffer,
         )
 
-        return new_state
+        return new_emitter_state  # type: ignore
+
+    @partial(jax.jit, static_argnames=("self",))
+    def _update_critic(
+        self,
+        critic_params: Params,
+        target_critic_params: Params,
+        target_greedy_policy_params: Params,
+        critic_optimizer_state: Params,
+        transitions: QDTransition,
+        random_key: RNGKey,
+    ) -> Tuple[Params, Params, Params, RNGKey]:
+
+        # compute loss and gradients
+        random_key, subkey = jax.random.split(random_key)
+        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
+            critic_params,
+            target_greedy_policy_params,
+            target_critic_params,
+            transitions,
+            subkey,
+        )
+        critic_updates, critic_optimizer_state = self._critic_optimizer.update(
+            critic_gradient, critic_optimizer_state
+        )
+
+        # update critic
+        critic_params = optax.apply_updates(critic_params, critic_updates)
+
+        # Soft update of target critic network
+        target_critic_params = jax.tree_map(
+            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
+            + self._config.soft_tau_update * x2,
+            target_critic_params,
+            critic_params,
+        )
+
+        return critic_optimizer_state, critic_params, target_critic_params, random_key
+
+    @partial(jax.jit, static_argnames=("self",))
+    def _update_greedy(
+        self,
+        greedy_policy_params: Params,
+        greedy_policy_opt_state: optax.OptState,
+        target_greedy_policy_params: Params,
+        critic_params: Params,
+        transitions: QDTransition,
+        random_key: RNGKey,
+    ) -> Tuple[optax.OptState, Params, Params, RNGKey]:
+
+        # Update greedy policy
+        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+            greedy_policy_params,
+            critic_params,
+            transitions,
+        )
+        (
+            policy_updates,
+            policy_optimizer_state,
+        ) = self._greedy_policy_optimizer.update(
+            policy_gradient, greedy_policy_opt_state
+        )
+        greedy_policy_params = optax.apply_updates(greedy_policy_params, policy_updates)
+        # Soft update of target greedy policy
+        target_greedy_policy_params = jax.tree_map(
+            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
+            + self._config.soft_tau_update * x2,
+            target_greedy_policy_params,
+            greedy_policy_params,
+        )
+
+        return (
+            policy_optimizer_state,
+            greedy_policy_params,
+            target_greedy_policy_params,
+            random_key,
+        )
 
     @partial(jax.jit, static_argnames=("self",))
     def _mutation_function_pg(
         self,
         controller_params: Genotype,
-        emitter_state: QPGEmitterState,
+        emitter_state: QualityPGEmitterState,
     ) -> Genotype:
         """Apply pg mutation to a policy via multiple steps of gradient descent.
+        First, update the rewards to be diversity rewards, then apply the gradient
+        steps.
 
         Args:
             controller_params: a controller, supposed to be a differentiable neural
@@ -367,12 +434,12 @@ class QPGEmitter(Emitter):
                 the replay buffer, the critic.
 
         Returns:
-            the updated params of the neural network.
+            The updated params of the neural network.
         """
 
         def scan_train_controller(
-            carry: Tuple[QPGEmitterState, Genotype], unused: Any
-        ) -> Tuple[Tuple[QPGEmitterState, Genotype], Any]:
+            carry: Tuple[QualityPGEmitterState, Genotype], transitions: QDTransition
+        ) -> Tuple[Tuple[QualityPGEmitterState, Genotype], Any]:
             emitter_state, controller_params = carry
             (
                 new_emitter_state,
@@ -392,9 +459,9 @@ class QPGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def _train_controller(
         self,
-        emitter_state: QPGEmitterState,
+        emitter_state: QualityPGEmitterState,
         controller_params: Params,
-    ) -> Tuple[QPGEmitterState, Params]:
+    ) -> Tuple[QualityPGEmitterState, Params]:
         """Apply one gradient step to a policy (called controllers_params).
 
         Args:
@@ -409,32 +476,46 @@ class QPGEmitter(Emitter):
         # Sample a batch of transitions in the buffer
         random_key = emitter_state.random_key
         replay_buffer = emitter_state.replay_buffer
-        samples, random_key = replay_buffer.sample(
+        transitions, random_key = replay_buffer.sample(
             random_key, sample_size=self._config.batch_size
         )
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            controller_params,
-            emitter_state.critic_params,
-            samples,
+
+        # update controller
+        policy_optimizer_state, controller_params = self._update_controller(
+            critic_params=emitter_state.critic_params,
+            controllers_optimizer_state=emitter_state.controllers_optimizer_state,
+            controller_params=controller_params,
+            transitions=transitions,
         )
-        # Compute gradient and update policies
-        (policy_updates, policy_optimizer_state,) = self._controllers_optimizer.update(
-            policy_gradient, emitter_state.controllers_optimizer_state
-        )
-        controller_params = optax.apply_updates(controller_params, policy_updates)
 
         # Create new training state
-        new_emitter_state = QPGEmitterState(
-            critic_params=emitter_state.critic_params,
-            critic_optimizer_state=emitter_state.critic_optimizer_state,
-            greedy_policy_params=emitter_state.greedy_policy_params,
-            greedy_policy_opt_state=emitter_state.greedy_policy_opt_state,
+        new_emitter_state = emitter_state.replace(
             controllers_optimizer_state=policy_optimizer_state,
-            target_critic_params=emitter_state.target_critic_params,
-            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
             random_key=random_key,
-            steps=emitter_state.steps,
             replay_buffer=replay_buffer,
         )
 
         return new_emitter_state, controller_params
+
+    @partial(jax.jit, static_argnames=("self",))
+    def _update_controller(
+        self,
+        critic_params: Params,
+        controllers_optimizer_state: optax.OptState,
+        controller_params: Params,
+        transitions: QDTransition,
+    ) -> Tuple[optax.OptState, Params]:
+
+        # compute loss
+        _policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+            controller_params,
+            critic_params,
+            transitions,
+        )
+        # Compute gradient and update policies
+        (policy_updates, policy_optimizer_state,) = self._controllers_optimizer.update(
+            policy_gradient, controllers_optimizer_state
+        )
+        controller_params = optax.apply_updates(controller_params, policy_updates)
+
+        return policy_optimizer_state, controller_params
