@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional, Tuple
 import flax.linen as nn
 import jax
 
+from qdax.core.containers.archive import Archive
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.qpg_emitter import (
     QualityPGConfig,
