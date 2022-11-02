@@ -18,11 +18,11 @@ def test_archive() -> None:
     cases. Small threshold and enough size to avoid
     replacement in the archive.
     """
+    fake_border = jnp.inf
     # create archive
-    archive = Archive.create(0.1, 2, 20, 1e6)
+    archive = Archive.create(0.1, 2, 20, fake_border)
     expected_init_data = (
-        jnp.ones((archive.max_size, archive.state_descriptor_size))
-        * archive.fake_border
+        jnp.ones((archive.max_size, archive.state_descriptor_size)) * fake_border
     )
 
     # check initial data
@@ -54,8 +54,15 @@ def test_archive() -> None:
     pytest.assume(jnp.allclose(archive.data, expected_new_data, atol=1e-6))
 
     # check insertion in archive
-    expected_new_data = expected_new_data.at[2:4].set(a)
-    archive = archive.insert(a)
+    import jax
+
+    with jax.disable_jit():
+        expected_new_data = expected_new_data.at[2:4].set(a)
+        archive = archive.insert(a)
+
+    print("Archive: ", archive)
+    print("Expected data: ", expected_new_data)
+
     pytest.assume(archive.current_position == 4)
     pytest.assume(jnp.allclose(archive.data, expected_new_data, atol=1e-6))
 
@@ -70,8 +77,10 @@ def test_archive_overflow() -> None:
     """Test archive insertion when the maximal size
     of the archive has been reached."""
 
+    fake_border = jnp.inf
+
     # create archive
-    archive = Archive.create(0.1, 2, 6, 1e6)
+    archive = Archive.create(0.1, 2, 6, fake_border)
 
     # add elements till the limit
     archive = archive.insert(a).insert(b).insert(c)
@@ -95,9 +104,10 @@ def test_archive_overflow() -> None:
 def test_archive_high_threshold() -> None:
     """Test the archive insertion mechanism in the case where
     the acceptance threshold prevent some elements from being inserted"""
+    fake_border = jnp.inf
     acceptance_threshold = jnp.sqrt(0.5)
     # create archive
-    archive = Archive.create(acceptance_threshold, 2, 6, 1e6)
+    archive = Archive.create(acceptance_threshold, 2, 6, fake_border)
 
     # add some elements
     archive = archive.insert(a)
@@ -117,14 +127,14 @@ def test_archive_high_threshold() -> None:
 
 def test_archive_filter_at_entry() -> None:
     """Test that the filtering of near points works at the entry as well"""
-    archive = Archive.create(jnp.sqrt(1.5), 2, 10, 1e6)
+    fake_border = jnp.inf
+    archive = Archive.create(jnp.sqrt(1.5), 2, 10, fake_border)
 
     a = jnp.array([[1.0, 0.0], [0.0, 1.0], [1.0, 0.5], [1.0, 1.0]])
     archive = archive.insert(a)
 
     expected_data = (
-        jnp.ones((archive.max_size, archive.state_descriptor_size))
-        * archive.fake_border
+        jnp.ones((archive.max_size, archive.state_descriptor_size)) * fake_border
     )
     expected_data = expected_data.at[0:2].set(jnp.array([[1.0, 0.0], [0.0, 1.0]]))
     pytest.assume(archive.current_position == 2)
@@ -133,11 +143,12 @@ def test_archive_filter_at_entry() -> None:
 
 def test_euclidean_scorer() -> None:
     # create the novelty scorer
+    fake_border = jnp.inf
     num_nearest_neighb = 2
     scaling_ratio = 1
 
     # create archive
-    archive = Archive.create(0.1, 2, 10, 1e6)
+    archive = Archive.create(0.1, 2, 10, fake_border)
 
     # insert a in the archive
     archive = archive.insert(a)

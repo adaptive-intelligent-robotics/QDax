@@ -195,6 +195,8 @@ class Archive(PyTreeNode):
             # get nearest neigbor for each new state descriptor
             values, _indices = knn(new_elements, state_descriptor.reshape(1, -1), 1)
 
+            print("Values: ", values)
+
             # get indices where distance bigger than threshold
             not_too_close = jnp.where(
                 values.squeeze() > self.acceptance_threshold, x=0, y=1
