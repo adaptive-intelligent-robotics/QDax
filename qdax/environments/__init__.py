@@ -1,5 +1,4 @@
 import functools
-import typing
 from typing import Any, Callable, List, Optional, Union
 
 import brax
@@ -11,9 +10,9 @@ from qdax.environments.bd_extractors import (
     get_final_xy_position,
 )
 from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.environments.init_state_wrapper import FixedInitialStateWrapper
 from qdax.environments.locomotion_wrappers import (
     FeetContactWrapper,
-    FixedInitialStateWrapper,
     NoForwardRewardWrapper,
     XYPositionWrapper,
 )
@@ -152,14 +151,15 @@ def create(
         env = brax.envs.wrappers.EvalWrapper(env)
         env = CompletedEvalWrapper(env)
     if fixed_init_state:
-
-        base_env_name_fixed_state_wrapper: str
+        # retrieve the base env
         if env_name in _qdax_custom_envs.keys():
-            base_env_name_fixed_state_wrapper = typing.cast(
-                str, _qdax_custom_envs[env_name]["env"]
-            )
+            base_env_name_fixed_state_wrapper: str = _qdax_custom_envs[  # type: ignore
+                env_name
+            ]["env"]
         else:
             base_env_name_fixed_state_wrapper = env_name
+
+        # wrap the env
         env = FixedInitialStateWrapper(
             env, base_env_name=base_env_name_fixed_state_wrapper
         )
