@@ -11,9 +11,9 @@ from qdax.environments.bd_extractors import (
     get_final_xy_position,
 )
 from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
-from qdax.environments.init_state_wrapper import FixedInitialStateWrapper
 from qdax.environments.locomotion_wrappers import (
     FeetContactWrapper,
+    FixedInitialStateWrapper,
     NoForwardRewardWrapper,
     XYPositionWrapper,
 )
