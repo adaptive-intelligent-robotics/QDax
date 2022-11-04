@@ -39,6 +39,7 @@ class PGAMEConfig:
     reward_scaling: float = 1.0
     batch_size: int = 256
     soft_tau_update: float = 0.005
+    policy_delay: int = 2
 
 
 class PGAMEEmitterState(EmitterState):
@@ -319,38 +320,55 @@ class PGAMEEmitter(Emitter):
             critic_params,
         )
 
-        # Update greedy policy
-        random_key, subkey = jax.random.split(random_key)
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            emitter_state.greedy_policy_params,
-            emitter_state.critic_params,
-            samples,
-        )
-        (
-            policy_updates,
-            policy_optimizer_state,
-        ) = self._greedy_policy_optimizer.update(
-            policy_gradient, emitter_state.greedy_policy_opt_state
-        )
-        greedy_policy_params = optax.apply_updates(
-            emitter_state.greedy_policy_params, policy_updates
-        )
-        # Soft update of target greedy policy
-        target_greedy_policy_params = jax.tree_util.tree_map(
-            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
-            + self._config.soft_tau_update * x2,
-            emitter_state.target_greedy_policy_params,
-            greedy_policy_params,
+        def update_policy_step(emitter_state: PGAMEEmitterState) -> PGAMEEmitterState:
+
+            # Update greedy policy
+            policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+                emitter_state.greedy_policy_params,
+                emitter_state.critic_params,
+                samples,
+            )
+            (
+                policy_updates,
+                policy_optimizer_state,
+            ) = self._greedy_policy_optimizer.update(
+                policy_gradient, emitter_state.greedy_policy_opt_state
+            )
+            greedy_policy_params = optax.apply_updates(
+                emitter_state.greedy_policy_params, policy_updates
+            )
+            # Soft update of target greedy policy
+            target_greedy_policy_params = jax.tree_map(
+                lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
+                + self._config.soft_tau_update * x2,
+                emitter_state.target_greedy_policy_params,
+                greedy_policy_params,
+            )
+
+            emitter_state = emitter_state.replace(
+                greedy_policy_params=greedy_policy_params,
+                greedy_policy_opt_state=policy_optimizer_state,
+                target_greedy_policy_params=target_greedy_policy_params,
+            )
+
+            return emitter_state  # type: ignore
+
+        # Delayed policy update - just use the emitter state
+        emitter_state = jax.lax.cond(
+            emitter_state.steps % self._config.policy_delay == 0,
+            update_policy_step,
+            lambda e_state: e_state,
+            operand=emitter_state,
         )
 
         # Create new training state
         new_state = PGAMEEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
-            greedy_policy_params=greedy_policy_params,
-            greedy_policy_opt_state=policy_optimizer_state,
+            greedy_policy_params=emitter_state.greedy_policy_params,
+            greedy_policy_opt_state=emitter_state.greedy_policy_opt_state,
             target_critic_params=target_critic_params,
-            target_greedy_policy_params=target_greedy_policy_params,
+            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
             random_key=random_key,
             steps=emitter_state.steps + 1,
             replay_buffer=replay_buffer,
