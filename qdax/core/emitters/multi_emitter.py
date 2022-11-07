@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Optional, Tuple
 
 import jax
@@ -16,6 +17,21 @@ class MultiEmitter(Emitter):
     def __init__(self, emitters: Tuple[Emitter, ...]):
         self.emitters = emitters
 
+    def init(
+        self, init_genotypes: Optional[Genotype], random_key: RNGKey
+    ) -> Tuple[Optional[EmitterState], RNGKey]:
+
+        random_key, subkey = jax.random.split(random_key)
+        subkeys = jax.random.split(subkey, len(self.emitters))
+
+        emitter_states = []
+        for emitter, subkey_emitter in zip(self.emitters, subkeys):
+            emitter_state, _ = emitter.init(init_genotypes, subkey_emitter)
+            emitter_states.append(emitter_state)
+
+        return MultiEmitterState(tuple(emitter_states)), random_key
+
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[Repertoire],
@@ -29,12 +45,12 @@ class MultiEmitter(Emitter):
         subkeys = jax.random.split(subkey, len(self.emitters))
 
         all_offsprings = []
-        for emitter, sub_emitter_state, _key_emitter in zip(
+        for emitter, sub_emitter_state, subkey_emitter in zip(
             self.emitters,
             emitter_state.emitter_states,
             subkeys,
         ):
-            genotype, _ = emitter.emit(repertoire, sub_emitter_state, _key_emitter)
+            genotype, _ = emitter.emit(repertoire, sub_emitter_state, subkey_emitter)
             all_offsprings.append(genotype)
 
         offsprings = jax.tree_map(
@@ -42,6 +58,7 @@ class MultiEmitter(Emitter):
         )
         return offsprings, random_key
 
+    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: Optional[MultiEmitterState],
@@ -54,7 +71,7 @@ class MultiEmitter(Emitter):
         if emitter_state is None:
             return None
 
-        list_emitter_states = []
+        emitter_states = []
 
         for emitter, sub_emitter_state in zip(
             self.emitters, emitter_state.emitter_states
@@ -67,20 +84,6 @@ class MultiEmitter(Emitter):
                 descriptors,
                 extra_scores,
             )
-            list_emitter_states.append(new_sub_emitter_state)
+            emitter_states.append(new_sub_emitter_state)
 
-        return MultiEmitterState(tuple(list_emitter_states))
-
-    def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey
-    ) -> Tuple[Optional[EmitterState], RNGKey]:
-
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, len(self.emitters))
-
-        list_emitter_states = []
-        for emitter, _key_emitter in zip(self.emitters, subkeys):
-            emitter_state, _ = emitter.init(init_genotypes, _key_emitter)
-            list_emitter_states.append(emitter_state)
-
-        return MultiEmitterState(tuple(list_emitter_states)), random_key
+        return MultiEmitterState(tuple(emitter_states))
