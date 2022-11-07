@@ -26,7 +26,6 @@ class UniformReplacementArchive(Archive):
         acceptance_threshold: float,
         state_descriptor_size: int,
         max_size: int,
-        fake_border: float,
         random_key: RNGKey,
     ) -> Archive:
         """Create an Archive instance.
@@ -40,8 +39,6 @@ class UniformReplacementArchive(Archive):
             state_descriptor_size: the number of elements in a state descriptor.
             max_size: the maximal size of the archive. In case of overflow, previous
                 elements are replaced by new ones. Defaults to 80000.
-            fake_border: value given to fake data, used to fill the archive.
-                Defaults to 1e6.
             random_key: a key to handle random operations. Defaults to key with
                 seed = 0.
 
@@ -50,7 +47,9 @@ class UniformReplacementArchive(Archive):
         """
 
         archive = super().create(
-            acceptance_threshold, state_descriptor_size, max_size, fake_border
+            acceptance_threshold,
+            state_descriptor_size,
+            max_size,
         )
 
         return archive.replace(random_key=random_key)  # type: ignore

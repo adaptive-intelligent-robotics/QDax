@@ -23,12 +23,11 @@ class Archive(PyTreeNode):
     necessary at the moment though.
     """
 
-    data: jnp.ndarray  # initialised with fake_border everywhere
+    data: jnp.ndarray  # initialised with nan everywhere
     current_position: int
     acceptance_threshold: float
     state_descriptor_size: int
     max_size: int
-    fake_border: float
 
     @property
     def size(self) -> float:
@@ -38,10 +37,10 @@ class Archive(PyTreeNode):
             Size of the archive.
         """
         # remove fake borders
-        real_data = jnp.all(self.data != self.fake_border, axis=1)
+        real_data = jnp.isnan(self.data)
 
         # count number of real data
-        return sum(real_data)
+        return sum(~real_data)
 
     @classmethod
     def create(
@@ -49,7 +48,6 @@ class Archive(PyTreeNode):
         acceptance_threshold: float,
         state_descriptor_size: int,
         max_size: int,
-        fake_border: float,
     ) -> Archive:
         """Create an Archive instance.
 
@@ -62,20 +60,17 @@ class Archive(PyTreeNode):
             state_descriptor_size: the number of elements in a state descriptor.
             max_size: the maximal size of the archive. In case of overflow, previous
                 elements are replaced by new ones. Defaults to 80000.
-            fake_border: value given to fake data, used to fill the archive.
-                Defaults to 1e6.
 
         Returns:
             A newly initialized archive.
         """
-        init_data = jnp.ones((max_size, state_descriptor_size)) * fake_border
+        init_data = jnp.ones((max_size, state_descriptor_size)) * jnp.nan
         return cls(  # type: ignore
             data=init_data,
             current_position=0,
             acceptance_threshold=acceptance_threshold,
             state_descriptor_size=state_descriptor_size,
             max_size=max_size,
-            fake_border=fake_border,
         )
 
     @jax.jit
@@ -129,7 +124,7 @@ class Archive(PyTreeNode):
         def false_fun(
             archive: Archive, state_descriptor: jnp.ndarray
         ) -> Tuple[Archive, jnp.ndarray]:
-            return archive, jnp.ones_like(state_descriptor) * self.fake_border
+            return archive, jnp.ones_like(state_descriptor) * jnp.nan
 
         return jax.lax.cond(  # type: ignore
             condition, true_fun, false_fun, self, state_descriptor
@@ -215,7 +210,7 @@ class Archive(PyTreeNode):
                 (),
             )
 
-        new_elements = jnp.ones_like(state_descriptors) * self.fake_border
+        new_elements = jnp.ones_like(state_descriptors) * jnp.nan
 
         # iterate over the indices
         (new_archive, _, _), _ = jax.lax.scan(
@@ -277,6 +272,9 @@ def knn(
         The distances and indices of the nearest neighbors.
     """
 
+    print("Data used for dist compute: ", data)
+    print("Data used for dist compute 2: ", new_data)
+
     # compute distances
     dist = (
         (new_data**2).sum(-1)[:, None]
@@ -284,8 +282,16 @@ def knn(
         - 2 * new_data @ data.T
     )
 
+    print("In knn, dist, before sqrt: ", dist)
+
+    dist = jnp.nan_to_num(dist, nan=jnp.inf)
+
+    print("In knn, dist, before sqrt, nan to num filter: ", dist)
+
     # clipping necessary - numerical approx make some distancies negative
     dist = jnp.sqrt(jnp.clip(dist, a_min=0.0))
+
+    print("In knn, dist, after sqrt: ", dist)
 
     # return values, indices
     values, indices = qdax_top_k(-dist, k)
@@ -314,6 +320,8 @@ def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         indice = jnp.argmax(data, axis=1)
         value = jax.vmap(lambda x, y: x[y])(data, indice)
         data = jax.vmap(lambda x, y: x.at[y].set(-jnp.inf))(data, indice)
+
+        print("Value, indice tuple in top 1: ", (value, indice))
         return data, value, indice
 
     def scannable_top_1(
