@@ -395,22 +395,32 @@ class PGAMEEmitter(Emitter):
         """
 
         # Define new controller optimizer state
-        controller_optimizer_state = self._controllers_optimizer.init(
-            controller_params
-        )
+        controller_optimizer_state = self._controllers_optimizer.init(controller_params)
 
         def scan_train_controller(
-            carry: Tuple[PGAMEEmitterState, Genotype], unused: Any
-        ) -> Tuple[Tuple[PGAMEEmitterState, Genotype], Any]:
+            carry: Tuple[PGAMEEmitterState, Genotype, optax.OptState], unused: Any
+        ) -> Tuple[Tuple[PGAMEEmitterState, Genotype, optax.OptState], Any]:
             emitter_state, controller_params, controller_optimizer_state = carry
             (
                 new_emitter_state,
                 new_controller_params,
-                new_controller_optimizer_state
-            ) = self._train_controller(emitter_state, controller_params, controller_optimizer_state,)
-            return (new_emitter_state, new_controller_params, new_controller_optimizer_state), ()
+                new_controller_optimizer_state,
+            ) = self._train_controller(
+                emitter_state,
+                controller_params,
+                controller_optimizer_state,
+            )
+            return (
+                new_emitter_state,
+                new_controller_params,
+                new_controller_optimizer_state,
+            ), ()
 
-        (emitter_state, controller_params, controller_optimizer_state), _ = jax.lax.scan(
+        (
+            emitter_state,
+            controller_params,
+            controller_optimizer_state,
+        ), _ = jax.lax.scan(
             scan_train_controller,
             (emitter_state, controller_params, controller_optimizer_state),
             (),
@@ -425,7 +435,7 @@ class PGAMEEmitter(Emitter):
         emitter_state: PGAMEEmitterState,
         controller_params: Params,
         controller_optimizer_state: optax.OptState,
-    ) -> Tuple[PGAMEEmitterState, Params]:
+    ) -> Tuple[PGAMEEmitterState, Params, optax.OptState]:
         """Apply one gradient step to a policy (called controllers_params).
 
         Args:
@@ -449,7 +459,10 @@ class PGAMEEmitter(Emitter):
             samples,
         )
         # Compute gradient and update policies
-        (policy_updates, controller_optimizer_state,) = self._controllers_optimizer.update(
+        (
+            policy_updates,
+            controller_optimizer_state,
+        ) = self._controllers_optimizer.update(
             policy_gradient, controller_optimizer_state
         )
         controller_params = optax.apply_updates(controller_params, policy_updates)
@@ -468,4 +481,3 @@ class PGAMEEmitter(Emitter):
         )
 
         return new_emitter_state, controller_params, controller_optimizer_state
-
