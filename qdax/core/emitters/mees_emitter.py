@@ -26,6 +26,12 @@ class MEESConfig:
     learning_rate
     l2_coefficient: coefficient for regularisation
     novelty_nearest_neighbors
+    last_updated_size: number of last updated indiv used to
+        choose parents from repertoire
+    exploit_num_cell_sample: number of highest-performing cells
+        from which to choose parents, when using exploit
+    explore_num_cell_sample: number of most-novel cells from
+        which to choose parents, when using explore
     use_explore: if False, use only fitness gradient
     """
 
@@ -38,6 +44,9 @@ class MEESConfig:
     learning_rate: float = 0.01
     l2_coefficient: float = 0.02
     novelty_nearest_neighbors: int = 10
+    last_updated_size: int = 5
+    exploit_num_cell_sample: int = 2
+    explore_num_cell_sample: int = 5
     use_explore: bool = True
 
 
@@ -45,18 +54,18 @@ class MEESEmitterState(EmitterState):
     """Emitter State for the MAP-Elites-ES emitter.
     initial_optimizer_state: stored to re-initialise when sampling new parent
     optimizer_state
-    gradient_offspring: offspring generated through gradient estimate
+    offspring: offspring generated through gradient estimate
     generation_count: generation counter used to update the novelty archive
     novelty_archive: used to compute novelty for explore
-    last_updated_genotypes: used to sample parents from repertoire
-    last_updated_fitnesses: used to sample parents from repertoire
-    last_updated_position: used to sample parents from repertoire
+    last_updated_genotypes: used to choose parents from repertoire
+    last_updated_fitnesses: used to choose parents from repertoire
+    last_updated_position: used to choose parents from repertoire
     random_key:
     """
 
     initial_optimizer_state: optax.OptState
     optimizer_state: optax.OptState
-    gradient_offspring: Genotype
+    offspring: Genotype
     generation_count: int
     novelty_archive: Descriptor
     last_updated_genotypes: Genotype
@@ -126,9 +135,12 @@ class MEESEmitter(Emitter):
         Returns:
             The initial state of the MEESEmitter, a new random key.
         """
-        assert (
-            jax.tree_util.tree_leaves(init_genotypes)[0].shape[0] == 1
-        ), "ERROR MAP-Elites-ES generates 1 individual per generation (batch_size=1)."
+        # Initialisation require one initial genotype
+        if jax.tree_util.tree_leaves(init_genotypes)[0].shape[0] > 1:
+            init_genotypes = jax.tree_util.tree_map(
+                lambda x: x[0],
+                init_genotypes,
+            )
 
         # Initialise optimizer
         initial_optimizer_state = self._optimizer.init(init_genotypes)
@@ -143,16 +155,18 @@ class MEESEmitter(Emitter):
 
         # Create empty updated genotypes and fitness
         last_updated_genotypes = jax.tree_map(
-            lambda x: jnp.zeros(shape=(5,) + x.shape[1:]),
+            lambda x: jnp.zeros(shape=(self._config.last_updated_size,) + x.shape[1:]),
             init_genotypes,
         )
-        last_updated_fitnesses = -jnp.inf * jnp.ones(shape=5)
+        last_updated_fitnesses = -jnp.inf * jnp.ones(
+            shape=self._config.last_updated_size
+        )
 
         return (
             MEESEmitterState(
                 initial_optimizer_state=initial_optimizer_state,
                 optimizer_state=initial_optimizer_state,
-                gradient_offspring=init_genotypes,
+                offspring=init_genotypes,
                 generation_count=0,
                 novelty_archive=novelty_archive,
                 last_updated_genotypes=last_updated_genotypes,
@@ -185,7 +199,7 @@ class MEESEmitter(Emitter):
             a new jax PRNG key
         """
 
-        return emitter_state.gradient_offspring, random_key
+        return emitter_state.offspring, random_key
 
     @partial(
         jax.jit,
@@ -240,12 +254,13 @@ class MEESEmitter(Emitter):
         repertoire: MapElitesRepertoire,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
-        """Sample half of the time uniformly from the two highest fitness cells
-        of the repertoire and half of the time uniformly from the two highest
-        fitness cells among the last five updated cells.
+        """Sample half of the time uniformly from the exploit_num_cell_sample
+        highest-performing cells of the repertoire and half of the time uniformly
+        from the exploit_num_cell_sample highest-performing cells among the
+        last updated cells.
 
         Args:
-            last_updated_genotypes: 5 last updated genotypes
+            last_updated_genotypes: last updated genotypes
             last_updated_fitnesses: corresponding fitnesses
             repertoire: the current repertoire
             random_key: a jax PRNG random key
@@ -262,7 +277,9 @@ class MEESEmitter(Emitter):
         ) -> Tuple[Genotype, RNGKey]:
             """Sample uniformly from the 2 highest fitness cells."""
 
-            max_fitnesses, _ = jax.lax.top_k(fitnesses, 2)
+            max_fitnesses, _ = jax.lax.top_k(
+                fitnesses, self._config.exploit_num_cell_sample
+            )
             min_fitness = jnp.nanmin(
                 jnp.where(max_fitnesses > -jnp.inf, max_fitnesses, jnp.inf)
             )
@@ -305,7 +322,7 @@ class MEESEmitter(Emitter):
         repertoire: MapElitesRepertoire,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
-        """Sample uniformly from the 5 most novel genotypes.
+        """Sample uniformly from the explore_num_cell_sample most-novel genotypes.
 
         Args:
             emitter_state: current emitter state
@@ -325,8 +342,10 @@ class MEESEmitter(Emitter):
         )
         novelties = jnp.where(repertoire.fitnesses > -jnp.inf, novelties, -jnp.inf)
 
-        # Sample uniformaly for the 5 most novel cells
-        max_novelties, _ = jax.lax.top_k(novelties, 5)
+        # Sample uniformaly for the explore_num_cell_sample most novel cells
+        max_novelties, _ = jax.lax.top_k(
+            novelties, self._config.explore_num_cell_sample
+        )
         min_novelty = jnp.nanmin(
             jnp.where(max_novelties > -jnp.inf, max_novelties, jnp.inf)
         )
@@ -369,9 +388,11 @@ class MEESEmitter(Emitter):
             The modified emitter state.
         """
 
-        assert (
-            jax.tree_util.tree_leaves(genotypes)[0].shape[0] == 1
-        ), "ERROR MAP-Elites-ES generates 1 individual per generation (batch_size=1)."
+        assert jax.tree_util.tree_leaves(genotypes)[0].shape[0] == 1, (
+            "ERROR: MAP-Elites-ES generates 1 offspring per generation, "
+            + "batch_size should be 1, the inputed batch has size:"
+            + str(jax.tree_util.tree_leaves(genotypes)[0].shape[0])
+        )
 
         ############################
         # Updating novelty archive #
@@ -413,7 +434,9 @@ class MEESEmitter(Emitter):
 
         # Update last_added buffers
         last_updated_position = jnp.where(
-            added_genotype, emitter_state.last_updated_position, 6
+            added_genotype,
+            emitter_state.last_updated_position,
+            self._config.last_updated_size + 1,
         )
         last_updated_fitnesses = emitter_state.last_updated_fitnesses
         last_updated_fitnesses = last_updated_fitnesses.at[last_updated_position].set(
@@ -428,7 +451,7 @@ class MEESEmitter(Emitter):
         )
         last_updated_position = (
             emitter_state.last_updated_position + added_genotype
-        ) % 5
+        ) % self._config.last_updated_size
 
         ########################
         # Sampling new parent #
@@ -452,7 +475,7 @@ class MEESEmitter(Emitter):
                 ),
                 (random_key),
             ),
-            lambda random_key: (emitter_state.gradient_offspring, random_key),
+            lambda random_key: (emitter_state.offspring, random_key),
             (random_key),
         )
 
@@ -602,7 +625,7 @@ class MEESEmitter(Emitter):
 
         return emitter_state.replace(  # type: ignore
             optimizer_state=optimizer_state,
-            gradient_offspring=offspring,
+            offspring=offspring,
             generation_count=generation_count,
             novelty_archive=novelty_archive,
             last_updated_genotypes=last_updated_genotypes,
