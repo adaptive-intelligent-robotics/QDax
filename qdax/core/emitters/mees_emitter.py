@@ -16,31 +16,50 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 @dataclass
 class MEESConfig:
-    """Configuration for the MAP-Elites-ES emitter."""
+    """Configuration for the MAP-Elites-ES emitter.
+    sample_number: num of samples for gradient estimate
+    sample_sigma: std to sample the samples for gradient estimate
+    sample_mirror: if True, use mirroring sampling
+    sample_rank_norm: if True, use normalisation
+    num_optimizer_steps: frequency of archive-sampling
+    adam_optimizer: if True, use ADAM, if False, use SGD
+    learning_rate
+    l2_coefficient: coefficient for regularisation
+    novelty_nearest_neighbors
+    use_explore: if False, use only fitness gradient
+    """
 
-    sample_number: int = 1000  # num of samples for gradient estimate
+    sample_number: int = 1000
     sample_sigma: float = 0.02
-    sample_mirror: bool = True  # if 1, use mirroring sampling
-    sample_rank_norm: bool = True  # if 1, use normalisation
-    num_optimizer_steps: int = 10  # frequency of archive-sampling
-    adam_optimizer: bool = True  # if 1 use ADAM, if 0 use SGD
+    sample_mirror: bool = True
+    sample_rank_norm: bool = True
+    num_optimizer_steps: int = 10
+    adam_optimizer: bool = True
     learning_rate: float = 0.01
-    learning_rate_decay: float = 1.0  # only applied when no ADAM
-    l2_coefficient: float = 0.02  # coefficient for regularisation
+    l2_coefficient: float = 0.02
     novelty_nearest_neighbors: int = 10
-    use_explore: bool = True  # if 0, use only fitness gradient
+    use_explore: bool = True
 
 
 class MEESEmitterState(EmitterState):
-    """Emitter State for the MAP-Elites-ES emitter."""
+    """Emitter State for the MAP-Elites-ES emitter.
+    initial_optimizer_state: stored to re-initialise when sampling new parent
+    optimizer_state
+    gradient_offspring: offspring generated through gradient estimate
+    generation_count: generation counter used to update the novelty archive
+    novelty_archive: used to compute novelty for explore
+    last_updated_genotypes: used to sample parents from repertoire
+    last_updated_fitnesses: used to sample parents from repertoire
+    last_updated_position: used to sample parents from repertoire
+    random_key:
+    """
 
-    learning_rate: float
-    initial_optimizer_state: optax.OptState  # only used for ADAM
-    optimizer_state: optax.OptState  # only used for ADAM
-    gradient_offspring: Genotype  # Offspring generated through gradient
-    generation_count: int  # Generation counter
-    novelty_archive: Descriptor  # Used to compute novelty for explore
-    last_updated_genotypes: Genotype  # Used to sample parents
+    initial_optimizer_state: optax.OptState
+    optimizer_state: optax.OptState
+    gradient_offspring: Genotype
+    generation_count: int
+    novelty_archive: Descriptor
+    last_updated_genotypes: Genotype
     last_updated_fitnesses: Fitness
     last_updated_position: jnp.array
     random_key: RNGKey
@@ -79,8 +98,6 @@ class MEESEmitter(Emitter):
             scoring_fn: used to evaluate the samples for the gradient estimate.
             num_descriptors: dimension of the descriptors, used to initialise
                 the empty novelty archive.
-
-        Returns: /
         """
         self._config = config
         self._scoring_fn = scoring_fn
@@ -91,7 +108,7 @@ class MEESEmitter(Emitter):
         if self._config.adam_optimizer:
             self._optimizer = optax.adam(learning_rate=config.learning_rate)
         else:
-            self._optimizer = None
+            self._optimizer = optax.sgd(learning_rate=config.learning_rate)
 
     @partial(
         jax.jit,
@@ -113,13 +130,8 @@ class MEESEmitter(Emitter):
             jax.tree_util.tree_leaves(init_genotypes)[0].shape[0] == 1
         ), "ERROR MAP-Elites-ES generates 1 individual per generation (batch_size=1)."
 
-        learning_rate = self._config.learning_rate
-
         # Initialise optimizer
-        if self._config.adam_optimizer:
-            initial_optimizer_state = self._optimizer.init(init_genotypes)
-        else:
-            initial_optimizer_state = None
+        initial_optimizer_state = self._optimizer.init(init_genotypes)
 
         # Create empty Novelty archive
         if self._config.use_explore:
@@ -138,7 +150,6 @@ class MEESEmitter(Emitter):
 
         return (
             MEESEmitterState(
-                learning_rate=learning_rate,
                 initial_optimizer_state=initial_optimizer_state,
                 optimizer_state=initial_optimizer_state,
                 gradient_offspring=init_genotypes,
@@ -210,7 +221,7 @@ class MEESEmitter(Emitter):
             distances
         )
 
-        # Find k neirest neighbours
+        # Find k nearest neighbours
         _, indices = jax.lax.top_k(-distances, self._config.novelty_nearest_neighbors)
 
         # Compute novelty as average distance with k neirest neirghbours
@@ -581,27 +592,15 @@ class MEESEmitter(Emitter):
         ######################
         # Applying gradients #
 
-        if self._config.adam_optimizer:
-            (offspring_update, optimizer_state) = self._optimizer.update(
-                gradient, optimizer_state
-            )
-            offspring = optax.apply_updates(parent, offspring_update)
-            learning_rate = self._config.learning_rate
-        else:
-            offspring = jax.tree_map(
-                lambda p, g: p - emitter_state.learning_rate * g,
-                parent,
-                gradient,
-            )
-            learning_rate = (
-                emitter_state.learning_rate * self._config.learning_rate_decay
-            )
+        (offspring_update, optimizer_state) = self._optimizer.update(
+            gradient, optimizer_state
+        )
+        offspring = optax.apply_updates(parent, offspring_update)
 
         # Increase generation counter
         generation_count += 1
 
         return emitter_state.replace(  # type: ignore
-            learning_rate=learning_rate,
             optimizer_state=optimizer_state,
             gradient_offspring=offspring,
             generation_count=generation_count,
