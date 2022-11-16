@@ -17,22 +17,24 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 @dataclass
 class MEESConfig:
     """Configuration for the MAP-Elites-ES emitter.
-    sample_number: num of samples for gradient estimate
-    sample_sigma: std to sample the samples for gradient estimate
-    sample_mirror: if True, use mirroring sampling
-    sample_rank_norm: if True, use normalisation
-    num_optimizer_steps: frequency of archive-sampling
-    adam_optimizer: if True, use ADAM, if False, use SGD
-    learning_rate
-    l2_coefficient: coefficient for regularisation
-    novelty_nearest_neighbors
-    last_updated_size: number of last updated indiv used to
-        choose parents from repertoire
-    exploit_num_cell_sample: number of highest-performing cells
-        from which to choose parents, when using exploit
-    explore_num_cell_sample: number of most-novel cells from
-        which to choose parents, when using explore
-    use_explore: if False, use only fitness gradient
+
+    Args:
+        sample_number: num of samples for gradient estimate
+        sample_sigma: std to sample the samples for gradient estimate
+        sample_mirror: if True, use mirroring sampling
+        sample_rank_norm: if True, use normalisation
+        num_optimizer_steps: frequency of archive-sampling
+        adam_optimizer: if True, use ADAM, if False, use SGD
+            learning_rate
+        l2_coefficient: coefficient for regularisation
+            novelty_nearest_neighbors
+        last_updated_size: number of last updated indiv used to
+            choose parents from repertoire
+        exploit_num_cell_sample: number of highest-performing cells
+            from which to choose parents, when using exploit
+        explore_num_cell_sample: number of most-novel cells from
+            which to choose parents, when using explore
+        use_explore: if False, use only fitness gradient
     """
 
     sample_number: int = 1000
@@ -52,15 +54,17 @@ class MEESConfig:
 
 class MEESEmitterState(EmitterState):
     """Emitter State for the MAP-Elites-ES emitter.
-    initial_optimizer_state: stored to re-initialise when sampling new parent
-    optimizer_state
-    offspring: offspring generated through gradient estimate
-    generation_count: generation counter used to update the novelty archive
-    novelty_archive: used to compute novelty for explore
-    last_updated_genotypes: used to choose parents from repertoire
-    last_updated_fitnesses: used to choose parents from repertoire
-    last_updated_position: used to choose parents from repertoire
-    random_key:
+
+    Args:
+        initial_optimizer_state: stored to re-initialise when sampling new parent
+        optimizer_state: current optimizer state
+        offspring: offspring generated through gradient estimate
+        generation_count: generation counter used to update the novelty archive
+        novelty_archive: used to compute novelty for explore
+        last_updated_genotypes: used to choose parents from repertoire
+        last_updated_fitnesses: used to choose parents from repertoire
+        last_updated_position: used to choose parents from repertoire
+        random_key: key to handle stochastic operations
     """
 
     initial_optimizer_state: optax.OptState
@@ -70,7 +74,7 @@ class MEESEmitterState(EmitterState):
     novelty_archive: Descriptor
     last_updated_genotypes: Genotype
     last_updated_fitnesses: Fitness
-    last_updated_position: jnp.array
+    last_updated_position: jnp.ndarray
     random_key: RNGKey
 
 
@@ -83,7 +87,7 @@ class MEESEmitter(Emitter):
     One can choose between the two algorithms by setting the use_explore param:
         ME-ES exploit-explore: alternates between num_optimizer_steps of fitness
             gradients and num_optimizer_steps of novelty gradients.
-        ME-ES eploit: only uses fitness gradient and no novelty gradients, resample
+        ME-ES exploit: only uses fitness gradient and no novelty gradients, resample
             parent from the archive every num_optimizer_steps steps.
     """
 
@@ -101,10 +105,10 @@ class MEESEmitter(Emitter):
         WARNING: total_generations is required to build the novelty archive.
 
         Args:
-            config
+            config: algorithm config
+            scoring_fn: used to evaluate the samples for the gradient estimate.
             total_generations: total number of generations for which the
                 emitter will run, allow to initialise the novelty archive.
-            scoring_fn: used to evaluate the samples for the gradient estimate.
             num_descriptors: dimension of the descriptors, used to initialise
                 the empty novelty archive.
         """
