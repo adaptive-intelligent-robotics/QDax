@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Tuple
 
 import flax.linen as nn
 import jax
-
+import optax
 from qdax.core.containers.archive import Archive
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.qpg_emitter import (
@@ -233,14 +233,21 @@ class DiversityPGEmitter(QualityPGEmitter):
             policy_optimizer_state,
             greedy_policy_params,
             target_greedy_policy_params,
-            random_key,
-        ) = self._update_greedy(
-            greedy_policy_params=emitter_state.greedy_policy_params,
-            greedy_policy_opt_state=emitter_state.greedy_policy_opt_state,
-            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
-            critic_params=emitter_state.critic_params,
-            transitions=transitions,
-            random_key=random_key,
+        ) = jax.lax.cond(
+            emitter_state.steps % self._config.policy_delay == 0,
+            lambda x: self._update_greedy(*x),
+            lambda _: (
+                emitter_state.greedy_policy_opt_state,
+                emitter_state.greedy_policy_params,
+                emitter_state.target_greedy_policy_params,
+            ),
+            operand=(
+                emitter_state.greedy_policy_params,
+                emitter_state.greedy_policy_opt_state,
+                emitter_state.target_greedy_policy_params,
+                emitter_state.critic_params,
+                transitions,
+            ),
         )
 
         # Create new training state
@@ -276,15 +283,29 @@ class DiversityPGEmitter(QualityPGEmitter):
             the updated params of the neural network.
         """
 
+        # Define new controller optimizer state
+        controller_optimizer_state = self._controllers_optimizer.init(controller_params)
+
         def scan_train_controller(
-            carry: Tuple[DiversityPGEmitterState, Genotype], transitions: QDTransition
-        ) -> Tuple[Tuple[DiversityPGEmitterState, Genotype], Any]:
-            emitter_state, controller_params = carry
+            carry: Tuple[DiversityPGEmitterState, Genotype, optax.OptState],
+            transitions: QDTransition,
+        ) -> Tuple[Tuple[DiversityPGEmitterState, Genotype, optax.OptState], Any]:
+            emitter_state, controller_params, controller_optimizer_state = carry
             (
                 new_emitter_state,
                 new_controller_params,
-            ) = self._train_controller(emitter_state, controller_params, transitions)
-            return (new_emitter_state, new_controller_params), ()
+                new_controller_optimizer_state,
+            ) = self._train_controller(
+                emitter_state,
+                controller_params,
+                controller_optimizer_state,
+                transitions,
+            )
+            return (
+                new_emitter_state,
+                new_controller_params,
+                new_controller_optimizer_state,
+            ), ()
 
         # sample transitions
         transitions, _random_key = emitter_state.replay_buffer.sample(
@@ -311,9 +332,13 @@ class DiversityPGEmitter(QualityPGEmitter):
             transitions,
         )
 
-        (emitter_state, controller_params), _ = jax.lax.scan(
+        (
+            emitter_state,
+            controller_params,
+            controller_optimizer_state,
+        ), _ = jax.lax.scan(
             scan_train_controller,
-            (emitter_state, controller_params),
+            (emitter_state, controller_params, controller_optimizer_state),
             (transitions),
             length=self._config.num_pg_training_steps,
         )
@@ -325,6 +350,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         self,
         emitter_state: DiversityPGEmitterState,
         controller_params: Params,
+        controller_optimizer_state: optax.OptState,
         transitions: QDTransition,
     ) -> Tuple[DiversityPGEmitterState, Params]:
         """Apply one gradient step to a policy (called controllers_params).
@@ -339,16 +365,11 @@ class DiversityPGEmitter(QualityPGEmitter):
         """
 
         # update controller
-        policy_optimizer_state, controller_params = self._update_controller(
+        controller_optimizer_state, controller_params = self._update_controller(
             critic_params=emitter_state.critic_params,
-            controllers_optimizer_state=emitter_state.controllers_optimizer_state,
+            controller_optimizer_state=controller_optimizer_state,
             controller_params=controller_params,
             transitions=transitions,
         )
 
-        # Create new training state
-        new_emitter_state = emitter_state.replace(
-            controllers_optimizer_state=policy_optimizer_state,
-        )
-
-        return new_emitter_state, controller_params
+        return emitter_state, controller_params

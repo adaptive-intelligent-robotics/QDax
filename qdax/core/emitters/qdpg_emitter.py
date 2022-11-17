@@ -1,8 +1,15 @@
+"""Implementation of an updated version of the algorithm QDPG presented in the
+paper https://arxiv.org/abs/2006.08505.
+
+QDPG has been udpated to enter in the container+emitter framework of QD. Furthermore,
+it has been updated to work better with Jax in term of time cost. Those changes have
+been made in accordance with the authors of this algorithm.
+"""
 import functools
+from dataclasses import dataclass
 from typing import Callable
 
 import flax.linen as nn
-
 from qdax.core.containers.archive import Archive
 from qdax.core.emitters.dpg_emitter import DiversityPGConfig, DiversityPGEmitter
 from qdax.core.emitters.multi_emitter import MultiEmitter
@@ -13,7 +20,8 @@ from qdax.environments.base_wrappers import QDEnv
 from qdax.types import Reward, StateDescriptor
 
 
-class QDPGConfig:
+@dataclass
+class QDPGEmitterConfig:
     qpg_config: QualityPGConfig
     dpg_config: DiversityPGConfig
     iso_sigma: float
@@ -24,7 +32,7 @@ class QDPGConfig:
 class QDPGEmitter(MultiEmitter):
     def __init__(
         self,
-        config: QDPGConfig,
+        config: QDPGEmitterConfig,
         policy_network: nn.Module,
         env: QDEnv,
         score_novelty: Callable[[Archive, StateDescriptor], Reward],

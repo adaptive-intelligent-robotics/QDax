@@ -66,6 +66,7 @@ class PGAMEEmitter(MultiEmitter):
             reward_scaling=config.reward_scaling,
             batch_size=config.batch_size,
             soft_tau_update=config.soft_tau_update,
+            policy_delay=config.policy_delay,
         )
 
         # define the quality emitter
