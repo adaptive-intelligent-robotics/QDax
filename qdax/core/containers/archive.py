@@ -190,8 +190,6 @@ class Archive(PyTreeNode):
             # get nearest neigbor for each new state descriptor
             values, _indices = knn(new_elements, state_descriptor.reshape(1, -1), 1)
 
-            print("Values: ", values)
-
             # get indices where distance bigger than threshold
             not_too_close = jnp.where(
                 values.squeeze() > self.acceptance_threshold, x=0, y=1
@@ -272,9 +270,6 @@ def knn(
         The distances and indices of the nearest neighbors.
     """
 
-    print("Data used for dist compute: ", data)
-    print("Data used for dist compute 2: ", new_data)
-
     # compute distances
     dist = (
         (new_data**2).sum(-1)[:, None]
@@ -282,16 +277,10 @@ def knn(
         - 2 * new_data @ data.T
     )
 
-    print("In knn, dist, before sqrt: ", dist)
-
     dist = jnp.nan_to_num(dist, nan=jnp.inf)
-
-    print("In knn, dist, before sqrt, nan to num filter: ", dist)
 
     # clipping necessary - numerical approx make some distancies negative
     dist = jnp.sqrt(jnp.clip(dist, a_min=0.0))
-
-    print("In knn, dist, after sqrt: ", dist)
 
     # return values, indices
     values, indices = qdax_top_k(-dist, k)
@@ -321,7 +310,6 @@ def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         value = jax.vmap(lambda x, y: x[y])(data, indice)
         data = jax.vmap(lambda x, y: x.at[y].set(-jnp.inf))(data, indice)
 
-        print("Value, indice tuple in top 1: ", (value, indice))
         return data, value, indice
 
     def scannable_top_1(
