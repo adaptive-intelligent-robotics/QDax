@@ -63,7 +63,7 @@ def test_multi_emitter() -> None:
         mutation_fn=lambda x, y: (x, y),
         variation_fn=variation_fn_2,
         variation_percentage=1.0,
-        batch_size=batch_size,
+        batch_size=batch_size * 2,
     )
 
     emitter = MultiEmitter(
