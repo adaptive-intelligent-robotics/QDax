@@ -123,9 +123,9 @@ class PointMaze(env.Env):
         """Run one timestep of the environment's dynamics."""
 
         # clip action taken
-        min_action = self._low / self._scale_action_space
-        max_action = self._high / self._scale_action_space
-        action = jp.clip(action, min_action, max_action)
+        min_action = self._low
+        max_action = self._high
+        action = jp.clip(action, min_action, max_action) / self._scale_action_space
 
         # get the current position
         x_pos_old, y_pos_old = state.obs
