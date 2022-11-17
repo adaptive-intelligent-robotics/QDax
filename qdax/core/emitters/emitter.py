@@ -106,8 +106,8 @@ class Emitter(ABC):
         """
         return emitter_state
 
-    @abstractmethod
     @property
+    @abstractmethod
     def batch_size(self) -> int:
         """
         Returns:
