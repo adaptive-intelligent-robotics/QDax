@@ -158,7 +158,7 @@ class MEESEmitter(Emitter):
             novelty_archive = jnp.zeros(1)
 
         # Create empty updated genotypes and fitness
-        last_updated_genotypes = jax.tree_map(
+        last_updated_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.zeros(shape=(self._config.last_updated_size,) + x.shape[1:]),
             init_genotypes,
         )
@@ -398,9 +398,7 @@ class MEESEmitter(Emitter):
             + str(jax.tree_util.tree_leaves(genotypes)[0].shape[0])
         )
 
-        ############################
-        # Updating novelty archive #
-
+        # Updating novelty archive
         generation_count = emitter_state.generation_count
         novelty_archive = emitter_state.novelty_archive
         if self._config.use_explore:
@@ -411,9 +409,6 @@ class MEESEmitter(Emitter):
                 axis=0,
             )
 
-        ################################
-        # Updating last updated indivs #
-
         # Get indice of last genotype
         indice = get_cells_indices(descriptors, repertoire.centroids)
 
@@ -421,7 +416,7 @@ class MEESEmitter(Emitter):
         added_genotype = jnp.all(
             jnp.asarray(
                 jax.tree_util.tree_leaves(
-                    jax.tree_map(
+                    jax.tree_util.tree_map(
                         lambda new_gen, rep_gen: jnp.all(
                             jnp.equal(
                                 jnp.ravel(new_gen), jnp.ravel(rep_gen.at[indice].get())
@@ -446,6 +441,8 @@ class MEESEmitter(Emitter):
         last_updated_fitnesses = last_updated_fitnesses.at[last_updated_position].set(
             fitnesses[0]
         )
+
+        # Update last updated indivs
         last_updated_genotypes = jax.tree_map(
             lambda last_gen, gen: last_gen.at[
                 jnp.expand_dims(last_updated_position, axis=0)
@@ -457,9 +454,7 @@ class MEESEmitter(Emitter):
             emitter_state.last_updated_position + added_genotype
         ) % self._config.last_updated_size
 
-        ########################
-        # Sampling new parent #
-
+        # Sampling new parent
         random_key = emitter_state.random_key
         generation_count = emitter_state.generation_count
 
@@ -486,34 +481,35 @@ class MEESEmitter(Emitter):
         # Select between new optimizer state and previous optimizer state
         optimizer_state = jax.lax.cond(
             generation_count % self._config.num_optimizer_steps == 0,
-            lambda unused: emitter_state.initial_optimizer_state,
-            lambda unused: emitter_state.optimizer_state,
+            lambda _unused: emitter_state.initial_optimizer_state,
+            lambda _unused: emitter_state.optimizer_state,
             (),
         )
-        random_key, subkey = jax.random.split(random_key)
 
-        ##########################################
-        # Creating samples for gradient estimate #
+        # Creating samples for gradient estimate
+        random_key, subkey = jax.random.split(random_key)
 
         # Sampling mirror noise
         total_sample_number = self._config.sample_number
         if self._config.sample_mirror:
             sample_number = total_sample_number // 2
 
-            half_sample_noise = jax.tree_map(
+            half_sample_noise = jax.tree_util.tree_map(
                 lambda x: jax.random.normal(
                     key=subkey,
                     shape=jnp.repeat(x, sample_number, axis=0).shape,
                 ),
                 parent,
             )
+
             # Splitting noise to apply it in mirror to samples
-            sample_noise = jax.tree_map(
+            sample_noise = jax.tree_util.tree_map(
                 lambda x: jnp.concatenate(
                     [jnp.expand_dims(x, axis=1), jnp.expand_dims(-x, axis=1)], axis=1
                 ).reshape(jnp.repeat(x, 2, axis=0).shape),
                 half_sample_noise,
             )
+
             # Noise used for gradient computation
             gradient_noise = half_sample_noise
 
@@ -544,15 +540,12 @@ class MEESEmitter(Emitter):
             sample_noise,
         )
 
-        ######################
-        # Evaluating samples #
-
+        # Evaluating samples
         fitnesses, descriptors, extra_scores, random_key = self._scoring_fn(
             samples, random_key
         )
 
-        #######################
-        # Computing gradients #
+        # Computing gradients
 
         # Choosing the score to use for rank
         scores = jax.lax.cond(
@@ -616,9 +609,7 @@ class MEESEmitter(Emitter):
             parent,
         )
 
-        ######################
-        # Applying gradients #
-
+        # Applying gradients
         (offspring_update, optimizer_state) = self._optimizer.update(
             gradient, optimizer_state
         )
