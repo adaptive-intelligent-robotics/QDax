@@ -1,4 +1,4 @@
-"""Test default rastrigin using MAP Elites"""
+"""Test of Multiple Emitters"""
 
 import functools
 
