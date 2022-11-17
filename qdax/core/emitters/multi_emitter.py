@@ -13,6 +13,9 @@ class MultiEmitterState(EmitterState):
     """State of an emitter than use multiple emitters in a parallel manner.
 
     WARNING: this is not the emitter state of Multi-Emitter MAP-Elites.
+
+    Args:
+        emitter_states: a tuple of emitter states
     """
 
     emitter_states: Tuple[EmitterState, ...]
