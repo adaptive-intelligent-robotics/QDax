@@ -38,7 +38,6 @@ class DiversityPGConfig(QualityPGConfig):
     # Archive params
     archive_acceptance_threshold: float = 0.1
     archive_max_size: int = 10000
-    fake_border: float = 1000000
 
 
 class DiversityPGEmitterState(QualityPGEmitterState):
@@ -100,7 +99,6 @@ class DiversityPGEmitter(QualityPGEmitter):
             acceptance_threshold=self._config.archive_acceptance_threshold,
             state_descriptor_size=self._env.state_descriptor_length,
             max_size=self._config.archive_max_size,
-            fake_border=self._config.fake_border,
         )
 
         # init emitter state
@@ -155,7 +153,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         archive = emitter_state.archive.insert(transitions.state_desc)
 
         def scan_train_critics(
-            carry: DiversityPGEmitterState, tranitions: QDTransition
+            carry: DiversityPGEmitterState, transitions: QDTransition
         ) -> Tuple[DiversityPGEmitterState, Any]:
             emitter_state = carry
             new_emitter_state = self._train_critics(emitter_state, transitions)

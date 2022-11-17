@@ -37,10 +37,10 @@ class Archive(PyTreeNode):
             Size of the archive.
         """
         # remove fake borders
-        real_data = jnp.isnan(self.data)
+        fake_data = jnp.isnan(self.data)
 
         # count number of real data
-        return sum(~real_data)
+        return sum(~fake_data)
 
     @classmethod
     def create(
