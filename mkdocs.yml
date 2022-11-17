@@ -140,6 +140,6 @@ nav:
         - SPEA2: api_documentation/core/spea2.md
       - Containers: api_documentation/core/containers.md
       - Emitters: api_documentation/core/emitters.md
-      - Neuroevolution: api_documentation/core/neuroevolution.md
+#      - Neuroevolution: api_documentation/core/neuroevolution.md
     - Environments: api_documentation/environments.md
     - Utils: api_documentation/utils.md
