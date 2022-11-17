@@ -10,18 +10,8 @@ from qdax.core.emitters.multi_emitter import MultiEmitter
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.tasks.standard_functions import (
-    rastrigin_proj_scoring_function,
-    rastrigin_scoring_function,
-    sphere_scoring_function,
-)
+from qdax.tasks.standard_functions import rastrigin_scoring_function
 from qdax.utils.metrics import default_qd_metrics
-
-scoring_functions = {
-    "rastrigin": functools.partial(rastrigin_scoring_function),
-    "sphere": functools.partial(sphere_scoring_function),
-    "rastrigin_proj": functools.partial(rastrigin_proj_scoring_function),
-}
 
 
 def test_multi_emitter() -> None:
