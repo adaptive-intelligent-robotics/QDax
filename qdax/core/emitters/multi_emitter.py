@@ -30,6 +30,16 @@ class MultiEmitter(Emitter):
     def init(
         self, init_genotypes: Optional[Genotype], random_key: RNGKey
     ) -> Tuple[Optional[EmitterState], RNGKey]:
+        """
+        Initialize the state of the emitter.
+
+        Args:
+            init_genotypes: The genotypes of the initial population.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            The initial emitter state and a random key.
+        """
 
         # prepare keys for each emitter
         random_key, subkey = jax.random.split(random_key)
