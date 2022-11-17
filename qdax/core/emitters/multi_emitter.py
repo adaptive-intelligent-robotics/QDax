@@ -27,7 +27,10 @@ class MultiEmitter(Emitter):
     WARNING: this is not the emitter of Multi-Emitter MAP-Elites.
     """
 
-    def __init__(self, emitters: Tuple[Emitter, ...]):
+    def __init__(
+        self,
+        emitters: Tuple[Emitter, ...],
+    ):
         self.emitters = emitters
 
     def init(
@@ -89,12 +92,15 @@ class MultiEmitter(Emitter):
             subkeys,
         ):
             genotype, _ = emitter.emit(repertoire, sub_emitter_state, subkey_emitter)
+            batch_size = jax.tree_util.tree_leaves(genotype)[0].shape[0]
+            assert batch_size == emitter.batch_size
             all_offsprings.append(genotype)
 
         # concatenate offsprings together
         offsprings = jax.tree_util.tree_map(
             lambda *x: jnp.concatenate(x, axis=0), *all_offsprings
         )
+
         return offsprings, random_key
 
     @partial(jax.jit, static_argnames=("self",))
@@ -123,21 +129,46 @@ class MultiEmitter(Emitter):
         if emitter_state is None:
             return None
 
+        # update all the sub emitter states
         emitter_states = []
 
-        # update all the sub emitter states
+        index_start = 0
         for emitter, sub_emitter_state in zip(
-            self.emitters, emitter_state.emitter_states
+            self.emitters,
+            emitter_state.emitter_states,
         ):
+            index_end = index_start + emitter.batch_size
+            sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree_util.tree_map(
+                lambda x, _index_start=index_start, _index_end=index_end: x[
+                    _index_start:_index_end
+                ],
+                (
+                    genotypes,
+                    fitnesses,
+                    descriptors,
+                    extra_scores,
+                ),
+            )
+            index_start = index_end
             new_sub_emitter_state = emitter.state_update(
                 sub_emitter_state,
                 repertoire,
-                genotypes,
-                fitnesses,
-                descriptors,
-                extra_scores,
+                sub_gen,
+                sub_fit,
+                sub_desc,
+                sub_extra_scores,
             )
             emitter_states.append(new_sub_emitter_state)
 
+        assert index_start == self.batch_size
+
         # return the update global emitter state
         return MultiEmitterState(tuple(emitter_states))
+
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return sum(emitter.batch_size for emitter in self.emitters)
