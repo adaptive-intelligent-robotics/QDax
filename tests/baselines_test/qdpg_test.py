@@ -4,6 +4,7 @@ from typing import Any, Dict, Tuple
 import jax
 import jax.numpy as jnp
 import pytest
+
 from qdax import environments
 from qdax.core.containers.archive import score_euclidean_novelty
 from qdax.core.containers.mapelites_repertoire import (
@@ -11,7 +12,6 @@ from qdax.core.containers.mapelites_repertoire import (
     compute_cvt_centroids,
 )
 from qdax.core.emitters.dpg_emitter import DiversityPGConfig
-from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.qdpg_emitter import QDPGEmitter, QDPGEmitterConfig
 from qdax.core.emitters.qpg_emitter import QualityPGConfig
 from qdax.core.map_elites import MAPElites
@@ -56,8 +56,8 @@ def test_qdpg() -> None:
     policy_delay = 2
 
     # archive
-    archive_acceptance_threshold: float = 0.1
-    archive_max_size: int = 10000
+    archive_acceptance_threshold = 0.1
+    archive_max_size = 10000
 
     iso_sigma = 0.05
     line_sigma = 0.1
@@ -129,9 +129,9 @@ def test_qdpg() -> None:
 
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    # Define the PG-emitter config
+    # Define the Quality PG emitter config
     qpg_emitter_config = QualityPGConfig(
-        env_batch_size=env_batch_size,
+        env_batch_size=quality_pg_batch_size,
         batch_size=transitions_batch_size,
         critic_hidden_layer_size=critic_hidden_layer_size,
         critic_learning_rate=critic_learning_rate,
@@ -148,8 +148,9 @@ def test_qdpg() -> None:
         policy_delay=policy_delay,
     )
 
+    # Define the Diversity PG emitter config
     dpg_emitter_config = DiversityPGConfig(
-        env_batch_size=env_batch_size,
+        env_batch_size=diversity_pg_batch_size,
         batch_size=transitions_batch_size,
         critic_hidden_layer_size=critic_hidden_layer_size,
         critic_learning_rate=critic_learning_rate,
@@ -168,6 +169,7 @@ def test_qdpg() -> None:
         archive_max_size=archive_max_size,
     )
 
+    # Define the QDPG Emitter config
     qdpg_emitter_config = QDPGEmitterConfig(
         qpg_config=qpg_emitter_config,
         dpg_config=dpg_emitter_config,
@@ -184,6 +186,7 @@ def test_qdpg() -> None:
         )
     )
 
+    # define the QDPG emitter
     qdpg_emitter = QDPGEmitter(
         config=qdpg_emitter_config,
         policy_network=policy_network,

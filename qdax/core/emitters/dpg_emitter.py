@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional, Tuple
 import flax.linen as nn
 import jax
 import optax
+
 from qdax.core.containers.archive import Archive
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.qpg_emitter import (
@@ -352,7 +353,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         controller_params: Params,
         controller_optimizer_state: optax.OptState,
         transitions: QDTransition,
-    ) -> Tuple[DiversityPGEmitterState, Params]:
+    ) -> Tuple[DiversityPGEmitterState, Params, optax.OptState]:
         """Apply one gradient step to a policy (called controllers_params).
 
         Args:
@@ -372,4 +373,4 @@ class DiversityPGEmitter(QualityPGEmitter):
             transitions=transitions,
         )
 
-        return emitter_state, controller_params
+        return emitter_state, controller_params, controller_optimizer_state
