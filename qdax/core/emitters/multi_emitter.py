@@ -2,6 +2,8 @@ from functools import partial
 from typing import Optional, Tuple
 
 import jax
+import numpy as np
+from chex import ArrayTree
 from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
@@ -32,6 +34,26 @@ class MultiEmitter(Emitter):
         emitters: Tuple[Emitter, ...],
     ):
         self.emitters = emitters
+        indexes_separation_batches = self.get_indexes_separation_batches(emitters)
+        self.indexes_start_batches = indexes_separation_batches[:-1]
+        self.indexes_end_batches = indexes_separation_batches[1:]
+
+    @staticmethod
+    def get_indexes_separation_batches(
+        emitters: Tuple[Emitter, ...]
+    ) -> Tuple[int, ...]:
+        """Get the indexes of the separation between batches of each emitter.
+
+        Args:
+            emitters: the emitters
+
+        Returns:
+            a tuple of tuples of indexes
+        """
+        indexes_separation_batches = np.cumsum(
+            [0] + [emitter.batch_size for emitter in emitters]
+        )
+        return tuple(indexes_separation_batches)
 
     def init(
         self, init_genotypes: Optional[Genotype], random_key: RNGKey
@@ -132,16 +154,17 @@ class MultiEmitter(Emitter):
         # update all the sub emitter states
         emitter_states = []
 
-        index_start = 0
-        for emitter, sub_emitter_state in zip(
+        def _get_sub_pytree(pytree: ArrayTree, start: int, end: int) -> ArrayTree:
+            return jax.tree_util.tree_map(lambda x: x[start:end], pytree)
+
+        for emitter, sub_emitter_state, index_start, index_end in zip(
             self.emitters,
             emitter_state.emitter_states,
+            self.indexes_start_batches,
+            self.indexes_end_batches,
         ):
-            index_end = index_start + emitter.batch_size
             sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree_util.tree_map(
-                lambda x, _index_start=index_start, _index_end=index_end: x[
-                    _index_start:_index_end
-                ],
+                partial(_get_sub_pytree, start=index_start, end=index_end),
                 (
                     genotypes,
                     fitnesses,
@@ -149,7 +172,6 @@ class MultiEmitter(Emitter):
                     extra_scores,
                 ),
             )
-            index_start = index_end
             new_sub_emitter_state = emitter.state_update(
                 sub_emitter_state,
                 repertoire,
@@ -159,8 +181,6 @@ class MultiEmitter(Emitter):
                 sub_extra_scores,
             )
             emitter_states.append(new_sub_emitter_state)
-
-        assert index_start == self.batch_size
 
         # return the update global emitter state
         return MultiEmitterState(tuple(emitter_states))
