@@ -28,7 +28,7 @@ class NoveltyArchive(flax.struct.PyTreeNode):
 
     archive: jnp.ndarray
     size: int = flax.struct.field(pytree_node=False)
-    position: int = flax.struct.field(pytree_node=False)
+    position: jnp.ndarray = flax.struct.field()
 
     @classmethod
     def init(
@@ -37,7 +37,7 @@ class NoveltyArchive(flax.struct.PyTreeNode):
         num_descriptors: int,
     ) -> NoveltyArchive:
         archive = jnp.zeros((size, num_descriptors))
-        return cls(archive=archive, size=size, position=0)
+        return cls(archive=archive, size=size, position=jnp.array(0, dtype=int))
 
     @jax.jit
     def update(
