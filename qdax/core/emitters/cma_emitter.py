@@ -243,18 +243,28 @@ class CMAEmitter(Emitter):
             with the whole batch of individuals rather than keeping only the one
             than were added to the archive.
 
-            Interestingly, keeping the best half was doing better. We think that
+            Interestingly, keeping the best half was not doing better. We think that
             this might be due to the small batch size used.
 
             This applies for the setting from the paper CMA-ME. Those facts might
             not be true with other problems and hyperparameters.
+
+            To replicate the code described in the paper, replace:
+            `mask = jnp.ones_like(sorted_improvements)`
+
+            by:
+            ```
+            mask = sorted_improvements >= 0
+            mask = mask + 1e-6
+            ```
+
+            RMQ: the addition of 1e-6 is here to fix a numerical
+            instability.
             """
 
             (cmaes_state, emitter_state, repertoire, emit_count, random_key) = operand
 
             # Update CMA Parameters
-            # mask = sorted_improvements >= 0
-            # mask = mask + 1e-6
             mask = jnp.ones_like(sorted_improvements)
 
             cmaes_state = self._cmaes.update_state_with_mask(

@@ -20,7 +20,7 @@ class CMAOptimizingEmitter(CMAEmitter):
         extra_scores: Optional[ExtraScores],
         improvements: jnp.ndarray,
     ) -> jnp.ndarray:
-        """Defines how the genotypes should be sorted. Imapcts the update
+        """Defines how the genotypes should be sorted. Impacts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
         used (optimizing, random direction or improvement).
 
