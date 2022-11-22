@@ -11,6 +11,7 @@ from qdax.core.containers.mapelites_repertoire import (
     compute_euclidean_centroids,
 )
 from qdax.core.emitters.cma_emitter import CMAEmitter
+from qdax.core.emitters.cma_improvement_emitter import CMAImprovementEmitter
 from qdax.core.emitters.cma_opt_emitter import CMAOptimizingEmitter
 from qdax.core.emitters.cma_pool_emitter import CMAPoolEmitter
 from qdax.core.emitters.cma_rnd_emitter import CMARndEmitter
@@ -20,7 +21,7 @@ from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
 
 @pytest.mark.parametrize(
     "emitter_type",
-    [CMAOptimizingEmitter, CMARndEmitter, CMAEmitter],
+    [CMAOptimizingEmitter, CMARndEmitter, CMAImprovementEmitter],
 )
 def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
 
