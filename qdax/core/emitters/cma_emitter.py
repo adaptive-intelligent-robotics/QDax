@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from functools import partial
 from typing import Optional, Tuple
 
@@ -35,7 +36,7 @@ class CMAEmitterState(EmitterState):
     emit_count: int
 
 
-class CMAEmitter(Emitter):
+class CMAEmitter(Emitter, ABC):
     def __init__(
         self,
         batch_size: int,
@@ -336,6 +337,7 @@ class CMAEmitter(Emitter):
 
         return emitter_state, random_key
 
+    @abstractmethod
     def _ranking_criteria(
         self,
         emitter_state: CMAEmitterState,
@@ -368,17 +370,4 @@ class CMAEmitter(Emitter):
             given on offset to be ranked in front of other genotypes.
         """
 
-        # condition for being a new cell
-        condition = improvements == jnp.inf
-
-        # criteria: fitness if new cell, improvement else
-        ranking_criteria = jnp.where(condition, x=fitnesses, y=improvements)
-
-        # make sure to have all the new cells first
-        new_cell_offset = jnp.max(ranking_criteria) - jnp.min(ranking_criteria)
-
-        ranking_criteria = jnp.where(
-            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
-        )
-
-        return ranking_criteria  # type: ignore
+        pass
