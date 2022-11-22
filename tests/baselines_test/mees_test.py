@@ -41,6 +41,7 @@ def test_mees_elites() -> None:
     sample_mirror = True  # @param {type:"boolean"}
     sample_rank_norm = True  # @param {type:"boolean"}
     use_explore = True  # @param {type:"boolean"}
+    use_exploit = True  # @param {type:"boolean"}
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
@@ -144,6 +145,7 @@ def test_mees_elites() -> None:
         l2_coefficient=l2_coefficient,
         novelty_nearest_neighbors=novelty_nearest_neighbors,
         use_explore=use_explore,
+        use_exploit=use_exploit,
     )
 
     # Get the emitter

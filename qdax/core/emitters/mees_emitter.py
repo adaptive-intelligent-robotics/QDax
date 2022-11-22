@@ -121,6 +121,7 @@ class MEESConfig:
         explore_num_cell_sample: number of most-novel cells from
             which to choose parents, when using explore
         use_explore: if False, use only fitness gradient
+        use_exploit: if False, use only novelty gradient
     """
 
     sample_number: int = 1000
@@ -136,6 +137,7 @@ class MEESConfig:
     exploit_num_cell_sample: int = 2
     explore_num_cell_sample: int = 5
     use_explore: bool = True
+    use_exploit: bool = True
 
 
 class MEESEmitterState(EmitterState):
@@ -166,15 +168,21 @@ class MEESEmitterState(EmitterState):
 
 class MEESEmitter(Emitter):
     """
-    Emitter reproducing the MAP-Elites-ES exploit-explore and MAP-Elites-ES exploit
-    algorithms from "Scaling MAP-Elites to Deep Neuroevolution" by Colas et al:
+    Emitter reproducing the MAP-Elites-ES algorithm from
+    "Scaling MAP-Elites to Deep Neuroevolution" by Colas et al:
     https://dl.acm.org/doi/pdf/10.1145/3377930.3390217
 
-    One can choose between the two algorithms by setting the use_explore param:
-        ME-ES exploit-explore: alternates between num_optimizer_steps of fitness
-            gradients and num_optimizer_steps of novelty gradients.
-        ME-ES exploit: only uses fitness gradient and no novelty gradients, resample
-            parent from the archive every num_optimizer_steps steps.
+    One can choose between the three variants by setting use_explore and use_exploit:
+        ME-ES exploit-explore: use_exploit=True and use_explore=True
+            Alternates between num_optimizer_steps of fitness gradients and
+            num_optimizer_steps of novelty gradients, resample parent from the archive
+            every num_optimizer_steps steps.
+        ME-ES exploit: use_exploit=True and use_explore=False
+            Only uses fitness gradient, no novelty gradients, but resample parent from
+            the archive every num_optimizer_steps steps.
+        ME-ES explore: use_exploit=False and use_explore=True
+            Only uses novelty gradient, no fitness gradients, but resample parent from
+            the archive every num_optimizer_steps steps.
     """
 
     def __init__(
@@ -660,8 +668,11 @@ class MEESEmitter(Emitter):
         generation_count = emitter_state.generation_count
         sample_new_parent = generation_count % self._config.num_optimizer_steps == 0
         use_exploration = (
+            self._config.use_explore and not self._config.use_exploit
+        ) or (
             self._config.use_explore
-            and (generation_count // self._config.num_optimizer_steps) % 2 == 0
+            and self._config.use_exploit
+            and ((generation_count // self._config.num_optimizer_steps) % 2 == 0)
         )
 
         # Select parent and optimizer_state
