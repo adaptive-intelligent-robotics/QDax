@@ -1,22 +1,31 @@
 from __future__ import annotations
 
-from functools import partial
-from typing import Optional, Tuple
+from typing import Optional
 
-import jax
 import jax.numpy as jnp
 
-from qdax.core.cmaes import CMAES, CMAESState
-from qdax.core.containers.mapelites_repertoire import (
-    MapElitesRepertoire,
-    get_cells_indices,
-)
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
-from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.types import Descriptor, ExtraScores, Fitness, Genotype
 
 
 class CMAImprovementEmitter(CMAEmitter):
+    """Class for the emitter of CMA ME from "Covariance Matrix Adaptation
+    for the Rapid Illumination of Behavior Space" by Fontaine et al.
+
+    This class implements the improvement emitter, where the update of the
+    distribution is biased towards solution that improve the QD score.
+
+    Args:
+        batch_size: number of solutions sampled at each iteration
+        genotype_dim: dimension of the genotype space.
+        centroids: centroids used for the repertoire.
+        sigma_g: standard deviation for the coefficients - called step size.
+        min_count: minimum number of CMAES opt step before being considered for
+            reinitialisation.
+        max_count: maximum number of CMAES opt step authorized.
+    """
+
     def _ranking_criteria(
         self,
         emitter_state: CMAEmitterState,
