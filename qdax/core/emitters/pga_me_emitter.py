@@ -39,6 +39,7 @@ class PGAMEConfig:
     reward_scaling: float = 1.0
     batch_size: int = 256
     soft_tau_update: float = 0.005
+    policy_delay: int = 2
 
 
 class PGAMEEmitterState(EmitterState):
@@ -48,7 +49,6 @@ class PGAMEEmitterState(EmitterState):
     critic_optimizer_state: optax.OptState
     greedy_policy_params: Params
     greedy_policy_opt_state: optax.OptState
-    controllers_optimizer_state: optax.OptState
     target_critic_params: Params
     target_greedy_policy_params: Params
     replay_buffer: ReplayBuffer
@@ -137,9 +137,6 @@ class PGAMEEmitter(Emitter):
         greedy_optimizer_state = self._greedy_policy_optimizer.init(
             greedy_policy_params
         )
-        controllers_optimizer_state = self._controllers_optimizer.init(
-            greedy_policy_params
-        )
 
         # Initialize replay buffer
         dummy_transition = QDTransition.init_dummy(
@@ -159,7 +156,6 @@ class PGAMEEmitter(Emitter):
             critic_optimizer_state=critic_optimizer_state,
             greedy_policy_params=greedy_policy_params,
             greedy_policy_opt_state=greedy_optimizer_state,
-            controllers_optimizer_state=controllers_optimizer_state,
             target_critic_params=target_critic_params,
             target_greedy_policy_params=target_greedy_policy_params,
             random_key=subkey,
@@ -324,39 +320,55 @@ class PGAMEEmitter(Emitter):
             critic_params,
         )
 
-        # Update greedy policy
-        random_key, subkey = jax.random.split(random_key)
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            emitter_state.greedy_policy_params,
-            emitter_state.critic_params,
-            samples,
-        )
-        (
-            policy_updates,
-            policy_optimizer_state,
-        ) = self._greedy_policy_optimizer.update(
-            policy_gradient, emitter_state.greedy_policy_opt_state
-        )
-        greedy_policy_params = optax.apply_updates(
-            emitter_state.greedy_policy_params, policy_updates
-        )
-        # Soft update of target greedy policy
-        target_greedy_policy_params = jax.tree_util.tree_map(
-            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
-            + self._config.soft_tau_update * x2,
-            emitter_state.target_greedy_policy_params,
-            greedy_policy_params,
+        def update_policy_step(emitter_state: PGAMEEmitterState) -> PGAMEEmitterState:
+
+            # Update greedy policy
+            policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+                emitter_state.greedy_policy_params,
+                emitter_state.critic_params,
+                samples,
+            )
+            (
+                policy_updates,
+                policy_optimizer_state,
+            ) = self._greedy_policy_optimizer.update(
+                policy_gradient, emitter_state.greedy_policy_opt_state
+            )
+            greedy_policy_params = optax.apply_updates(
+                emitter_state.greedy_policy_params, policy_updates
+            )
+            # Soft update of target greedy policy
+            target_greedy_policy_params = jax.tree_map(
+                lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
+                + self._config.soft_tau_update * x2,
+                emitter_state.target_greedy_policy_params,
+                greedy_policy_params,
+            )
+
+            emitter_state = emitter_state.replace(
+                greedy_policy_params=greedy_policy_params,
+                greedy_policy_opt_state=policy_optimizer_state,
+                target_greedy_policy_params=target_greedy_policy_params,
+            )
+
+            return emitter_state  # type: ignore
+
+        # Delayed policy update - just use the emitter state
+        emitter_state = jax.lax.cond(
+            emitter_state.steps % self._config.policy_delay == 0,
+            update_policy_step,
+            lambda e_state: e_state,
+            operand=emitter_state,
         )
 
         # Create new training state
         new_state = PGAMEEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
-            greedy_policy_params=greedy_policy_params,
-            greedy_policy_opt_state=policy_optimizer_state,
-            controllers_optimizer_state=emitter_state.controllers_optimizer_state,
+            greedy_policy_params=emitter_state.greedy_policy_params,
+            greedy_policy_opt_state=emitter_state.greedy_policy_opt_state,
             target_critic_params=target_critic_params,
-            target_greedy_policy_params=target_greedy_policy_params,
+            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
             random_key=random_key,
             steps=emitter_state.steps + 1,
             replay_buffer=replay_buffer,
@@ -382,19 +394,35 @@ class PGAMEEmitter(Emitter):
             the updated params of the neural network.
         """
 
+        # Define new controller optimizer state
+        controller_optimizer_state = self._controllers_optimizer.init(controller_params)
+
         def scan_train_controller(
-            carry: Tuple[PGAMEEmitterState, Genotype], unused: Any
-        ) -> Tuple[Tuple[PGAMEEmitterState, Genotype], Any]:
-            emitter_state, controller_params = carry
+            carry: Tuple[PGAMEEmitterState, Genotype, optax.OptState], unused: Any
+        ) -> Tuple[Tuple[PGAMEEmitterState, Genotype, optax.OptState], Any]:
+            emitter_state, controller_params, controller_optimizer_state = carry
             (
                 new_emitter_state,
                 new_controller_params,
-            ) = self._train_controller(emitter_state, controller_params)
-            return (new_emitter_state, new_controller_params), ()
+                new_controller_optimizer_state,
+            ) = self._train_controller(
+                emitter_state,
+                controller_params,
+                controller_optimizer_state,
+            )
+            return (
+                new_emitter_state,
+                new_controller_params,
+                new_controller_optimizer_state,
+            ), ()
 
-        (emitter_state, controller_params), _ = jax.lax.scan(
+        (
+            emitter_state,
+            controller_params,
+            controller_optimizer_state,
+        ), _ = jax.lax.scan(
             scan_train_controller,
-            (emitter_state, controller_params),
+            (emitter_state, controller_params, controller_optimizer_state),
             (),
             length=self._config.num_pg_training_steps,
         )
@@ -406,7 +434,8 @@ class PGAMEEmitter(Emitter):
         self,
         emitter_state: PGAMEEmitterState,
         controller_params: Params,
-    ) -> Tuple[PGAMEEmitterState, Params]:
+        controller_optimizer_state: optax.OptState,
+    ) -> Tuple[PGAMEEmitterState, Params, optax.OptState]:
         """Apply one gradient step to a policy (called controllers_params).
 
         Args:
@@ -430,8 +459,11 @@ class PGAMEEmitter(Emitter):
             samples,
         )
         # Compute gradient and update policies
-        (policy_updates, policy_optimizer_state,) = self._controllers_optimizer.update(
-            policy_gradient, emitter_state.controllers_optimizer_state
+        (
+            policy_updates,
+            controller_optimizer_state,
+        ) = self._controllers_optimizer.update(
+            policy_gradient, controller_optimizer_state
         )
         controller_params = optax.apply_updates(controller_params, policy_updates)
 
@@ -441,7 +473,6 @@ class PGAMEEmitter(Emitter):
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             greedy_policy_params=emitter_state.greedy_policy_params,
             greedy_policy_opt_state=emitter_state.greedy_policy_opt_state,
-            controllers_optimizer_state=policy_optimizer_state,
             target_critic_params=emitter_state.target_critic_params,
             target_greedy_policy_params=emitter_state.target_greedy_policy_params,
             random_key=random_key,
@@ -449,4 +480,4 @@ class PGAMEEmitter(Emitter):
             replay_buffer=replay_buffer,
         )
 
-        return new_emitter_state, controller_params
+        return new_emitter_state, controller_params, controller_optimizer_state

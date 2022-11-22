@@ -27,7 +27,6 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-
   features:
     - navigation.tracking
     - navigation.tabs
@@ -109,6 +108,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Overview: overview.md
+  - Caveats: caveats.md
   - Guides:
     - Contributing: guides/CONTRIBUTING.md
   - Examples:
