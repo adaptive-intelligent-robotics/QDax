@@ -244,7 +244,7 @@ def create_brax_scoring_fn(
             evaluation episodes. If None, we use create_policy_network_play_step_fn
             to generate it.
         episode_length: The maximal episode length.
-        deterministic: Whether we reset the initial state of the robot to the same 
+        deterministic: Whether we reset the initial state of the robot to the same
             deterministic init_state or if we use the reset() function of the env.
         play_reset_fn: the function used to reset the environment to an initial state.
             Only used if deterministic is False. If None, we take env.reset as
@@ -267,6 +267,7 @@ def create_brax_scoring_fn(
         # Define the function to deterministically reset the environment
         def deterministic_reset(key: RNGKey, init_state: EnvState) -> EnvState:
             return init_state
+
         play_reset_fn = partial(deterministic_reset, init_state=init_state)
 
     # Stochastic case
@@ -304,7 +305,7 @@ def create_default_brax_task_components(
         random_key: Jax random key
         episode_length: The maximal rollout length.
         mlp_policy_hidden_layer_sizes: Hidden layer sizes of the policy network.
-        deterministic: Whether we reset the initial state of the robot to the same 
+        deterministic: Whether we reset the initial state of the robot to the same
             deterministic init_state or if we use the reset() function of the env.
 
     Returns:
