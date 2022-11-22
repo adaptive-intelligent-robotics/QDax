@@ -1,6 +1,6 @@
 absl-py==1.0.0
 brax==0.0.15
-chex==0.1.4
+chex==0.1.5
 dm-haiku==0.0.5
 flax==0.6.0
 gym==0.23.1
