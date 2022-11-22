@@ -4,6 +4,6 @@ mkdocs==1.2.3
 mkdocs-autorefs==0.3.1
 mkdocs-git-revision-date-plugin==0.3.1
 mkdocs-material==8.2.3
-mkdocstrings==0.18.1
+mkdocstrings==0.19
 mknotebooks==0.7.1
 pytkdocs==0.16.1
