@@ -187,7 +187,6 @@ class MEESEmitter(Emitter):
         num_descriptors: int,
     ) -> None:
         """Initialise the MAP-Elites-ES emitter.
-
         WARNING: total_generations is required to build the novelty archive.
 
         Args:
@@ -299,8 +298,7 @@ class MEESEmitter(Emitter):
     )
     def _sample_exploit(
         self,
-        last_updated_genotypes: Genotype,
-        last_updated_fitnesses: Fitness,
+        emitter_state: MEESEmitterState,
         repertoire: MapElitesRepertoire,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
@@ -310,8 +308,7 @@ class MEESEmitter(Emitter):
         last updated cells.
 
         Args:
-            last_updated_genotypes: last updated genotypes
-            last_updated_fitnesses: corresponding fitnesses
+            emitter_state: current emitter_state
             repertoire: the current repertoire
             random_key: a jax PRNG random key
 
@@ -321,9 +318,9 @@ class MEESEmitter(Emitter):
         """
 
         def _sample(
+            random_key: RNGKey,
             genotypes: Genotype,
             fitnesses: Fitness,
-            random_key: RNGKey,
         ) -> Tuple[Genotype, RNGKey]:
             """Sample uniformly from the 2 highest fitness cells."""
 
@@ -348,15 +345,19 @@ class MEESEmitter(Emitter):
         p = jax.random.uniform(subkey)
 
         # Depending on the value of p, use one of the two sampling options
+        repertoire_sample = partial(
+            _sample, genotypes=repertoire.genotypes, fitnesses=repertoire.fitnesses
+        )
+        last_updated_sample = partial(
+            _sample,
+            genotypes=emitter_state.last_updated_genotypes,
+            fitnesses=emitter_state.last_updated_fitnesses,
+        )
         samples, random_key = jax.lax.cond(
             p < 0.5,
-            lambda random_key: _sample(
-                repertoire.genotypes, repertoire.fitnesses, random_key
-            ),
-            lambda random_key: _sample(
-                last_updated_genotypes, last_updated_fitnesses, random_key
-            ),
-            (random_key),
+            repertoire_sample,
+            last_updated_sample,
+            random_key,
         )
 
         return samples, random_key
@@ -367,8 +368,7 @@ class MEESEmitter(Emitter):
     )
     def _sample_explore(
         self,
-        generation_count: int,
-        novelty_archive: NoveltyArchive,
+        emitter_state: MEESEmitterState,
         repertoire: MapElitesRepertoire,
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
@@ -385,7 +385,7 @@ class MEESEmitter(Emitter):
         """
 
         # Compute the novelty of all indivs in the archive
-        novelties = novelty_archive.novelty(
+        novelties = emitter_state.novelty_archive.novelty(
             repertoire.descriptors, self._config.novelty_nearest_neighbors
         )
         novelties = jnp.where(repertoire.fitnesses > -jnp.inf, novelties, -jnp.inf)
@@ -409,128 +409,36 @@ class MEESEmitter(Emitter):
 
     @partial(
         jax.jit,
-        static_argnames=("self",),
+        static_argnames=("self", "scores_fn"),
     )
-    def state_update(
+    def _es_emitter(
         self,
-        emitter_state: MEESEmitterState,
-        repertoire: MapElitesRepertoire,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
-        extra_scores: ExtraScores,
-    ) -> MEESEmitterState:
-        """Generate the gradient offspring for the next emitter call. Also
-        update the novelty archive and generation count from current call.
+        parent: Genotype,
+        optimizer_state: optax.OptState,
+        random_key: RNGKey,
+        scores_fn: Callable[[Fitness, Descriptor], jnp.ndarray],
+    ) -> Tuple[Genotype, optax.OptState, RNGKey]:
+        """Main es component, given a parent and a way to infer the score from
+        the fitnesses and descriptors fo its es-samples, return its
+        approximated-gradient-generated offspring.
 
         Args:
-            emitter_state: current emitter state
-            repertoire: the current genotypes repertoire
-            genotypes: the genotypes of the batch of emitted offspring.
-            fitnesses: the fitnesses of the batch of emitted offspring.
-            descriptors: the descriptors of the emitted offspring.
-            extra_scores: a dictionary with other values outputted by the
-                scoring function.
+            parent: the considered parent.
+            scores_fn: a function to infer the score of its es-samples from
+                their fitness and descriptors.
+            random_key
 
         Returns:
-            The modified emitter state.
+            The approximated-gradients-generated offspring and a new random_key.
         """
 
-        assert jax.tree_util.tree_leaves(genotypes)[0].shape[0] == 1, (
-            "ERROR: MAP-Elites-ES generates 1 offspring per generation, "
-            + "batch_size should be 1, the inputed batch has size:"
-            + str(jax.tree_util.tree_leaves(genotypes)[0].shape[0])
-        )
-
-        # Updating novelty archive
-        generation_count = emitter_state.generation_count
-        novelty_archive = emitter_state.novelty_archive.update(descriptors)
-
-        # Get indice of last genotype
-        indice = get_cells_indices(descriptors, repertoire.centroids)
-
-        # Check if it has been added to the grid
-        added_genotype = jnp.all(
-            jnp.asarray(
-                jax.tree_util.tree_leaves(
-                    jax.tree_util.tree_map(
-                        lambda new_gen, rep_gen: jnp.all(
-                            jnp.equal(
-                                jnp.ravel(new_gen), jnp.ravel(rep_gen.at[indice].get())
-                            ),
-                            axis=0,
-                        ),
-                        genotypes,
-                        repertoire.genotypes,
-                    ),
-                )
-            ),
-            axis=0,
-        )
-
-        # Update last_added buffers
-        last_updated_position = jnp.where(
-            added_genotype,
-            emitter_state.last_updated_position,
-            self._config.last_updated_size + 1,
-        )
-        last_updated_fitnesses = emitter_state.last_updated_fitnesses
-        last_updated_fitnesses = last_updated_fitnesses.at[last_updated_position].set(
-            fitnesses[0]
-        )
-
-        # Update last updated indivs
-        last_updated_genotypes = jax.tree_map(
-            lambda last_gen, gen: last_gen.at[
-                jnp.expand_dims(last_updated_position, axis=0)
-            ].set(gen),
-            emitter_state.last_updated_genotypes,
-            genotypes,
-        )
-        last_updated_position = (
-            emitter_state.last_updated_position + added_genotype
-        ) % self._config.last_updated_size
-
-        # Sampling new parent
-        random_key = emitter_state.random_key
-        generation_count = emitter_state.generation_count
-
-        # Select between new sampled parent and previous parent
-        parent, random_key = jax.lax.cond(
-            generation_count % self._config.num_optimizer_steps == 0,
-            lambda random_key: jax.lax.cond(
-                (generation_count // self._config.num_optimizer_steps) % 2 == 0,
-                lambda random_key: self._sample_explore(
-                    generation_count, novelty_archive, repertoire, random_key
-                ),
-                lambda random_key: self._sample_exploit(
-                    last_updated_genotypes,
-                    last_updated_fitnesses,
-                    repertoire,
-                    random_key,
-                ),
-                (random_key),
-            ),
-            lambda random_key: (emitter_state.offspring, random_key),
-            (random_key),
-        )
-
-        # Select between new optimizer state and previous optimizer state
-        optimizer_state = jax.lax.cond(
-            generation_count % self._config.num_optimizer_steps == 0,
-            lambda _unused: emitter_state.initial_optimizer_state,
-            lambda _unused: emitter_state.optimizer_state,
-            (),
-        )
-
-        # Creating samples for gradient estimate
         random_key, subkey = jax.random.split(random_key)
 
         # Sampling mirror noise
         total_sample_number = self._config.sample_number
         if self._config.sample_mirror:
-            sample_number = total_sample_number // 2
 
+            sample_number = total_sample_number // 2
             half_sample_noise = jax.tree_util.tree_map(
                 lambda x: jax.random.normal(
                     key=subkey,
@@ -538,22 +446,17 @@ class MEESEmitter(Emitter):
                 ),
                 parent,
             )
-
-            # Splitting noise to apply it in mirror to samples
             sample_noise = jax.tree_util.tree_map(
                 lambda x: jnp.concatenate(
                     [jnp.expand_dims(x, axis=1), jnp.expand_dims(-x, axis=1)], axis=1
                 ).reshape(jnp.repeat(x, 2, axis=0).shape),
                 half_sample_noise,
             )
-
-            # Noise used for gradient computation
             gradient_noise = half_sample_noise
 
         # Sampling non-mirror noise
         else:
             sample_number = total_sample_number
-
             sample_noise = jax.tree_map(
                 lambda x: jax.random.normal(
                     key=subkey,
@@ -561,16 +464,13 @@ class MEESEmitter(Emitter):
                 ),
                 parent,
             )
-            # Noise used for gradient computation
             gradient_noise = sample_noise
 
-        # Expanding dimension to number of samples
+        # Applying noise
         samples = jax.tree_map(
             lambda x: jnp.repeat(x, total_sample_number, axis=0),
             parent,
         )
-
-        # Applying noise to each sample
         samples = jax.tree_map(
             lambda mean, noise: mean + self._config.sample_sigma * noise,
             samples,
@@ -582,29 +482,14 @@ class MEESEmitter(Emitter):
             samples, random_key
         )
 
-        # Computing gradients
+        # Computing rank, with or without normalisation
+        scores = scores_fn(fitnesses, descriptors)
 
-        # Choosing the score to use for rank
-        scores = jax.lax.cond(
-            (generation_count // self._config.num_optimizer_steps) % 2 == 0,
-            lambda scoring: emitter_state.novelty_archive.novelty(
-                scoring[1], self._config.novelty_nearest_neighbors
-            ),
-            lambda scoring: scoring[0],
-            (fitnesses, descriptors),
-        )
-
-        # Computing rank with normalisation
         if self._config.sample_rank_norm:
-
-            # Ranking objective
             ranking_indices = jnp.argsort(scores, axis=0)
             ranks = jnp.argsort(ranking_indices, axis=0)
-
-            # Normalising ranks to [-0.5, 0.5]
             ranks = (ranks / (total_sample_number - 1)) - 0.5
 
-        # Computing rank without normalisation
         else:
             ranks = scores
 
@@ -612,7 +497,6 @@ class MEESEmitter(Emitter):
         if self._config.sample_mirror:
             ranks = jnp.reshape(ranks, (sample_number, 2))
             ranks = jnp.apply_along_axis(lambda rank: rank[0] - rank[1], 1, ranks)
-
         ranks = jax.tree_map(
             lambda x: jnp.reshape(
                 jnp.repeat(ranks.ravel(), x[0].ravel().shape[0], axis=0), x.shape
@@ -652,16 +536,186 @@ class MEESEmitter(Emitter):
         )
         offspring = optax.apply_updates(parent, offspring_update)
 
-        # Increase generation counter
-        generation_count += 1
+        return offspring, optimizer_state, random_key
 
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
+    def _buffers_update(
+        self,
+        emitter_state: MEESEmitterState,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+    ) -> MEESEmitterState:
+        """Update the different buffers and archives in the emitter
+        state to generate the offspring for the next generation.
+
+        Args:
+            emitter_state: current emitter state
+            repertoire: the current genotypes repertoire
+            genotypes: the genotypes of the batch of emitted offspring.
+            fitnesses: the fitnesses of the batch of emitted offspring.
+            descriptors: the descriptors of the emitted offspring.
+
+        Returns:
+            The modified emitter state.
+        """
+
+        # Updating novelty archive
+        novelty_archive = emitter_state.novelty_archive.update(descriptors)
+
+        # Check if genotype from previous iteration has been added to the grid
+        indice = get_cells_indices(descriptors, repertoire.centroids)
+        added_genotype = jnp.all(
+            jnp.asarray(
+                jax.tree_util.tree_leaves(
+                    jax.tree_util.tree_map(
+                        lambda new_gen, rep_gen: jnp.all(
+                            jnp.equal(
+                                jnp.ravel(new_gen), jnp.ravel(rep_gen.at[indice].get())
+                            ),
+                            axis=0,
+                        ),
+                        genotypes,
+                        repertoire.genotypes,
+                    ),
+                )
+            ),
+            axis=0,
+        )
+
+        # Update last_updated buffers
+        last_updated_position = jnp.where(
+            added_genotype,
+            emitter_state.last_updated_position,
+            self._config.last_updated_size + 1,
+        )
+        last_updated_fitnesses = emitter_state.last_updated_fitnesses
+        last_updated_fitnesses = last_updated_fitnesses.at[last_updated_position].set(
+            fitnesses[0]
+        )
+        last_updated_genotypes = jax.tree_map(
+            lambda last_gen, gen: last_gen.at[
+                jnp.expand_dims(last_updated_position, axis=0)
+            ].set(gen),
+            emitter_state.last_updated_genotypes,
+            genotypes,
+        )
+        last_updated_position = (
+            emitter_state.last_updated_position + added_genotype
+        ) % self._config.last_updated_size
+
+        # Return new emitter_state
         return emitter_state.replace(  # type: ignore
-            optimizer_state=optimizer_state,
-            offspring=offspring,
-            generation_count=generation_count,
             novelty_archive=novelty_archive,
             last_updated_genotypes=last_updated_genotypes,
             last_updated_fitnesses=last_updated_fitnesses,
             last_updated_position=last_updated_position,
+        )
+
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
+    def state_update(
+        self,
+        emitter_state: MEESEmitterState,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
+    ) -> MEESEmitterState:
+        """Generate the gradient offspring for the next emitter call. Also
+        update the novelty archive and generation count from current call.
+
+        Args:
+            emitter_state: current emitter state
+            repertoire: the current genotypes repertoire
+            genotypes: the genotypes of the batch of emitted offspring.
+            fitnesses: the fitnesses of the batch of emitted offspring.
+            descriptors: the descriptors of the emitted offspring.
+            extra_scores: a dictionary with other values outputted by the
+                scoring function.
+
+        Returns:
+            The modified emitter state.
+        """
+
+        assert jax.tree_util.tree_leaves(genotypes)[0].shape[0] == 1, (
+            "ERROR: MAP-Elites-ES generates 1 offspring per generation, "
+            + "batch_size should be 1, the inputed batch has size:"
+            + str(jax.tree_util.tree_leaves(genotypes)[0].shape[0])
+        )
+
+        # Update all the buffers and archives of the emitter_state
+        emitter_state = self._buffers_update(
+            emitter_state, repertoire, genotypes, fitnesses, descriptors
+        )
+
+        # Use new or previous parents and exploitation or exploration
+        generation_count = emitter_state.generation_count
+        sample_new_parent = generation_count % self._config.num_optimizer_steps == 0
+        use_exploration = (
+            self._config.use_explore
+            and (generation_count // self._config.num_optimizer_steps) % 2 == 0
+        )
+
+        # Select parent and optimizer_state
+        parent, random_key = jax.lax.cond(
+            sample_new_parent,
+            lambda emitter_state, repertoire, random_key: jax.lax.cond(
+                use_exploration,
+                self._sample_explore,
+                self._sample_exploit,
+                emitter_state,
+                repertoire,
+                random_key,
+            ),
+            lambda emitter_state, repertoire, random_key: (
+                emitter_state.offspring,
+                random_key,
+            ),
+            emitter_state,
+            repertoire,
+            emitter_state.random_key,
+        )
+        optimizer_state = jax.lax.cond(
+            sample_new_parent,
+            lambda _unused: emitter_state.initial_optimizer_state,
+            lambda _unused: emitter_state.optimizer_state,
+            (),
+        )
+
+        # Define scores for es process
+        def exploration_exploitation_scores(
+            fitnesses: Fitness, descriptors: Descriptor
+        ) -> jnp.ndarray:
+            scores = jax.lax.cond(
+                use_exploration,
+                lambda fitnesses, descriptors: emitter_state.novelty_archive.novelty(
+                    descriptors, self._config.novelty_nearest_neighbors
+                ),
+                lambda fitnesses, descriptors: fitnesses,
+                fitnesses,
+                descriptors,
+            )
+            return scores
+
+        # Run es process
+        offspring, optimizer_state, random_key = self._es_emitter(
+            parent=parent,
+            optimizer_state=optimizer_state,
+            random_key=random_key,
+            scores_fn=exploration_exploitation_scores,
+        )
+
+        return emitter_state.replace(  # type: ignore
+            optimizer_state=optimizer_state,
+            offspring=offspring,
+            generation_count=generation_count + 1,
             random_key=random_key,
         )
