@@ -29,19 +29,19 @@ def test_mees() -> None:
     min_bd = 0.0
     max_bd = 1.0
 
-    # @title MEES Emitter Definitions Fields
-    sample_number = 128  # @param {type:"integer"}
-    sample_sigma = 0.02  # @param {type:"number"}
-    num_optimizer_steps = 2  # @param {type:"integer"}
-    learning_rate = 0.01  # @param {type:"number"}
-    l2_coefficient = 0.02  # @param {type:"number"}
-    novelty_nearest_neighbors = 10  # @param {type:"integer"}
+    # MEES Emitter params
+    sample_number = 128
+    sample_sigma = 0.02
+    num_optimizer_steps = 2
+    learning_rate = 0.01
+    l2_coefficient = 0.02
+    novelty_nearest_neighbors = 10
 
-    adam_optimizer = True  # @param {type:"boolean"}
-    sample_mirror = True  # @param {type:"boolean"}
-    sample_rank_norm = True  # @param {type:"boolean"}
-    use_explore = True  # @param {type:"boolean"}
-    use_exploit = True  # @param {type:"boolean"}
+    adam_optimizer = True
+    sample_mirror = True
+    sample_rank_norm = True
+    use_explore = True
+    use_exploit = True
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
