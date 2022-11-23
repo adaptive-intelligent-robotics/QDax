@@ -127,7 +127,7 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         Here it is used to fill the Replay Buffer with the transitions
         from the scoring of the genotypes, and then the training of the
-        critic/greedy happens. Hence the params of critic/greedy are updated,
+        critic/actor happens. Hence the params of critic/actor are updated,
         as well as their optimizer states.
 
         Args:
@@ -184,7 +184,7 @@ class DiversityPGEmitter(QualityPGEmitter):
             transitions,
         )
 
-        # Train critics and greedy
+        # Train critics and greedy actor
         emitter_state, _ = jax.lax.scan(
             scan_train_critics,
             emitter_state,
@@ -200,9 +200,9 @@ class DiversityPGEmitter(QualityPGEmitter):
     def _train_critics(
         self, emitter_state: DiversityPGEmitterState, transitions: QDTransition
     ) -> DiversityPGEmitterState:
-        """Apply one gradient step to critics and to the greedy policy
+        """Apply one gradient step to critics and to the greedy actor
         (contained in carry in training_state), then soft update target critics
-        and target greedy policy.
+        and target greedy actor.
 
         Those updates are very similar to those made in TD3.
 
@@ -210,7 +210,7 @@ class DiversityPGEmitter(QualityPGEmitter):
             emitter_state: actual emitter state
 
         Returns:
-            New emitter state where the critic and the greedy policy have been
+            New emitter state where the critic and the greedy actor have been
             updated. Optimizer states have also been updated in the process.
         """
 
@@ -223,29 +223,25 @@ class DiversityPGEmitter(QualityPGEmitter):
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
-            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
+            target_actor_params=emitter_state.target_actor_params,
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             transitions=transitions,
             random_key=emitter_state.random_key,
         )
 
         # Update greedy policy
-        (
-            policy_optimizer_state,
-            greedy_policy_params,
-            target_greedy_policy_params,
-        ) = jax.lax.cond(
+        (policy_optimizer_state, actor_params, target_actor_params,) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
             lambda x: self._update_greedy(*x),
             lambda _: (
-                emitter_state.greedy_policy_opt_state,
-                emitter_state.greedy_policy_params,
-                emitter_state.target_greedy_policy_params,
+                emitter_state.actor_opt_state,
+                emitter_state.actor_params,
+                emitter_state.target_actor_params,
             ),
             operand=(
-                emitter_state.greedy_policy_params,
-                emitter_state.greedy_policy_opt_state,
-                emitter_state.target_greedy_policy_params,
+                emitter_state.actor_params,
+                emitter_state.actor_opt_state,
+                emitter_state.target_actor_params,
                 emitter_state.critic_params,
                 transitions,
             ),
@@ -255,10 +251,10 @@ class DiversityPGEmitter(QualityPGEmitter):
         new_emitter_state = emitter_state.replace(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
-            greedy_policy_params=greedy_policy_params,
-            greedy_policy_opt_state=policy_optimizer_state,
+            actor_params=actor_params,
+            actor_opt_state=policy_optimizer_state,
             target_critic_params=target_critic_params,
-            target_greedy_policy_params=target_greedy_policy_params,
+            target_actor_params=target_actor_params,
             random_key=random_key,
             steps=emitter_state.steps + 1,
             replay_buffer=emitter_state.replay_buffer,

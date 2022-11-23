@@ -58,7 +58,7 @@ class PGAMEEmitter(MultiEmitter):
             replay_buffer_size=config.replay_buffer_size,
             critic_hidden_layer_size=config.critic_hidden_layer_size,
             critic_learning_rate=config.critic_learning_rate,
-            greedy_learning_rate=config.greedy_learning_rate,
+            actor_learning_rate=config.greedy_learning_rate,
             policy_learning_rate=config.policy_learning_rate,
             noise_clip=config.noise_clip,
             policy_noise=config.policy_noise,

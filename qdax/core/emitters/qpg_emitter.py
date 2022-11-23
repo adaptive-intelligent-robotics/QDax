@@ -11,6 +11,7 @@ import flax.linen as nn
 import jax
 import optax
 from jax import numpy as jnp
+
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
@@ -32,7 +33,7 @@ class QualityPGConfig:
     replay_buffer_size: int = 1000000
     critic_hidden_layer_size: Tuple[int, ...] = (256, 256)
     critic_learning_rate: float = 3e-4
-    greedy_learning_rate: float = 3e-4
+    actor_learning_rate: float = 3e-4
     policy_learning_rate: float = 1e-3
     noise_clip: float = 0.5
     policy_noise: float = 0.2
@@ -48,10 +49,10 @@ class QualityPGEmitterState(EmitterState):
 
     critic_params: Params
     critic_optimizer_state: optax.OptState
-    greedy_policy_params: Params
-    greedy_policy_opt_state: optax.OptState
+    actor_params: Params
+    actor_opt_state: optax.OptState
     target_critic_params: Params
-    target_greedy_policy_params: Params
+    target_actor_params: Params
     replay_buffer: ReplayBuffer
     random_key: RNGKey
     steps: jnp.ndarray
@@ -90,8 +91,8 @@ class QualityPGEmitter(Emitter):
         )
 
         # Init optimizers
-        self._greedy_policy_optimizer = optax.adam(
-            learning_rate=self._config.greedy_learning_rate
+        self._actor_optimizer = optax.adam(
+            learning_rate=self._config.actor_learning_rate
         )
         self._critic_optimizer = optax.adam(
             learning_rate=self._config.critic_learning_rate
@@ -117,7 +118,7 @@ class QualityPGEmitter(Emitter):
         action_size = self._env.action_size
         descriptor_size = self._env.state_descriptor_length
 
-        # Initialise critic, greedy and population
+        # Initialise critic, greedy actor and population
         random_key, subkey = jax.random.split(random_key)
         fake_obs = jnp.zeros(shape=(observation_size,))
         fake_action = jnp.zeros(shape=(action_size,))
@@ -126,16 +127,12 @@ class QualityPGEmitter(Emitter):
         )
         target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
 
-        greedy_policy_params = jax.tree_util.tree_map(lambda x: x[0], init_genotypes)
-        target_greedy_policy_params = jax.tree_util.tree_map(
-            lambda x: x[0], init_genotypes
-        )
+        actor_params = jax.tree_util.tree_map(lambda x: x[0], init_genotypes)
+        target_actor_params = jax.tree_util.tree_map(lambda x: x[0], init_genotypes)
 
         # Prepare init optimizer states
         critic_optimizer_state = self._critic_optimizer.init(critic_params)
-        greedy_optimizer_state = self._greedy_policy_optimizer.init(
-            greedy_policy_params
-        )
+        actor_optimizer_state = self._actor_optimizer.init(actor_params)
 
         # Initialize replay buffer
         dummy_transition = QDTransition.init_dummy(
@@ -153,10 +150,10 @@ class QualityPGEmitter(Emitter):
         emitter_state = QualityPGEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
-            greedy_policy_params=greedy_policy_params,
-            greedy_policy_opt_state=greedy_optimizer_state,
+            actor_params=actor_params,
+            actor_opt_state=actor_optimizer_state,
             target_critic_params=target_critic_params,
-            target_greedy_policy_params=target_greedy_policy_params,
+            target_actor_params=target_actor_params,
             random_key=subkey,
             steps=jnp.array(0),
             replay_buffer=replay_buffer,
@@ -197,15 +194,15 @@ class QualityPGEmitter(Emitter):
         x_mutation_pg = jax.vmap(mutation_fn)(x1)
 
         # Add dimension for concatenation
-        greedy_policy_params = jax.tree_util.tree_map(
-            lambda x: jnp.expand_dims(x, axis=0), emitter_state.greedy_policy_params
+        actor_params = jax.tree_util.tree_map(
+            lambda x: jnp.expand_dims(x, axis=0), emitter_state.actor_params
         )
 
         # gather offspring
         genotypes = jax.tree_util.tree_map(
             lambda x, y: jnp.concatenate([x, y], axis=0),
             x_mutation_pg,
-            greedy_policy_params,
+            actor_params,
         )
 
         return genotypes, random_key
@@ -225,7 +222,7 @@ class QualityPGEmitter(Emitter):
 
         Here it is used to fill the Replay Buffer with the transitions
         from the scoring of the genotypes, and then the training of the
-        critic/greedy happens. Hence the params of critic/greedy are updated,
+        critic/actor happens. Hence the params of critic/actor are updated,
         as well as their optimizer states.
 
         Args:
@@ -256,7 +253,7 @@ class QualityPGEmitter(Emitter):
             new_emitter_state = self._train_critics(emitter_state)
             return new_emitter_state, ()
 
-        # Train critics and greedy
+        # Train critics and greedy actor
         emitter_state, _ = jax.lax.scan(
             scan_train_critics,
             emitter_state,
@@ -270,9 +267,9 @@ class QualityPGEmitter(Emitter):
     def _train_critics(
         self, emitter_state: QualityPGEmitterState
     ) -> QualityPGEmitterState:
-        """Apply one gradient step to critics and to the greedy policy
+        """Apply one gradient step to critics and to the greedy actor
         (contained in carry in training_state), then soft update target critics
-        and target greedy policy.
+        and target actor.
 
         Those updates are very similar to those made in TD3.
 
@@ -280,7 +277,7 @@ class QualityPGEmitter(Emitter):
             emitter_state: actual emitter state
 
         Returns:
-            New emitter state where the critic and the greedy policy have been
+            New emitter state where the critic and the greedy actor have been
             updated. Optimizer states have also been updated in the process.
         """
 
@@ -300,29 +297,25 @@ class QualityPGEmitter(Emitter):
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
-            target_greedy_policy_params=emitter_state.target_greedy_policy_params,
+            target_actor_params=emitter_state.target_actor_params,
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             transitions=transitions,
             random_key=random_key,
         )
 
-        # Update greedy policy
-        (
-            policy_optimizer_state,
-            greedy_policy_params,
-            target_greedy_policy_params,
-        ) = jax.lax.cond(
+        # Update greedy actor
+        (actor_optimizer_state, actor_params, target_actor_params,) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
-            lambda x: self._update_greedy(*x),
+            lambda x: self._update_actor(*x),
             lambda _: (
-                emitter_state.greedy_policy_opt_state,
-                emitter_state.greedy_policy_params,
-                emitter_state.target_greedy_policy_params,
+                emitter_state.actor_opt_state,
+                emitter_state.actor_params,
+                emitter_state.target_actor_params,
             ),
             operand=(
-                emitter_state.greedy_policy_params,
-                emitter_state.greedy_policy_opt_state,
-                emitter_state.target_greedy_policy_params,
+                emitter_state.actor_params,
+                emitter_state.actor_opt_state,
+                emitter_state.target_actor_params,
                 emitter_state.critic_params,
                 transitions,
             ),
@@ -332,10 +325,10 @@ class QualityPGEmitter(Emitter):
         new_emitter_state = emitter_state.replace(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
-            greedy_policy_params=greedy_policy_params,
-            greedy_policy_opt_state=policy_optimizer_state,
+            actor_params=actor_params,
+            actor_opt_state=actor_optimizer_state,
             target_critic_params=target_critic_params,
-            target_greedy_policy_params=target_greedy_policy_params,
+            target_actor_params=target_actor_params,
             random_key=random_key,
             steps=emitter_state.steps + 1,
             replay_buffer=replay_buffer,
@@ -348,7 +341,7 @@ class QualityPGEmitter(Emitter):
         self,
         critic_params: Params,
         target_critic_params: Params,
-        target_greedy_policy_params: Params,
+        target_actor_params: Params,
         critic_optimizer_state: Params,
         transitions: QDTransition,
         random_key: RNGKey,
@@ -358,7 +351,7 @@ class QualityPGEmitter(Emitter):
         random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
             critic_params,
-            target_greedy_policy_params,
+            target_actor_params,
             target_critic_params,
             transitions,
             subkey,
@@ -381,40 +374,39 @@ class QualityPGEmitter(Emitter):
         return critic_optimizer_state, critic_params, target_critic_params, random_key
 
     @partial(jax.jit, static_argnames=("self",))
-    def _update_greedy(
+    def _update_actor(
         self,
-        greedy_policy_params: Params,
-        greedy_policy_opt_state: optax.OptState,
-        target_greedy_policy_params: Params,
+        actor_params: Params,
+        actor_opt_state: optax.OptState,
+        target_actor_params: Params,
         critic_params: Params,
         transitions: QDTransition,
     ) -> Tuple[optax.OptState, Params, Params]:
 
-        # Update greedy policy
+        # Update greedy actor
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            greedy_policy_params,
+            actor_params,
             critic_params,
             transitions,
         )
         (
             policy_updates,
-            policy_optimizer_state,
-        ) = self._greedy_policy_optimizer.update(
-            policy_gradient, greedy_policy_opt_state
-        )
-        greedy_policy_params = optax.apply_updates(greedy_policy_params, policy_updates)
-        # Soft update of target greedy policy
-        target_greedy_policy_params = jax.tree_map(
+            actor_optimizer_state,
+        ) = self._actor_optimizer.update(policy_gradient, actor_opt_state)
+        actor_params = optax.apply_updates(actor_params, policy_updates)
+
+        # Soft update of target greedy actor
+        target_actor_params = jax.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
-            target_greedy_policy_params,
-            greedy_policy_params,
+            target_actor_params,
+            actor_params,
         )
 
         return (
-            policy_optimizer_state,
-            greedy_policy_params,
-            target_greedy_policy_params,
+            actor_optimizer_state,
+            actor_params,
+            target_actor_params,
         )
 
     @partial(jax.jit, static_argnames=("self",))

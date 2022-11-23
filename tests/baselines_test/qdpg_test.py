@@ -43,7 +43,7 @@ def test_qdpg() -> None:
     replay_buffer_size = 100000
     critic_hidden_layer_size = (64, 64)
     critic_learning_rate = 3e-4
-    greedy_learning_rate = 3e-4
+    actor_learning_rate = 3e-4
     policy_learning_rate = 1e-3
     noise_clip = 0.5
     policy_noise = 0.2
@@ -135,7 +135,7 @@ def test_qdpg() -> None:
         batch_size=transitions_batch_size,
         critic_hidden_layer_size=critic_hidden_layer_size,
         critic_learning_rate=critic_learning_rate,
-        greedy_learning_rate=greedy_learning_rate,
+        actor_learning_rate=actor_learning_rate,
         policy_learning_rate=policy_learning_rate,
         noise_clip=noise_clip,
         policy_noise=policy_noise,
@@ -154,7 +154,7 @@ def test_qdpg() -> None:
         batch_size=transitions_batch_size,
         critic_hidden_layer_size=critic_hidden_layer_size,
         critic_learning_rate=critic_learning_rate,
-        greedy_learning_rate=greedy_learning_rate,
+        actor_learning_rate=actor_learning_rate,
         policy_learning_rate=policy_learning_rate,
         noise_clip=noise_clip,
         policy_noise=policy_noise,
