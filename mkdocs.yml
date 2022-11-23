@@ -120,6 +120,7 @@ nav:
     - DIAYN: notebooks/diayn_example.ipynb
     - DADS: notebooks/dads_example.ipynb
     - SMERL: notebooks/smerl_example.ipynb
+    - MEES: notebooks/mees_example.ipynb
   - API documentation:
     - Core:
       - Core algorithms:
@@ -128,6 +129,7 @@ nav:
         - OMG MEGA: api_documentation/core/omg_mega.md
         - CMA MEGA: api_documentation/core/cma_mega.md
         - MOME: api_documentation/core/mome.md
+        - ME ES: api_documentation/core/mees.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
