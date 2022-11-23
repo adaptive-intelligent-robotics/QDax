@@ -232,7 +232,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         # Update greedy policy
         (policy_optimizer_state, actor_params, target_actor_params,) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
-            lambda x: self._update_greedy(*x),
+            lambda x: self._update_actor(*x),
             lambda _: (
                 emitter_state.actor_opt_state,
                 emitter_state.actor_params,
