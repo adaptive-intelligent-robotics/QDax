@@ -223,6 +223,14 @@ class MEESEmitter(Emitter):
         else:
             self._optimizer = optax.sgd(learning_rate=config.learning_rate)
 
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return 1
+
     @partial(
         jax.jit,
         static_argnames=("self",),

@@ -18,7 +18,7 @@ from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.types import EnvState, Params, RNGKey
 
 
-def test_mees_elites() -> None:
+def test_mees() -> None:
     env_name = "walker2d_uni"
     episode_length = 100
     num_iterations = 10
