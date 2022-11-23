@@ -38,7 +38,6 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
 
     env, policy_network, scoring_fn, random_key = create_default_brax_task_components(
         env_name=env_name,
-        batch_size=batch_size,
         random_key=random_key,
     )
 

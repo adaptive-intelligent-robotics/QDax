@@ -218,7 +218,6 @@ def reset_based_scoring_function_brax_envs(
 def create_brax_scoring_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
-    batch_size: int,
     bd_extraction_fn: Callable[[QDTransition, jnp.ndarray], Descriptor],
     random_key: RNGKey,
     play_step_fn: Optional[
@@ -227,7 +226,7 @@ def create_brax_scoring_fn(
         ]
     ] = None,
     episode_length: int = 100,
-    is_reset_based: bool = False,
+    deterministic: bool = True,
     play_reset_fn: Optional[Callable[[RNGKey], EnvState]] = None,
 ) -> Tuple[
     Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]],
@@ -239,17 +238,16 @@ def create_brax_scoring_fn(
     Args:
         env: The BRAX environment.
         policy_network: The policy network controller.
-        batch_size: the number of environments we play simultaneously.
         bd_extraction_fn: The behaviour descriptor extraction function.
         random_key: a random key used for stochastic operations.
         play_step_fn: the function used to perform environment rollouts and collect
             evaluation episodes. If None, we use create_policy_network_play_step_fn
             to generate it.
         episode_length: The maximal episode length.
-        is_reset_based: Whether we reset the initial state of the robot before each
-            evaluation or not.
+        deterministic: Whether we reset the initial state of the robot to the same
+            deterministic init_state or if we use the reset() function of the env.
         play_reset_fn: the function used to reset the environment to an initial state.
-            Only used if is_reset_based is True. If None, we take env.reset as
+            Only used if deterministic is False. If None, we take env.reset as
             default reset function.
 
     Returns:
@@ -259,42 +257,40 @@ def create_brax_scoring_fn(
     """
     if play_step_fn is None:
         play_step_fn = create_policy_network_play_step_fn(env, policy_network)
-    if play_reset_fn is None:
-        play_reset_fn = env.reset
 
-    if not is_reset_based:
+    # Deterministic case
+    if deterministic:
         # Create the initial environment states
         random_key, subkey = jax.random.split(random_key)
-        keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
-        reset_fn = jax.jit(jax.vmap(env.reset))
-        init_states = reset_fn(keys)
+        init_state = env.reset(subkey)
 
-        scoring_fn = functools.partial(
-            scoring_function_brax_envs,
-            init_states=init_states,
-            episode_length=episode_length,
-            play_step_fn=play_step_fn,
-            behavior_descriptor_extractor=bd_extraction_fn,
-        )
-    else:
-        scoring_fn = functools.partial(
-            reset_based_scoring_function_brax_envs,
-            episode_length=episode_length,
-            play_reset_fn=play_reset_fn,
-            play_step_fn=play_step_fn,
-            behavior_descriptor_extractor=bd_extraction_fn,
-        )
+        # Define the function to deterministically reset the environment
+        def deterministic_reset(key: RNGKey, init_state: EnvState) -> EnvState:
+            return init_state
+
+        play_reset_fn = partial(deterministic_reset, init_state=init_state)
+
+    # Stochastic case
+    elif play_reset_fn is None:
+        play_reset_fn = env.reset
+
+    scoring_fn = functools.partial(
+        reset_based_scoring_function_brax_envs,
+        episode_length=episode_length,
+        play_reset_fn=play_reset_fn,
+        play_step_fn=play_step_fn,
+        behavior_descriptor_extractor=bd_extraction_fn,
+    )
 
     return scoring_fn, random_key
 
 
 def create_default_brax_task_components(
     env_name: str,
-    batch_size: int,
     random_key: RNGKey,
     episode_length: int = 100,
     mlp_policy_hidden_layer_sizes: Tuple[int, ...] = (64, 64),
-    is_reset_based: bool = False,
+    deterministic: bool = True,
 ) -> Tuple[
     brax.envs.Env,
     MLP,
@@ -306,12 +302,11 @@ def create_default_brax_task_components(
 
     Args:
         env_name: Name of the BRAX environment (e.g. "ant_omni", "walker2d_uni"...).
-        batch_size: The number of environments we play simultaneously.
         random_key: Jax random key
         episode_length: The maximal rollout length.
         mlp_policy_hidden_layer_sizes: Hidden layer sizes of the policy network.
-        is_reset_based: Whether we reset the initial state of the robot before each
-            evaluation or not.
+        deterministic: Whether we reset the initial state of the robot to the same
+            deterministic init_state or if we use the reset() function of the env.
 
     Returns:
         env: The BRAX environment.
@@ -336,11 +331,10 @@ def create_default_brax_task_components(
     scoring_fn, random_key = create_brax_scoring_fn(
         env,
         policy_network,
-        batch_size,
         bd_extraction_fn,
         random_key,
         episode_length=episode_length,
-        is_reset_based=is_reset_based,
+        deterministic=deterministic,
     )
 
     return env, policy_network, scoring_fn, random_key
