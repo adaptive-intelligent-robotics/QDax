@@ -114,6 +114,7 @@ def test_cma_mega() -> None:
         batch_size=batch_size,
         learning_rate=learning_rate,
         num_descriptors=2,
+        centroids=centroids,
         sigma_g=sigma_g,
     )
 
