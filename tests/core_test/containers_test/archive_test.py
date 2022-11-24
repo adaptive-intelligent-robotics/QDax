@@ -12,8 +12,6 @@ f = jnp.array([[0.1, 0.0], [0.9, 0.0]])
 
 fake_border = jnp.nan
 
-# TODO: missing cases
-
 
 def test_archive() -> None:
     """Test basic functions of the archive in simple
@@ -34,10 +32,8 @@ def test_archive() -> None:
     # check single insertion
     new_elem = jnp.array([10.0, 10.0])
     expected_new_data = expected_init_data.at[0].set(new_elem)
-    print("Expected new data : ", expected_new_data)
 
     archive = archive._single_insertion(new_elem)
-    print("Archive data : ", archive.data)
     pytest.assume(archive.current_position == 1)
     pytest.assume(
         jnp.allclose(archive.data, expected_new_data, atol=1e-6, equal_nan=True)
@@ -62,14 +58,8 @@ def test_archive() -> None:
     )
 
     # check insertion in archive
-    import jax
-
-    with jax.disable_jit():
-        expected_new_data = expected_new_data.at[2:4].set(a)
-        archive = archive.insert(a)
-
-    print("Archive: ", archive)
-    print("Expected data: ", expected_new_data)
+    expected_new_data = expected_new_data.at[2:4].set(a)
+    archive = archive.insert(a)
 
     pytest.assume(archive.current_position == 4)
     pytest.assume(

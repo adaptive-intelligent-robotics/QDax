@@ -192,28 +192,73 @@ class QualityPGEmitter(Emitter):
 
         batch_size = self._config.env_batch_size
 
-        # Mutation PG
+        # sample parents
         mutation_pg_batch_size = int(batch_size - 1)
-        x1, random_key = repertoire.sample(random_key, mutation_pg_batch_size)
-        mutation_fn = partial(
-            self._mutation_function_pg,
-            emitter_state=emitter_state,
-        )
-        x_mutation_pg = jax.vmap(mutation_fn)(x1)
+        parents, random_key = repertoire.sample(random_key, mutation_pg_batch_size)
 
-        # Add dimension for concatenation
-        actor_params = jax.tree_util.tree_map(
-            lambda x: jnp.expand_dims(x, axis=0), emitter_state.actor_params
+        # apply the pg mutation
+        offsprings_pg = self.emit_pg(emitter_state, parents)
+
+        # get the actor (greedy actor)
+        offspring_actor = self.emit_actor(emitter_state)
+
+        # add dimension for concatenation
+        offspring_actor = jax.tree_util.tree_map(
+            lambda x: jnp.expand_dims(x, axis=0), offspring_actor
         )
 
         # gather offspring
         genotypes = jax.tree_util.tree_map(
             lambda x, y: jnp.concatenate([x, y], axis=0),
-            x_mutation_pg,
-            actor_params,
+            offsprings_pg,
+            offspring_actor,
         )
 
         return genotypes, random_key
+
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
+    def emit_pg(
+        self, emitter_state: QualityPGEmitterState, parents: Genotype
+    ) -> Genotype:
+        """Emit the offsprings generated through pg mutation.
+
+        Args:
+            emitter_state: current emitter state, contains critic and
+                replay buffer.
+            parents: the parents selected to be applied gradients in order
+                to mutate towards better performance.
+
+        Returns:
+            A new set of offsprings.
+        """
+        mutation_fn = partial(
+            self._mutation_function_pg,
+            emitter_state=emitter_state,
+        )
+        offsprings = jax.vmap(mutation_fn)(parents)
+
+        return offsprings
+
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
+    def emit_actor(self, emitter_state: QualityPGEmitterState) -> Genotype:
+        """Emit the greedy actor.
+
+        Simply needs to be retrieved from the emitter state.
+
+        Args:
+            emitter_state: the current emitter state, it stores the
+                greedy actor.
+
+        Returns:
+            The parameters of the actor.
+        """
+        return emitter_state.actor_params
 
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
