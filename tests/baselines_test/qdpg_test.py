@@ -239,7 +239,7 @@ def test_qdpg() -> None:
         return (repertoire, emitter_state, random_key), metrics
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (repertoire, emitter_state, random_key,), _metrics = jax.lax.scan(
         update_scan_fn,
         (repertoire, emitter_state, random_key),
         (),

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 import flax.linen as nn
+
 from qdax.core.containers.archive import Archive
 from qdax.core.emitters.dpg_emitter import DiversityPGConfig, DiversityPGEmitter
 from qdax.core.emitters.multi_emitter import MultiEmitter
@@ -59,7 +60,7 @@ class QDPGEmitter(MultiEmitter):
             isoline_variation, iso_sigma=config.iso_sigma, line_sigma=config.line_sigma
         )
         ga_emitter = MixingEmitter(
-            mutation_fn=None,
+            mutation_fn=lambda x, r: (x, r),
             variation_fn=variation_fn,
             variation_percentage=1.0,
             batch_size=config.ga_batch_size,
