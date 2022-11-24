@@ -101,6 +101,14 @@ class QualityPGEmitter(Emitter):
             learning_rate=self._config.policy_learning_rate
         )
 
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._config.env_batch_size
+
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
     ) -> Tuple[QualityPGEmitterState, RNGKey]:
