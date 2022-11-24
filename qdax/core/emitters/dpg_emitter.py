@@ -265,13 +265,13 @@ class DiversityPGEmitter(QualityPGEmitter):
     @partial(jax.jit, static_argnames=("self",))
     def _mutation_function_pg(
         self,
-        controller_params: Genotype,
+        policy_params: Genotype,
         emitter_state: DiversityPGEmitterState,
     ) -> Genotype:
         """Apply pg mutation to a policy via multiple steps of gradient descent.
 
         Args:
-            controller_params: a controller, supposed to be a differentiable neural
+            policy_params: a policy, supposed to be a differentiable neural
                 network.
             emitter_state: the current state of the emitter, containing among others,
                 the replay buffer, the critic.
@@ -280,28 +280,28 @@ class DiversityPGEmitter(QualityPGEmitter):
             the updated params of the neural network.
         """
 
-        # Define new controller optimizer state
-        controller_optimizer_state = self._controllers_optimizer.init(controller_params)
+        # Define new policy optimizer state
+        policy_optimizer_state = self._policies_optimizer.init(policy_params)
 
-        def scan_train_controller(
+        def scan_train_policy(
             carry: Tuple[DiversityPGEmitterState, Genotype, optax.OptState],
             transitions: QDTransition,
         ) -> Tuple[Tuple[DiversityPGEmitterState, Genotype, optax.OptState], Any]:
-            emitter_state, controller_params, controller_optimizer_state = carry
+            emitter_state, policy_params, policy_optimizer_state = carry
             (
                 new_emitter_state,
-                new_controller_params,
-                new_controller_optimizer_state,
-            ) = self._train_controller(
+                new_policy_params,
+                new_policy_optimizer_state,
+            ) = self._train_policy(
                 emitter_state,
-                controller_params,
-                controller_optimizer_state,
+                policy_params,
+                policy_optimizer_state,
                 transitions,
             )
             return (
                 new_emitter_state,
-                new_controller_params,
-                new_controller_optimizer_state,
+                new_policy_params,
+                new_policy_optimizer_state,
             ), ()
 
         # sample transitions
@@ -329,44 +329,40 @@ class DiversityPGEmitter(QualityPGEmitter):
             transitions,
         )
 
-        (
-            emitter_state,
-            controller_params,
-            controller_optimizer_state,
-        ), _ = jax.lax.scan(
-            scan_train_controller,
-            (emitter_state, controller_params, controller_optimizer_state),
+        (emitter_state, policy_params, policy_optimizer_state,), _ = jax.lax.scan(
+            scan_train_policy,
+            (emitter_state, policy_params, policy_optimizer_state),
             (transitions),
             length=self._config.num_pg_training_steps,
         )
 
-        return controller_params
+        return policy_params
 
     @partial(jax.jit, static_argnames=("self",))
-    def _train_controller(
+    def _train_policy(
         self,
         emitter_state: DiversityPGEmitterState,
-        controller_params: Params,
-        controller_optimizer_state: optax.OptState,
+        policy_params: Params,
+        policy_optimizer_state: optax.OptState,
         transitions: QDTransition,
     ) -> Tuple[DiversityPGEmitterState, Params, optax.OptState]:
-        """Apply one gradient step to a policy (called controllers_params).
+        """Apply one gradient step to a policy (called policies_params).
 
         Args:
             emitter_state: current state of the emitter.
-            controller_params: parameters corresponding to the weights and bias of
-                the neural network that defines the controller.
+            policy_params: parameters corresponding to the weights and bias of
+                the neural network that defines the policy.
 
         Returns:
             The new emitter state and new params of the NN.
         """
 
-        # update controller
-        controller_optimizer_state, controller_params = self._update_controller(
+        # update policy
+        policy_optimizer_state, policy_params = self._update_policy(
             critic_params=emitter_state.critic_params,
-            controller_optimizer_state=controller_optimizer_state,
-            controller_params=controller_params,
+            policy_optimizer_state=policy_optimizer_state,
+            policy_params=policy_params,
             transitions=transitions,
         )
 
-        return emitter_state, controller_params, controller_optimizer_state
+        return emitter_state, policy_params, policy_optimizer_state
