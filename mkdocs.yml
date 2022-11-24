@@ -118,6 +118,7 @@ nav:
     - OMG MEGA: examples/omgmega.ipynb
     - CMA MEGA: examples/cmamega.ipynb
     - MOME: examples/mome.ipynb
+    - MEES: examples/mees.ipynb
     - DIAYN: examples/diayn.ipynb
     - DADS: examples/dads.ipynb
     - SMERL: examples/smerl.ipynb
@@ -132,6 +133,7 @@ nav:
         - OMG MEGA: api_documentation/core/omg_mega.md
         - CMA MEGA: api_documentation/core/cma_mega.md
         - MOME: api_documentation/core/mome.md
+        - ME ES: api_documentation/core/mees.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md

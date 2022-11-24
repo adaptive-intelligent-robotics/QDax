@@ -481,3 +481,11 @@ class PGAMEEmitter(Emitter):
         )
 
         return new_emitter_state, controller_params, controller_optimizer_state
+
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._config.env_batch_size

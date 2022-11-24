@@ -299,3 +299,11 @@ class CMAMEGAEmitter(Emitter):
         )
 
         return emitter_state
+
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._batch_size

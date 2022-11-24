@@ -241,3 +241,11 @@ class OMGMEGAEmitter(Emitter):
         return emitter_state.replace(  # type: ignore
             gradients_repertoire=gradients_repertoire
         )
+
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._batch_size

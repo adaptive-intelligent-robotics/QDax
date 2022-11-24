@@ -105,3 +105,12 @@ class Emitter(ABC):
             The modified emitter state.
         """
         return emitter_state
+
+    @property
+    @abstractmethod
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        pass
