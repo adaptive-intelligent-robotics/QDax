@@ -39,6 +39,14 @@ class CMAPoolEmitter(Emitter):
         self._num_states = num_states
         self._emitter = emitter
 
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._emitter.batch_size
+
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey

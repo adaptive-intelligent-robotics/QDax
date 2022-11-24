@@ -89,6 +89,14 @@ class CMAEmitter(Emitter, ABC):
 
         self._cma_initial_state = self._cmaes.init()
 
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._batch_size
+
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
