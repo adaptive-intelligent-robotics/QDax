@@ -334,22 +334,15 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             an initialized MAP-Elite repertoire
         """
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(
-            lambda x: x[0],
-            genotypes
-        )
+        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
 
         # create a repertoire with default values
-        repertoire = cls.init_default(
-            genotype=first_genotype,
-            centroids=centroids
-        )
+        repertoire = cls.init_default(genotype=first_genotype, centroids=centroids)
 
         # add initial population to the repertoire
         new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
 
         return new_repertoire  # type: ignore
-
 
     @classmethod
     def init_default(

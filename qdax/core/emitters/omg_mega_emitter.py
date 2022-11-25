@@ -97,21 +97,19 @@ class OMGMEGAEmitter(Emitter):
             The initial emitter state.
         """
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(
-            lambda x: x[0],
-            init_genotypes
-        )
+        first_genotype = jax.tree_util.tree_map(lambda x: x[0], init_genotypes)
 
         # add a dimension of size num descriptors + 1
         gradient_genotype = jax.tree_util.tree_map(
-            lambda x: jnp.repeat(jnp.expand_dims(x, axis=-1), repeats=self._num_descriptors + 1, axis=-1),
-            first_genotype
+            lambda x: jnp.repeat(
+                jnp.expand_dims(x, axis=-1), repeats=self._num_descriptors + 1, axis=-1
+            ),
+            first_genotype,
         )
 
         # create the gradients repertoire
         gradients_repertoire = MapElitesRepertoire.init_default(
-            genotype=gradient_genotype,
-            centroids=self._centroids
+            genotype=gradient_genotype, centroids=self._centroids
         )
 
         return (

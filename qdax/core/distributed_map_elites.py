@@ -7,18 +7,8 @@ from typing import Any, Callable, List, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
-from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.map_elites import MAPElites
-from qdax.types import (
-    Centroid,
-    Descriptor,
-    ExtraScores,
-    Fitness,
-    Genotype,
-    Metrics,
-    RNGKey,
-)
+from qdax.types import Centroid, Descriptor, Fitness, Genotype
 
 
 class DistributedMAPElites(MAPElites):
@@ -34,7 +24,7 @@ class DistributedMAPElites(MAPElites):
         Returns:
             Gathered data
         """
-        return jax.tree_util.tree_map(
+        return jax.tree_util.tree_map(  # type: ignore
             lambda y: jnp.concatenate(jax.lax.all_gather(y, axis_name="p"), axis=0),
             x,
         )
@@ -63,4 +53,4 @@ class DistributedMAPElites(MAPElites):
         Returns:
             _description_
         """
-        return jax.pmap(self.update, devices=devices, axis_name="p")
+        return jax.pmap(self.update, devices=devices, axis_name="p")  # type: ignore
