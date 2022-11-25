@@ -96,26 +96,22 @@ class OMGMEGAEmitter(Emitter):
         Returns:
             The initial emitter state.
         """
-
-        # Initialize grid with default values
-        num_centroids = self._centroids.shape[0]
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-        default_gradients = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(
-                shape=(num_centroids,) + x.shape[1:] + (self._num_descriptors + 1,)
-            ),
-            init_genotypes,
-        )
-        default_descriptors = jnp.zeros(
-            shape=(num_centroids, self._centroids.shape[-1])
+        # retrieve one genotype from the population
+        first_genotype = jax.tree_util.tree_map(
+            lambda x: x[0],
+            init_genotypes
         )
 
-        # instantiate the gradients repertoire
-        gradients_repertoire = MapElitesRepertoire(
-            genotypes=default_gradients,
-            fitnesses=default_fitnesses,
-            descriptors=default_descriptors,
-            centroids=self._centroids,
+        # add a dimension of size num descriptors + 1
+        gradient_genotype = jax.tree_util.tree_map(
+            lambda x: jnp.repeat(jnp.expand_dims(x, axis=-1), repeats=self._num_descriptors + 1, axis=-1),
+            first_genotype
+        )
+
+        # create the gradients repertoire
+        gradients_repertoire = MapElitesRepertoire.init_default(
+            genotype=gradient_genotype,
+            centroids=self._centroids
         )
 
         return (

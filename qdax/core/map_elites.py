@@ -76,6 +76,11 @@ class MAPElites:
             init_genotypes, random_key
         )
 
+        # gather across all devices - no gathering to do in this implementation
+        init_genotypes, fitnesses, descriptors = self._device_gathering(
+            (init_genotypes, fitnesses, descriptors)
+        )
+
         # init the repertoire
         repertoire = MapElitesRepertoire.init(
             genotypes=init_genotypes,
@@ -136,6 +141,11 @@ class MAPElites:
             genotypes, random_key
         )
 
+        # gather across all devices - no gathering to do in this implementation
+        genotypes, fitnesses, descriptors = self._device_gathering(
+            (genotypes, fitnesses, descriptors)
+        )
+
         # add genotypes in the repertoire
         repertoire = repertoire.add(genotypes, descriptors, fitnesses)
 
@@ -153,6 +163,21 @@ class MAPElites:
         metrics = self._metrics_function(repertoire)
 
         return repertoire, emitter_state, metrics, random_key
+
+    @partial(jax.jit, static_argnames=("self"))
+    def _device_gathering(
+        self, x: Tuple[Genotype, Fitness, Descriptor]
+    ) -> Tuple[Genotype, Fitness, Descriptor]:
+        """This class keeps data on the same device so the gathering is
+        trivial, it's identity.
+
+        Args:
+            x: data having to be gathered.
+
+        Returns:
+            Gathered data
+        """
+        return x
 
     @partial(jax.jit, static_argnames=("self",))
     def scan_update(
@@ -179,3 +204,21 @@ class MAPElites:
         )
 
         return (repertoire, emitter_state, random_key), metrics
+
+    @partial(jax.jit, static_argnames=("self",))
+    def update_iterations(
+        self,
+        repertoire: MapElitesRepertoire,
+        emitter_state: Optional[EmitterState],
+        random_key: RNGKey,
+        num_iterations: int,
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey, Metrics]:
+        # apply a scan of length num_iterations
+        (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+            self.scan_update,
+            (repertoire, emitter_state, random_key),
+            (),
+            length=num_iterations,
+        )
+
+        return repertoire, emitter_state, random_key, metrics
