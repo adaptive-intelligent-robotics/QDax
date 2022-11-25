@@ -109,6 +109,15 @@ class QualityPGEmitter(Emitter):
         """
         return self._config.env_batch_size
 
+    @property
+    def use_all_data(self) -> bool:
+        """Whether to use all data or not when used along other emitters.
+
+        QualityPGEmitter uses the transitions from the genotypes that were generated
+        by other emitters.
+        """
+        return True
+
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
     ) -> Tuple[QualityPGEmitterState, RNGKey]:

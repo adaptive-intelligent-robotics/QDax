@@ -162,24 +162,39 @@ class MultiEmitter(Emitter):
             self.indexes_start_batches,
             self.indexes_end_batches,
         ):
-            sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree_util.tree_map(
-                partial(_get_sub_pytree, start=index_start, end=index_end),
-                (
+            # update with all genotypes, fitnesses, etc...
+            if emitter.use_all_data:
+                new_sub_emitter_state = emitter.state_update(
+                    sub_emitter_state,
+                    repertoire,
                     genotypes,
                     fitnesses,
                     descriptors,
                     extra_scores,
-                ),
-            )
-            new_sub_emitter_state = emitter.state_update(
-                sub_emitter_state,
-                repertoire,
-                sub_gen,
-                sub_fit,
-                sub_desc,
-                sub_extra_scores,
-            )
-            emitter_states.append(new_sub_emitter_state)
+                )
+                emitter_states.append(new_sub_emitter_state)
+            # update only with the data of the emitted genotypes
+            else:
+                # extract relevant data
+                sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree_util.tree_map(
+                    partial(_get_sub_pytree, start=index_start, end=index_end),
+                    (
+                        genotypes,
+                        fitnesses,
+                        descriptors,
+                        extra_scores,
+                    ),
+                )
+                # update only with the relevant data
+                new_sub_emitter_state = emitter.state_update(
+                    sub_emitter_state,
+                    repertoire,
+                    sub_gen,
+                    sub_fit,
+                    sub_desc,
+                    sub_extra_scores,
+                )
+                emitter_states.append(new_sub_emitter_state)
 
         # return the update global emitter state
         return MultiEmitterState(tuple(emitter_states))
