@@ -5,7 +5,7 @@ algorithm as well as several variants."""
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import flax
 import jax
@@ -14,7 +14,7 @@ from jax.flatten_util import ravel_pytree
 from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey, ExtraScores
+from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(

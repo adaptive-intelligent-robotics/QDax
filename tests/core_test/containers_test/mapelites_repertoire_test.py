@@ -50,7 +50,9 @@ def test_mapelites_repertoire() -> None:
     fake_extra_scores: ExtraScores = {}
 
     # do an addition
-    repertoire = repertoire.add(fake_genotypes, fake_descriptors, fake_fitnesses, fake_extra_scores)
+    repertoire = repertoire.add(
+        fake_genotypes, fake_descriptors, fake_fitnesses, fake_extra_scores
+    )
 
     # check that the repertoire looks like expected
     expected_genotypes = jnp.array(
