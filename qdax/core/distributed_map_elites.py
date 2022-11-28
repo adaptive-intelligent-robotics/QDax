@@ -42,7 +42,7 @@ class DistributedMAPElites(MAPElites):
         )
 
         # gather across all devices
-        gathered_genotypes, gathered_fitnesses, gathered_descriptors = jax.tree_map(
+        gathered_genotypes, gathered_fitnesses, gathered_descriptors = jax.tree_util.tree_map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (init_genotypes, fitnesses, descriptors),
         )
@@ -108,7 +108,7 @@ class DistributedMAPElites(MAPElites):
         )
 
         # gather across all devices
-        gathered_genotypes, gathered_fitnesses, gathered_descriptors = jax.tree_map(
+        gathered_genotypes, gathered_fitnesses, gathered_descriptors = jax.tree_util.tree_map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes, fitnesses, descriptors),
         )
@@ -133,7 +133,7 @@ class DistributedMAPElites(MAPElites):
 
         return repertoire, emitter_state, metrics, random_key
 
-    def get_distributed_init(
+    def get_distributed_init_fn(
         self, centroids: Centroid, devices: List[Any]
     ) -> Callable[
         [Genotype, RNGKey], Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]
