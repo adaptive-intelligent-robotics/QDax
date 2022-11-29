@@ -4,6 +4,7 @@ well as several variants."""
 
 from __future__ import annotations
 
+import warnings
 from functools import partial
 from typing import Any, Optional, Tuple
 
@@ -383,6 +384,13 @@ class MOMERepertoire(MapElitesRepertoire):
         Returns:
             An initialized MAP-Elite repertoire
         """
+
+        warnings.warn(
+            (
+                "This type of repertoire does not store the extra scores "
+                "computed by the scoring function"
+            )
+        )
 
         # get dimensions
         num_criteria = fitnesses.shape[1]

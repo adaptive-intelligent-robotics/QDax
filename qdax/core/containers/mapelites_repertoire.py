@@ -4,6 +4,7 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
+import warnings
 from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -338,6 +339,12 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         Returns:
             an initialized MAP-Elite repertoire
         """
+        warnings.warn(
+            (
+                "This type of repertoire does not store the extra scores "
+                "computed by the scoring function"
+            )
+        )
 
         # Initialize repertoire with default values
         num_centroids = centroids.shape[0]
