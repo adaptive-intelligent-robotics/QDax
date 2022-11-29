@@ -26,6 +26,9 @@ class DistributedMAPElites(MAPElites):
         Requires the definition of centroids that can be computed with any method
         such as CVT or Euclidean mapping.
 
+        Before the repertoire is initialised, individuals are gathered from all the
+        devices.
+
         Args:
             init_genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
@@ -42,7 +45,11 @@ class DistributedMAPElites(MAPElites):
         )
 
         # gather across all devices
-        gathered_genotypes, gathered_fitnesses, gathered_descriptors = jax.tree_util.tree_map(
+        (
+            gathered_genotypes,
+            gathered_fitnesses,
+            gathered_descriptors,
+        ) = jax.tree_util.tree_map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (init_genotypes, fitnesses, descriptors),
         )
@@ -86,6 +93,8 @@ class DistributedMAPElites(MAPElites):
         2. The copies are mutated and crossed-over
         3. The obtained offsprings are scored and then added to the repertoire.
 
+        Before the repertoire is updated, individuals are gathered from all the
+        devices.
 
         Args:
             repertoire: the MAP-Elites repertoire
@@ -108,7 +117,11 @@ class DistributedMAPElites(MAPElites):
         )
 
         # gather across all devices
-        gathered_genotypes, gathered_fitnesses, gathered_descriptors = jax.tree_util.tree_map(
+        (
+            gathered_genotypes,
+            gathered_fitnesses,
+            gathered_descriptors,
+        ) = jax.tree_util.tree_map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes, fitnesses, descriptors),
         )
@@ -147,7 +160,7 @@ class DistributedMAPElites(MAPElites):
         Returns:
             A callable function that inits the MAP-Elites algorithm in a ditributed way.
         """
-        return jax.pmap(
+        return jax.pmap(  # type: ignore
             partial(self.init, centroids=centroids),
             devices=devices,
             axis_name="p",
@@ -204,4 +217,4 @@ class DistributedMAPElites(MAPElites):
             )
             return repertoire, emitter_state, random_key, metrics
 
-        return jax.pmap(update_fn, devices=devices, axis_name="p")
+        return jax.pmap(update_fn, devices=devices, axis_name="p")  # type: ignore
