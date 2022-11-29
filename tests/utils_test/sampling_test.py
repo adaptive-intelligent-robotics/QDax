@@ -90,8 +90,8 @@ def test_sampling() -> None:
     )
 
     # Evaluate individuals using the scoring functions
-    descriptors, fitnesses, _, _ = scoring_fn(init_variables, random_key)
-    sample_descriptors, sample_fitnesses, _, _ = scoring_1_sample_fn(
+    fitnesses, descriptors, _, _ = scoring_fn(init_variables, random_key)
+    sample_fitnesses, sample_descriptors, _, _ = scoring_1_sample_fn(
         init_variables, random_key
     )
 
@@ -107,7 +107,7 @@ def test_sampling() -> None:
     )
 
     # Evaluate individuals using the scoring functions
-    sample_descriptors, sample_fitnesses, _, _ = scoring_multi_sample_fn(
+    sample_fitnesses, sample_descriptors, _, _ = scoring_multi_sample_fn(
         init_variables, random_key
     )
 
