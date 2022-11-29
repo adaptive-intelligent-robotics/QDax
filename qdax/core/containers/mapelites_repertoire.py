@@ -333,24 +333,56 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         Returns:
             an initialized MAP-Elite repertoire
         """
+        # retrieve one genotype from the population
+        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
 
-        # Initialize repertoire with default values
+        # create a repertoire with default values
+        repertoire = cls.init_default(genotype=first_genotype, centroids=centroids)
+
+        # add initial population to the repertoire
+        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+
+        return new_repertoire  # type: ignore
+
+    @classmethod
+    def init_default(
+        cls,
+        genotype: Genotype,
+        centroids: Centroid,
+    ) -> MapElitesRepertoire:
+        """Initialize a Map-Elites repertoire with an initial population of
+        genotypes. Requires the definition of centroids that can be computed
+        with any method such as CVT or Euclidean mapping.
+
+        Note: this function has been kept outside of the object MapElites, so
+        it can be called easily called from other modules.
+
+        Args:
+            genotype: the typical genotype that will be stored.
+            centroids: the centroids of the repertoire
+
+        Returns:
+            A repertoire filled with default values.
+        """
+
+        # get number of centroids
         num_centroids = centroids.shape[0]
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
-        default_genotypes = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape[1:]),
-            genotypes,
-        )
-        default_descriptors = jnp.zeros(shape=(num_centroids, centroids.shape[-1]))
 
-        repertoire = cls(
+        # default fitness is -inf
+        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+
+        # default genotypes is all 0
+        default_genotypes = jax.tree_util.tree_map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape),
+            genotype,
+        )
+
+        # default descriptor is all zeros
+        default_descriptors = jnp.zeros_like(centroids)
+
+        return cls(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
             centroids=centroids,
         )
-
-        # Add initial values to the repertoire
-        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
-
-        return new_repertoire  # type: ignore
