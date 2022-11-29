@@ -55,6 +55,7 @@ class MOME(MAPElites):
             descriptors=descriptors,
             centroids=centroids,
             pareto_front_max_length=pareto_front_max_length,
+            extra_scores=extra_scores,
         )
 
         # get initial state of the emitter

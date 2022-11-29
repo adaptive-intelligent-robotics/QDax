@@ -229,7 +229,10 @@ class OMGMEGAEmitter(Emitter):
 
         # update the gradients repertoire
         gradients_repertoire = emitter_state.gradients_repertoire.add(
-            gradients, descriptors, fitnesses
+            gradients,
+            descriptors,
+            fitnesses,
+            extra_scores,
         )
 
         return emitter_state.replace(  # type: ignore

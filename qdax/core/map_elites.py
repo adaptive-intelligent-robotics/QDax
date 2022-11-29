@@ -82,6 +82,7 @@ class MAPElites:
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
+            extra_scores=extra_scores,
         )
 
         # get initial state of the emitter
@@ -137,7 +138,7 @@ class MAPElites:
         )
 
         # add genotypes in the repertoire
-        repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+        repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
 
         # update emitter state after scoring is made
         emitter_state = self._emitter.state_update(
