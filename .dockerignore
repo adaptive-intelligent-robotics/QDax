@@ -168,5 +168,4 @@ cython_debug/
 .gitignore
 Makefile
 mypy.ini
-README.md
 dev.Dockerfile
