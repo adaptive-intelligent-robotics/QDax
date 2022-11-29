@@ -6,12 +6,14 @@ import jax.numpy as jnp
 import pytest
 
 from qdax import environments
+from qdax.core.containers.archive import score_euclidean_novelty
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     compute_cvt_centroids,
 )
-from qdax.core.emitters.mutation_operators import isoline_variation
-from qdax.core.emitters.pga_me_emitter import PGAMEConfig, PGAMEEmitter
+from qdax.core.emitters.dpg_emitter import DiversityPGConfig
+from qdax.core.emitters.qdpg_emitter import QDPGEmitter, QDPGEmitterConfig
+from qdax.core.emitters.qpg_emitter import QualityPGConfig
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
@@ -19,7 +21,7 @@ from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.types import EnvState, Params, RNGKey
 
 
-def test_pgame() -> None:
+def test_qdpg() -> None:
     env_name = "walker2d_uni"
     episode_length = 100
     num_iterations = 5
@@ -30,15 +32,18 @@ def test_pgame() -> None:
     min_bd = 0.0
     max_bd = 1.0
 
-    # @title PGA-ME Emitter Definitions Fields
-    proportion_mutation_ga = 0.5
+    # mutations size
+    quality_pg_batch_size = 3
+    diversity_pg_batch_size = 3
+    ga_batch_size = 3
+
+    env_batch_size = quality_pg_batch_size + diversity_pg_batch_size + ga_batch_size
 
     # TD3 params
-    env_batch_size = 10
     replay_buffer_size = 100000
     critic_hidden_layer_size = (64, 64)
     critic_learning_rate = 3e-4
-    greedy_learning_rate = 3e-4
+    actor_learning_rate = 3e-4
     policy_learning_rate = 1e-3
     noise_clip = 0.5
     policy_noise = 0.2
@@ -49,6 +54,16 @@ def test_pgame() -> None:
     num_critic_training_steps = 5
     num_pg_training_steps = 5
     policy_delay = 2
+
+    # archive
+    archive_acceptance_threshold = 0.1
+    archive_max_size = 10000
+
+    iso_sigma = 0.05
+    line_sigma = 0.1
+
+    num_nearest_neighb = 5
+    novelty_scaling_ratio = 1.0
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
@@ -114,14 +129,13 @@ def test_pgame() -> None:
 
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    # Define the PG-emitter config
-    pga_emitter_config = PGAMEConfig(
-        env_batch_size=env_batch_size,
+    # Define the Quality PG emitter config
+    qpg_emitter_config = QualityPGConfig(
+        env_batch_size=quality_pg_batch_size,
         batch_size=transitions_batch_size,
-        proportion_mutation_ga=proportion_mutation_ga,
         critic_hidden_layer_size=critic_hidden_layer_size,
         critic_learning_rate=critic_learning_rate,
-        greedy_learning_rate=greedy_learning_rate,
+        actor_learning_rate=actor_learning_rate,
         policy_learning_rate=policy_learning_rate,
         noise_clip=noise_clip,
         policy_noise=policy_noise,
@@ -134,14 +148,50 @@ def test_pgame() -> None:
         policy_delay=policy_delay,
     )
 
-    # Get the emitter
-    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
+    # Define the Diversity PG emitter config
+    dpg_emitter_config = DiversityPGConfig(
+        env_batch_size=diversity_pg_batch_size,
+        batch_size=transitions_batch_size,
+        critic_hidden_layer_size=critic_hidden_layer_size,
+        critic_learning_rate=critic_learning_rate,
+        actor_learning_rate=actor_learning_rate,
+        policy_learning_rate=policy_learning_rate,
+        noise_clip=noise_clip,
+        policy_noise=policy_noise,
+        discount=discount,
+        reward_scaling=reward_scaling,
+        replay_buffer_size=replay_buffer_size,
+        soft_tau_update=soft_tau_update,
+        num_critic_training_steps=num_critic_training_steps,
+        num_pg_training_steps=num_pg_training_steps,
+        policy_delay=policy_delay,
+        archive_acceptance_threshold=archive_acceptance_threshold,
+        archive_max_size=archive_max_size,
+    )
 
-    pg_emitter = PGAMEEmitter(
-        config=pga_emitter_config,
+    # Define the QDPG Emitter config
+    qdpg_emitter_config = QDPGEmitterConfig(
+        qpg_config=qpg_emitter_config,
+        dpg_config=dpg_emitter_config,
+        iso_sigma=iso_sigma,
+        line_sigma=line_sigma,
+        ga_batch_size=ga_batch_size,
+    )
+
+    score_novelty = jax.jit(
+        functools.partial(
+            score_euclidean_novelty,
+            num_nearest_neighb=num_nearest_neighb,
+            scaling_ratio=novelty_scaling_ratio,
+        )
+    )
+
+    # define the QDPG emitter
+    qdpg_emitter = QDPGEmitter(
+        config=qdpg_emitter_config,
         policy_network=policy_network,
         env=env,
-        variation_fn=variation_fn,
+        score_novelty=score_novelty,
     )
 
     # Create the initial environment states
@@ -173,7 +223,7 @@ def test_pgame() -> None:
     # Instantiate MAP Elites
     map_elites = MAPElites(
         scoring_function=scoring_fn,
-        emitter=pg_emitter,
+        emitter=qdpg_emitter,
         metrics_function=metrics_function,
     )
 
@@ -189,7 +239,7 @@ def test_pgame() -> None:
         return (repertoire, emitter_state, random_key), metrics
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (repertoire, emitter_state, random_key,), _metrics = jax.lax.scan(
         update_scan_fn,
         (repertoire, emitter_state, random_key),
         (),

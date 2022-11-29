@@ -93,6 +93,7 @@ FROM cuda-image as run-image
 
 COPY qdax qdax
 COPY setup.py ./
+COPY README.md ./
 
 RUN pip install .
 
