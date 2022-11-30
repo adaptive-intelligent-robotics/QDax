@@ -148,9 +148,7 @@ def create(
         if env_name not in _qdax_custom_envs.keys():
             base_env_name = env_name
         # wrap the env
-        env = FixedInitialStateWrapper(
-            env, base_env_name=base_env_name
-        )
+        env = FixedInitialStateWrapper(env, base_env_name=base_env_name)  # type: ignore
     if auto_reset:
         env = brax.envs.wrappers.AutoResetWrapper(env)
         if env_name in _qdax_custom_envs.keys():
