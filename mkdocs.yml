@@ -115,6 +115,7 @@ nav:
     - MAPElites: examples/mapelites.ipynb
     - PGAME: examples/pgame.ipynb
     - CMA ME: examples/cmame.ipynb
+    - QDPG: examples/qdpg.ipynb
     - OMG MEGA: examples/omgmega.ipynb
     - CMA MEGA: examples/cmamega.ipynb
     - MOME: examples/mome.ipynb
