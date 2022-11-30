@@ -10,6 +10,7 @@ from qdax.environments.bd_extractors import (
     get_final_xy_position,
 )
 from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.environments.init_state_wrapper import FixedInitialStateWrapper
 from qdax.environments.locomotion_wrappers import (
     FeetContactWrapper,
     NoForwardRewardWrapper,
@@ -109,6 +110,7 @@ def create(
     auto_reset: bool = True,
     batch_size: Optional[int] = None,
     eval_metrics: bool = False,
+    fixed_init_state: bool = False,
     qdax_wrappers_kwargs: Optional[List] = None,
     **kwargs: Any,
 ) -> Union[brax.envs.env.Env, QDEnv]:
@@ -124,23 +126,29 @@ def create(
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
         env = brax.envs._envs[base_env_name](legacy_spring=True, **kwargs)
+    else:
+        raise NotImplementedError("This environment name does not exist!")
 
+    if env_name in _qdax_custom_envs.keys():
         # roll with qdax wrappers
         wrappers = _qdax_custom_envs[env_name]["wrappers"]
         if qdax_wrappers_kwargs is None:
             kwargs_list = _qdax_custom_envs[env_name]["kwargs"]
         else:
             kwargs_list = qdax_wrappers_kwargs
-
         for wrapper, kwargs in zip(wrappers, kwargs_list):  # type: ignore
             env = wrapper(env, base_env_name, **kwargs)  # type: ignore
-    else:
-        raise NotImplementedError("This environment name does not exist!")
 
     if episode_length is not None:
         env = brax.envs.wrappers.EpisodeWrapper(env, episode_length, action_repeat)
     if batch_size:
         env = brax.envs.wrappers.VectorWrapper(env, batch_size)
+    if fixed_init_state:
+        # retrieve the base env
+        if env_name not in _qdax_custom_envs.keys():
+            base_env_name = env_name
+        # wrap the env
+        env = FixedInitialStateWrapper(env, base_env_name=base_env_name)  # type: ignore
     if auto_reset:
         env = brax.envs.wrappers.AutoResetWrapper(env)
         if env_name in _qdax_custom_envs.keys():
@@ -148,6 +156,7 @@ def create(
     if eval_metrics:
         env = brax.envs.wrappers.EvalWrapper(env)
         env = CompletedEvalWrapper(env)
+
     return env
 
 

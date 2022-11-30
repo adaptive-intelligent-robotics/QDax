@@ -10,7 +10,7 @@ repos:
     - id: black
       language_version: python3.8
       args: ["--target-version", "py38"]
--   repo: https://gitlab.com/pycqa/flake8
+-   repo: https://github.com/PyCQA/flake8
     rev: 3.8.4
     hooks:
     - id: flake8
@@ -24,7 +24,7 @@ repos:
     rev: 0.3.9
     hooks:
       - id: nbstripout
-        args: ["notebooks/"]
+        args: ["examples/"]
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
     hooks:

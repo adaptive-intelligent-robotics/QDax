@@ -105,3 +105,33 @@ class Emitter(ABC):
             The modified emitter state.
         """
         return emitter_state
+
+    @property
+    @abstractmethod
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        pass
+
+    @property
+    def use_all_data(self) -> bool:
+        """Whether to use all data or not when used along other emitters.
+
+        Used when an emitter is used in a multi emitter setting.
+
+        Some emitter only the information from the genotypes they emitted when
+        they update their state (for instance, the CMA emitters); but other use data
+        from genotypes emitted by others (for instance, QualityPGEmitter and
+        DiversityPGEmitter). The meta emitters like MultiEmitter need to know which
+        data to give the sub emitter when udapting them. This property is used at
+        this moment.
+
+        Default behavior is to used only the data related to what was emitted.
+
+        Returns:
+            Whether to pass only the genotypes (and their evaluations) that the emitter
+            emitted when updating it or all the genotypes emitted by all the emitters.
+        """
+        return False

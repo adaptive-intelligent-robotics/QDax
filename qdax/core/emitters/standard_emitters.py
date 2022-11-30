@@ -76,3 +76,11 @@ class MixingEmitter(Emitter):
             )
 
         return genotypes, random_key
+
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._batch_size

@@ -4,8 +4,9 @@ well as several variants."""
 
 from __future__ import annotations
 
+import warnings
 from functools import partial
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -17,6 +18,7 @@ from qdax.core.containers.mapelites_repertoire import (
 from qdax.types import (
     Centroid,
     Descriptor,
+    ExtraScores,
     Fitness,
     Genotype,
     Mask,
@@ -259,6 +261,7 @@ class MOMERepertoire(MapElitesRepertoire):
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> MOMERepertoire:
         """Insert a batch of elements in the repertoire.
 
@@ -274,6 +277,8 @@ class MOMERepertoire(MapElitesRepertoire):
                 trying to add to the repertoire.
             batch_of_fitnesses: the fitnesses of the genotypes we are trying
                 to add to the repertoire.
+            batch_of_extra_scores: unused tree that contains the extra_scores of
+                aforementioned genotypes.
 
         Returns:
             The updated repertoire with potential new individuals.
@@ -355,6 +360,7 @@ class MOMERepertoire(MapElitesRepertoire):
         descriptors: Descriptor,
         centroids: Centroid,
         pareto_front_max_length: int,
+        extra_scores: Optional[ExtraScores] = None,
     ) -> MOMERepertoire:
         """
         Initialize a Multi Objective Map-Elites repertoire with an initial population
@@ -373,10 +379,18 @@ class MOMERepertoire(MapElitesRepertoire):
                 of shape (batch_size, num_descriptors)
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
             pareto_front_max_length: maximum size of the pareto fronts
+            extra_scores: unused extra_scores of the initial genotypes
 
         Returns:
             An initialized MAP-Elite repertoire
         """
+
+        warnings.warn(
+            (
+                "This type of repertoire does not store the extra scores "
+                "computed by the scoring function"
+            )
+        )
 
         # get dimensions
         num_criteria = fitnesses.shape[1]
@@ -410,7 +424,7 @@ class MOMERepertoire(MapElitesRepertoire):
         )
 
         # add first batch of individuals in the repertoire
-        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
 
         return new_repertoire  # type: ignore
 

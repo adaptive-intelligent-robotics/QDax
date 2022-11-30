@@ -27,7 +27,6 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-
   features:
     - navigation.tracking
     - navigation.tabs
@@ -109,25 +108,34 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Overview: overview.md
+  - Caveats: caveats.md
   - Guides:
     - Contributing: guides/CONTRIBUTING.md
   - Examples:
-    - MAPElites: notebooks/mapelites_example.ipynb
-    - PGAME: notebooks/pgame_example.ipynb
-    - OMG MEGA: notebooks/omgmega_example.ipynb
-    - CMA MEGA: notebooks/cmamega_example.ipynb
-    - MOME: notebooks/mome_example.ipynb
-    - DIAYN: notebooks/diayn_example.ipynb
-    - DADS: notebooks/dads_example.ipynb
-    - SMERL: notebooks/smerl_example.ipynb
+    - MAPElites: examples/mapelites.ipynb
+    - PGAME: examples/pgame.ipynb
+    - CMA ME: examples/cmame.ipynb
+    - QDPG: examples/qdpg.ipynb
+    - OMG MEGA: examples/omgmega.ipynb
+    - CMA MEGA: examples/cmamega.ipynb
+    - MOME: examples/mome.ipynb
+    - MEES: examples/mees.ipynb
+    - DIAYN: examples/diayn.ipynb
+    - DADS: examples/dads.ipynb
+    - SMERL: examples/smerl.ipynb
+    - CMA ES: examples/cmaes.ipynb
+    - NSGA2/SPEA2: examples/nsga2_spea2.ipynb
   - API documentation:
     - Core:
       - Core algorithms:
         - MAP Elites: api_documentation/core/map_elites.md
         - PGAME: api_documentation/core/pgame.md
+        - QDPG: api_documentation/core/qdpg.md
+        - CMA ME: api_documentation/core/cmame.md
         - OMG MEGA: api_documentation/core/omg_mega.md
         - CMA MEGA: api_documentation/core/cma_mega.md
         - MOME: api_documentation/core/mome.md
+        - ME ES: api_documentation/core/mees.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
