@@ -30,7 +30,6 @@ setup(
         "numpy>=1.22.3",
         "scikit-learn>=1.0.2",
         "scipy>=1.8.0",
-        "scikit-learn",
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
