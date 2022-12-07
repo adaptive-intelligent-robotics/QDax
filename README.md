@@ -109,10 +109,10 @@ repertoire, emitter_state, random_key = map_elites.init(init_variables, centroid
 # Run MAP-Elites loop
 for i in range(num_iterations):
     (repertoire, emitter_state, metrics, random_key,) = map_elites.update(
-            repertoire,
-            emitter_state,
-            random_key,
-        )
+        repertoire,
+        emitter_state,
+        random_key,
+    )
 
 # Get contents of repertoire
 repertoire.genotypes, repertoire.fitnesses, repertoire.descriptors
