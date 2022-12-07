@@ -5,6 +5,7 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     compute_euclidean_centroids,
 )
+from qdax.types import ExtraScores
 
 
 def test_mapelites_repertoire() -> None:
@@ -46,9 +47,12 @@ def test_mapelites_repertoire() -> None:
     fake_genotypes = jnp.ones(shape=(batch_size, genotype_size))
     fake_fitnesses = jnp.zeros(shape=(batch_size,))
     fake_descriptors = jnp.array([[0.1, 0.1], [0.9, 0.9]])
+    fake_extra_scores: ExtraScores = {}
 
     # do an addition
-    repertoire = repertoire.add(fake_genotypes, fake_descriptors, fake_fitnesses)
+    repertoire = repertoire.add(
+        fake_genotypes, fake_descriptors, fake_fitnesses, fake_extra_scores
+    )
 
     # check that the repertoire looks like expected
     expected_genotypes = jnp.array(

@@ -4,8 +4,9 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
+import warnings
 from functools import partial
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import flax
 import jax
@@ -14,7 +15,7 @@ from jax.flatten_util import ravel_pytree
 from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, RNGKey
+from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(
@@ -233,6 +234,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> MapElitesRepertoire:
         """
         Add a batch of elements to the repertoire.
@@ -245,6 +247,8 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
                 aforementioned genotypes. Its shape is (batch_size, num_descriptors)
             batch_of_fitnesses: an array that contains the fitnesses of the
                 aforementioned genotypes. Its shape is (batch_size,)
+            batch_of_extra_scores: unused tree that contains the extra_scores of
+                aforementioned genotypes.
 
         Returns:
             The updated MAP-Elites repertoire.
@@ -313,6 +317,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         fitnesses: Fitness,
         descriptors: Descriptor,
         centroids: Centroid,
+        extra_scores: Optional[ExtraScores] = None,
     ) -> MapElitesRepertoire:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
@@ -329,10 +334,18 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            extra_scores: unused extra_scores of the initial genotypes
 
         Returns:
             an initialized MAP-Elite repertoire
         """
+        warnings.warn(
+            (
+                "This type of repertoire does not store the extra scores "
+                "computed by the scoring function"
+            )
+        )
+
         # retrieve one genotype from the population
         first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
 
@@ -340,7 +353,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         repertoire = cls.init_default(genotype=first_genotype, centroids=centroids)
 
         # add initial population to the repertoire
-        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses)
+        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
 
         return new_repertoire  # type: ignore
 
