@@ -1,12 +1,14 @@
 """Defines some types used in PaRL"""
 
-from typing import Dict, Generic, TypeVar, Union
+from typing import Any, Dict, Generic, TypeVar, Union
 
 import brax.envs
 import jax
 import jax.numpy as jnp
 from chex import ArrayTree
 from typing_extensions import TypeAlias
+
+JumanjiState: TypeAlias = Any
 
 # MDP types
 Observation: TypeAlias = jnp.ndarray
