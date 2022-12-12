@@ -255,7 +255,7 @@ def score_euclidean_novelty(
 def knn(
     data: jnp.ndarray, new_data: jnp.ndarray, k: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """K nearest neigbors - Brute force implementation.
+    """K nearest neighbors - Brute force implementation.
     Using euclidean distance.
 
     Code from https://www.kernel-operations.io/keops/_auto_benchmarks/
@@ -264,7 +264,7 @@ def knn(
     Args:
         data: given reference data.
         new_data: data to be compared to the reference data.
-        k: number of neigbors to consider.
+        k: number of neighbors to consider.
 
     Returns:
         The distances and indices of the nearest neighbors.
