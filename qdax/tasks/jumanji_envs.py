@@ -1,15 +1,12 @@
 from functools import partial
 from typing import Any, Callable, Tuple
 
-import brax
 import jax
 import jax.numpy as jnp
 import jumanji
 from typing_extensions import TypeAlias
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
-from qdax.core.neuroevolution.mdp_utils import generate_unroll
-from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import (
     Descriptor,
     ExtraScores,
@@ -101,10 +98,12 @@ def jumanji_scoring_function(
     When the init states are different, this is not purely stochastic.
     """
 
+    print("Look a this policy params: ", policies_params)
+
     # Perform rollouts with each policy
     random_key, subkey = jax.random.split(random_key)
     unroll_fn = partial(
-        generate_unroll,
+        generate_jumanji_unroll,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
         random_key=subkey,
@@ -129,6 +128,9 @@ def jumanji_scoring_function(
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
     # descriptors = behavior_descriptor_extractor(data, mask)
     descriptors = jnp.array([0.0])
+
+    print("Look at this fitness: ", fitnesses)
+    print("Look at this descriptor: ", descriptors)
 
     print("Look at this transition dones: ", data.dones)
     print("Look at this transition rewards: ", data.rewards)
