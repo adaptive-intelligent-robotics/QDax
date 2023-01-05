@@ -118,13 +118,7 @@ def jumanji_scoring_function(
     mask = jnp.roll(is_done, 1, axis=1)
     mask = mask.at[:, 0].set(0)
 
-    # # replace NaNs by zeros
-    # corrected_rewards = jnp.nan_to_num(
-    #     data.rewards, copy=True, nan=0.0, posinf=None, neginf=None
-    # )
-
-    # Scores - add offset to ensure positive fitness (through positive rewards)
-    # fitnesses = jnp.sum(corrected_rewards * (1.0 - mask), axis=1)
+    # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
     # descriptors = behavior_descriptor_extractor(data, mask)
     descriptors = jnp.array([0.0])

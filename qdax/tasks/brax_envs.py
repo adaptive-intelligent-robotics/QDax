@@ -138,7 +138,7 @@ def scoring_function_brax_envs(
     mask = jnp.roll(is_done, 1, axis=1)
     mask = mask.at[:, 0].set(0)
 
-    # Scores - add offset to ensure positive fitness (through positive rewards)
+    # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
     descriptors = behavior_descriptor_extractor(data, mask)
 
