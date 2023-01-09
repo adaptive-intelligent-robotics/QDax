@@ -151,4 +151,5 @@ nav:
       - Emitters: api_documentation/core/emitters.md
       - Neuroevolution: api_documentation/core/neuroevolution.md
     - Environments: api_documentation/environments.md
+    - Tasks: api_documentation/tasks.md
     - Utils: api_documentation/utils.md
