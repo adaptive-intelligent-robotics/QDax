@@ -57,8 +57,6 @@ class GeneticAlgorithm:
             init_genotypes, random_key
         )
 
-        print("Fitness: ", fitnesses)
-
         # init the repertoire
         repertoire = GARepertoire.init(
             genotypes=init_genotypes,
