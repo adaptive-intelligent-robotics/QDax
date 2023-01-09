@@ -98,7 +98,7 @@ def jumanji_scoring_function(
     When the init states are different, this is not purely stochastic.
     """
 
-    print("Look a this policy params: ", policies_params)
+    print("Look at this policies params: ", policies_params)
 
     # Perform rollouts with each policy
     random_key, subkey = jax.random.split(random_key)
@@ -120,8 +120,8 @@ def jumanji_scoring_function(
 
     # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    # descriptors = behavior_descriptor_extractor(data, mask)
-    descriptors = jnp.array([0.0])
+    descriptors = behavior_descriptor_extractor(data, mask)
+    # descriptors = jnp.array([0.0])
 
     print("Look at this fitness: ", fitnesses)
     print("Look at this descriptor: ", descriptors)

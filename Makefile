@@ -7,6 +7,8 @@ DOCKER_IMAGE_NAME = instadeep/qdax:$(USER)
 USER_ID = $$(id -u)
 GROUP_ID = $$(id -g)
 
+PORT = 8888
+
 # Makefile
 .PHONY: clean
 clean:
@@ -25,7 +27,7 @@ dev_container: clean build
 .PHONY: ipynb_container
 ipynb_container: clean build
 	echo "Make sure you have properly exposed your VM before, with the gcloud ssh command followed by -- -N -f -L 8888:localhost:8888"
-	sudo docker run -p 8888:8888 -it $(DOCKER_RUN_FLAGS) -v $(WORK_DIR):/app $(DOCKER_IMAGE_NAME) jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root
+	sudo docker run -p $(PORT):$(PORT) -it $(DOCKER_RUN_FLAGS) -v $(WORK_DIR):/app $(DOCKER_IMAGE_NAME) jupyter notebook --port=$(PORT) --no-browser --ip=0.0.0.0 --allow-root
 
 .PHONY: style
 style: clean
