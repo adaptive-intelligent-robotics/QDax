@@ -1,10 +1,10 @@
 from functools import partial
 from typing import Any, Callable, Tuple
 
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jumanji
-from typing_extensions import TypeAlias
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.types import (
@@ -13,31 +13,90 @@ from qdax.types import (
     Fitness,
     Genotype,
     JumanjiState,
+    JumanjiTimeStep,
+    Observation,
     Params,
     RNGKey,
 )
 
-TimeStep: TypeAlias = jumanji.types.TimeStep
+
+def create_policy_network_play_step_fn(
+    env: jumanji.env.Environment,
+    policy_network: nn.Module,
+    observation_processing: Callable[[jumanji.types.Observation], Observation],
+) -> Callable[
+    [JumanjiState, JumanjiTimeStep, Params, RNGKey],
+    Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition],
+]:
+    """
+    Creates a function that when called, plays a step of the environment.
+
+    Args:
+        env: The jumanji environment.
+        policy_network:  The policy network structure used for creating and evaluating
+            policy controllers.
+        observation_processing: a method to do modify the observation from the
+        environment.
+
+    Returns:
+        default_play_step_fn: A function that plays a step of the environment.
+    """
+    # Define the function to play a step with the policy in the environment
+    def default_play_step_fn(
+        env_state: JumanjiState,
+        timestep: JumanjiTimeStep,
+        policy_params: Params,
+        random_key: RNGKey,
+    ) -> Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition]:
+        """Play an environment step and return the updated state and the transition.
+        Everything is deterministic in this simple example.
+        """
+
+        network_input = observation_processing(timestep.observation)
+
+        proba_action = policy_network.apply(policy_params, network_input)
+
+        action = jnp.argmax(proba_action)
+
+        state_desc = None
+        next_state, next_timestep = env.step(env_state, action)
+
+        next_state_desc = None
+
+        transition = QDTransition(
+            obs=timestep.observation,
+            next_obs=next_timestep.observation,
+            rewards=next_timestep.reward,
+            dones=jnp.where(next_timestep.last(), x=jnp.array(1), y=jnp.array(0)),
+            actions=action,
+            truncations=jnp.array(0),
+            state_desc=state_desc,
+            next_state_desc=next_state_desc,
+        )
+
+        return next_state, next_timestep, policy_params, random_key, transition
+
+    return default_play_step_fn
 
 
 @partial(jax.jit, static_argnames=("play_step_fn", "episode_length"))
 def generate_jumanji_unroll(
     init_state: JumanjiState,
-    init_timestep: TimeStep,
+    init_timestep: JumanjiTimeStep,
     policy_params: Params,
     random_key: RNGKey,
     episode_length: int,
     play_step_fn: Callable[
-        [JumanjiState, TimeStep, Params, RNGKey],
+        [JumanjiState, JumanjiTimeStep, Params, RNGKey],
         Tuple[
             JumanjiState,
-            TimeStep,
+            JumanjiTimeStep,
             Params,
             RNGKey,
             Transition,
         ],
     ],
-) -> Tuple[JumanjiState, TimeStep, Transition]:
+) -> Tuple[JumanjiState, JumanjiTimeStep, Transition]:
     """Generates an episode according to the agent's policy, returns the final state of
     the episode and the transitions of the episode.
 
@@ -53,8 +112,8 @@ def generate_jumanji_unroll(
     """
 
     def _scan_play_step_fn(
-        carry: Tuple[JumanjiState, TimeStep, Params, RNGKey], unused_arg: Any
-    ) -> Tuple[Tuple[JumanjiState, TimeStep, Params, RNGKey], Transition]:
+        carry: Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey], unused_arg: Any
+    ) -> Tuple[Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey], Transition]:
         env_state, timestep, policy_params, random_key, transitions = play_step_fn(
             *carry
         )
@@ -81,11 +140,11 @@ def jumanji_scoring_function(
     policies_params: Genotype,
     random_key: RNGKey,
     init_states: JumanjiState,
-    init_timesteps: TimeStep,
+    init_timesteps: JumanjiTimeStep,
     episode_length: int,
     play_step_fn: Callable[
-        [JumanjiState, TimeStep, Params, RNGKey, jumanji.env.Environment],
-        Tuple[JumanjiState, TimeStep, Params, RNGKey, QDTransition],
+        [JumanjiState, JumanjiTimeStep, Params, RNGKey, jumanji.env.Environment],
+        Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
@@ -97,8 +156,6 @@ def jumanji_scoring_function(
     evaluated with the same environment everytime, this won't be determinist.
     When the init states are different, this is not purely stochastic.
     """
-
-    print("Look at this policies params: ", policies_params)
 
     # Perform rollouts with each policy
     random_key, subkey = jax.random.split(random_key)
@@ -121,13 +178,6 @@ def jumanji_scoring_function(
     # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
     descriptors = behavior_descriptor_extractor(data, mask)
-    # descriptors = jnp.array([0.0])
-
-    print("Look at this fitness: ", fitnesses)
-    print("Look at this descriptor: ", descriptors)
-
-    print("Look at this transition dones: ", data.dones)
-    print("Look at this transition rewards: ", data.rewards)
 
     return (
         fitnesses,
