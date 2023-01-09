@@ -1,4 +1,4 @@
-"""Defines some types used in PaRL"""
+"""Defines some types used in QDax"""
 
 from typing import Any, Dict, Generic, TypeVar, Union
 

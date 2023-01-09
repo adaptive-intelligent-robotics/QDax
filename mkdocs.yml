@@ -125,6 +125,7 @@ nav:
     - SMERL: examples/smerl.ipynb
     - CMA ES: examples/cmaes.ipynb
     - NSGA2/SPEA2: examples/nsga2_spea2.ipynb
+    - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
       - Core algorithms:
