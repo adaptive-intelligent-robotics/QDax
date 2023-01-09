@@ -23,7 +23,7 @@ from qdax.types import (
 )
 
 
-def create_policy_network_play_step_fn(
+def make_policy_network_play_step_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
 ) -> Callable[
@@ -241,7 +241,7 @@ def create_brax_scoring_fn(
         bd_extraction_fn: The behaviour descriptor extraction function.
         random_key: a random key used for stochastic operations.
         play_step_fn: the function used to perform environment rollouts and collect
-            evaluation episodes. If None, we use create_policy_network_play_step_fn
+            evaluation episodes. If None, we use make_policy_network_play_step_fn
             to generate it.
         episode_length: The maximal episode length.
         deterministic: Whether we reset the initial state of the robot to the same
@@ -256,7 +256,7 @@ def create_brax_scoring_fn(
         The updated random key.
     """
     if play_step_fn is None:
-        play_step_fn = create_policy_network_play_step_fn(env, policy_network)
+        play_step_fn = make_policy_network_play_step_fn(env, policy_network)
 
     # Deterministic case
     if deterministic:

@@ -20,7 +20,7 @@ from qdax.types import (
 )
 
 
-def create_policy_network_play_step_fn(
+def make_policy_network_play_step_fn(
     env: jumanji.env.Environment,
     policy_network: nn.Module,
     observation_processing: Callable[[jumanji.types.Observation], Observation],
