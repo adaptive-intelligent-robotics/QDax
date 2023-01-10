@@ -12,7 +12,7 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.tasks.jumanji_envs import (
     jumanji_scoring_function,
-    make_policy_network_play_step_fn,
+    make_policy_network_play_step_fn_jumanji,
 )
 from qdax.types import Descriptor, Observation
 
@@ -53,7 +53,7 @@ def test_jumanji_utils() -> None:
         network_input = jnp.ravel(observation)
         return network_input
 
-    play_step_fn = make_policy_network_play_step_fn(
+    play_step_fn = make_policy_network_play_step_fn_jumanji(
         env=env,
         policy_network=policy_network,
         observation_processing=observation_processing,
@@ -80,10 +80,18 @@ def test_jumanji_utils() -> None:
     def bd_extraction(
         data: QDTransition, mask: jnp.ndarray, linear_projection: jnp.ndarray
     ) -> Descriptor:
-        """Compute feet contact time proportion.
+        """Extract a behavior descriptor from a trajectory.
 
-        This function suppose that state descriptor is the feet contact, as it
-        just computes the mean of the state descriptors given.
+        This extractor takes the mean observation in the trajectory and project
+        it in a two dimension space.
+
+        Args:
+            data: transitions.
+            mask: mask to indicate if episode is done.
+            linear_projection: a linear projection.
+
+        Returns:
+            Behavior descriptors.
         """
 
         # pre-process the observation

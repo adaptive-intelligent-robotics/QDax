@@ -1,6 +1,6 @@
 """Defines some types used in QDax"""
 
-from typing import Any, Dict, Generic, TypeVar, Union
+from typing import Dict, Generic, TypeVar, Union
 
 import brax.envs
 import jax
@@ -9,7 +9,7 @@ import jumanji
 from chex import ArrayTree
 from typing_extensions import TypeAlias
 
-JumanjiState: TypeAlias = Any
+JumanjiState: TypeAlias = ArrayTree
 JumanjiTimeStep: TypeAlias = jumanji.types.TimeStep
 
 # MDP types
