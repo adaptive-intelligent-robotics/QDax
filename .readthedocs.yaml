@@ -23,6 +23,7 @@ python:
 #     - method: pip
 #       path: .
 
+version: 2
 build:
   jobs:
     post_install:
