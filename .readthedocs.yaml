@@ -20,11 +20,5 @@ python:
   install:
     - requirements: requirements.txt
     - requirements: docs/requirements.txt
-#     - method: pip
-#       path: .
-
-version: 2
-build:
-  jobs:
-    post_install:
-      - pip install .
+    - method: pip
+      path: .
