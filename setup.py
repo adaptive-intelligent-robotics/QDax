@@ -24,6 +24,7 @@ setup(
         "absl-py>=1.0.0",
         "jax>=0.3.16",
         "jaxlib>=0.3.15",  # necessary to build the doc atm
+        "jinja2<3.1.0",
         "flax>=0.6, <0.6.2",
         "brax>=0.0.15",
         "gym>=0.23.1",
