@@ -125,6 +125,7 @@ nav:
     - SMERL: examples/smerl.ipynb
     - CMA ES: examples/cmaes.ipynb
     - NSGA2/SPEA2: examples/nsga2_spea2.ipynb
+    - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
       - Core algorithms:
@@ -150,4 +151,5 @@ nav:
       - Emitters: api_documentation/core/emitters.md
       - Neuroevolution: api_documentation/core/neuroevolution.md
     - Environments: api_documentation/environments.md
+    - Tasks: api_documentation/tasks.md
     - Utils: api_documentation/utils.md
