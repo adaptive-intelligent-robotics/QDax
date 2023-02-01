@@ -202,6 +202,16 @@ class PBTEmitter(Emitter):
 
         return genotypes, random_key
 
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        pg_batch_size = self._config.pg_population_size_per_device
+        ga_batch_size = self._config.ga_population_size_per_device
+        return pg_batch_size + ga_batch_size
+
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
