@@ -130,7 +130,7 @@ class PBTEmitter(Emitter):
         env_states = jax.jit(self._env.reset)(rng=sub_key1)
 
         reshape_fn = jax.jit(
-            lambda tree: jax.tree_map(
+            lambda tree: jax.tree_util.tree_map(
                 lambda x: jnp.reshape(
                     x,
                     (
@@ -146,7 +146,7 @@ class PBTEmitter(Emitter):
 
         # Create emitter state
         # keep only pg population size training states if more are provided
-        init_genotypes = jax.tree_map(
+        init_genotypes = jax.tree_util.tree_map(
             lambda x: x[: self._config.pg_population_size_per_device], init_genotypes
         )
         emitter_state = PBTEmitterState(
@@ -192,7 +192,7 @@ class PBTEmitter(Emitter):
             x_mutation_ga, random_key = self._variation_fn(x1, x2, random_key)
 
             # Gather offspring
-            genotypes = jax.tree_map(
+            genotypes = jax.tree_util.tree_map(
                 lambda x, y: jnp.concatenate([x, y], axis=0),
                 x_mutation_ga,
                 x_mutation_pg,
@@ -254,10 +254,10 @@ class PBTEmitter(Emitter):
             * self._config.fraction_best_to_replace_from
         )
         indices_to_share = indices_to_share[:num_best_local]
-        genotypes_to_share, fitnesses_to_share = jax.tree_map(
+        genotypes_to_share, fitnesses_to_share = jax.tree_util.tree_map(
             lambda x: x[indices_to_share], (genotypes, fitnesses)
         )
-        gathered_genotypes, gathered_fitnesses = jax.tree_map(
+        gathered_genotypes, gathered_fitnesses = jax.tree_util.tree_map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes_to_share, fitnesses_to_share),
         )
@@ -265,7 +265,7 @@ class PBTEmitter(Emitter):
         genotypes_stacked, fitnesses_stacked = gathered_genotypes, gathered_fitnesses
         best_indices_stacked = jnp.argsort(-fitnesses_stacked)
         best_indices_stacked = best_indices_stacked[: self._num_best_to_replace_from]
-        best_genotypes_local, best_fitnesses_local = jax.tree_map(
+        best_genotypes_local, best_fitnesses_local = jax.tree_util.tree_map(
             lambda x: x[best_indices_stacked], (genotypes_stacked, fitnesses_stacked)
         )
 
@@ -277,15 +277,15 @@ class PBTEmitter(Emitter):
                 [i * self._num_to_exchange],
                 [self._num_to_exchange],
             )
-            genotypes_to_share, fitnesses_to_share = jax.tree_map(
+            genotypes_to_share, fitnesses_to_share = jax.tree_util.tree_map(
                 lambda x: x[indices_to_share], (genotypes, fitnesses)
             )
-            gathered_genotypes, gathered_fitnesses = jax.tree_map(
+            gathered_genotypes, gathered_fitnesses = jax.tree_util.tree_map(
                 lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
                 (genotypes_to_share, fitnesses_to_share),
             )
 
-            genotypes_stacked, fitnesses_stacked = jax.tree_map(
+            genotypes_stacked, fitnesses_stacked = jax.tree_util.tree_map(
                 lambda x, y: jnp.concatenate([x, y], axis=0),
                 (gathered_genotypes, gathered_fitnesses),
                 (best_genotypes_local, best_fitnesses_local),
@@ -295,7 +295,7 @@ class PBTEmitter(Emitter):
             best_indices_stacked = best_indices_stacked[
                 : self._num_best_to_replace_from
             ]
-            best_genotypes_local, best_fitnesses_local = jax.tree_map(
+            best_genotypes_local, best_fitnesses_local = jax.tree_util.tree_map(
                 lambda x: x[best_indices_stacked],
                 (genotypes_stacked, fitnesses_stacked),
             )
@@ -311,7 +311,7 @@ class PBTEmitter(Emitter):
         )
 
         # Gather fitnesses from all devices to rank locally against it
-        all_fitnesses = jax.tree_map(
+        all_fitnesses = jax.tree_util.tree_map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             fitnesses,
         )
@@ -319,7 +319,7 @@ class PBTEmitter(Emitter):
         all_fitnesses = -jnp.sort(-all_fitnesses)
         random_key = emitter_state.random_key
         random_key, sub_key = jax.random.split(random_key)
-        best_genotypes = jax.tree_map(
+        best_genotypes = jax.tree_util.tree_map(
             lambda x: jax.random.choice(
                 sub_key, x, shape=(len(fitnesses),), replace=True
             ),
@@ -336,7 +336,7 @@ class PBTEmitter(Emitter):
         lower_bound = all_fitnesses[-self._num_to_replace_from_best]
         cond = fitnesses <= lower_bound
 
-        training_states = jax.tree_map(
+        training_states = jax.tree_util.tree_map(
             lambda x, y: jnp.where(
                 jnp.expand_dims(
                     cond, axis=tuple([-(i + 1) for i in range(x.ndim - 1)])
@@ -347,7 +347,7 @@ class PBTEmitter(Emitter):
             best_training_states,
             training_states,
         )
-        replay_buffers = jax.tree_map(
+        replay_buffers = jax.tree_util.tree_map(
             lambda x, y: jnp.where(
                 jnp.expand_dims(
                     cond, axis=tuple([-(i + 1) for i in range(x.ndim - 1)])
@@ -370,7 +370,7 @@ class PBTEmitter(Emitter):
                 -self._num_to_replace_from_best - self._num_to_replace_from_samples
             ]
             cond = jnp.logical_and(fitnesses <= upper_bound, fitnesses >= lower_bound)
-            training_states = jax.tree_map(
+            training_states = jax.tree_util.tree_map(
                 lambda x, y: jnp.where(
                     jnp.expand_dims(
                         cond, axis=tuple([-(i + 1) for i in range(x.ndim - 1)])
