@@ -386,7 +386,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         # default genotypes is all 0
         default_genotypes = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape),
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
             genotype,
         )
 
