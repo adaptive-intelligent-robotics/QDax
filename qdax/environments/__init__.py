@@ -134,7 +134,10 @@ def create(
         env = _qdax_envs[env_name](**kwargs)
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
-        env = brax.envs._envs[base_env_name](legacy_spring=True, **kwargs)
+        if base_env_name in brax.envs._envs.keys():
+            env = brax.envs._envs[base_env_name](legacy_spring=True, **kwargs)
+        elif base_env_name in _qdax_envs.keys():
+            env = _qdax_envs[base_env_name](**kwargs)  # type: ignore
     else:
         raise NotImplementedError("This environment name does not exist!")
 
