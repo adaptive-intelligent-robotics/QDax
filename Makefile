@@ -8,7 +8,7 @@ DOCKER_TPU_FLAGS = --rm --shm-size=1024m --network host --privileged
 DOCKER_RUN_FLAGS_TPU = --rm --privileged -p 6006:6006 -v $(WORK_DIR)/notebooks:/eapp/notebooks -v $(WORK_DIR)/data:/app/data --network host
 DOCKER_IMAGE_NAME = instadeep/qdax:$(USER)
 DOCKER_IMAGE_NAME_TPU = instadeep/qdax-tpu:$(USER)
-TTACH_FOLDERS_FLAGS = -v $(WORK_DIR)/notebooks:/app/notebooks -v $(WORK_DIR)/playground:/app/playground
+TTACH_FOLDERS_FLAGS = -v $(WORK_DIR)/examples:/app/examples -v $(WORK_DIR)/playground:/app/playground
 
 USER_ID = $$(id -u)
 GROUP_ID = $$(id -g)
