@@ -54,10 +54,10 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
         optimizer_init = optax.adam(learning_rate=1.0).init
         policy_params = training_state.policy_params
         critic_params = training_state.critic_params
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
-        target_policy_params = jax.tree_map(
+        target_policy_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), policy_params
         )
         return training_state.replace(  # type: ignore
@@ -176,10 +176,10 @@ class PBTTD3:
         policy_params = self._policy.init(subkey_2, fake_obs)
 
         # Initialize target networks
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
-        target_policy_params = jax.tree_map(
+        target_policy_params = jax.tree_util.tree_map(
             lambda x: jnp.asarray(x.copy()), policy_params
         )
 
@@ -425,7 +425,7 @@ class PBTTD3:
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        transitions = jax.tree_map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
+        transitions = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
         masks = jnp.isnan(transitions.rewards)
         bds = bd_extraction_fn(transitions, masks)
 
@@ -479,7 +479,7 @@ class PBTTD3:
             training_state.critic_params, critic_updates
         )
         # Soft update of target critic network
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             training_state.target_critic_params,
@@ -502,7 +502,7 @@ class PBTTD3:
                 training_state.policy_params, policy_updates
             )
             # Soft update of target policy
-            target_policy_params = jax.tree_map(
+            target_policy_params = jax.tree_util.tree_map(
                 lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
                 + self._config.soft_tau_update * x2,
                 training_state.target_policy_params,

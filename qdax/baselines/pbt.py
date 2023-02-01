@@ -113,13 +113,13 @@ class PBT:
             key, best_indices, shape=(self._num_worse_to_replace,), replace=True
         )
 
-        training_state = jax.tree_map(
+        training_state = jax.tree_util.tree_map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             training_state,
             jax.vmap(training_state.__class__.resample_hyperparams)(training_state),
         )
 
-        replay_buffer = jax.tree_map(
+        replay_buffer = jax.tree_util.tree_map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             replay_buffer,
             replay_buffer,
@@ -154,7 +154,7 @@ class PBT:
         best_indices = indices_sorted[: self._num_best_to_replace_from]
         indices_to_replace = indices_sorted[-self._num_worse_to_replace :]
 
-        best_individuals, best_buffers, best_returns = jax.tree_map(
+        best_individuals, best_buffers, best_returns = jax.tree_util.tree_map(
             lambda x: x[best_indices],
             (training_state, replay_buffer, population_returns),
         )
@@ -162,7 +162,7 @@ class PBT:
             gathered_best_individuals,
             gathered_best_buffers,
             gathered_best_returns,
-        ) = jax.tree_map(
+        ) = jax.tree_util.tree_map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (best_individuals, best_buffers, best_returns),
         )
@@ -174,7 +174,7 @@ class PBT:
             key, best_pop_indices, shape=(self._num_worse_to_replace,), replace=True
         )
 
-        training_state = jax.tree_map(
+        training_state = jax.tree_util.tree_map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             training_state,
             jax.vmap(gathered_best_individuals.__class__.resample_hyperparams)(
@@ -182,7 +182,7 @@ class PBT:
             ),
         )
 
-        replay_buffer = jax.tree_map(
+        replay_buffer = jax.tree_util.tree_map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             replay_buffer,
             gathered_best_buffers,
