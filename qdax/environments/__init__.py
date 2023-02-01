@@ -5,6 +5,7 @@ import brax
 import brax.envs
 
 from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
+from qdax.environments.humanoidtrap import HumanoidTrap
 from qdax.environments.bd_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
@@ -24,6 +25,7 @@ from qdax.environments.wrappers import CompletedEvalWrapper
 reward_offset = {
     "pointmaze": 2.3431,
     "anttrap": 3.38,
+    "humanoidtrap": 0.0,
     "antnotrap": 3.38,
     "antmaze": 40.32,
     "ant_omni": 3.0,
@@ -38,6 +40,7 @@ reward_offset = {
 behavior_descriptor_extractor = {
     "pointmaze": get_final_xy_position,
     "anttrap": get_final_xy_position,
+    "humanoidtrap": get_final_xy_position,
     "antnotrap": get_final_xy_position,
     "antmaze": get_final_xy_position,
     "ant_omni": get_final_xy_position,
@@ -51,6 +54,7 @@ behavior_descriptor_extractor = {
 
 _qdax_envs = {
     "pointmaze": PointMaze,
+    "humanoid_w_trap": HumanoidTrap,
 }
 
 _qdax_custom_envs = {
@@ -59,6 +63,11 @@ _qdax_custom_envs = {
         "wrappers": [XYPositionWrapper, TrapWrapper],
         "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}, {}],
     },
+    "humanoidtrap": {
+            "env": "humanoid_w_trap",
+            "wrappers": [XYPositionWrapper],
+            "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}],
+        },
     "antnotrap": {
         "env": "ant",
         "wrappers": [XYPositionWrapper],
