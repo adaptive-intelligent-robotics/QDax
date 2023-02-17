@@ -192,7 +192,7 @@ class PBTEmitter(Emitter):
             x_mutation_ga, random_key = self._variation_fn(x1, x2, random_key)
 
             def print_debug(tree):
-                jax.tree_map(lambda x: print(x), tree)
+                print(jax.tree_map(lambda x: x.shape, tree))
 
             print('DEBUG 1', print_debug(x1))
             print('DEBUG 2', print_debug(x2))
