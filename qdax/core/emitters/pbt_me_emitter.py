@@ -191,6 +191,15 @@ class PBTEmitter(Emitter):
             x2, random_key = repertoire.sample(random_key, mutation_ga_batch_size)
             x_mutation_ga, random_key = self._variation_fn(x1, x2, random_key)
 
+            def print_debug(tree):
+                jax.tree_map(lambda x: print(x), tree)
+
+            print('DEBUG 1', print_debug(x1))
+            print('DEBUG 2', print_debug(x2))
+            print('DEBUG 3', print_debug(x_mutation_ga))
+            print('DEBUG 4', print_debug(x_mutation_pg))
+            print('MUTATION GA BATCH SIZE', mutation_ga_batch_size)
+
             # Gather offspring
             genotypes = jax.tree_util.tree_map(
                 lambda x, y: jnp.concatenate([x, y], axis=0),
