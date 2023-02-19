@@ -56,7 +56,6 @@ def sac_pbt_variation_fn(
         alpha_params=alpha_params,
     )
 
-    # Resample hyper-params
     return (
         new_training_state,
         random_key,
