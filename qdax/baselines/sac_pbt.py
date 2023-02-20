@@ -700,8 +700,6 @@ class PBTSAC:
 
         Args:
             training_state: the currrent training state.
-            alpha: the alpha parameter that controls the importance
-                of the entropy term.
             transitions: a batch of transitions sampled from the replay
                 buffer.
             random_key: a random key to handle stochastic operations.
