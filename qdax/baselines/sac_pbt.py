@@ -496,7 +496,9 @@ class PBTSAC:
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        transitions = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
+        transitions = jax.tree_util.tree_map(
+            lambda x: jnp.swapaxes(x, 0, 1), transitions
+        )
         masks = jnp.isnan(transitions.rewards)
         bds = bd_extraction_fn(transitions, masks)
 
@@ -764,7 +766,7 @@ class PBTSAC:
                 obs=normalized_obs, next_obs=normalized_next_obs
             )
 
-        # udpate alpha
+        # update alpha
         (
             alpha_params,
             alpha_optimizer_state,
