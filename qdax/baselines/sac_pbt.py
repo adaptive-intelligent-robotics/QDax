@@ -699,7 +699,7 @@ class PBTSAC:
         policy gradient theorem with the method introduced in SAC.
 
         Args:
-            training_state: the currrent training state.
+            training_state: the current training state.
             transitions: a batch of transitions sampled from the replay
                 buffer.
             random_key: a random key to handle stochastic operations.
