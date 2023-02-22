@@ -416,6 +416,7 @@ class SAC:
     @partial(jax.jit, static_argnames=("self",))
     def _policy_loss_fn(
         self,
+        policy_params: Params,
         training_state: SacTrainingState,
         transitions: Transition,
         random_key: RNGKey,
@@ -425,7 +426,7 @@ class SAC:
             policy_fn=self._policy.apply,
             critic_fn=self._critic.apply,
             parametric_action_distribution=self._parametric_action_distribution,
-            policy_params=training_state.policy_params,
+            policy_params=policy_params,
             critic_params=training_state.critic_params,
             alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
@@ -435,6 +436,7 @@ class SAC:
     @partial(jax.jit, static_argnames=("self",))
     def _critic_loss_fn(
         self,
+        critic_params: Params,
         reward_scaling: float,
         discount: float,
         training_state: SacTrainingState,
@@ -449,7 +451,7 @@ class SAC:
             reward_scaling=reward_scaling,
             discount=discount,
             policy_params=training_state.policy_params,
-            critic_params=training_state.critic_params,
+            critic_params=critic_params,
             target_critic_params=training_state.target_critic_params,
             alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
@@ -459,6 +461,7 @@ class SAC:
     @partial(jax.jit, static_argnames=("self",))
     def _alpha_loss_fn(
         self,
+        log_alpha: jnp.ndarray,
         training_state: SacTrainingState,
         transitions: Transition,
         random_key: RNGKey,
@@ -469,7 +472,7 @@ class SAC:
             parametric_action_distribution=self._parametric_action_distribution,
             action_size=self._action_size,
             policy_params=training_state.policy_params,
-            log_alpha=training_state.alpha_params,
+            log_alpha=log_alpha,
             transitions=transitions,
             random_key=random_key,
         )
@@ -498,6 +501,7 @@ class SAC:
             # update alpha
             random_key, subkey = jax.random.split(random_key)
             alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
+                log_alpha=training_state.alpha_params,
                 training_state=training_state,
                 transitions=transitions,
                 random_key=subkey,
@@ -544,6 +548,7 @@ class SAC:
         # update critic
         random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
+            critic_params=training_state.critic_params,
             reward_scaling=reward_scaling,
             discount=discount,
             training_state=training_state,
@@ -594,6 +599,7 @@ class SAC:
         """
         random_key, subkey = jax.random.split(random_key)
         policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+            policy_params=training_state.policy_params,
             training_state=training_state,
             transitions=transitions,
             random_key=subkey,
