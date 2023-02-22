@@ -417,7 +417,7 @@ class SAC:
         policy gradient theorem with the method introduced in SAC.
 
         Args:
-            training_state: the currrent training state.
+            training_state: the current training state.
             alpha: the alpha parameter that controls the importance
                 of the entropy term.
             transitions: a batch of transitions sampled from the replay
@@ -482,7 +482,7 @@ class SAC:
                 obs=normalized_obs, next_obs=normalized_next_obs
             )
 
-        # udpate alpha
+        # update alpha
         (
             alpha_params,
             alpha_optimizer_state,
