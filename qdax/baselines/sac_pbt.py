@@ -12,33 +12,18 @@ import jax.numpy as jnp
 import optax
 from brax.envs import Env
 from brax.envs import State as EnvState
-from brax.training.distribution import NormalTanhDistribution
 
 from qdax.baselines.pbt import PBTTrainingState
-from qdax.baselines.sac import SacTrainingState
+from qdax.baselines.sac import SAC, SacConfig, SacTrainingState
 from qdax.core.neuroevolution.buffers.buffer import (
     QDTransition,
     ReplayBuffer,
     Transition,
 )
 from qdax.core.neuroevolution.mdp_utils import get_first_episode
-from qdax.core.neuroevolution.networks.sac_networks import make_sac_networks
-from qdax.core.neuroevolution.normalization_utils import (
-    RunningMeanStdState,
-    normalize_with_rmstd,
-    update_running_mean_std,
-)
+from qdax.core.neuroevolution.normalization_utils import normalize_with_rmstd
 from qdax.core.neuroevolution.sac_utils import do_iteration_fn, generate_unroll
-from qdax.types import (
-    Action,
-    Descriptor,
-    Mask,
-    Metrics,
-    Observation,
-    Params,
-    Reward,
-    RNGKey,
-)
+from qdax.types import Descriptor, Mask, Metrics, Params, Reward, RNGKey
 
 
 class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
@@ -130,21 +115,23 @@ class PBTSacConfig:
     fix_alpha: bool = False
 
 
-class PBTSAC:
+class PBTSAC(SAC):
     def __init__(self, config: PBTSacConfig, action_size: int) -> None:
-        self._config = config
 
-        # define the networks
-        self._policy, self._critic = make_sac_networks(
-            action_size=action_size, hidden_layer_sizes=self._config.hidden_layer_sizes
+        sac_config = SacConfig(
+            batch_size=config.batch_size,
+            episode_length=config.episode_length,
+            tau=config.tau,
+            normalize_observations=config.normalize_observations,
+            alpha_init=config.alpha_init,
+            hidden_layer_sizes=config.hidden_layer_sizes,
+            fix_alpha=config.fix_alpha,
+            # unused default values for parameters that will be learnt as part of PBT
+            learning_rate=3e-4,
+            discount=0.97,
+            reward_scaling=1.0,
         )
-
-        # define the action distribution
-        self._parametric_action_distribution = NormalTanhDistribution(
-            event_size=action_size
-        )
-        self._sample_action_fn = self._parametric_action_distribution.sample
-        self._action_size = action_size
+        SAC.__init__(self, config=sac_config, action_size=action_size)
 
     def init(
         self, random_key: RNGKey, action_size: int, observation_size: int
@@ -160,49 +147,17 @@ class PBTSAC:
             the initial training state of SAC
         """
 
-        # define policy and critic params
-        dummy_obs = jnp.zeros((1, observation_size))
-        dummy_action = jnp.zeros((1, action_size))
+        sac_training_state = SAC.init(self, random_key, action_size, observation_size)
 
-        random_key, subkey = jax.random.split(random_key)
-        policy_params = self._policy.init(subkey, dummy_obs)
-
-        random_key, subkey = jax.random.split(random_key)
-        critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
-
-        target_critic_params = jax.tree_util.tree_map(
-            lambda x: jnp.asarray(x.copy()), critic_params
-        )
-
-        # define initial optimizer states
-        optimizer = optax.adam(learning_rate=1.0)
-        policy_optimizer_state = optimizer.init(policy_params)
-        critic_optimizer_state = optimizer.init(critic_params)
-
-        log_alpha = jnp.asarray(jnp.log(self._config.alpha_init), dtype=jnp.float32)
-        alpha_optimizer_state = optimizer.init(log_alpha)
-
-        # create and retrieve the training state
-        running_stats = (
-            RunningMeanStdState(
-                mean=jnp.zeros(
-                    observation_size,
-                ),
-                var=jnp.ones(
-                    observation_size,
-                ),
-                count=jnp.zeros(()),
-            ),
-        )
         training_state = PBTSacTrainingState(
-            policy_optimizer_state=policy_optimizer_state,
-            policy_params=policy_params,
-            critic_optimizer_state=critic_optimizer_state,
-            critic_params=critic_params,
-            alpha_optimizer_state=alpha_optimizer_state,
-            alpha_params=log_alpha,
-            target_critic_params=target_critic_params,
-            normalization_running_stats=running_stats,
+            policy_optimizer_state=sac_training_state.policy_optimizer_state,
+            policy_params=sac_training_state.policy_params,
+            critic_optimizer_state=sac_training_state.critic_optimizer_state,
+            critic_params=sac_training_state.critic_params,
+            alpha_optimizer_state=sac_training_state.alpha_optimizer_state,
+            alpha_params=sac_training_state.log_alpha,
+            target_critic_params=sac_training_state.target_critic_params,
+            normalization_running_stats=sac_training_state.running_stats,
             random_key=random_key,
             steps=jnp.array(0),
             discount=None,
@@ -216,196 +171,6 @@ class PBTSAC:
         training_state = PBTSacTrainingState.resample_hyperparams(training_state)
 
         return training_state  # type: ignore
-
-    @partial(jax.jit, static_argnames=("self", "deterministic"))
-    def select_action(
-        self,
-        obs: Observation,
-        policy_params: Params,
-        random_key: RNGKey,
-        deterministic: bool = False,
-    ) -> Tuple[Action, RNGKey]:
-        """Selects an action acording to SAC policy.
-
-        Args:
-            obs: agent observation(s)
-            policy_params: parameters of the agent's policy
-            random_key: jax random key
-            deterministic: whether to select action in a deterministic way.
-                Defaults to False.
-
-        Returns:
-            The selected action and a new random key.
-        """
-
-        dist_params = self._policy.apply(policy_params, obs)
-        if not deterministic:
-            random_key, key_sample = jax.random.split(random_key)
-            actions = self._sample_action_fn(dist_params, key_sample)
-
-        else:
-            # The first half of parameters is for mean and the second half for variance
-            actions = jax.nn.tanh(dist_params[..., : dist_params.shape[-1] // 2])
-
-        return actions, random_key
-
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
-    def play_step_fn(
-        self,
-        env_state: EnvState,
-        training_state: PBTSacTrainingState,
-        env: Env,
-        deterministic: bool = False,
-        evaluation: bool = False,
-    ) -> Tuple[EnvState, PBTSacTrainingState, Transition]:
-        """Plays a step in the environment. Selects an action according to SAC rule and
-        performs the environment step.
-
-        Args:
-            env_state: the current environment state
-            training_state: the SAC training state
-            env: the environment
-            deterministic: the whether or not to select action in a deterministic way.
-                Defaults to False.
-            evaluation: if True, collected transitions are not used to update training
-                state. Defaults to False.
-
-        Returns:
-            the new environment state
-            the new SAC training state
-            the played transition
-        """
-        random_key = training_state.random_key
-        policy_params = training_state.policy_params
-        obs = env_state.obs
-
-        if self._config.normalize_observations:
-            normalized_obs = normalize_with_rmstd(
-                obs, training_state.normalization_running_stats
-            )
-            normalization_running_stats = update_running_mean_std(
-                training_state.normalization_running_stats, obs
-            )
-
-        else:
-            normalized_obs = obs
-            normalization_running_stats = training_state.normalization_running_stats
-
-        actions, random_key = self.select_action(
-            obs=normalized_obs,
-            policy_params=policy_params,
-            random_key=random_key,
-            deterministic=deterministic,
-        )
-
-        if not evaluation:
-            training_state = training_state.replace(
-                random_key=random_key,
-                normalization_running_stats=normalization_running_stats,
-            )
-        else:
-            training_state = training_state.replace(
-                random_key=random_key,
-            )
-
-        next_env_state = env.step(env_state, actions)
-        next_obs = next_env_state.obs
-
-        truncations = next_env_state.info["truncation"]
-        transition = Transition(
-            obs=env_state.obs,
-            next_obs=next_obs,
-            rewards=next_env_state.reward,
-            dones=next_env_state.done,
-            actions=actions,
-            truncations=truncations,
-        )
-
-        return (
-            next_env_state,
-            training_state,
-            transition,
-        )
-
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
-    def play_qd_step_fn(
-        self,
-        env_state: EnvState,
-        training_state: PBTSacTrainingState,
-        env: Env,
-        deterministic: bool = False,
-        evaluation: bool = False,
-    ) -> Tuple[EnvState, PBTSacTrainingState, QDTransition]:
-        """Plays a step in the environment. Selects an action according to SAC rule and
-        performs the environment step.
-
-        Args:
-            env_state: the current environment state
-            training_state: the SAC training state
-            env: the environment
-            deterministic: the whether or not to select action in a deterministic way.
-                Defaults to False.
-            evaluation: if True, collected transitions are not used to update training
-                state. Defaults to False.
-
-        Returns:
-            the new environment state
-            the new SAC training state
-            the played transition
-        """
-        random_key = training_state.random_key
-        policy_params = training_state.policy_params
-        obs = env_state.obs
-
-        if self._config.normalize_observations:
-            normalized_obs = normalize_with_rmstd(
-                obs, training_state.normalization_running_stats
-            )
-            normalization_running_stats = update_running_mean_std(
-                training_state.normalization_running_stats, obs
-            )
-
-        else:
-            normalized_obs = obs
-            normalization_running_stats = training_state.normalization_running_stats
-
-        actions, random_key = self.select_action(
-            obs=normalized_obs,
-            policy_params=policy_params,
-            random_key=random_key,
-            deterministic=deterministic,
-        )
-
-        if not evaluation:
-            training_state = training_state.replace(
-                random_key=random_key,
-                normalization_running_stats=normalization_running_stats,
-            )
-        else:
-            training_state = training_state.replace(
-                random_key=random_key,
-            )
-
-        next_env_state = env.step(env_state, actions)
-        next_obs = next_env_state.obs
-
-        truncations = next_env_state.info["truncation"]
-        transition = QDTransition(
-            obs=env_state.obs,
-            next_obs=next_obs,
-            rewards=next_env_state.reward,
-            dones=next_env_state.done,
-            actions=actions,
-            truncations=truncations,
-            state_desc=env_state.info["state_descriptor"],
-            next_state_desc=next_env_state.info["state_descriptor"],
-        )
-
-        return (
-            next_env_state,
-            training_state,
-            transition,
-        )
 
     @partial(
         jax.jit,
