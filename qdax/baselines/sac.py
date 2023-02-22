@@ -32,8 +32,16 @@ from qdax.core.neuroevolution.normalization_utils import (
     update_running_mean_std,
 )
 from qdax.core.neuroevolution.sac_utils import generate_unroll
-from qdax.environments import CompletedEvalWrapper
-from qdax.types import Action, Metrics, Observation, Params, Reward, RNGKey
+from qdax.types import (
+    Action,
+    Descriptor,
+    Mask,
+    Metrics,
+    Observation,
+    Params,
+    Reward,
+    RNGKey,
+)
 
 
 class SacTrainingState(TrainingState):
@@ -344,17 +352,66 @@ class SAC:
             play_step_fn=play_step_fn,
         )
 
-        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
-        true_return = (
-            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
-            / state.info[eval_metrics_key].completed_episodes
-        )
-
         transitions = get_first_episode(transitions)
-
         true_returns = jnp.nansum(transitions.rewards, axis=0)
+        true_return = jnp.mean(true_returns, axis=-1)
 
         return true_return, true_returns
+
+    @partial(
+        jax.jit,
+        static_argnames=(
+            "self",
+            "play_step_fn",
+            "bd_extraction_fn",
+        ),
+    )
+    def eval_qd_policy_fn(
+        self,
+        training_state: SacTrainingState,
+        eval_env_first_state: EnvState,
+        play_step_fn: Callable[
+            [EnvState, Params, RNGKey],
+            Tuple[EnvState, SacTrainingState, QDTransition],
+        ],
+        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
+    ) -> Tuple[Reward, Descriptor, Reward, Descriptor]:
+        """
+        Evaluates the agent's policy over an entire episode, across all batched
+        environments for QD environments. Averaged BDs are returned as well.
+
+
+        Args:
+            training_state: the SAC training state
+            eval_env_first_state: the initial state for evaluation
+            play_step_fn: the play_step function used to collect the evaluation episode
+
+        Returns:
+            the true return averaged over batch dimension, shape: (1,)
+            the descriptor averaged over batch dimension, shape: (num_descriptors,)
+            the true return per environment, shape: (env_batch_size,)
+            the descriptor per environment, shape: (env_batch_size, num_descriptors)
+
+        """
+
+        state, training_state, transitions = generate_unroll(
+            init_state=eval_env_first_state,
+            training_state=training_state,
+            episode_length=self._config.episode_length,
+            play_step_fn=play_step_fn,
+        )
+        transitions = get_first_episode(transitions)
+        true_returns = jnp.nansum(transitions.rewards, axis=0)
+        true_return = jnp.mean(true_returns, axis=-1)
+
+        transitions = jax.tree_util.tree_map(
+            lambda x: jnp.swapaxes(x, 0, 1), transitions
+        )
+        masks = jnp.isnan(transitions.rewards)
+        bds = bd_extraction_fn(transitions, masks)
+
+        mean_bd = jnp.mean(bds, axis=0)
+        return true_return, mean_bd, true_returns, bds
 
     @partial(jax.jit, static_argnames=("self",))
     def _policy_loss_fn(

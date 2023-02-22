@@ -20,16 +20,15 @@ from qdax.core.neuroevolution.buffers.buffer import (
     ReplayBuffer,
     Transition,
 )
-from qdax.core.neuroevolution.mdp_utils import get_first_episode
 from qdax.core.neuroevolution.normalization_utils import normalize_with_rmstd
-from qdax.core.neuroevolution.sac_utils import do_iteration_fn, generate_unroll
-from qdax.types import Descriptor, Mask, Metrics, Params, Reward, RNGKey
+from qdax.core.neuroevolution.sac_utils import do_iteration_fn
+from qdax.types import Descriptor, Mask, Metrics, RNGKey
 
 
 class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
     """Training state for the SAC algorithm"""
 
-    # Add hyper-parameters as part of the state for PBT
+    # Add hyperparameters as part of the state for PBT
     discount: float
     policy_lr: float
     critic_lr: float
@@ -172,325 +171,6 @@ class PBTSAC(SAC):
 
         return training_state  # type: ignore
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-        ),
-    )
-    def eval_policy_fn(
-        self,
-        training_state: PBTSacTrainingState,
-        eval_env_first_state: EnvState,
-        play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, PBTSacTrainingState, Transition],
-        ],
-    ) -> Tuple[Reward, Reward]:
-        """Evaluates the agent's policy over an entire episode, across all batched
-        environments.
-
-
-        Args:
-            training_state: the SAC training state
-            eval_env_first_state: the initial state for evaluation
-            play_step_fn: the play_step function used to collect the evaluation episode
-
-        Returns:
-            the true return averaged over batch dimension, shape: (1,)
-            the true return per environment, shape: (env_batch_size,)
-
-        """
-
-        state, training_state, transitions = generate_unroll(
-            init_state=eval_env_first_state,
-            training_state=training_state,
-            episode_length=self._config.episode_length,
-            play_step_fn=play_step_fn,
-        )
-
-        transitions = get_first_episode(transitions)
-        true_returns = jnp.nansum(transitions.rewards, axis=0)
-        true_return = jnp.mean(true_returns, axis=-1)
-
-        return true_return, true_returns
-
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-            "bd_extraction_fn",
-        ),
-    )
-    def eval_qd_policy_fn(
-        self,
-        training_state: PBTSacTrainingState,
-        eval_env_first_state: EnvState,
-        play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, PBTSacTrainingState, QDTransition],
-        ],
-        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
-    ) -> Tuple[Reward, Descriptor, Reward, Descriptor]:
-        """Evaluates the agent's policy over an entire episode, across all batched
-        environments for QD environments. Averaged BDs are returned as well.
-
-
-        Args:
-            training_state: the SAC training state
-            eval_env_first_state: the initial state for evaluation
-            play_step_fn: the play_step function used to collect the evaluation episode
-
-        Returns:
-            the true return averaged over batch dimension, shape: (1,)
-            the descriptor averaged over batch dimension, shape: (num_descriptors,)
-            the true return per environment, shape: (env_batch_size,)
-            the descriptor per environment, shape: (env_batch_size, num_descriptors)
-
-        """
-
-        state, training_state, transitions = generate_unroll(
-            init_state=eval_env_first_state,
-            training_state=training_state,
-            episode_length=self._config.episode_length,
-            play_step_fn=play_step_fn,
-        )
-        transitions = get_first_episode(transitions)
-        true_returns = jnp.nansum(transitions.rewards, axis=0)
-        true_return = jnp.mean(true_returns, axis=-1)
-
-        transitions = jax.tree_util.tree_map(
-            lambda x: jnp.swapaxes(x, 0, 1), transitions
-        )
-        masks = jnp.isnan(transitions.rewards)
-        bds = bd_extraction_fn(transitions, masks)
-
-        mean_bd = jnp.mean(bds, axis=0)
-        return true_return, mean_bd, true_returns, bds
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _policy_loss_fn(
-        self,
-        policy_params: Params,
-        critic_params: Params,
-        alpha: jnp.ndarray,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
-
-        dist_params = self._policy.apply(policy_params, transitions.obs)
-        action = self._parametric_action_distribution.sample_no_postprocessing(
-            dist_params, random_key
-        )
-        log_prob = self._parametric_action_distribution.log_prob(dist_params, action)
-        action = self._parametric_action_distribution.postprocess(action)
-        q_action = self._critic.apply(critic_params, transitions.obs, action)
-        min_q = jnp.min(q_action, axis=-1)
-        actor_loss = alpha * log_prob - min_q
-
-        return jnp.mean(actor_loss)
-
-    @partial(jax.jit, static_argnames=("self"))
-    def _critic_loss_fn(
-        self,
-        critic_params: Params,
-        policy_params: Params,
-        target_critic_params: Params,
-        alpha: jnp.ndarray,
-        transitions: Transition,
-        random_key: RNGKey,
-        reward_scaling: float,
-        discount: float,
-    ) -> jnp.ndarray:
-
-        q_old_action = self._critic.apply(
-            critic_params, transitions.obs, transitions.actions
-        )
-        next_dist_params = self._policy.apply(policy_params, transitions.next_obs)
-        next_action = self._parametric_action_distribution.sample_no_postprocessing(
-            next_dist_params, random_key
-        )
-        next_log_prob = self._parametric_action_distribution.log_prob(
-            next_dist_params, next_action
-        )
-        next_action = self._parametric_action_distribution.postprocess(next_action)
-        next_q = self._critic.apply(
-            target_critic_params, transitions.next_obs, next_action
-        )
-
-        next_v = jnp.min(next_q, axis=-1) - alpha * next_log_prob
-
-        target_q = jax.lax.stop_gradient(
-            transitions.rewards * reward_scaling
-            + (1.0 - transitions.dones) * discount * next_v
-        )
-
-        q_error = q_old_action - jnp.expand_dims(target_q, -1)
-        q_error *= jnp.expand_dims(1 - transitions.truncations, -1)
-        q_loss = 0.5 * jnp.mean(jnp.square(q_error))
-
-        return q_loss
-
-    @partial(jax.jit, static_argnames=("self"))
-    def _alpha_loss_fn(
-        self,
-        log_alpha: jnp.ndarray,
-        policy_params: Params,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
-        """Eq 18 from https://arxiv.org/pdf/1812.05905.pdf."""
-
-        target_entropy = -0.5 * self._action_size
-        dist_params = self._policy.apply(policy_params, transitions.obs)
-        action = self._parametric_action_distribution.sample_no_postprocessing(
-            dist_params, random_key
-        )
-        log_prob = self._parametric_action_distribution.log_prob(dist_params, action)
-        # TODO: check line below that seems to be unused
-        action = self._parametric_action_distribution.postprocess(action)
-        alpha = jnp.exp(log_alpha)
-        alpha_loss = alpha * jax.lax.stop_gradient(-log_prob - target_entropy)
-
-        loss = jnp.mean(alpha_loss)
-        return loss
-
-    @partial(jax.jit, static_argnames=("self"))
-    def _update_alpha(
-        self,
-        training_state: PBTSacTrainingState,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
-        """Updates the alpha parameter if necessary. Else, it keeps the
-        current value.
-
-        Args:
-            training_state: the current training state.
-            transitions: a sample of transitions from the replay buffer.
-            random_key: a random key to handle stochastic operations.
-
-        Returns:
-            New alpha params, optimizer state, loss and a new random key.
-        """
-        if not self._config.fix_alpha:
-            # update alpha
-            random_key, subkey = jax.random.split(random_key)
-            alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
-                training_state.alpha_params,
-                training_state.policy_params,
-                transitions=transitions,
-                random_key=subkey,
-            )
-            alpha_optimizer = optax.adam(learning_rate=training_state.alpha_lr)
-            (alpha_updates, alpha_optimizer_state,) = alpha_optimizer.update(
-                alpha_gradient, training_state.alpha_optimizer_state
-            )
-            alpha_params = optax.apply_updates(
-                training_state.alpha_params, alpha_updates
-            )
-        else:
-            alpha_params = training_state.alpha_params
-            alpha_optimizer_state = training_state.alpha_optimizer_state
-            alpha_loss = jnp.array(0.0)
-
-        return alpha_params, alpha_optimizer_state, alpha_loss, random_key
-
-    @partial(jax.jit, static_argnames=("self"))
-    def _update_critic(
-        self,
-        training_state: PBTSacTrainingState,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, Params, optax.OptState, jnp.ndarray, RNGKey]:
-        """Updates the critic following the method described in the
-        Soft Actor Critic paper.
-
-        Args:
-            training_state: the current training state.
-            alpha: the alpha parameter that controls the importance of
-                the entropy term.
-            transitions: a batch of transitions sampled from the replay buffer.
-            random_key: a random key to handle stochastic operations.
-
-        Returns:
-            New parameters of the critic and its target. New optimizer state,
-            loss and a new random key.
-        """
-        # update critic
-        random_key, subkey = jax.random.split(random_key)
-        alpha = jnp.exp(training_state.alpha_params)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
-            training_state.critic_params,
-            training_state.policy_params,
-            training_state.target_critic_params,
-            alpha,
-            transitions=transitions,
-            random_key=subkey,
-            discount=training_state.discount,
-            reward_scaling=training_state.reward_scaling,
-        )
-        critic_optimizer = optax.adam(learning_rate=training_state.critic_lr)
-        (critic_updates, critic_optimizer_state,) = critic_optimizer.update(
-            critic_gradient, training_state.critic_optimizer_state
-        )
-        critic_params = optax.apply_updates(
-            training_state.critic_params, critic_updates
-        )
-        target_critic_params = jax.tree_util.tree_map(
-            lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
-            training_state.target_critic_params,
-            critic_params,
-        )
-
-        return (
-            critic_params,
-            target_critic_params,
-            critic_optimizer_state,
-            critic_loss,
-            random_key,
-        )
-
-    @partial(jax.jit, static_argnames=("self"))
-    def _update_actor(
-        self,
-        training_state: PBTSacTrainingState,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
-        """Updates the actor parameters following the stochastic
-        policy gradient theorem with the method introduced in SAC.
-
-        Args:
-            training_state: the current training state.
-            transitions: a batch of transitions sampled from the replay
-                buffer.
-            random_key: a random key to handle stochastic operations.
-
-        Returns:
-            New params and optimizer state. Current loss. New random key.
-        """
-        random_key, subkey = jax.random.split(random_key)
-        alpha = jnp.exp(training_state.alpha_params)
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
-            training_state.policy_params,
-            training_state.critic_params,
-            alpha,
-            transitions=transitions,
-            random_key=subkey,
-        )
-        policy_optimizer = optax.adam(learning_rate=training_state.policy_lr)
-        (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
-            policy_gradient, training_state.policy_optimizer_state
-        )
-        policy_params = optax.apply_updates(
-            training_state.policy_params, policy_updates
-        )
-
-        return policy_params, policy_optimizer_state, policy_loss, random_key
-
     @partial(jax.jit, static_argnames=("self"))
     def update(
         self,
@@ -536,6 +216,7 @@ class PBTSAC(SAC):
             alpha_loss,
             random_key,
         ) = self._update_alpha(
+            alpha_lr=training_state.alpha_lr,
             training_state=training_state,
             transitions=transitions,
             random_key=random_key,
@@ -549,6 +230,9 @@ class PBTSAC(SAC):
             critic_loss,
             random_key,
         ) = self._update_critic(
+            critic_lr=training_state.critic_lr,
+            reward_scaling=training_state.reward_scaling,
+            discount=training_state.discount,
             training_state=training_state,
             transitions=transitions,
             random_key=random_key,
@@ -561,6 +245,7 @@ class PBTSAC(SAC):
             policy_loss,
             random_key,
         ) = self._update_actor(
+            policy_lr=training_state.policy_lr,
             training_state=training_state,
             transitions=transitions,
             random_key=random_key,
