@@ -154,7 +154,7 @@ class PBTSAC(SAC):
             critic_optimizer_state=sac_training_state.critic_optimizer_state,
             critic_params=sac_training_state.critic_params,
             alpha_optimizer_state=sac_training_state.alpha_optimizer_state,
-            alpha_params=sac_training_state.log_alpha,
+            alpha_params=sac_training_state.alpha_params,
             target_critic_params=sac_training_state.target_critic_params,
             normalization_running_stats=sac_training_state.running_stats,
             random_key=random_key,
