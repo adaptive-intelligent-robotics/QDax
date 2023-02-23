@@ -170,7 +170,7 @@ class PBTTD3(TD3):
             target_policy_params=training_state.target_policy_params,
             target_critic_params=training_state.target_critic_params,
             random_key=training_state.random_key,
-            steps=training_state.jnp.array(0),
+            steps=training_state.steps,
             discount=None,
             policy_lr=None,
             critic_lr=None,
