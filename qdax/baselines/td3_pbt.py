@@ -189,7 +189,6 @@ class PBTTD3(TD3):
         self,
         obs: Observation,
         training_state: TD3TrainingState,
-        random_key: RNGKey,
         deterministic: bool = False,
     ) -> Tuple[Action, TD3TrainingState]:
         """Selects an action according to TD3 policy. The action can be deterministic
@@ -198,7 +197,6 @@ class PBTTD3(TD3):
         Args:
             obs: an array corresponding to an observation of the environment.
             training_state: TD3 training state.
-            random_key: a random key.
             deterministic: determine if a gaussian noise is added to the action
                 taken by the policy. Defaults to False.
 
@@ -208,7 +206,7 @@ class PBTTD3(TD3):
 
         actions = self._policy.apply(training_state.policy_params, obs)
         if not deterministic:
-            random_key, subkey = jax.random.split(random_key)
+            random_key, subkey = jax.random.split(training_state.random_key)
             noise = jax.random.normal(subkey, actions.shape) * training_state.expl_noise
             actions = actions + noise
             actions = jnp.clip(actions, -1.0, 1.0)
