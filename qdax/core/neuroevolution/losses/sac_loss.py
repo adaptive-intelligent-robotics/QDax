@@ -109,7 +109,6 @@ def make_sac_loss_fn(
             dist_params, random_key
         )
         log_prob = parametric_action_distribution.log_prob(dist_params, action)
-        action = parametric_action_distribution.postprocess(action)
         alpha = jnp.exp(log_alpha)
         alpha_loss = alpha * jax.lax.stop_gradient(-log_prob - target_entropy)
 
@@ -120,10 +119,10 @@ def make_sac_loss_fn(
 
 
 def sac_policy_loss_fn(
+    policy_params: Params,
     policy_fn: Callable[[Params, Observation], jnp.ndarray],
     critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
     parametric_action_distribution: ParametricDistribution,
-    policy_params: Params,
     critic_params: Params,
     alpha: jnp.ndarray,
     transitions: Transition,
@@ -133,10 +132,10 @@ def sac_policy_loss_fn(
     Creates the policy loss used in SAC.
 
     Args:
+        policy_params: parameters of the policy
         policy_fn: the apply function of the policy
         critic_fn: the apply function of the critic
         parametric_action_distribution: the distribution over actions
-        policy_params: parameters of the policy
         critic_params: parameters of the critic
         alpha: entropy coefficient value
         transitions: transitions collected by the agent
@@ -160,12 +159,12 @@ def sac_policy_loss_fn(
 
 
 def sac_critic_loss_fn(
+    critic_params: Params,
     policy_fn: Callable[[Params, Observation], jnp.ndarray],
     critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
     parametric_action_distribution: ParametricDistribution,
     reward_scaling: float,
     discount: float,
-    critic_params: Params,
     policy_params: Params,
     target_critic_params: Params,
     alpha: jnp.ndarray,
@@ -176,11 +175,11 @@ def sac_critic_loss_fn(
     Creates the critic loss used in SAC.
 
     Args:
+        critic_params: parameters of the critic
         policy_fn: the apply function of the policy
         critic_fn: the apply function of the critic
         parametric_action_distribution: the distribution over actions
         policy_params: parameters of the policy
-        critic_params: parameters of the critic
         target_critic_params: parameters of the target critic
         alpha: entropy coefficient value
         transitions: transitions collected by the agent
@@ -218,10 +217,10 @@ def sac_critic_loss_fn(
 
 
 def sac_alpha_loss_fn(
+    log_alpha: jnp.ndarray,
     policy_fn: Callable[[Params, Observation], jnp.ndarray],
     parametric_action_distribution: ParametricDistribution,
     action_size: int,
-    log_alpha: jnp.ndarray,
     policy_params: Params,
     transitions: Transition,
     random_key: RNGKey,
@@ -231,10 +230,10 @@ def sac_alpha_loss_fn(
     Eq 18 from https://arxiv.org/pdf/1812.05905.pdf.
 
     Args:
+        log_alpha: entropy coefficient log value
         policy_fn: the apply function of the policy
         parametric_action_distribution: the distribution over actions
         policy_params: parameters of the policy
-        log_alpha: entropy coefficient log value
         transitions: transitions collected by the agent
         random_key: random key
         action_size: the size of the environment's action space
