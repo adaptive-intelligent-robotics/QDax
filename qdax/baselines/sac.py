@@ -414,70 +414,6 @@ class SAC:
         return true_return, mean_bd, true_returns, bds
 
     @partial(jax.jit, static_argnames=("self",))
-    def _policy_loss_fn(
-        self,
-        policy_params: Params,
-        training_state: SacTrainingState,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
-
-        return sac_policy_loss_fn(
-            policy_fn=self._policy.apply,
-            critic_fn=self._critic.apply,
-            parametric_action_distribution=self._parametric_action_distribution,
-            policy_params=policy_params,
-            critic_params=training_state.critic_params,
-            alpha=jnp.exp(training_state.alpha_params),
-            transitions=transitions,
-            random_key=random_key,
-        )
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _critic_loss_fn(
-        self,
-        critic_params: Params,
-        reward_scaling: float,
-        discount: float,
-        training_state: SacTrainingState,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
-
-        return sac_critic_loss_fn(
-            policy_fn=self._policy.apply,
-            critic_fn=self._critic.apply,
-            parametric_action_distribution=self._parametric_action_distribution,
-            reward_scaling=reward_scaling,
-            discount=discount,
-            policy_params=training_state.policy_params,
-            critic_params=critic_params,
-            target_critic_params=training_state.target_critic_params,
-            alpha=jnp.exp(training_state.alpha_params),
-            transitions=transitions,
-            random_key=random_key,
-        )
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _alpha_loss_fn(
-        self,
-        log_alpha: jnp.ndarray,
-        training_state: SacTrainingState,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
-
-        return sac_alpha_loss_fn(
-            policy_fn=self._policy.apply,
-            parametric_action_distribution=self._parametric_action_distribution,
-            action_size=self._action_size,
-            policy_params=training_state.policy_params,
-            log_alpha=log_alpha,
-            transitions=transitions,
-            random_key=random_key,
-        )
-
-    @partial(jax.jit, static_argnames=("self",))
     def _update_alpha(
         self,
         alpha_lr: float,
@@ -500,11 +436,14 @@ class SAC:
         if not self._config.fix_alpha:
             # update alpha
             random_key, subkey = jax.random.split(random_key)
-            alpha_loss, alpha_gradient = jax.value_and_grad(self._alpha_loss_fn)(
+            alpha_loss, alpha_gradient = jax.value_and_grad(sac_alpha_loss_fn)(
                 training_state.alpha_params,
-                training_state=training_state,
+                policy_fn=self._policy.apply,
+                parametric_action_distribution=self._parametric_action_distribution,
+                action_size=self._action_size,
+                policy_params=training_state.policy_params,
                 transitions=transitions,
-                random_key=subkey,
+                random_key=random_key,
             )
             alpha_optimizer = optax.adam(learning_rate=alpha_lr)
             (alpha_updates, alpha_optimizer_state,) = alpha_optimizer.update(
@@ -547,13 +486,18 @@ class SAC:
         """
         # update critic
         random_key, subkey = jax.random.split(random_key)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
+        critic_loss, critic_gradient = jax.value_and_grad(sac_critic_loss_fn)(
             training_state.critic_params,
+            policy_fn=self._policy.apply,
+            critic_fn=self._critic.apply,
+            parametric_action_distribution=self._parametric_action_distribution,
             reward_scaling=reward_scaling,
             discount=discount,
-            training_state=training_state,
+            policy_params=training_state.policy_params,
+            target_critic_params=training_state.target_critic_params,
+            alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
-            random_key=subkey,
+            random_key=random_key,
         )
         critic_optimizer = optax.adam(learning_rate=critic_lr)
         (critic_updates, critic_optimizer_state,) = critic_optimizer.update(
@@ -598,11 +542,15 @@ class SAC:
             New params and optimizer state. Current loss. New random key.
         """
         random_key, subkey = jax.random.split(random_key)
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+        policy_loss, policy_gradient = jax.value_and_grad(sac_policy_loss_fn)(
             training_state.policy_params,
-            training_state=training_state,
+            policy_fn=self._policy.apply,
+            critic_fn=self._critic.apply,
+            parametric_action_distribution=self._parametric_action_distribution,
+            critic_params=training_state.critic_params,
+            alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
-            random_key=subkey,
+            random_key=random_key,
         )
         policy_optimizer = optax.adam(learning_rate=policy_lr)
         (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
