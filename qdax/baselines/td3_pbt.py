@@ -216,9 +216,9 @@ class PBTTD3(TD3):
     @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
-        training_state: TD3TrainingState,
+        training_state: PBTTD3TrainingState,
         replay_buffer: ReplayBuffer,
-    ) -> Tuple[TD3TrainingState, ReplayBuffer, Metrics]:
+    ) -> Tuple[PBTTD3TrainingState, ReplayBuffer, Metrics]:
         """Performs a single training step: updates policy params and critic params
         through gradient descent.
 
@@ -309,7 +309,7 @@ class PBTTD3(TD3):
         )
 
         # Create new training state
-        new_training_state = TD3TrainingState(
+        new_training_state = training_state.replace(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             policy_params=policy_params,

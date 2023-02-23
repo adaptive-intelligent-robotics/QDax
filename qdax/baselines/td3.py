@@ -443,7 +443,7 @@ class TD3:
         )
 
         # Create new training state
-        new_training_state = TD3TrainingState(
+        new_training_state = training_state.replace(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             policy_params=policy_params,
