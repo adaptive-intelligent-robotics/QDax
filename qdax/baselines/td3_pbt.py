@@ -335,15 +335,17 @@ class PBTTD3(TD3):
         buffer_size: int,
     ) -> Callable:
         """
-        TODO: docstring
+        Returns a function to initialize the population.
+
         Args:
-            population_size:
-            action_size:
-            observation_size:
-            buffer_size:
+            population_size: size of the population.
+            action_size: action space size.
+            observation_size: observation space size.
+            buffer_size: replay buffer size.
 
         Returns:
-
+            a function that takes as input a random key and returns a new random
+            key, the PBT population training state and the replay buffers
         """
 
         def _init_fn(
@@ -381,12 +383,17 @@ class PBTTD3(TD3):
         eval_env: Env,
     ) -> Callable:
         """
-        TODO: docstring
+        Returns the function the evaluation the PBT population.
+
         Args:
-            eval_env:
+            eval_env: evaluation environment. Might be different from training env
+                if needed.
 
         Returns:
-
+            The function to evaluate the population. It takes as input the population
+            training state as well as first eval environment states and returns the
+            population agents mean returns over episodes as well as all returns from all
+            agents over all episodes.
         """
         play_eval_step = partial(
             self.play_step_fn,
@@ -406,13 +413,18 @@ class PBTTD3(TD3):
         bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
     ) -> Callable:
         """
-        TODO: docstring
+        Returns the function the evaluation the PBT population.
+
         Args:
-            eval_env:
-            bd_extraction_fn:
+            eval_env: evaluation environment. Might be different from training env
+                if needed.
+            bd_extraction_fn: function to extract the bd from an episode.
 
         Returns:
-
+            The function to evaluate the population. It takes as input the population
+            training state as well as first eval environment states and returns the
+            population agents mean returns and mean bds over episodes as well as all
+            returns and bds from all agents over all episodes.
         """
         play_eval_step = partial(
             self.play_qd_step_fn,
@@ -435,13 +447,19 @@ class PBTTD3(TD3):
         grad_updates_per_step: int,
     ) -> Callable:
         """
-        TODO: docstring
+        Returns the function to update the population of agents.
+
         Args:
-            env:
-            num_training_steps:
+            env: training environment.
+            num_iterations: number of training iterations to perform.
+            env_batch_size: number of batched environments.
+            grad_updates_per_step: number of gradient to apply per step in the
+                environment.
 
         Returns:
-
+            the function to update the population which takes as input the population
+            training state, environment starting states and replay buffers and returns
+            updated training states, environment states, replay buffers and metrics.
         """
         play_step = partial(
             self.play_step_fn,
