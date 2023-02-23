@@ -1,3 +1,4 @@
+import functools
 from typing import Callable, Tuple
 
 import jax
@@ -36,84 +37,28 @@ def make_sac_loss_fn(
         the loss of the critic
     """
 
-    @jax.jit
-    def _policy_loss_fn(
-        policy_params: Params,
-        critic_params: Params,
-        alpha: jnp.ndarray,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
+    _policy_loss_fn = functools.partial(
+        sac_policy_loss_fn,
+        policy_fn=policy_fn,
+        critic_fn=critic_fn,
+        parametric_action_distribution=parametric_action_distribution,
+    )
 
-        dist_params = policy_fn(policy_params, transitions.obs)
-        action = parametric_action_distribution.sample_no_postprocessing(
-            dist_params, random_key
-        )
-        log_prob = parametric_action_distribution.log_prob(dist_params, action)
-        action = parametric_action_distribution.postprocess(action)
-        q_action = critic_fn(critic_params, transitions.obs, action)
-        min_q = jnp.min(q_action, axis=-1)
-        actor_loss = alpha * log_prob - min_q
+    _critic_loss_fn = functools.partial(
+        sac_critic_loss_fn,
+        policy_fn=policy_fn,
+        critic_fn=critic_fn,
+        parametric_action_distribution=parametric_action_distribution,
+        reward_scaling=reward_scaling,
+        discount=discount,
+    )
 
-        return jnp.mean(actor_loss)
-
-    @jax.jit
-    def _critic_loss_fn(
-        critic_params: Params,
-        policy_params: Params,
-        target_critic_params: Params,
-        alpha: jnp.ndarray,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
-
-        q_old_action = critic_fn(critic_params, transitions.obs, transitions.actions)
-        next_dist_params = policy_fn(policy_params, transitions.next_obs)
-        next_action = parametric_action_distribution.sample_no_postprocessing(
-            next_dist_params, random_key
-        )
-        next_log_prob = parametric_action_distribution.log_prob(
-            next_dist_params, next_action
-        )
-        next_action = parametric_action_distribution.postprocess(next_action)
-        next_q = critic_fn(target_critic_params, transitions.next_obs, next_action)
-
-        next_v = jnp.min(next_q, axis=-1) - alpha * next_log_prob
-
-        target_q = jax.lax.stop_gradient(
-            transitions.rewards * reward_scaling
-            + (1.0 - transitions.dones) * discount * next_v
-        )
-
-        q_error = q_old_action - jnp.expand_dims(target_q, -1)
-
-        q_error *= jnp.expand_dims(1 - transitions.truncations, -1)
-
-        q_loss = 0.5 * jnp.mean(jnp.square(q_error))
-
-        return q_loss
-
-    target_entropy = -0.5 * action_size
-
-    @jax.jit
-    def _alpha_loss_fn(
-        log_alpha: jnp.ndarray,
-        policy_params: Params,
-        transitions: Transition,
-        random_key: RNGKey,
-    ) -> jnp.ndarray:
-        """Eq 18 from https://arxiv.org/pdf/1812.05905.pdf."""
-
-        dist_params = policy_fn(policy_params, transitions.obs)
-        action = parametric_action_distribution.sample_no_postprocessing(
-            dist_params, random_key
-        )
-        log_prob = parametric_action_distribution.log_prob(dist_params, action)
-        alpha = jnp.exp(log_alpha)
-        alpha_loss = alpha * jax.lax.stop_gradient(-log_prob - target_entropy)
-
-        loss = jnp.mean(alpha_loss)
-        return loss
+    _alpha_loss_fn = functools.partial(
+        sac_alpha_loss_fn,
+        policy_fn=policy_fn,
+        parametric_action_distribution=parametric_action_distribution,
+        action_size=action_size,
+    )
 
     return _alpha_loss_fn, _policy_loss_fn, _critic_loss_fn
 
