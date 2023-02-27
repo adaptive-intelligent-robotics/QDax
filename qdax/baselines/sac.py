@@ -31,7 +31,7 @@ from qdax.core.neuroevolution.normalization_utils import (
     normalize_with_rmstd,
     update_running_mean_std,
 )
-from qdax.core.neuroevolution.sac_utils import generate_unroll
+from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
 from qdax.types import (
     Action,
     Descriptor,

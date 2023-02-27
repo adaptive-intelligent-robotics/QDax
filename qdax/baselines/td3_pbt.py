@@ -22,7 +22,7 @@ from qdax.core.neuroevolution.losses.td3_loss import (
     td3_critic_loss_fn,
     td3_policy_loss_fn,
 )
-from qdax.core.neuroevolution.sac_utils import do_iteration_fn
+from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn
 from qdax.types import Action, Descriptor, Mask, Metrics, Observation, Params, RNGKey
 
 

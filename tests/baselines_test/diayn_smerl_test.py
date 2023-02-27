@@ -12,7 +12,7 @@ from qdax import environments
 from qdax.baselines.diayn_smerl import DIAYNSMERL, DiaynSmerlConfig, DiaynTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
-from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
+from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 
 
 def test_diayn_smerl() -> None:
