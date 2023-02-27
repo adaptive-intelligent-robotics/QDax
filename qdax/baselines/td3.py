@@ -137,30 +137,31 @@ class TD3:
     def select_action(
         self,
         obs: Observation,
-        training_state: TD3TrainingState,
+        policy_params: Params,
+        random_key: RNGKey,
         deterministic: bool = False,
-    ) -> Tuple[Action, TD3TrainingState]:
+    ) -> Tuple[Action, RNGKey]:
         """Selects an action according to TD3 policy. The action can be deterministic
         or stochastic by adding exploration noise.
 
         Args:
-            obs: an array corresponding to an observation of the environment.
-            training_state: TD3 training state.
-            deterministic: determine if a gaussian noise is added to the action
-                taken by the policy. Defaults to False.
+            obs: agent observation(s)
+            policy_params: parameters of the agent's policy
+            random_key: jax random key
+            deterministic: whether to select action in a deterministic way.
+                Defaults to False.
 
         Returns:
             an action and an updated training state.
         """
 
-        actions = self._policy.apply(training_state.policy_params, obs)
+        actions = self._policy.apply(policy_params, obs)
         if not deterministic:
-            random_key, subkey = jax.random.split(training_state.random_key)
+            random_key, subkey = jax.random.split(random_key)
             noise = jax.random.normal(subkey, actions.shape) * self._config.expl_noise
             actions = actions + noise
             actions = jnp.clip(actions, -1.0, 1.0)
-            training_state = training_state.replace(random_key=random_key)
-        return actions, training_state
+        return actions, random_key
 
     @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_step_fn(
@@ -186,10 +187,14 @@ class TD3:
             the played transition
         """
 
-        actions, training_state = self.select_action(
+        actions, random_key = self.select_action(
             obs=env_state.obs,
-            training_state=training_state,
+            policy_params=training_state.policy_params,
+            random_key=training_state.random_key,
             deterministic=deterministic,
+        )
+        training_state = training_state.replace(
+            random_key=random_key,
         )
         next_env_state = env.step(env_state, actions)
         transition = Transition(
