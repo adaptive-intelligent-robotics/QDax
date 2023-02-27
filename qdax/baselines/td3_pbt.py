@@ -115,7 +115,6 @@ class PBTTD3Config:
     episode_length: int = 1000
     batch_size: int = 256
     policy_delay: int = 2
-    grad_updates_per_step: float = 1
     reward_scaling: float = 1.0
     soft_tau_update: float = 0.005
     critic_hidden_layer_size: Tuple[int, ...] = (256, 256)
@@ -134,7 +133,6 @@ class PBTTD3(TD3):
             episode_length=config.episode_length,
             batch_size=config.batch_size,
             policy_delay=config.policy_delay,
-            grad_updates_per_step=config.grad_updates_per_step,
             reward_scaling=config.reward_scaling,
             soft_tau_update=config.soft_tau_update,
             critic_hidden_layer_size=config.critic_hidden_layer_size,

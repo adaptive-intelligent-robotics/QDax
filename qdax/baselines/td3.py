@@ -55,7 +55,6 @@ class TD3Config:
     episode_length: int = 1000
     batch_size: int = 256
     policy_delay: int = 2
-    grad_updates_per_step: float = 1
     soft_tau_update: float = 0.005
     expl_noise: float = 0.1
     critic_hidden_layer_size: Tuple[int, ...] = (256, 256)

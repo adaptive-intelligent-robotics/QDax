@@ -66,7 +66,6 @@ def test_td3() -> None:
         episode_length=episode_length,
         batch_size=batch_size,
         policy_delay=policy_delay,
-        grad_updates_per_step=grad_updates_per_step,
         soft_tau_update=soft_tau_update,
         expl_noise=expl_noise,
         critic_hidden_layer_size=critic_hidden_layer_size,
