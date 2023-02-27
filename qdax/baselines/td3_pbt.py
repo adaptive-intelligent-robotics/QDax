@@ -458,7 +458,7 @@ class PBTTD3(TD3):
         env: Env,
         num_iterations: int,
         env_batch_size: int,
-        grad_updates_per_step: int,
+        grad_updates_per_step: float,
     ) -> Callable:
         """
         Returns the function to update the population of agents.
