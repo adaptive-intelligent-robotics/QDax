@@ -94,7 +94,6 @@ def test_diayn_smerl() -> None:
         # SAC config
         batch_size=batch_size,
         episode_length=episode_length,
-        grad_updates_per_step=grad_updates_per_step,
         tau=tau,
         normalize_observations=normalize_observations,
         learning_rate=learning_rate,

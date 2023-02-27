@@ -83,8 +83,11 @@ class DIAYN(SAC):
         )
 
         # define the action distribution
-        parametric_action_distribution = NormalTanhDistribution(event_size=action_size)
-        self._sample_action_fn = parametric_action_distribution.sample
+        self._action_size = action_size
+        self._parametric_action_distribution = NormalTanhDistribution(
+            event_size=action_size
+        )
+        self._sample_action_fn = self._parametric_action_distribution.sample
 
         # define the losses
         (
@@ -100,7 +103,7 @@ class DIAYN(SAC):
             discount=self._config.discount,
             action_size=action_size,
             num_skills=self._config.num_skills,
-            parametric_action_distribution=parametric_action_distribution,
+            parametric_action_distribution=self._parametric_action_distribution,
         )
 
         # define the optimizers
@@ -418,13 +421,11 @@ class DIAYN(SAC):
             alpha_loss,
             random_key,
         ) = self._update_alpha(
+            alpha_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
             random_key=random_key,
         )
-
-        # use the previous alpha
-        alpha = jnp.exp(training_state.alpha_params)
 
         # update critic
         (
@@ -434,8 +435,10 @@ class DIAYN(SAC):
             critic_loss,
             random_key,
         ) = self._update_critic(
+            critic_lr=self._config.learning_rate,
+            reward_scaling=self._config.reward_scaling,
+            discount=self._config.discount,
             training_state=training_state,
-            alpha=alpha,
             transitions=transitions,
             random_key=random_key,
         )
@@ -447,8 +450,8 @@ class DIAYN(SAC):
             policy_loss,
             random_key,
         ) = self._update_actor(
+            policy_lr=self._config.learning_rate,
             training_state=training_state,
-            alpha=alpha,
             transitions=transitions,
             random_key=random_key,
         )
