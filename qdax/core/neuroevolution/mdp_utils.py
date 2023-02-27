@@ -32,7 +32,6 @@ class TrainingState(PyTreeNode):
 )
 def warmstart_buffer(
     replay_buffer: ReplayBuffer,
-    policy_params: Params,
     training_state: TrainingState,
     env_state: EnvState,
     play_step_fn: Callable[
