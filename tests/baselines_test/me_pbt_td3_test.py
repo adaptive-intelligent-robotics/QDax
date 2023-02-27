@@ -1,4 +1,4 @@
-"""Testing script for the algorithm ME PBT SAC"""
+"""Testing script for the algorithm ME PBT TD3"""
 
 import functools
 
