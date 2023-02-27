@@ -33,14 +33,13 @@ class TrainingState(PyTreeNode):
 def warmstart_buffer(
     replay_buffer: ReplayBuffer,
     policy_params: Params,
-    random_key: RNGKey,
+    training_state: TrainingState,
     env_state: EnvState,
     play_step_fn: Callable[
-        [EnvState, Params, RNGKey],
+        [EnvState, TrainingState],
         Tuple[
             EnvState,
-            Params,
-            RNGKey,
+            TrainingState,
             Transition,
         ],
     ],
@@ -52,15 +51,14 @@ def warmstart_buffer(
     """
 
     def _scan_play_step_fn(
-        carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
-    ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
-        env_state, policy_params, random_key, transitions = play_step_fn(*carry)
-        return (env_state, policy_params, random_key), transitions
+        carry: Tuple[EnvState, TrainingState], unused_arg: Any
+    ) -> Tuple[Tuple[EnvState, TrainingState], Transition]:
+        env_state, training_state, transitions = play_step_fn(*carry)
+        return (env_state, training_state), transitions
 
-    random_key, subkey = jax.random.split(random_key)
     (state, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
-        (env_state, policy_params, subkey),
+        (env_state, training_state),
         (),
         length=num_warmstart_steps // env_batch_size,
     )
