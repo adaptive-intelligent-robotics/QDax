@@ -132,7 +132,7 @@ class TD3:
 
         return training_state
 
-    @partial(jax.jit, static_argnames=("self", "expl_noise", "deterministic"))
+    @partial(jax.jit, static_argnames=("self", "deterministic"))
     def select_action(
         self,
         obs: Observation,
