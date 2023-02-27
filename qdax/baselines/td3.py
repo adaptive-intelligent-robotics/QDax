@@ -132,12 +132,13 @@ class TD3:
 
         return training_state
 
-    @partial(jax.jit, static_argnames=("self", "deterministic"))
+    @partial(jax.jit, static_argnames=("self", "expl_noise", "deterministic"))
     def select_action(
         self,
         obs: Observation,
         policy_params: Params,
         random_key: RNGKey,
+        expl_noise: float,
         deterministic: bool = False,
     ) -> Tuple[Action, RNGKey]:
         """Selects an action according to TD3 policy. The action can be deterministic
@@ -147,6 +148,7 @@ class TD3:
             obs: agent observation(s)
             policy_params: parameters of the agent's policy
             random_key: jax random key
+            expl_noise: exploration noise
             deterministic: whether to select action in a deterministic way.
                 Defaults to False.
 
@@ -157,7 +159,7 @@ class TD3:
         actions = self._policy.apply(policy_params, obs)
         if not deterministic:
             random_key, subkey = jax.random.split(random_key)
-            noise = jax.random.normal(subkey, actions.shape) * self._config.expl_noise
+            noise = jax.random.normal(subkey, actions.shape) * expl_noise
             actions = actions + noise
             actions = jnp.clip(actions, -1.0, 1.0)
         return actions, random_key
@@ -190,6 +192,7 @@ class TD3:
             obs=env_state.obs,
             policy_params=training_state.policy_params,
             random_key=training_state.random_key,
+            expl_noise=self._config.expl_noise,
             deterministic=deterministic,
         )
         training_state = training_state.replace(

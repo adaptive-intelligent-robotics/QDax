@@ -23,7 +23,7 @@ from qdax.core.neuroevolution.losses.td3_loss import (
     td3_policy_loss_fn,
 )
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn
-from qdax.types import Action, Descriptor, Mask, Metrics, Observation, Params, RNGKey
+from qdax.types import Descriptor, Mask, Metrics, Params, RNGKey
 
 
 class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
@@ -182,34 +182,50 @@ class PBTTD3(TD3):
 
         return training_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self", "deterministic"))
-    def select_action(
+    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
+    def play_step_fn(
         self,
-        obs: Observation,
+        env_state: EnvState,
         training_state: TD3TrainingState,
+        env: Env,
         deterministic: bool = False,
-    ) -> Tuple[Action, TD3TrainingState]:
-        """Selects an action according to TD3 policy. The action can be deterministic
-        or stochastic by adding exploration noise.
+    ) -> Tuple[EnvState, TD3TrainingState, Transition]:
+        """Plays a step in the environment. Selects an action according to TD3 rule and
+        performs the environment step.
 
         Args:
-            obs: an array corresponding to an observation of the environment.
-            training_state: TD3 training state.
-            deterministic: determine if a gaussian noise is added to the action
-                taken by the policy. Defaults to False.
+            env_state: the current environment state
+            training_state: the SAC training state
+            env: the environment
+            deterministic: whether to select action in a deterministic way.
+                Defaults to False.
 
         Returns:
-            an action and an updated training state.
+            the new environment state
+            the new TD3 training state
+            the played transition
         """
 
-        actions = self._policy.apply(training_state.policy_params, obs)
-        if not deterministic:
-            random_key, subkey = jax.random.split(training_state.random_key)
-            noise = jax.random.normal(subkey, actions.shape) * training_state.expl_noise
-            actions = actions + noise
-            actions = jnp.clip(actions, -1.0, 1.0)
-            training_state = training_state.replace(random_key=random_key)
-        return actions, training_state
+        actions, random_key = self.select_action(
+            obs=env_state.obs,
+            policy_params=training_state.policy_params,
+            random_key=training_state.random_key,
+            expl_noise=training_state.expl_noise,
+            deterministic=deterministic,
+        )
+        training_state = training_state.replace(
+            random_key=random_key,
+        )
+        next_env_state = env.step(env_state, actions)
+        transition = Transition(
+            obs=env_state.obs,
+            next_obs=next_env_state.obs,
+            rewards=next_env_state.reward,
+            dones=next_env_state.done,
+            truncations=next_env_state.info["truncation"],
+            actions=actions,
+        )
+        return next_env_state, training_state, transition
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
