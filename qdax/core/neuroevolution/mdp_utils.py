@@ -32,13 +32,15 @@ class TrainingState(PyTreeNode):
 )
 def warmstart_buffer(
     replay_buffer: ReplayBuffer,
-    training_state: TrainingState,
+    policy_params: Params,
+    random_key: RNGKey,
     env_state: EnvState,
     play_step_fn: Callable[
-        [EnvState, TrainingState],
+        [EnvState, Params, RNGKey],
         Tuple[
             EnvState,
-            TrainingState,
+            Params,
+            RNGKey,
             Transition,
         ],
     ],
@@ -50,14 +52,15 @@ def warmstart_buffer(
     """
 
     def _scan_play_step_fn(
-        carry: Tuple[EnvState, TrainingState], unused_arg: Any
-    ) -> Tuple[Tuple[EnvState, TrainingState], Transition]:
-        env_state, training_state, transitions = play_step_fn(*carry)
-        return (env_state, training_state), transitions
+        carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
+    ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
+        env_state, policy_params, random_key, transitions = play_step_fn(*carry)
+        return (env_state, policy_params, random_key), transitions
 
+    random_key, subkey = jax.random.split(random_key)
     (state, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
-        (env_state, training_state),
+        (env_state, policy_params, subkey),
         (),
         length=num_warmstart_steps // env_batch_size,
     )
@@ -69,13 +72,15 @@ def warmstart_buffer(
 @partial(jax.jit, static_argnames=("play_step_fn", "episode_length"))
 def generate_unroll(
     init_state: EnvState,
-    training_state: TrainingState,
+    policy_params: Params,
+    random_key: RNGKey,
     episode_length: int,
     play_step_fn: Callable[
-        [EnvState, TrainingState],
+        [EnvState, Params, RNGKey],
         Tuple[
             EnvState,
-            TrainingState,
+            Params,
+            RNGKey,
             Transition,
         ],
     ],
@@ -85,7 +90,8 @@ def generate_unroll(
 
     Args:
         init_state: first state of the rollout.
-        training_state: agent current training state.
+        policy_params: params of the individual.
+        random_key: random key for stochasiticity handling.
         episode_length: length of the rollout.
         play_step_fn: function describing how a step need to be taken.
 
@@ -94,14 +100,14 @@ def generate_unroll(
     """
 
     def _scan_play_step_fn(
-        carry: Tuple[EnvState, TrainingState], unused_arg: Any
-    ) -> Tuple[Tuple[EnvState, TrainingState], Transition]:
-        env_state, training_state, transitions = play_step_fn(*carry)
-        return (env_state, training_state), transitions
+        carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
+    ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
+        env_state, policy_params, random_key, transitions = play_step_fn(*carry)
+        return (env_state, policy_params, random_key), transitions
 
     (state, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
-        (init_state, training_state),
+        (init_state, policy_params, random_key),
         (),
         length=episode_length,
     )
