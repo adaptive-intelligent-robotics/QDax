@@ -3,7 +3,7 @@ SHELL := /bin/bash
 # variables
 WORK_DIR = $(PWD)
 PORT = 8891
-DOCKER_RUN_FLAGS = --rm --shm-size=1024m --gpus all
+DOCKER_RUN_FLAGS = --rm --shm-size=1024m
 DOCKER_TPU_FLAGS = --rm --shm-size=1024m --network host --privileged
 DOCKER_RUN_FLAGS_TPU = --rm --privileged -p 6006:6006 -v $(WORK_DIR)/notebooks:/eapp/notebooks -v $(WORK_DIR)/data:/app/data --network host
 DOCKER_IMAGE_NAME = instadeep/qdax:$(USER)
