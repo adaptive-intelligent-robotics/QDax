@@ -89,7 +89,9 @@ collide_include {
 # those are the configs from the official brax repo
 ENV_SYSTEM_CONFIG = {
     "ant": brax.envs.ant._SYSTEM_CONFIG,
-    "halfcheetah": brax.envs.half_cheetah._SYSTEM_CONFIG,
+    "halfcheetah": brax.envs.halfcheetah._SYSTEM_CONFIG
+    if brax.__version__ == "0.0.12"
+    else brax.envs.half_cheetah._SYSTEM_CONFIG,
     "walker2d": brax.envs.walker2d._SYSTEM_CONFIG,
     "hopper": brax.envs.hopper._SYSTEM_CONFIG,
     # "humanoid": brax.envs.humanoid._SYSTEM_CONFIG,
