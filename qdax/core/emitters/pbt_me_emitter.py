@@ -33,6 +33,7 @@ class PBTEmitterConfig(PyTreeNode):
     Config for the PBT-ME emitter. This mainly corresponds to the hyperparameters
     of the PBT-ME algorithm.
     """
+
     buffer_size: int
     num_training_iterations: int
     env_batch_size: int
@@ -56,7 +57,7 @@ class PBTEmitter(Emitter):
 
     def __init__(
         self,
-        pbt_sac_agent: Union[PBTSAC, PBTTD3],
+        pbt_agent: Union[PBTSAC, PBTTD3],
         config: PBTEmitterConfig,
         env: QDEnv,
         variation_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
@@ -66,7 +67,7 @@ class PBTEmitter(Emitter):
         self._env = env
         self._variation_fn = variation_fn
         self._config = config
-        self._agent = pbt_sac_agent
+        self._agent = pbt_agent
         self._train_fn = self._agent.get_train_fn(
             env=env,
             num_iterations=config.num_training_iterations,
