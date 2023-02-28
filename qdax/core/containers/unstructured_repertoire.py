@@ -47,14 +47,13 @@ def get_cells_indices(
         centroids of shape (num_centroids, num_descriptors)
         """
 
-        # distances = jnp.sum(jnp.square(jnp.subtract(descriptors, centroids)), axis=-1)
         distances = jax.vmap(jnp.linalg.norm)(descriptors - centroids)
-        ## Negating distances because we want the smallest ones
+
+        # Negating distances because we want the smallest ones
         min_dist, min_args = jax.lax.top_k(-1 * distances, k_nn)
-        # return jnp.argmin(distances),jnp.min(distances)
+
         return min_args, -1 * min_dist
 
-    # func = jax.vmap(lambda x: _get_cells_indices(x, centroids,k_nn),in_axes=(0,None,None,))
     func = jax.vmap(
         _get_cells_indices,
         in_axes=(
@@ -64,7 +63,6 @@ def get_cells_indices(
         ),
     )
 
-    # return func(batch_of_descriptors)
     return func(batch_of_descriptors, centroids, k_nn)
 
 
@@ -77,52 +75,59 @@ def intra_batch_comp(
     l_value,
 ):
 
-    ## Check for individuals that are Nans, we remove them at the end
+    # Check for individuals that are Nans, we remove them at the end
     not_existent = jnp.where((jnp.isnan(normed)).any(), True, False)
-    ## Fill in Nans to do computations
+
+    # Fill in Nans to do computations
     normed = jnp.where(jnp.isnan(normed), jnp.full(normed.shape[-1], jnp.inf), normed)
     eval_scores = jnp.where(
         jnp.isinf(eval_scores), jnp.full(eval_scores.shape[-1], jnp.nan), eval_scores
     )
-    ## If we do not use a fitness (i.e same fitness everywhere, we create a virtual fitness function to add individuals with the same bd)
+
+    # If we do not use a fitness (i.e same fitness everywhere), we create a virtual fitness
+    # function to add individuals with the same bd
     additional_score = jnp.where(
         jnp.nanmax(eval_scores) == jnp.nanmin(eval_scores), 1.0, 0.0
     )
     additional_scores = jnp.linspace(0.0, additional_score, num=eval_scores.shape[0])
-    ## Add scores to empty individuals
+
+    # Add scores to empty individuals
     eval_scores = jnp.where(
         jnp.isnan(eval_scores), jnp.full(eval_scores.shape[0], -jnp.inf), eval_scores
     )
-    ##Virtual eval_scores
+    # Virtual eval_scores
     eval_scores = eval_scores + additional_scores
-    ## For each point we check what other points are the closest ones.
+
+    # For each point we check what other points are the closest ones.
     knn_relevant_scores, knn_relevant_indices = jax.lax.top_k(
         -1 * jax.vmap(jnp.linalg.norm)(normed - normed_all), eval_scores.shape[0]
     )
-    ## We negated the scores to use top_k so we reverse it.
+    # We negated the scores to use top_k so we reverse it.
     knn_relevant_scores = knn_relevant_scores * -1
 
-    ##Check if the individual is close enough to compare (under l-value)
+    # Check if the individual is close enough to compare (under l-value)
     fitness = jnp.where(jnp.squeeze(knn_relevant_scores < l_value), True, False)
-    ## We want to eliminate the same individual (distance 0)
-    # fitness = jnp.where(knn_relevant_scores==0.0,False,fitness)
+
+    # We want to eliminate the same individual (distance 0)
     fitness = jnp.where(knn_relevant_indices == current_index, False, fitness)
     current_fitness = jnp.squeeze(
         eval_scores.at[knn_relevant_indices.at[0].get()].get()
     )
 
-    ## Is the fitness of the other individual higher?
-    ## If both are True then we discard the current individual since this individual would be replaced by the better one.
+    # Is the fitness of the other individual higher?
+    # If both are True then we discard the current individual since this individual would be replaced
+    # by the better one.
     discard_indiv = jnp.logical_and(
         jnp.where(
             eval_scores.at[knn_relevant_indices].get() > current_fitness, True, False
         ),
         fitness,
     ).any()
-    ## Discard Individuals with Nans as their BD (mainly for the readdition where we have NaN bds)
+
+    # Discard Individuals with Nans as their BD (mainly for the readdition where we have NaN bds)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
-    ## Negate to know if we keep the individual
+    # Negate to know if we keep the individual
     return jnp.logical_not(discard_indiv)
 
 
@@ -135,54 +140,60 @@ def intra_batch_comp_relevant(
     relevant_l_values,
 ):
 
-    ## Check for individuals that are Nans, we remove them at the end
+    # Check for individuals that are Nans, we remove them at the end
     not_existent = jnp.where((jnp.isnan(normed)).any(), True, False)
-    ## Fill in Nans to do computations
+
+    # Fill in Nans to do computations
     normed = jnp.where(jnp.isnan(normed), jnp.full(normed.shape[-1], jnp.inf), normed)
     eval_scores = jnp.where(
         jnp.isinf(eval_scores), jnp.full(eval_scores.shape[-1], jnp.nan), eval_scores
     )
-    ## If we do not use a fitness (i.e same fitness everywhere, we create a virtual fitness function to add individuals with the same bd)
+
+    # If we do not use a fitness (i.e same fitness everywhere, we create a virtual fitness function to add individuals with the same bd)
     additional_score = jnp.where(
         jnp.nanmax(eval_scores) == jnp.nanmin(eval_scores), 1.0, 0.0
     )
     additional_scores = jnp.linspace(0.0, additional_score, num=eval_scores.shape[0])
-    ## Add scores to empty individuals
+
+    # Add scores to empty individuals
     eval_scores = jnp.where(
         jnp.isnan(eval_scores), jnp.full(eval_scores.shape[0], -jnp.inf), eval_scores
     )
-    ##Virtual eval_scores
+
+    # Virtual eval_scores
     eval_scores = eval_scores + additional_scores
-    ## For each point we check what other points are the closest ones.
+    # For each point we check what other points are the closest ones.
     knn_relevant_scores, knn_relevant_indices = jax.lax.top_k(
         -1 * jax.vmap(jnp.linalg.norm)(normed - normed_all), eval_scores.shape[0]
     )
-    ## We negated the scores to use top_k so we reverse it.
+    # We negated the scores to use top_k so we reverse it.
     knn_relevant_scores = knn_relevant_scores * -1
 
-    ##Check if the individual is close enough to compare (under l-value)
+    # Check if the individual is close enough to compare (under l-value)
     fitness = jnp.where(
         jnp.squeeze(knn_relevant_scores < relevant_l_values), True, False
     )
-    ## We want to eliminate the same individual (distance 0)
-    # fitness = jnp.where(knn_relevant_scores==0.0,False,fitness)
+
+    # We want to eliminate the same individual (distance 0)
     fitness = jnp.where(knn_relevant_indices == current_index, False, fitness)
     current_fitness = jnp.squeeze(
         eval_scores.at[knn_relevant_indices.at[0].get()].get()
     )
 
-    ## Is the fitness of the other individual higher?
-    ## If both are True then we discard the current individual since this individual would be replaced by the better one.
+    # Is the fitness of the other individual higher?
+    # If both are True then we discard the current individual since this individual would be replaced
+    # by the better one.
     discard_indiv = jnp.logical_and(
         jnp.where(
             eval_scores.at[knn_relevant_indices].get() > current_fitness, True, False
         ),
         fitness,
     ).any()
-    ## Discard Individuals with Nans as their BD (mainly for the readdition where we have NaN bds)
+
+    # Discard Individuals with Nans as their BD (mainly for the readdition where we have NaN bds)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
-    ## Negate to know if we keep the individual
+    # Negate to know if we keep the individual
     return jnp.logical_not(discard_indiv)
 
 
@@ -283,7 +294,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         batch_of_observations: Observation,
     ) -> UnstructuredRepertoire:
 
-        ## We need to replace all the descriptors that are not filled with jnp inf
+        # We need to replace all the descriptors that are not filled with jnp inf
         filtered_descriptors = jnp.where(
             jnp.expand_dims((self.fitnesses == -jnp.inf), axis=-1),
             jnp.full(self.descriptors.shape[-1], fill_value=jnp.inf),
@@ -294,15 +305,14 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             batch_of_descriptors, filtered_descriptors, 2
         )
 
-        second_neighbours = batch_of_distances.at[
-            ..., 1
-        ].get()  # Save the second nearest neighbours to check a condition
-        batch_of_indices = batch_of_indices.at[
-            ..., 0
-        ].get()  ## Keep the Nearest neighbours
-        batch_of_distances = batch_of_distances.at[
-            ..., 0
-        ].get()  ## Keep the Nearest neighbours
+        # Save the second nearest neighbours to check a condition
+        second_neighbours = batch_of_distances.at[..., 1].get()
+
+        # Keep the Nearest neighbours
+        batch_of_indices = batch_of_indices.at[..., 0].get()
+
+        # Keep the Nearest neighbours
+        batch_of_distances = batch_of_distances.at[..., 0].get()
 
         # We remove individuals that are too close to the second nn.
         # This avoids having clusters of individuals after adding them.
@@ -316,7 +326,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         num_centroids = self.centroids.shape[0]
 
-        ### TODO Doesn't Work if Archive is full. Need to use the closest individuals in that case.
+        # TODO: Doesn't Work if Archive is full. Need to use the closest individuals in that case.
         empty_indexes = jnp.squeeze(
             jnp.nonzero(
                 jnp.where(jnp.isinf(self.fitnesses), 1, 0),
@@ -330,11 +340,10 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             -1,
         )
 
+        # We get all the indices of the empty bds first and then the filled ones (because of -1)
         sorted_bds = jax.lax.top_k(
             -1 * batch_of_indices.squeeze(), batch_of_indices.shape[0]
-        )[
-            1
-        ]  ## We get all the indices of the empty bds first and then the filled ones (because of -1)
+        )[1]
         batch_of_indices = jnp.where(
             jnp.squeeze(batch_of_distances.at[sorted_bds].get() <= self.l_value),
             batch_of_indices.at[sorted_bds].get(),
@@ -343,26 +352,24 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
 
-        ## ReIndexing of all the inputs to the correct sorted way
+        # ReIndexing of all the inputs to the correct sorted way
         batch_of_distances = batch_of_distances.at[sorted_bds].get()
         batch_of_descriptors = batch_of_descriptors.at[sorted_bds].get()
         batch_of_genotypes = jax.tree_map(
             lambda x: x.at[sorted_bds].get(), batch_of_genotypes
         )
-        # obs = obs.at[sorted_bds].get()
         batch_of_fitnesses = batch_of_fitnesses.at[sorted_bds].get()
         batch_of_observations = batch_of_observations.at[sorted_bds].get()
         not_novel_enough = not_novel_enough.at[sorted_bds].get()
-        # dead = dead.at[sorted_bds].get()
 
-        ## Check to find Individuals with same BD within the Batch
+        # Check to find Individuals with same BD within the Batch
         keep_indiv = jax.jit(
             jax.vmap(intra_batch_comp, in_axes=(0, 0, None, None, None), out_axes=(0))
         )(
             batch_of_descriptors.squeeze(),
             jnp.arange(
                 0, batch_of_descriptors.shape[0], 1
-            ),  ## We do this to keep track of where we are in the batch to assure right comparisons
+            ),  # We do this to keep track of where we are in the batch to assure right comparisons
             batch_of_descriptors.squeeze(),
             batch_of_fitnesses.squeeze(),
             self.l_value,
@@ -370,7 +377,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         keep_indiv = jnp.logical_and(keep_indiv, jnp.logical_not(not_novel_enough))
 
-        # keep_indiv = jax.vmap(intra_batch_comp, in_axes=(0,0,None,None,None), out_axes=(0))(batch_of_descriptors.squeeze(),jnp.arange(0,batch_of_descriptors.shape[0],1),batch_of_descriptors.squeeze(),batch_of_fitnesses.squeeze(),self.l_value)
         # get fitness segment max
         best_fitnesses = jax.ops.segment_max(
             batch_of_fitnesses,
@@ -542,15 +548,14 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             batch_of_descriptors, filtered_descriptors, 2
         )
 
-        second_neighbours = batch_of_distances.at[
-            ..., 1
-        ].get()  # Save the second nearest neighbours to check a condition
-        batch_of_indices = batch_of_indices.at[
-            ..., 0
-        ].get()  ## Keep the Nearest neighbours
-        batch_of_distances = batch_of_distances.at[
-            ..., 0
-        ].get()  ## Keep the Nearest neighbours
+        # Save the second nearest neighbours to check a condition
+        second_neighbours = batch_of_distances.at[..., 1].get()
+
+        # Keep the Nearest neighbours
+        batch_of_indices = batch_of_indices.at[..., 0].get()
+
+        # Keep the Nearest neighbours
+        batch_of_distances = batch_of_distances.at[..., 0].get()
 
         # We remove individuals that are too close to the second nn.
         # This avoids having clusters of individuals after adding them.
@@ -558,13 +563,12 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             jnp.squeeze(second_neighbours <= new_l_values), True, False
         )
 
-        # batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
         batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
         batch_of_observations = jnp.expand_dims(batch_of_observations, axis=-1)
 
         num_centroids = self.centroids.shape[0]
 
-        ### TODO Doesn't Work if Archive is full. Need to use the closest individuals in that case.
+        # TODO: Doesn't Work if Archive is full. Need to use the closest individuals in that case.
         empty_indexes = jnp.squeeze(
             jnp.nonzero(
                 jnp.where(jnp.isinf(self.fitnesses), 1, 0),
@@ -578,11 +582,10 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             -1,
         )
 
+        # We get all the indices of the empty bds first and then the filled ones (because of -1)
         sorted_bds = jax.lax.top_k(
             -1 * batch_of_indices.squeeze(), batch_of_indices.shape[0]
-        )[
-            1
-        ]  ## We get all the indices of the empty bds first and then the filled ones (because of -1)
+        )[1]
         batch_of_indices = jnp.where(
             jnp.squeeze(
                 batch_of_distances.at[sorted_bds].get()
@@ -594,36 +597,30 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
 
-        ## ReIndexing of all the inputs to the correct sorted way
+        # ReIndexing of all the inputs to the correct sorted way
         batch_of_distances = batch_of_distances.at[sorted_bds].get()
         batch_of_descriptors = batch_of_descriptors.at[sorted_bds].get()
         batch_of_genotypes = jax.tree_map(
             lambda x: x.at[sorted_bds].get(), batch_of_genotypes
         )
-        # obs = obs.at[sorted_bds].get()
         batch_of_fitnesses = batch_of_fitnesses.at[sorted_bds].get()
         batch_of_observations = batch_of_observations.at[sorted_bds].get()
         not_novel_enough = not_novel_enough.at[sorted_bds].get()
         new_l_values = new_l_values.at[sorted_bds].get()
-        # dead = dead.at[sorted_bds].get()
 
-        # filtered_l = jnp.where(new_l_values>self.l_value,self.l_value,new_l_values)
-        ## Check to find Individuals with same BD within the Batch
+        # Check to find Individuals with same BD within the Batch
         keep_indiv = jit(
             jax.vmap(intra_batch_comp, in_axes=(0, 0, None, None, 0), out_axes=(0))
         )(
             batch_of_descriptors.squeeze(),
             jnp.arange(
                 0, batch_of_descriptors.shape[0], 1
-            ),  ## We do this to keep track of where we are in the batch to assure right comparisons
+            ),  # We do this to keep track of where we are in the batch to assure right comparisons
             batch_of_descriptors.squeeze(),
             batch_of_fitnesses.squeeze(),
             new_l_values,
         )
 
-        # keep_indiv = jnp.logical_and(keep_indiv,jnp.logical_not(not_novel_enough))
-
-        # keep_indiv = jax.vmap(intra_batch_comp, in_axes=(0,0,None,None,None), out_axes=(0))(batch_of_descriptors.squeeze(),jnp.arange(0,batch_of_descriptors.shape[0],1),batch_of_descriptors.squeeze(),batch_of_fitnesses.squeeze(),self.l_value)
         # get fitness segment max
         best_fitnesses = jax.ops.segment_max(
             batch_of_fitnesses,
