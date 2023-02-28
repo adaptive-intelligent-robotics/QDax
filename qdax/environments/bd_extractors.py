@@ -47,7 +47,8 @@ def get_aurora_bd(
     std_observations: jnp.ndarray,
     option: str = "full",
     hidden_size: int = 10,
-    padding: bool = False,
+    traj_sampling_freq: int = 10,
+    max_observation_size: int = 25,
 ) -> Descriptor:
     """Compute final aurora embedding.
 
@@ -57,11 +58,10 @@ def get_aurora_bd(
     # reshape mask for bd extraction
     mask = jnp.expand_dims(mask, axis=-1)
 
-    state_obs = data.obs[:, ::10, :25]
-    filtered_mask = mask[:, ::10, :]
+    state_obs = data.obs[:, ::traj_sampling_freq, :max_observation_size]
 
     # add the x/y position - (batch_size, traj_length, 2)
-    state_desc = data.state_desc[:, ::10]
+    state_desc = data.state_desc[:, ::traj_sampling_freq]
 
     print("State Observations: ", state_obs)
     print("XY positions: ", state_desc)
@@ -73,10 +73,6 @@ def get_aurora_bd(
         observations = state_obs
     elif option == "only_sd":
         observations = state_desc
-
-    # add padding when the episode is done
-    if padding:
-        observations = jnp.where(filtered_mask, x=jnp.array(0.0), y=observations)
 
     # lstm seq2seq
     model = train_seq2seq.get_model(observations.shape[-1], True, hidden_size)

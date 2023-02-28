@@ -9,7 +9,7 @@ import pytest
 
 from qdax import environments
 from qdax.core.aurora import AURORA
-from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
+from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
@@ -27,7 +27,7 @@ from qdax.utils import train_seq2seq
 def test_aurora(env_name: str, batch_size: int) -> None:
     batch_size = batch_size
     env_name = env_name
-    episode_length = 100
+    episode_length = 250
     num_iterations = 5
     seed = 42
     policy_hidden_layer_sizes = (64, 64)
@@ -36,6 +36,10 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     observation_option = "only_sd"
     hidden_size = 5
     l_value_init = 0.2
+
+    traj_sampling_freq = 10
+    max_observation_size = 25
+    prior_descriptor_dim = 2
 
     log_freq = 5
 
@@ -98,6 +102,8 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         get_aurora_bd,
         option=observation_option,
         hidden_size=hidden_size,
+        traj_sampling_freq=traj_sampling_freq,
+        max_observation_size=max_observation_size,
     )
     scoring_fn = functools.partial(
         scoring_aurora_function,
@@ -120,7 +126,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     reward_offset = environments.reward_offset[env_name]
 
     # Define a metrics function
-    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict:
+    def metrics_fn(repertoire: UnstructuredRepertoire) -> Dict:
 
         # Get metrics
         grid_empty = repertoire.fitnesses == -jnp.inf
@@ -144,7 +150,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     @jax.jit
     def update_scan_fn(carry: Any, unused: Any) -> Any:
-        # iterate over grid
+        """Scan the udpate function."""
         (
             repertoire,
             random_key,
@@ -152,6 +158,8 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             mean_observations,
             std_observations,
         ) = carry
+
+        # update
         (repertoire, _, metrics, random_key,) = aurora.update(
             repertoire,
             None,
@@ -168,36 +176,40 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     # Init algorithm
     # AutoEncoder Params and INIT
-    # observations_dims = (20, 25)
-    obs_dim = jnp.minimum(env.observation_size, 25)
+    obs_dim = jnp.minimum(env.observation_size, max_observation_size)
     if observation_option == "full":
-        observations_dims = (25, obs_dim + 2)  # 250 / 10, 25 + 2
-    if observation_option == "no_sd":
-        observations_dims = (25, obs_dim)  # 250 / 10, 25
-    if observation_option == "only_sd":
-        observations_dims = (25, 2)  # 250 / 10, 2
+        observations_dims = (
+            episode_length // traj_sampling_freq,
+            obs_dim + prior_descriptor_dim,
+        )
+    elif observation_option == "no_sd":
+        observations_dims = (
+            episode_length // traj_sampling_freq,
+            obs_dim,
+        )
+    elif observation_option == "only_sd":
+        observations_dims = (episode_length // traj_sampling_freq, prior_descriptor_dim)
+    else:
+        ValueError("The chosen option is not correct.")
 
+    # define the seq2seq model
     model = train_seq2seq.get_model(
         observations_dims[-1], True, hidden_size=hidden_size
     )
+
+    # init the model params
     random_key, subkey = jax.random.split(random_key)
-
-    # design aurora's schedule
-    default_update_base = 10
-    update_base = int(jnp.ceil(default_update_base / log_freq))
-    schedules = jnp.cumsum(jnp.arange(update_base, 1000, update_base))
-    print("Schedules: ", schedules)
-
     model_params = train_seq2seq.get_initial_params(
-        model, subkey, (1, observations_dims[0], observations_dims[-1])
+        model, subkey, (1, *observations_dims)
     )
 
     print(jax.tree_map(lambda x: x.shape, model_params))
 
+    # define arbitrary observation's mean/std
     mean_observations = jnp.zeros(observations_dims[-1])
-
     std_observations = jnp.ones(observations_dims[-1])
 
+    # init step of the aurora algorithm
     repertoire, _, random_key = aurora.init(
         init_variables,
         centroids,
@@ -208,11 +220,16 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         l_value_init,
     )
 
-    # Initializing Means and stds and Aurora
+    # initializing means and stds and AURORA
     random_key, subkey = jax.random.split(random_key)
     model_params, mean_observations, std_observations = train_seq2seq.lstm_ae_train(
         subkey, repertoire, model_params, 0, hidden_size=hidden_size
     )
+
+    # design aurora's schedule
+    default_update_base = 10
+    update_base = int(jnp.ceil(default_update_base / log_freq))
+    schedules = jnp.cumsum(jnp.arange(update_base, 1000, update_base))
 
     current_step_estimation = 0
     num_iterations = 0
@@ -222,7 +239,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     previous_error = jnp.sum(repertoire.fitnesses != -jnp.inf) - n_target
 
-    iteration = 1  # to be consistent with other exp scripts
+    iteration = 0
     while iteration < num_iterations:
 
         (
@@ -240,12 +257,10 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         # update nb steps estimation
         current_step_estimation += batch_size * episode_length * log_freq
 
-        # Autoencoder Steps and CVC
-        # individuals_in_repo = jnp.sum(repertoire.fitnesses != -jnp.inf)
-
+        # autoencoder steps and CVC
         if (iteration + 1) in schedules:
+            # train the autoencoder
             random_key, subkey = jax.random.split(random_key)
-
             (
                 model_params,
                 mean_observations,
@@ -259,7 +274,6 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             )
 
             # re-addition of all the new behavioural descriotpors with the new ae
-
             normalized_observations = (
                 repertoire.observations - mean_observations
             ) / std_observations
@@ -278,9 +292,10 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
         elif iteration % 2 == 0:
-
+            # update the l value
             num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
+            # CVC Implementation to keep a constant number of individuals in the archive
             current_error = num_indivs - n_target
             change_rate = current_error - previous_error
             prop_gain = 1 * 10e-6
@@ -289,10 +304,9 @@ def test_aurora(env_name: str, batch_size: int) -> None:
                 + (prop_gain * (current_error))
                 + (prop_gain * change_rate)
             )
-            print(change_rate, current_error)
+
             previous_error = current_error
 
-            # CVC Implementation to keep a Constant number of individuals in the Archive
             repertoire = repertoire.init(
                 genotypes=repertoire.genotypes,
                 centroids=repertoire.centroids,
