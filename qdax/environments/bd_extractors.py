@@ -57,17 +57,6 @@ def get_aurora_bd(
     # reshape mask for bd extraction
     mask = jnp.expand_dims(mask, axis=-1)
 
-    print("Mask: ", mask)
-
-    # Get behavior descriptor
-    last_index = jnp.int32(jnp.sum(1.0 - mask, axis=1)) - 1
-
-    ## Doesn't Make Sense to take last valid Observation for Aurora, we take the full trajectory
-    # observations = jax.vmap(lambda x, y: x[y,:])(data.obs[:,::10,:15], last_index))
-
-    # TODO: try with all observations
-    # TODO: try with a padding
-
     state_obs = data.obs[:, ::10, :25]
     filtered_mask = mask[:, ::10, :]
 
@@ -89,12 +78,8 @@ def get_aurora_bd(
     if padding:
         observations = jnp.where(filtered_mask, x=jnp.array(0.0), y=observations)
 
-    # print("Observation: ", observations)
-    # print("Padded observation: ", padded_observations)
-
-    model = train_seq2seq.get_model(
-        observations.shape[-1], True, hidden_size
-    )  ## lstm seq2seq
+    # lstm seq2seq
+    model = train_seq2seq.get_model(observations.shape[-1], True, hidden_size)
     normalized_observations = (observations - mean_observations) / std_observations
     descriptors = model.apply(
         {"params": model_params}, normalized_observations, method=model.encode

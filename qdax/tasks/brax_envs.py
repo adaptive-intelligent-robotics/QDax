@@ -18,6 +18,7 @@ from qdax.types import (
     ExtraScores,
     Fitness,
     Genotype,
+    Observation,
     Params,
     RNGKey,
 )
@@ -352,7 +353,9 @@ def scoring_aurora_function(
         [EnvState, Params, RNGKey],
         Tuple[EnvState, Params, RNGKey, QDTransition],
     ],
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    behavior_descriptor_extractor: Callable[
+        [QDTransition, jnp.ndarray, Params, Observation, Observation], Descriptor
+    ],
 ) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
     """Evaluates policies contained in flatten_variables in parallel
 

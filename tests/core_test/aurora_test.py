@@ -167,7 +167,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         )
 
     # Init algorithm
-    ## AutoEncoder Params and INIT
+    # AutoEncoder Params and INIT
     # observations_dims = (20, 25)
     obs_dim = jnp.minimum(env.observation_size, 25)
     if observation_option == "full":
@@ -191,7 +191,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     model_params = train_seq2seq.get_initial_params(
         model, subkey, (1, observations_dims[0], observations_dims[-1])
     )
-    # model_params = train_seq2seq.get_initial_params(model,subkey,(1,repertoire.observations.shape[1],repertoire.observations.shape[-1]))
+
     print(jax.tree_map(lambda x: x.shape, model_params))
 
     mean_observations = jnp.zeros(observations_dims[-1])
@@ -208,7 +208,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         l_value_init,
     )
 
-    ## Initializing Means and stds and Aurora
+    # Initializing Means and stds and Aurora
     random_key, subkey = jax.random.split(random_key)
     model_params, mean_observations, std_observations = train_seq2seq.lstm_ae_train(
         subkey, repertoire, model_params, 0, hidden_size=hidden_size
@@ -240,7 +240,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         # update nb steps estimation
         current_step_estimation += batch_size * episode_length * log_freq
 
-        ## Autoencoder Steps and CVC
+        # Autoencoder Steps and CVC
         # individuals_in_repo = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
         if (iteration + 1) in schedules:
@@ -257,12 +257,13 @@ def test_aurora(env_name: str, batch_size: int) -> None:
                 iteration,
                 hidden_size=hidden_size,
             )
-            ### RE-ADDITION OF ALL THE NEW BEHAVIOURAL DESCRIPTORS WITH THE NEW AE
 
-            # model = train_seq2seq.get_model(repertoire.observations.shape[-1],True) ## lstm seq2seq
+            # re-addition of all the new behavioural descriotpors with the new ae
+
             normalized_observations = (
                 repertoire.observations - mean_observations
             ) / std_observations
+
             new_descriptors = model.apply(
                 {"params": model_params}, normalized_observations, method=model.encode
             )
@@ -280,7 +281,6 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
             num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
-            # l_value =  repertoire.l_value * (1+1*10e-7*(num_indivs-n_target))
             current_error = num_indivs - n_target
             change_rate = current_error - previous_error
             prop_gain = 1 * 10e-6
@@ -291,7 +291,8 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             )
             print(change_rate, current_error)
             previous_error = current_error
-            ## CVC Implementation to keep a Constant number of individuals in the Archive
+
+            # CVC Implementation to keep a Constant number of individuals in the Archive
             repertoire = repertoire.init(
                 genotypes=repertoire.genotypes,
                 centroids=repertoire.centroids,
@@ -300,7 +301,6 @@ def test_aurora(env_name: str, batch_size: int) -> None:
                 observations=repertoire.observations,
                 l_value=l_value,
             )
-            new_num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
     pytest.assume(repertoire is not None)
 

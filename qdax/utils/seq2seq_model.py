@@ -1,21 +1,12 @@
-# Copyright 2022 The Flax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""seq2seq example: Mode code.
 
-"""seq2seq example: Mode code."""
+Inspired by Flax library -
+https://github.com/google/flax/blob/main/examples/seq2seq/models.py
 
-# See issue #620.
-# pytype: disable=wrong-keyword-args
+Copyright 2022 The Flax Authors.
+Licensed under the Apache License, Version 2.0 (the "License")
+"""
+
 
 import functools
 from typing import Any, Tuple
@@ -47,7 +38,7 @@ class EncoderLSTM(nn.Module):
         lstm_state, is_eos = carry
         new_lstm_state, y = nn.LSTMCell()(lstm_state, x)
 
-        def select_carried_state(new_state, old_state):
+        def select_carried_state(new_state: Array, old_state: Array) -> Array:
             return jnp.where(is_eos[:, np.newaxis], old_state, new_state)
 
         # LSTM state is a tuple (c, h).
@@ -59,9 +50,9 @@ class EncoderLSTM(nn.Module):
         return (carried_lstm_state, is_eos), y
 
     @staticmethod
-    def initialize_carry(batch_size: int, hidden_size: int):
+    def initialize_carry(batch_size: int, hidden_size: int) -> Tuple[Array, Array]:
         # Use a dummy key since the default state init fn is just zeros.
-        return nn.LSTMCell.initialize_carry(
+        return nn.LSTMCell.initialize_carry(  # type: ignore
             jax.random.PRNGKey(0), (batch_size,), hidden_size
         )
 
@@ -72,16 +63,17 @@ class Encoder(nn.Module):
     hidden_size: int
 
     @nn.compact
-    def __call__(self, inputs: Array):
-        # inputs.shape = (batch_size, seq_length, vocab_size).
+    def __call__(self, inputs: Array) -> Array:
         batch_size = inputs.shape[0]
         lstm = EncoderLSTM(name="encoder_lstm")
         init_lstm_state = lstm.initialize_carry(batch_size, self.hidden_size)
+
         # We use the `is_eos` array to determine whether the encoder should carry
         # over the last lstm state, or apply the LSTM cell on the previous state.
         init_is_eos = jnp.zeros(batch_size, dtype=bool)
         init_carry = (init_lstm_state, init_is_eos)
         (final_state, _), _ = lstm(init_carry, inputs)
+
         return final_state
 
 
@@ -106,6 +98,7 @@ class DecoderLSTM(nn.Module):
     @nn.compact
     def __call__(self, carry: Tuple[Array, Array], x: Array) -> Array:
         """Applies the DecoderLSTM model."""
+
         lstm_state, last_prediction = carry
         if not self.teacher_force:
             x = last_prediction
@@ -165,7 +158,7 @@ class Seq2seq(nn.Module):
     hidden_size: int
     obs_size: int
 
-    def setup(self):
+    def setup(self) -> None:
         self.encoder = Encoder(hidden_size=self.hidden_size)
         self.decoder = Decoder(teacher_force=self.teacher_force, obs_size=self.obs_size)
 
@@ -191,22 +184,16 @@ class Seq2seq(nn.Module):
           containing respectively decoded logits and predictions (in one hot
           encoding format).
         """
-        # Encode inputs.
-        # print(encoder_inputs)
+        # encode inputs
         init_decoder_state = self.encoder(encoder_inputs)
-        # print(init_decoder_state)
-        # Encoder(hidden_size=self.hidden_size)
-        # Decode outputs.
+
+        # decode outputs
         logits, predictions = self.decoder(decoder_inputs, init_decoder_state)
-        # Decoder(
-        #     init_state=init_decoder_state,
-        #     teacher_force=self.teacher_force,
-        #     obs_size=self.obs_size)(decoder_inputs[:, :-1],init_decoder_state)
 
         return logits, predictions
 
-    def encode(self, encoder_inputs: Array):
-        # Encode inputs.
+    def encode(self, encoder_inputs: Array) -> Array:
+        # encode inputs
         init_decoder_state = self.encoder(encoder_inputs)
-        final_output, hidden_state = init_decoder_state
+        final_output, _hidden_state = init_decoder_state
         return final_output

@@ -8,15 +8,7 @@ import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
-from qdax.types import (
-    Centroid,
-    Descriptor,
-    ExtraScores,
-    Fitness,
-    Genotype,
-    Observation,
-    RNGKey,
-)
+from qdax.types import Centroid, Descriptor, Fitness, Genotype, Observation, RNGKey
 
 
 @partial(jax.jit, static_argnames=("k_nn",))
@@ -63,17 +55,17 @@ def get_cells_indices(
         ),
     )
 
-    return func(batch_of_descriptors, centroids, k_nn)
+    return func(batch_of_descriptors, centroids, k_nn)  # type: ignore
 
 
 @jax.jit
 def intra_batch_comp(
-    normed,
-    current_index,
-    normed_all,
-    eval_scores,
-    l_value,
-):
+    normed: jnp.ndarray,
+    current_index: jnp.ndarray,
+    normed_all: jnp.ndarray,
+    eval_scores: jnp.ndarray,
+    l_value: jnp.ndarray,
+) -> jnp.ndarray:
 
     # Check for individuals that are Nans, we remove them at the end
     not_existent = jnp.where((jnp.isnan(normed)).any(), True, False)
@@ -84,8 +76,8 @@ def intra_batch_comp(
         jnp.isinf(eval_scores), jnp.full(eval_scores.shape[-1], jnp.nan), eval_scores
     )
 
-    # If we do not use a fitness (i.e same fitness everywhere), we create a virtual fitness
-    # function to add individuals with the same bd
+    # If we do not use a fitness (i.e same fitness everywhere), we create a virtual
+    # fitness function to add individuals with the same bd
     additional_score = jnp.where(
         jnp.nanmax(eval_scores) == jnp.nanmin(eval_scores), 1.0, 0.0
     )
@@ -115,8 +107,8 @@ def intra_batch_comp(
     )
 
     # Is the fitness of the other individual higher?
-    # If both are True then we discard the current individual since this individual would be replaced
-    # by the better one.
+    # If both are True then we discard the current individual since this individual
+    # would be replaced by the better one.
     discard_indiv = jnp.logical_and(
         jnp.where(
             eval_scores.at[knn_relevant_indices].get() > current_fitness, True, False
@@ -124,7 +116,8 @@ def intra_batch_comp(
         fitness,
     ).any()
 
-    # Discard Individuals with Nans as their BD (mainly for the readdition where we have NaN bds)
+    # Discard Individuals with Nans as their BD (mainly for the readdition where we
+    # have NaN bds)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
     # Negate to know if we keep the individual
@@ -133,12 +126,12 @@ def intra_batch_comp(
 
 @jax.jit
 def intra_batch_comp_relevant(
-    normed,
-    current_index,
-    normed_all,
-    eval_scores,
-    relevant_l_values,
-):
+    normed: jnp.ndarray,
+    current_index: jnp.ndarray,
+    normed_all: jnp.ndarray,
+    eval_scores: jnp.ndarray,
+    relevant_l_values: jnp.ndarray,
+) -> jnp.ndarray:
 
     # Check for individuals that are Nans, we remove them at the end
     not_existent = jnp.where((jnp.isnan(normed)).any(), True, False)
@@ -149,7 +142,8 @@ def intra_batch_comp_relevant(
         jnp.isinf(eval_scores), jnp.full(eval_scores.shape[-1], jnp.nan), eval_scores
     )
 
-    # If we do not use a fitness (i.e same fitness everywhere, we create a virtual fitness function to add individuals with the same bd)
+    # If we do not use a fitness (i.e same fitness everywhere, we create a virtual
+    # fitness function to add individuals with the same bd)
     additional_score = jnp.where(
         jnp.nanmax(eval_scores) == jnp.nanmin(eval_scores), 1.0, 0.0
     )
@@ -181,8 +175,8 @@ def intra_batch_comp_relevant(
     )
 
     # Is the fitness of the other individual higher?
-    # If both are True then we discard the current individual since this individual would be replaced
-    # by the better one.
+    # If both are True then we discard the current individual since this individual
+    # would be replaced by the better one.
     discard_indiv = jnp.logical_and(
         jnp.where(
             eval_scores.at[knn_relevant_indices].get() > current_fitness, True, False
@@ -190,7 +184,8 @@ def intra_batch_comp_relevant(
         fitness,
     ).any()
 
-    # Discard Individuals with Nans as their BD (mainly for the readdition where we have NaN bds)
+    # Discard Individuals with Nans as their BD (mainly for the readdition where we
+    # have NaN bds)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
     # Negate to know if we keep the individual
@@ -219,7 +214,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
     fitnesses: Fitness
     descriptors: Descriptor
     centroids: Centroid
-    observations: ExtraScores
+    observations: Observation
     ages: jnp.ndarray
     l_value: jnp.ndarray
 
@@ -326,7 +321,8 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         num_centroids = self.centroids.shape[0]
 
-        # TODO: Doesn't Work if Archive is full. Need to use the closest individuals in that case.
+        # TODO: Doesn't Work if Archive is full. Need to use the closest individuals
+        # in that case.
         empty_indexes = jnp.squeeze(
             jnp.nonzero(
                 jnp.where(jnp.isinf(self.fitnesses), 1, 0),
@@ -340,7 +336,8 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             -1,
         )
 
-        # We get all the indices of the empty bds first and then the filled ones (because of -1)
+        # We get all the indices of the empty bds first and then the filled ones
+        # (because of -1)
         sorted_bds = jax.lax.top_k(
             -1 * batch_of_indices.squeeze(), batch_of_indices.shape[0]
         )[1]
@@ -369,7 +366,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             batch_of_descriptors.squeeze(),
             jnp.arange(
                 0, batch_of_descriptors.shape[0], 1
-            ),  # We do this to keep track of where we are in the batch to assure right comparisons
+            ),  # keep track of where we are in the batch to assure right comparisons
             batch_of_descriptors.squeeze(),
             batch_of_fitnesses.squeeze(),
             self.l_value,
@@ -469,7 +466,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         fitnesses: Fitness,
         descriptors: Descriptor,
         centroids: Centroid,
-        observations: ExtraScores,
+        observations: Observation,
         l_value: jnp.ndarray,
         ages: Optional[jnp.ndarray] = None,
     ) -> UnstructuredRepertoire:
@@ -521,8 +518,9 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             ages=ages,
         )
 
-        # return new_repertoire  # type: ignore
-        return repertoire.add(genotypes, descriptors, fitnesses, observations)
+        return repertoire.add(  # type: ignore
+            genotypes, descriptors, fitnesses, observations
+        )
 
     @jax.jit
     def add_relevant(
@@ -568,7 +566,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         num_centroids = self.centroids.shape[0]
 
-        # TODO: Doesn't Work if Archive is full. Need to use the closest individuals in that case.
+        # TODO: Doesn't Work if Archive is full. Use closest individuals in that case.
         empty_indexes = jnp.squeeze(
             jnp.nonzero(
                 jnp.where(jnp.isinf(self.fitnesses), 1, 0),
@@ -582,7 +580,8 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             -1,
         )
 
-        # We get all the indices of the empty bds first and then the filled ones (because of -1)
+        # get all the indices of the empty bds first and then the filled ones
+        # (because of -1)
         sorted_bds = jax.lax.top_k(
             -1 * batch_of_indices.squeeze(), batch_of_indices.shape[0]
         )[1]
@@ -609,13 +608,13 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         new_l_values = new_l_values.at[sorted_bds].get()
 
         # Check to find Individuals with same BD within the Batch
-        keep_indiv = jit(
+        keep_indiv = jax.jit(
             jax.vmap(intra_batch_comp, in_axes=(0, 0, None, None, 0), out_axes=(0))
         )(
             batch_of_descriptors.squeeze(),
             jnp.arange(
                 0, batch_of_descriptors.shape[0], 1
-            ),  # We do this to keep track of where we are in the batch to assure right comparisons
+            ),  # keep track of where we are in the batch to assure right comparisons
             batch_of_descriptors.squeeze(),
             batch_of_fitnesses.squeeze(),
             new_l_values,
@@ -642,11 +641,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         addition_condition = jnp.logical_and(
             addition_condition, jnp.expand_dims(keep_indiv, axis=-1)
         )
-        print(addition_condition)
-        print(batch_of_indices)
-        print(batch_of_descriptors)
-        print(batch_of_distances)
-        print(new_l_values)
 
         # assign fake position when relevant : num_centroids is out of bounds
         batch_of_indices = jnp.where(
@@ -693,7 +687,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         fitnesses: Fitness,
         descriptors: Descriptor,
         centroids: Centroid,
-        observations: ExtraScores,
+        observations: Observation,
         l_value: float,
         proximity_scores: jnp.ndarray,
         ages: Optional[jnp.ndarray] = None,
@@ -746,6 +740,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )
 
         # return new_repertoire
-        return repertoire.add_relevant(
+        return repertoire.add_relevant(  # type: ignore
             genotypes, descriptors, fitnesses, observations, proximity_scores
         )

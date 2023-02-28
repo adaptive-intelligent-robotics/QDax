@@ -1,67 +1,37 @@
-# Copyright 2022 The Flax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""seq2seq addition example
 
-"""seq2seq addition example."""
+Inspired by Flax library -
+https://github.com/google/flax/blob/main/examples/seq2seq/train.py
 
-# See issue #620.
-# pytype: disable=wrong-keyword-args
+Copyright 2022 The Flax Authors.
+Licensed under the Apache License, Version 2.0 (the "License")
+"""
 
 from typing import Any, Dict, Tuple
 
 import jax
 import jax.numpy as jnp
 import optax
-from absl import flags
 from flax.training import train_state
 
+from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
+from qdax.types import Observation, Params, RNGKey
 from qdax.utils.seq2seq_model import Seq2seq
 
 Array = Any
-FLAGS = flags.FLAGS
 PRNGKey = Any
 
-flags.DEFINE_string("workdir", default=".", help="Where to store log output.")
 
-flags.DEFINE_float(
-    "learning_rate", default=0.003, help=("The learning rate for the Adam optimizer.")
-)
-
-flags.DEFINE_integer("batch_size", default=128, help=("Batch size for training."))
-
-flags.DEFINE_integer("hidden_size", default=16, help=("Hidden size of the LSTM."))
-
-flags.DEFINE_integer("num_train_steps", default=10000, help=("Number of train steps."))
-
-flags.DEFINE_integer(
-    "decode_frequency",
-    default=200,
-    help=("Frequency of decoding during training, e.g. every 1000 steps."),
-)
-
-flags.DEFINE_integer(
-    "max_len_query_digit", default=3, help=("Maximum length of a single input digit.")
-)
-
-
-def get_model(obs_size, teacher_force: bool = False, hidden_size=10) -> Seq2seq:
+def get_model(
+    obs_size: int, teacher_force: bool = False, hidden_size: int = 10
+) -> Seq2seq:
     return Seq2seq(
         teacher_force=teacher_force, hidden_size=hidden_size, obs_size=obs_size
     )
 
 
 def get_initial_params(
-    model: Seq2seq, rng: PRNGKey, encoder_input_shape
+    model: Seq2seq, rng: PRNGKey, encoder_input_shape: Tuple[int, ...]
 ) -> Dict[str, Any]:
     """Returns the initial parameters of a seq2seq model."""
     rng1, rng2, rng3 = jax.random.split(rng, 3)
@@ -70,7 +40,7 @@ def get_initial_params(
         jnp.ones(encoder_input_shape, jnp.float32),
         jnp.ones(encoder_input_shape, jnp.float32),
     )
-    return variables["params"]
+    return variables["params"]  # type: ignore
 
 
 @jax.jit
@@ -80,12 +50,14 @@ def train_step(
     """Trains one step."""
     lstm_key = jax.random.fold_in(lstm_rng, state.step)
     dropout_key, lstm_key = jax.random.split(lstm_key, 2)
-    # Shift Input by One to avoid leakage
+
+    # Shift input by one to avoid leakage
     batch_decoder = jnp.roll(batch, shift=1, axis=1)
-    ### Large number as zero token
+
+    # Large number as zero token
     batch_decoder = batch_decoder.at[:, 0, :].set(-1000)
 
-    def loss_fn(params):
+    def loss_fn(params: Params) -> Tuple[jnp.ndarray, jnp.ndarray]:
         logits, _ = state.apply_fn(
             {"params": params},
             batch,
@@ -93,14 +65,9 @@ def train_step(
             rngs={"lstm": lstm_key, "dropout": dropout_key},
         )
 
-        def squared_error(x, y):
-            return jnp.inner(y - x, y - x) / 2.0
-
-        def mean_squared_error(x, y):
+        def mean_squared_error(x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
             return jnp.inner(y - x, y - x) / x.shape[-1]
 
-        # res = jax.vmap(squared_error)(logits, batch)
-        # res = jax.vmap(squared_error)(jnp.reshape(logits,(logits.shape[0],-1)),jnp.reshape(batch,(batch.shape[0],-1)))
         res = jax.vmap(mean_squared_error)(
             jnp.reshape(logits.at[:, :-1, ...].get(), (logits.shape[0], -1)),
             jnp.reshape(
@@ -111,24 +78,33 @@ def train_step(
         return loss, logits
 
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (loss_val, logits), grads = grad_fn(state.params)
+    (loss_val, _logits), grads = grad_fn(state.params)
     state = state.apply_gradients(grads=grads)
 
     return state, loss_val
 
 
-def lstm_ae_train(key, repertoire, params, epoch, hidden_size=10):
+def lstm_ae_train(
+    key: RNGKey,
+    repertoire: UnstructuredRepertoire,
+    params: Params,
+    epoch: int,
+    hidden_size: int = 10,
+) -> Tuple[Params, Observation, Observation]:
     batch_size = 128  # 2048
 
     if epoch > 100:
         num_epochs = 25
-        alpha = 0.0001  # Gradient step size
+
+        # Gradient step size
+        alpha = 0.0001
     else:
         num_epochs = 100
-        alpha = 0.0001  # Gradient step size
+
+        # Gradient step size
+        alpha = 0.0001
 
     rng, key, key_selection = jax.random.split(key, 3)
-    dimensions_data = jnp.prod(jnp.asarray(repertoire.observations.shape[1:]))
 
     # get the model used (seq2seq)
     model = get_model(
@@ -191,7 +167,6 @@ def lstm_ae_train(key, repertoire, params, epoch, hidden_size=10):
     print("Valid indexes: ", valid_indexes)
 
     # Normalising Dataset
-    # training_dataset = (repertoire.observations.at[valid_indexes].get()-mean_obs)/std_obs #jnp.where(std_obs==0,mean_obs,std_obs)
     steps_per_epoch = repertoire.observations.shape[0] // batch_size
 
     loss_val = 0.0
@@ -208,7 +183,7 @@ def lstm_ae_train(key, repertoire, params, epoch, hidden_size=10):
         # create dataset with the observation from the sample of valid indexes
         training_dataset = (
             repertoire.observations.at[valid_indexes, ...].get() - mean_obs
-        ) / std_obs  # jnp.where(std_obs==0,mean_obs,std_obs)
+        ) / std_obs
         training_dataset = training_dataset.at[valid_indexes].get()
 
         if epoch == 0:
@@ -227,13 +202,12 @@ def lstm_ae_train(key, repertoire, params, epoch, hidden_size=10):
                 continue
             state, loss_val = train_step(state, batch, rng)
 
-        ### To see the actual value we cannot jit this function (i.e. the _one_es_epoch function nor the train function)
+        # To see the actual value we cannot jit this function (i.e. the _one_es_epoch
+        # function nor the train function)
         print("Eval epoch: {}, loss: {:.4f}".format(epoch + 1, loss_val))
 
         # TODO: put this in metrics so we can jit the function and see the metrics
         # TODO: not urgent because the training is not that long
-
-    # return repertoire.replace(ae_params=state.params,mean_obs=mean_obs,std_obs=std_obs)
 
     train_step.clear_cache()
     del tx
