@@ -90,8 +90,8 @@ def lstm_ae_train(
     params: Params,
     epoch: int,
     hidden_size: int = 10,
+    batch_size: int = 128,
 ) -> Tuple[Params, Observation, Observation]:
-    batch_size = 128  # 2048
 
     if epoch > 100:
         num_epochs = 25
@@ -169,6 +169,8 @@ def lstm_ae_train(
     # Normalising Dataset
     steps_per_epoch = repertoire.observations.shape[0] // batch_size
 
+    print("Steps per epoch: ", steps_per_epoch)
+
     loss_val = 0.0
     for epoch in range(num_epochs):
         rng, shuffle_key = jax.random.split(rng, 2)
@@ -200,7 +202,9 @@ def lstm_ae_train(
             if batch.shape[0] < batch_size:
                 # print(batch.shape)
                 continue
+
             state, loss_val = train_step(state, batch, rng)
+            print("Loss value has been updated, new value: ", loss_val)
 
         # To see the actual value we cannot jit this function (i.e. the _one_es_epoch
         # function nor the train function)

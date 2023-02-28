@@ -28,12 +28,14 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     batch_size = batch_size
     env_name = env_name
     episode_length = 250
-    num_iterations = 5
+    max_iterations = 5
     seed = 42
     policy_hidden_layer_sizes = (64, 64)
     num_centroids = 50
 
-    observation_option = "only_sd"
+    lstm_batch_size = 12
+
+    observation_option = "no_sd"  # "full", "no_sd", "only_sd"
     hidden_size = 5
     l_value_init = 0.2
 
@@ -138,7 +140,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    # Instantiate MAP-Elites
+    # Instantiate AURORA
     aurora = AURORA(
         scoring_function=scoring_fn,
         emitter=mixing_emitter,
@@ -223,7 +225,12 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     # initializing means and stds and AURORA
     random_key, subkey = jax.random.split(random_key)
     model_params, mean_observations, std_observations = train_seq2seq.lstm_ae_train(
-        subkey, repertoire, model_params, 0, hidden_size=hidden_size
+        subkey,
+        repertoire,
+        model_params,
+        0,
+        hidden_size=hidden_size,
+        batch_size=lstm_batch_size,
     )
 
     # design aurora's schedule
@@ -232,7 +239,6 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     schedules = jnp.cumsum(jnp.arange(update_base, 1000, update_base))
 
     current_step_estimation = 0
-    num_iterations = 0
 
     # Main loop
     n_target = 1024
@@ -240,7 +246,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     previous_error = jnp.sum(repertoire.fitnesses != -jnp.inf) - n_target
 
     iteration = 0
-    while iteration < num_iterations:
+    while iteration < max_iterations:
 
         (
             (repertoire, random_key, model_params, mean_observations, std_observations),
@@ -251,8 +257,6 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             (),
             length=log_freq,
         )
-
-        num_iterations = iteration * log_freq
 
         # update nb steps estimation
         current_step_estimation += batch_size * episode_length * log_freq
@@ -271,6 +275,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
                 model_params,
                 iteration,
                 hidden_size=hidden_size,
+                batch_size=lstm_batch_size,
             )
 
             # re-addition of all the new behavioural descriotpors with the new ae
@@ -315,6 +320,8 @@ def test_aurora(env_name: str, batch_size: int) -> None:
                 observations=repertoire.observations,
                 l_value=l_value,
             )
+
+        iteration += 1
 
     pytest.assume(repertoire is not None)
 
