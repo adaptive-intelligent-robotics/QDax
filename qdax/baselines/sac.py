@@ -443,7 +443,7 @@ class SAC:
                 action_size=self._action_size,
                 policy_params=training_state.policy_params,
                 transitions=transitions,
-                random_key=random_key,
+                random_key=subkey,
             )
             alpha_optimizer = optax.adam(learning_rate=alpha_lr)
             (alpha_updates, alpha_optimizer_state,) = alpha_optimizer.update(
@@ -497,7 +497,7 @@ class SAC:
             target_critic_params=training_state.target_critic_params,
             alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
-            random_key=random_key,
+            random_key=subkey,
         )
         critic_optimizer = optax.adam(learning_rate=critic_lr)
         (critic_updates, critic_optimizer_state,) = critic_optimizer.update(
@@ -550,7 +550,7 @@ class SAC:
             critic_params=training_state.critic_params,
             alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
-            random_key=random_key,
+            random_key=subkey,
         )
         policy_optimizer = optax.adam(learning_rate=policy_lr)
         (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
