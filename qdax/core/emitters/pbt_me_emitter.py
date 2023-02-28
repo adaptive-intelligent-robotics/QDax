@@ -89,8 +89,6 @@ class PBTEmitter(Emitter):
         self._num_to_exchange = int(
             config.pg_population_size_per_device * config.fraction_sort_exchange
         )
-        # num_exchanged = self._num_to_exchange * pg_population_size
-        # assert num_exchanged >= self._num_best_to_replace_from
 
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
@@ -127,8 +125,8 @@ class PBTEmitter(Emitter):
         replay_buffers = replay_buffer_init(transition=dummy_transitions)
 
         # Initialise env states
-        (random_key, sub_key1, sub_key2) = jax.random.split(random_key, num=3)
-        env_states = jax.jit(self._env.reset)(rng=sub_key1)
+        (random_key, subkey1, subkey2) = jax.random.split(random_key, num=3)
+        env_states = jax.jit(self._env.reset)(rng=subkey1)
 
         reshape_fn = jax.jit(
             lambda tree: jax.tree_util.tree_map(
@@ -154,7 +152,7 @@ class PBTEmitter(Emitter):
             replay_buffers=replay_buffers,
             env_states=env_states,
             training_states=init_genotypes,
-            random_key=sub_key2,
+            random_key=subkey2,
         )
 
         return emitter_state, random_key
