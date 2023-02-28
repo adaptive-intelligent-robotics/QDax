@@ -1,6 +1,6 @@
 """
-A collection of functions and classes that define the algorithm Soft Actor Critic
-(SAC), ref: https://arxiv.org/abs/1801.01290
+Implementation of the Population Based Training (PBT) algorithm
+(https://arxiv.org/abs/1711.09846) to tune the hyperparameters of the SAC algorithm.
 """
 
 from dataclasses import dataclass

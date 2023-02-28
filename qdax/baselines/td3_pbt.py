@@ -1,5 +1,7 @@
-""" Implements the TD3 algorithm in jax for brax environments, based on:
-https://arxiv.org/pdf/1802.09477.pdf"""
+"""
+Implementation of the Population Based Training (PBT) algorithm
+(https://arxiv.org/abs/1711.09846) to tune the hyperparameters of the TD3 algorithm.
+"""
 
 from dataclasses import dataclass
 from functools import partial
