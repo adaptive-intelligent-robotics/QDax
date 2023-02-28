@@ -75,8 +75,8 @@ def td3_pbt_variation_fn(
     to policy networks and critic networks.
 
     Args:
-        training_state1: Training state of first SAC agent.
-        training_state2: Training state of first SAC agent.
+        training_state1: Training state of first TD3 agent.
+        training_state2: Training state of first TD3 agent.
         random_key: Random key.
         iso_sigma: Spread parameter (noise).
         line_sigma: Line parameter (direction of the new genotype).
