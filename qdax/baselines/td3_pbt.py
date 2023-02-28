@@ -112,7 +112,7 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
 
 @dataclass
 class PBTTD3Config:
-    """Configuration for the TD3 algorithm"""
+    """Configuration for the PBT-TD3 algorithm"""
 
     episode_length: int = 1000
     batch_size: int = 256
@@ -124,11 +124,6 @@ class PBTTD3Config:
 
 
 class PBTTD3(TD3):
-    """
-    A collection of functions that define the Twin Delayed Deep Deterministic Policy
-    Gradient agent (TD3), ref: https://arxiv.org/pdf/1802.09477.pdf
-    """
-
     def __init__(self, config: PBTTD3Config, action_size: int):
 
         td3_config = TD3Config(
@@ -145,7 +140,7 @@ class PBTTD3(TD3):
     def init(
         self, random_key: RNGKey, action_size: int, observation_size: int
     ) -> PBTTD3TrainingState:
-        """Initialise the training state of the TD3 algorithm, through creation
+        """Initialise the training state of the PBT-TD3 algorithm, through creation
         of optimizer states and params.
 
         Args:
@@ -197,14 +192,14 @@ class PBTTD3(TD3):
 
         Args:
             env_state: the current environment state
-            training_state: the SAC training state
+            training_state: the PBT-TD3 training state
             env: the environment
             deterministic: whether to select action in a deterministic way.
                 Defaults to False.
 
         Returns:
             the new environment state
-            the new TD3 training state
+            the new PBT-TD3 training state
             the played transition
         """
 

@@ -26,7 +26,7 @@ from qdax.types import Descriptor, Mask, Metrics, RNGKey
 
 
 class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
-    """Training state for the SAC algorithm"""
+    """Training state for the PBT-SAC algorithm"""
 
     # Add hyperparameters as part of the state for PBT
     discount: float
@@ -103,7 +103,7 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
 
 @dataclass
 class PBTSacConfig:
-    """Configuration for the SAC algorithm."""
+    """Configuration for the PBT-SAC algorithm."""
 
     batch_size: int
     episode_length: int
@@ -143,7 +143,7 @@ class PBTSAC(SAC):
             observation_size: the size of the environment's observation space
 
         Returns:
-            the initial training state of SAC
+            the initial training state of PBT-SAC
         """
 
         sac_training_state = SAC.init(self, random_key, action_size, observation_size)
@@ -180,11 +180,11 @@ class PBTSAC(SAC):
         """Performs a training step to update the policy and the critic parameters.
 
         Args:
-            training_state: the current SAC training state
+            training_state: the current PBT-SAC training state
             replay_buffer: the replay buffer
 
         Returns:
-            the updated SAC training state
+            the updated PBT-SAC training state
             the replay buffer
             the training metrics
         """
