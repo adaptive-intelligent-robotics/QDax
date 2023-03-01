@@ -20,7 +20,6 @@ from qdax.core.neuroevolution.losses.diayn_loss import make_diayn_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.diayn_networks import make_diayn_networks
 from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
-from qdax.environments import CompletedEvalWrapper
 from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
@@ -320,15 +319,9 @@ class DIAYN(SAC):
             play_step_fn=play_step_fn,
         )
 
-        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
-        true_return = (
-            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
-            / state.info[eval_metrics_key].completed_episodes
-        )
-
         transitions = get_first_episode(transitions)
-
-        true_return_per_env = jnp.nansum(transitions.rewards, axis=0)
+        true_returns = jnp.nansum(transitions.rewards, axis=0)
+        true_return = jnp.mean(true_returns, axis=-1)
 
         reshaped_transitions = jax.tree_util.tree_map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
@@ -353,7 +346,7 @@ class DIAYN(SAC):
 
         return (
             true_return,
-            true_return_per_env,
+            true_returns,
             diversity_returns,
             transitions.state_desc,
         )
