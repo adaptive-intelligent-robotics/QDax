@@ -16,8 +16,7 @@ from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, Params,
 
 
 class AURORA:
-    """
-    Core elements of the AURORA algorithm.
+    """Core elements of the AURORA algorithm.
 
     Args:
         scoring_function: a function that takes a batch of genotypes and compute
@@ -26,7 +25,7 @@ class AURORA:
             repertoire. It has two compulsory functions. A function that takes
             emits a new population, and a function that update the internal state
             of the emitter.
-        metrics_function: a function that takes a MAP-Elites repertoire and compute
+        metrics_function: a function that takes a repertoire and computes
             any useful metric to track its evolution
     """
 
@@ -54,19 +53,24 @@ class AURORA:
         std_observations: jnp.ndarray,
         l_value: jnp.ndarray,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
-        """
-        Initialize a Map-Elites grid with an initial population of genotypes. Requires
-        the definition of centroids that can be computed with any method such as
-        CVT or Euclidean mapping.
+        """Initialize an unstructured repertoire with an initial population of
+        genotypes. Requires the definition of centroids that can be computed with
+        any method such as CVT or Euclidean mapping.
 
         Args:
             init_genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
             random_key: a random key used for stochastic operations.
+            model_params: parameters of the model used to define the behavior
+                descriptors.
+            mean_observations: mean of the observations gathered.
+            std_observations: standard deviation of the observations
+                gathered.
 
         Returns:
-            an initialized MAP-Elite repertoire with the initial state of the emitter.
+            an initialized unstructured repertoire with the initial state of
+            the emitter.
         """
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             init_genotypes,
@@ -84,6 +88,7 @@ class AURORA:
             observations=extra_scores["last_valid_observations"],  # type: ignore
             l_value=l_value,
         )
+
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
             init_genotypes=init_genotypes, random_key=random_key
@@ -110,16 +115,22 @@ class AURORA:
         mean_observations: jnp.ndarray,
         std_observations: jnp.ndarray,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics, RNGKey]:
-        """
-        Performs one iteration of the MAP-Elites algorithm.
+        """Main step of the AURORA algorithm.
+
+
+        Performs one iteration of the AURORA algorithm.
         1. A batch of genotypes is sampled in the archive and the genotypes are copied.
         2. The copies are mutated and crossed-over
         3. The obtained offsprings are scored and then added to the archive.
 
         Args:
-            repertoire: the MAP-Elites repertoire
+            repertoire: unstructured repertoire
             emitter_state: state of the emitter
             random_key: a jax PRNG random key
+            model_params: params of the model used to define the behavior descriptor.
+            mean_observations: mean of the observations gathered.
+            std_observations: standard deviation of the observations
+                gathered.
 
         Results:
             the updated MAP-Elites repertoire
