@@ -127,6 +127,8 @@ nav:
     - NSGA2/SPEA2: examples/nsga2_spea2.ipynb
     - PBT: examples/sac_pbt.ipynb
     - MAPElites PBT: examples/me_sac_pbt.ipynb
+    - AURORA: examples/aurora.ipynb
+    - PGA AURORA: examples/pga_aurora.ipynb
     - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
@@ -140,6 +142,8 @@ nav:
         - MOME: api_documentation/core/mome.md
         - ME ES: api_documentation/core/mees.md
         - ME PBT: api_documentation/core/me_pbt.md
+        - AURORA: api_documentation/core/aurora.md
+        - PGA AURORA: api_documentation/core/pga_aurora.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
