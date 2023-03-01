@@ -88,7 +88,7 @@ class PBT:
     @partial(jax.jit, static_argnames=("self",))
     def update_states_and_buffer(
         self,
-        random_key: jnp.ndarray,
+        random_key: RNGKey,
         population_returns: jnp.ndarray,
         training_state: PBTTrainingState,
         replay_buffer: ReplayBuffer,
@@ -132,7 +132,7 @@ class PBT:
     @partial(jax.jit, static_argnames=("self",))
     def update_states_and_buffer_pmap(
         self,
-        random_key: jnp.ndarray,
+        random_key: RNGKey,
         population_returns: jnp.ndarray,
         training_state: PBTTrainingState,
         replay_buffer: ReplayBuffer,
