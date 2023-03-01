@@ -125,6 +125,8 @@ nav:
     - SMERL: examples/smerl.ipynb
     - CMA ES: examples/cmaes.ipynb
     - NSGA2/SPEA2: examples/nsga2_spea2.ipynb
+    - AURORA: examples/aurora.ipynb
+    - PGA AURORA: examples/pga_aurora.ipynb
     - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
@@ -137,6 +139,8 @@ nav:
         - CMA MEGA: api_documentation/core/cma_mega.md
         - MOME: api_documentation/core/mome.md
         - ME ES: api_documentation/core/mees.md
+        - AURORA: api_documentation/core/aurora.md
+        - PGA AURORA: api_documentation/core/pga_aurora.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
