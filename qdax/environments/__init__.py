@@ -5,12 +5,12 @@ import brax
 import brax.envs
 
 from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
-from qdax.environments.humanoidtrap import HumanoidTrap
 from qdax.environments.bd_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )
 from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.environments.humanoidtrap import HumanoidTrap
 from qdax.environments.init_state_wrapper import FixedInitialStateWrapper
 from qdax.environments.locomotion_wrappers import (
     FeetContactWrapper,
@@ -64,10 +64,10 @@ _qdax_custom_envs = {
         "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}, {}],
     },
     "humanoidtrap": {
-            "env": "humanoid_w_trap",
-            "wrappers": [XYPositionWrapper],
-            "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}],
-        },
+        "env": "humanoid_w_trap",
+        "wrappers": [XYPositionWrapper],
+        "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}],
+    },
     "antnotrap": {
         "env": "ant",
         "wrappers": [XYPositionWrapper],

@@ -18,6 +18,7 @@ class PBTTrainingState(PyTreeNode):
     class for inheritance for any algorithm that want to implement a PBT
     scheme.
     """
+
     pass
 
     @classmethod
@@ -59,6 +60,7 @@ class PBT:
     This class serves as a template for algorithm that want to implement the standard
     Population Based Training (PBT) scheme.
     """
+
     def __init__(
         self,
         population_size: int,
