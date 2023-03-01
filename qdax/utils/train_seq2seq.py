@@ -111,17 +111,9 @@ def lstm_ae_train(
         repertoire.observations.shape[-1], teacher_force=True, hidden_size=hidden_size
     )
 
-    print("Beginning of the lstm ae training: ")
-    print("Repertoire observation: ", repertoire.observations)
-
-    print("Repertoire fitnesses: ", repertoire.fitnesses)
-
     # compute mean/std of the obs for normalization
     mean_obs = jnp.nanmean(repertoire.observations, axis=(0, 1))
     std_obs = jnp.nanstd(repertoire.observations, axis=(0, 1))
-
-    print("Mean obs - wo NaN: ", mean_obs)
-    print("Std obs - wo NaN: ", std_obs)
 
     # TODO: maybe we could just compute this data on the valid dataset
 
@@ -131,11 +123,9 @@ def lstm_ae_train(
 
     # size of the repertoire
     repertoire_size = repertoire.centroids.shape[0]
-    print("Repertoire size: ", repertoire_size)
 
     # number of individuals in the repertoire
     num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
-    print("Number of individuals: ", num_indivs)
 
     # select repertoire_size indexes going from 0 to num_indivs
     # TODO: WHY??
@@ -143,33 +133,26 @@ def lstm_ae_train(
     idx_p1 = jax.random.randint(
         key_select_p1, shape=(repertoire_size,), minval=0, maxval=num_indivs
     )
-    print("idx p1: ", idx_p1)
 
     # TODO: what is the diff with repertoire_size??
     tot_indivs = repertoire.fitnesses.ravel().shape[0]
-    print("Total individuals: ", tot_indivs)
 
     # get indexes where fitness is not -inf??
     indexes = jnp.argwhere(
         jnp.logical_not(jnp.isinf(repertoire.fitnesses)), size=tot_indivs
     )
     indexes = jnp.transpose(indexes, axes=(1, 0))
-    print("Indexes: ", indexes)
 
     # ???
     indiv_indices = jnp.array(
         jnp.ravel_multi_index(indexes, repertoire.fitnesses.shape, mode="clip")
     ).astype(int)
-    print("Indiv indices: ", indexes)
 
     # ???
     valid_indexes = indiv_indices.at[idx_p1].get()
-    print("Valid indexes: ", valid_indexes)
 
     # Normalising Dataset
     steps_per_epoch = repertoire.observations.shape[0] // batch_size
-
-    print("Steps per epoch: ", steps_per_epoch)
 
     loss_val = 0.0
     for epoch in range(num_epochs):
@@ -188,23 +171,18 @@ def lstm_ae_train(
         ) / std_obs
         training_dataset = training_dataset.at[valid_indexes].get()
 
-        if epoch == 0:
-            print("Training dataset for first epoch: ", training_dataset)
-            print("Training dataset first data for first epoch: ", training_dataset[0])
-
         for i in range(steps_per_epoch):
             batch = jnp.asarray(
                 training_dataset.at[
                     (i * batch_size) : (i * batch_size) + batch_size, :, :
                 ].get()
             )
-            # print(batch)
+
             if batch.shape[0] < batch_size:
                 # print(batch.shape)
                 continue
 
             state, loss_val = train_step(state, batch, rng)
-            print("Loss value has been updated, new value: ", loss_val)
 
         # To see the actual value we cannot jit this function (i.e. the _one_es_epoch
         # function nor the train function)
@@ -213,10 +191,6 @@ def lstm_ae_train(
         # TODO: put this in metrics so we can jit the function and see the metrics
         # TODO: not urgent because the training is not that long
 
-    train_step.clear_cache()
-    del tx
-    del model
     params = state.params
-    del state
 
     return params, mean_obs, std_obs

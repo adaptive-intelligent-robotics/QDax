@@ -45,8 +45,7 @@ class EncoderLSTM(nn.Module):
         carried_lstm_state = tuple(
             select_carried_state(*s) for s in zip(new_lstm_state, lstm_state)
         )
-        # Update `is_eos`.
-        # is_eos = jnp.logical_or(is_eos, x[:, 8])
+
         return (carried_lstm_state, is_eos), y
 
     @staticmethod

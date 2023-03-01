@@ -13,10 +13,9 @@ from qdax.types import Centroid, Descriptor, Fitness, Genotype, Observation, RNG
 
 @partial(jax.jit, static_argnames=("k_nn",))
 def get_cells_indices(
-    batch_of_descriptors: jnp.ndarray, centroids: jnp.ndarray, k_nn: int
+    batch_of_descriptors: Descriptor, centroids: Centroid, k_nn: int
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """
-    Returns the array of cells indices for a batch of descriptors
+    """Returns the array of cells indices for a batch of descriptors
     given the centroids of the grid.
 
     Args:
@@ -34,8 +33,9 @@ def get_cells_indices(
         centroids: jnp.ndarray,
         k_nn: int,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        """
-        set_of_descriptors of shape (1, num_descriptors)
+        """Inner function.
+
+        descriptors of shape (1, num_descriptors)
         centroids of shape (num_centroids, num_descriptors)
         """
 
@@ -66,6 +66,7 @@ def intra_batch_comp(
     eval_scores: jnp.ndarray,
     l_value: jnp.ndarray,
 ) -> jnp.ndarray:
+    """Function to know if an individual should be kept or not."""
 
     # Check for individuals that are Nans, we remove them at the end
     not_existent = jnp.where((jnp.isnan(normed)).any(), True, False)
@@ -208,6 +209,8 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             is (num_centroids, num_descriptors).
         centroids: an array the contains the centroids of the tesselation. The array
             shape is (num_centroids, num_descriptors).
+        observations: observations that the genotype gathered in the environment.
+        ages: time spent by the genotype in the repertoire.
     """
 
     genotypes: Genotype
@@ -249,7 +252,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
     def load(
         cls, reconstruction_fn: Callable, path: str = "./"
     ) -> UnstructuredRepertoire:
-        """Loads a MAP Elites Grid.
+        """Loads an unstructured repertoire.
 
         Args:
             reconstruction_fn: Function to reconstruct a PyTree
@@ -257,7 +260,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             path: Path where the data is saved. Defaults to "./".
 
         Returns:
-            A MAP Elites Repertoire.
+            An unstructured repertoire.
         """
 
         flat_genotypes = jnp.load(path + "genotypes.npy")
@@ -288,6 +291,19 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         batch_of_fitnesses: Fitness,
         batch_of_observations: Observation,
     ) -> UnstructuredRepertoire:
+        """Adds a batch of genotypes to the repertoire.
+
+        Args:
+            batch_of_genotypes: genotypes of the individuals to be considered
+                for addition in the repertoire.
+            batch_of_descriptors: associated descriptors.
+            batch_of_fitnesses: associated fitness.
+            batch_of_observations: associated observations.
+
+        Returns:
+            A new unstructured repertoire where the relevant individuals have been
+            added.
+        """
 
         # We need to replace all the descriptors that are not filled with jnp inf
         filtered_descriptors = jnp.where(
@@ -436,8 +452,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
-        """
-        Sample elements in the grid.
+        """Sample elements in the repertoire.
 
         Args:
             random_key: a jax PRNG random key
@@ -470,13 +485,9 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         l_value: jnp.ndarray,
         ages: Optional[jnp.ndarray] = None,
     ) -> UnstructuredRepertoire:
-        """
-        Initialize a Map-Elites repertoire with an initial population of genotypes.
+        """Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
         such as CVT or Euclidean mapping.
-
-        Note: this function has been kept outside of the object MapElites, so it can
-        be called easily called from other modules.
 
         Args:
             genotypes: initial genotypes, pytree in which leaves
@@ -485,9 +496,12 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            observations: observations experienced in the evaluation task.
+            l_value: threshold distance of the repertoire.
+            ages: ages of the genotypes.
 
         Returns:
-            an initialized MAP-Elite repertoire
+            an initialized unstructured repertoire.
         """
 
         # Initialize grid with default values
@@ -692,13 +706,9 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         proximity_scores: jnp.ndarray,
         ages: Optional[jnp.ndarray] = None,
     ) -> UnstructuredRepertoire:
-        """
-        Initialize a Map-Elites repertoire with an initial population of genotypes.
+        """Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
         such as CVT or Euclidean mapping.
-
-        Note: this function has been kept outside of the object MapElites, so it can
-        be called easily called from other modules.
 
         Args:
             genotypes: initial genotypes, pytree in which leaves
@@ -707,9 +717,14 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            observations: observations gathered by the genotypes while being evaluated
+                on the task of interest.
+            l_value: threshold of the repertoire.
+            proximity_scores: measure of proximity of the individuals to the population.
+            ages: ages of the individuals.
 
         Returns:
-            an initialized MAP-Elite repertoire
+            an initialized unstructured repertoire
         """
 
         # Initialize grid with default values
@@ -729,6 +744,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         if ages is None:
             ages = jnp.zeros(shape=num_centroids)
+
         repertoire = UnstructuredRepertoire(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
