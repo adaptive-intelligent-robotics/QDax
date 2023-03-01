@@ -13,6 +13,8 @@ TTACH_FOLDERS_FLAGS = -v $(WORK_DIR)/examples:/app/examples -v $(WORK_DIR)/playg
 USER_ID = $$(id -u)
 GROUP_ID = $$(id -g)
 
+PORT = 8888
+
 # Makefile
 .PHONY: clean
 clean:
