@@ -86,8 +86,8 @@ class DistributedMAPElites(MAPElites):
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics, RNGKey]:
-        """
-        Performs one iteration of the MAP-Elites algorithm.
+        """Performs one iteration of the MAP-Elites algorithm.
+
         1. A batch of genotypes is sampled in the repertoire and the genotypes
             are copied.
         2. The copies are mutated and crossed-over
