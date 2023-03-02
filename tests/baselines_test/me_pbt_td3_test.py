@@ -175,7 +175,9 @@ def test_me_pbt_td3() -> None:
     # initialize map-elites
     repertoire, emitter_state, keys = map_elites.get_distributed_init_fn(
         devices=devices, centroids=centroids
-    )(init_genotypes=training_states, random_key=keys)
+    )(
+        init_genotypes=training_states, random_key=keys
+    )  # type: ignore
 
     update_fn = map_elites.get_distributed_update_fn(num_iterations=1, devices=devices)
 
