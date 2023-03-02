@@ -136,7 +136,7 @@ class AURORA:
             the updated MAP-Elites repertoire
             the updated (if needed) emitter state
             metrics about the updated repertoire
-            a new jax PRNG key
+            a new key
         """
         # generate offsprings with the emitter
         genotypes, random_key = self._emitter.emit(
