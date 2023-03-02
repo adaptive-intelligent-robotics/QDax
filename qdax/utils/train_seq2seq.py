@@ -13,10 +13,9 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax.training import train_state
-
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
+from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
 from qdax.types import Observation, Params, RNGKey
-from qdax.utils.seq2seq_model import Seq2seq
 
 Array = Any
 PRNGKey = Any
@@ -92,7 +91,6 @@ def lstm_ae_train(
     hidden_size: int = 10,
     batch_size: int = 128,
 ) -> Tuple[Params, Observation, Observation]:
-
     if epoch > 100:
         num_epochs = 25
 
