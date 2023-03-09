@@ -97,6 +97,7 @@ jobs:
 
       - name: Run pre-commits
         run: |
+          git config --global --add safe.directory $CI_PROJECT_DIR
           pre-commit run --all-files
 
   tests:
