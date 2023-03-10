@@ -343,7 +343,8 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             (
                 "This type of repertoire does not store the extra scores "
                 "computed by the scoring function"
-            )
+            ),
+            stacklevel=2,
         )
 
         # retrieve one genotype from the population

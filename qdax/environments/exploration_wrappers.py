@@ -151,7 +151,10 @@ class TrapWrapper(env.Wrapper):
         ):
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
         if env_name not in ["ant", "humanoid"]:
-            warnings.warn("Make sure your agent can move in two dimensions!")
+            warnings.warn(
+                "Make sure your agent can move in two dimensions!",
+                stacklevel=2,
+            )
         super().__init__(env)
         self._env_name = env_name
         # update the env config to add the trap
@@ -367,9 +370,14 @@ class MazeWrapper(env.Wrapper):
             or env_name not in COG_NAMES.keys()
             or env_name not in ENV_MAZE_COLLISION.keys()
         ):
-            raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
+            raise NotImplementedError(
+                f"This wrapper does not support {env_name} yet.",
+            )
         if env_name not in ["ant", "humanoid"]:
-            warnings.warn("Make sure your agent can move in two dimensions!")
+            warnings.warn(
+                "Make sure your agent can move in two dimensions!",
+                stacklevel=2,
+            )
         super().__init__(env)
         self._env_name = env_name
         self._config = (
