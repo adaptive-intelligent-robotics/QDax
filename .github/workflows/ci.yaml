@@ -60,7 +60,7 @@ jobs:
 #          cache-to: type=gha,mode=max
 
       - name: Build and push test Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: dev.Dockerfile
@@ -72,7 +72,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push tool Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: tool.Dockerfile
@@ -97,6 +97,7 @@ jobs:
 
       - name: Run pre-commits
         run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           pre-commit run --all-files
 
   tests:

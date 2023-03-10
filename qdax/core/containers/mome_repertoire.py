@@ -389,7 +389,8 @@ class MOMERepertoire(MapElitesRepertoire):
             (
                 "This type of repertoire does not store the extra scores "
                 "computed by the scoring function"
-            )
+            ),
+            stacklevel=2,
         )
 
         # get dimensions

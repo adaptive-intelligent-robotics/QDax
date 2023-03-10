@@ -12,7 +12,7 @@ from qdax.baselines.dads import DadsTrainingState
 from qdax.baselines.dads_smerl import DADSSMERL, DadsSmerlConfig
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
-from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
+from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 
 
 def test_dads_smerl() -> None:
@@ -96,7 +96,6 @@ def test_dads_smerl() -> None:
         # SAC config
         batch_size=batch_size,
         episode_length=episode_length,
-        grad_updates_per_step=grad_updates_per_step,
         tau=tau,
         normalize_observations=normalize_observations,
         learning_rate=learning_rate,

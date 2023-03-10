@@ -19,8 +19,7 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.diayn_loss import make_diayn_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.diayn_networks import make_diayn_networks
-from qdax.core.neuroevolution.sac_utils import generate_unroll
-from qdax.environments import CompletedEvalWrapper
+from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
 from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
@@ -83,8 +82,11 @@ class DIAYN(SAC):
         )
 
         # define the action distribution
-        parametric_action_distribution = NormalTanhDistribution(event_size=action_size)
-        self._sample_action_fn = parametric_action_distribution.sample
+        self._action_size = action_size
+        self._parametric_action_distribution = NormalTanhDistribution(
+            event_size=action_size
+        )
+        self._sample_action_fn = self._parametric_action_distribution.sample
 
         # define the losses
         (
@@ -100,7 +102,7 @@ class DIAYN(SAC):
             discount=self._config.discount,
             action_size=action_size,
             num_skills=self._config.num_skills,
-            parametric_action_distribution=parametric_action_distribution,
+            parametric_action_distribution=self._parametric_action_distribution,
         )
 
         # define the optimizers
@@ -317,15 +319,9 @@ class DIAYN(SAC):
             play_step_fn=play_step_fn,
         )
 
-        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
-        true_return = (
-            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
-            / state.info[eval_metrics_key].completed_episodes
-        )
-
         transitions = get_first_episode(transitions)
-
-        true_return_per_env = jnp.nansum(transitions.rewards, axis=0)
+        true_returns = jnp.nansum(transitions.rewards, axis=0)
+        true_return = jnp.mean(true_returns, axis=-1)
 
         reshaped_transitions = jax.tree_util.tree_map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
@@ -350,7 +346,7 @@ class DIAYN(SAC):
 
         return (
             true_return,
-            true_return_per_env,
+            true_returns,
             diversity_returns,
             transitions.state_desc,
         )
@@ -418,13 +414,11 @@ class DIAYN(SAC):
             alpha_loss,
             random_key,
         ) = self._update_alpha(
+            alpha_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
             random_key=random_key,
         )
-
-        # use the previous alpha
-        alpha = jnp.exp(training_state.alpha_params)
 
         # update critic
         (
@@ -434,8 +428,10 @@ class DIAYN(SAC):
             critic_loss,
             random_key,
         ) = self._update_critic(
+            critic_lr=self._config.learning_rate,
+            reward_scaling=self._config.reward_scaling,
+            discount=self._config.discount,
             training_state=training_state,
-            alpha=alpha,
             transitions=transitions,
             random_key=random_key,
         )
@@ -447,8 +443,8 @@ class DIAYN(SAC):
             policy_loss,
             random_key,
         ) = self._update_actor(
+            policy_lr=self._config.learning_rate,
             training_state=training_state,
-            alpha=alpha,
             transitions=transitions,
             random_key=random_key,
         )

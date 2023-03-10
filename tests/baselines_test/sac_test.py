@@ -9,7 +9,7 @@ import pytest
 from qdax import environments
 from qdax.baselines.sac import SAC, SacConfig, TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
-from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
+from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 from qdax.types import EnvState
 
 
@@ -67,7 +67,6 @@ def test_sac() -> None:
     sac_config = SacConfig(
         batch_size=batch_size,
         episode_length=episode_length,
-        grad_updates_per_step=grad_updates_per_step,
         tau=tau,
         normalize_observations=normalize_observations,
         learning_rate=learning_rate,
@@ -104,7 +103,6 @@ def test_sac() -> None:
     )
 
     # warmstart the buffer
-    key, subkey = jax.random.split(key)
     replay_buffer, env_state, training_state = warmstart_buffer(
         replay_buffer=replay_buffer,
         training_state=training_state,
@@ -148,7 +146,6 @@ def test_sac() -> None:
         length=total_num_iterations,
     )
 
-    # Evaluation
     # Policy evaluation
     final_true_return, final_true_returns = eval_policy(training_state=training_state)
 
