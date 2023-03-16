@@ -11,16 +11,28 @@ from brax.envs import Env
 from brax.envs import State as EnvState
 from jax import numpy as jnp
 
-from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
-from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
-from qdax.core.neuroevolution.mdp_utils import (
-    TrainingState,
-    generate_unroll,
-    get_first_episode,
+from qdax.core.neuroevolution.buffers.buffer import (
+    QDTransition,
+    ReplayBuffer,
+    Transition,
 )
+from qdax.core.neuroevolution.losses.td3_loss import (
+    td3_critic_loss_fn,
+    td3_policy_loss_fn,
+)
+from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.td3_networks import make_td3_networks
-from qdax.environments import CompletedEvalWrapper
-from qdax.types import Action, Metrics, Observation, Params, Reward, RNGKey
+from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
+from qdax.types import (
+    Action,
+    Descriptor,
+    Mask,
+    Metrics,
+    Observation,
+    Params,
+    Reward,
+    RNGKey,
+)
 
 
 class TD3TrainingState(TrainingState):
@@ -43,7 +55,6 @@ class TD3Config:
     episode_length: int = 1000
     batch_size: int = 256
     policy_delay: int = 2
-    grad_updates_per_step: float = 1
     soft_tau_update: float = 0.005
     expl_noise: float = 0.1
     critic_hidden_layer_size: Tuple[int, ...] = (256, 256)
@@ -65,28 +76,10 @@ class TD3:
     def __init__(self, config: TD3Config, action_size: int):
         self._config = config
 
-        (self._policy, self._critic,) = make_td3_networks(
+        self._policy, self._critic, = make_td3_networks(
             action_size=action_size,
             critic_hidden_layer_sizes=self._config.critic_hidden_layer_size,
             policy_hidden_layer_sizes=self._config.policy_hidden_layer_size,
-        )
-
-        # Get critic and policy loss functions
-        self._policy_loss_fn, self._critic_loss_fn = make_td3_loss_fn(
-            policy_fn=self._policy.apply,
-            critic_fn=self._critic.apply,
-            reward_scaling=self._config.reward_scaling,
-            discount=self._config.discount,
-            noise_clip=self._config.noise_clip,
-            policy_noise=self._config.policy_noise,
-        )
-
-        # define optimizers
-        self._critic_optimizer = optax.adam(
-            learning_rate=self._config.critic_learning_rate
-        )
-        self._policy_optimizer = optax.adam(
-            learning_rate=self._config.policy_learning_rate
         )
 
     def init(
@@ -122,8 +115,8 @@ class TD3:
         )
 
         # Create and initialize optimizers
-        critic_optimizer_state = self._critic_optimizer.init(critic_params)
-        policy_optimizer_state = self._policy_optimizer.init(policy_params)
+        critic_optimizer_state = optax.adam(learning_rate=1.0).init(critic_params)
+        policy_optimizer_state = optax.adam(learning_rate=1.0).init(policy_params)
 
         # Initial training state
         training_state = TD3TrainingState(
@@ -145,62 +138,65 @@ class TD3:
         obs: Observation,
         policy_params: Params,
         random_key: RNGKey,
+        expl_noise: float,
         deterministic: bool = False,
     ) -> Tuple[Action, RNGKey]:
         """Selects an action according to TD3 policy. The action can be deterministic
         or stochastic by adding exploration noise.
 
         Args:
-            obs: an array corresponding to an observation of the environment.
-            policy_params: the parameters of the policy, which is defined as
-                a neural network.
-            random_key: a random key.
-            deterministic: determine if a gaussian noise is added to the action
-                taken by the policy. Defaults to False.
+            obs: agent observation(s)
+            policy_params: parameters of the agent's policy
+            random_key: jax random key
+            expl_noise: exploration noise
+            deterministic: whether to select action in a deterministic way.
+                Defaults to False.
 
         Returns:
-            an action and a new random key.
+            an action and an updated training state.
         """
 
         actions = self._policy.apply(policy_params, obs)
         if not deterministic:
             random_key, subkey = jax.random.split(random_key)
-            noise = jax.random.normal(subkey, actions.shape) * self._config.expl_noise
+            noise = jax.random.normal(subkey, actions.shape) * expl_noise
             actions = actions + noise
             actions = jnp.clip(actions, -1.0, 1.0)
-
         return actions, random_key
 
     @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_step_fn(
         self,
         env_state: EnvState,
-        policy_params: Params,
-        random_key: RNGKey,
+        training_state: TD3TrainingState,
         env: Env,
         deterministic: bool = False,
-    ) -> Tuple[EnvState, Params, RNGKey, Transition]:
-        """Plays a single step in the environment and returns the new state,
-        policy parameters, random key and the transition.
+    ) -> Tuple[EnvState, TD3TrainingState, Transition]:
+        """Plays a step in the environment. Selects an action according to TD3 rule and
+        performs the environment step.
 
         Args:
-            env_state: Brax environment State.
-            policy_params: Parameters of the neural network policy.
-            random_key: a random key.
-            env: the environment with which the actor interacts.
-            deterministic: Determinism of the action taken. Defaults to False.
+            env_state: the current environment state
+            training_state: the SAC training state
+            env: the environment
+            deterministic: whether to select action in a deterministic way.
+                Defaults to False.
 
         Returns:
-            the new state of the environment, the params of the policy, a new
-            random key, and the transition that has been experienced in the
-            environment.
+            the new environment state
+            the new TD3 training state
+            the played transition
         """
 
         actions, random_key = self.select_action(
             obs=env_state.obs,
-            policy_params=policy_params,
-            random_key=random_key,
+            policy_params=training_state.policy_params,
+            random_key=training_state.random_key,
+            expl_noise=self._config.expl_noise,
             deterministic=deterministic,
+        )
+        training_state = training_state.replace(
+            random_key=random_key,
         )
         next_env_state = env.step(env_state, actions)
         transition = Transition(
@@ -211,7 +207,53 @@ class TD3:
             truncations=next_env_state.info["truncation"],
             actions=actions,
         )
-        return next_env_state, policy_params, random_key, transition
+        return next_env_state, training_state, transition
+
+    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
+    def play_qd_step_fn(
+        self,
+        env_state: EnvState,
+        training_state: TD3TrainingState,
+        env: Env,
+        deterministic: bool = False,
+    ) -> Tuple[EnvState, TD3TrainingState, QDTransition]:
+        """Plays a step in the environment. Selects an action according to TD3 rule and
+        performs the environment step.
+
+        Args:
+            env_state: the current environment state
+            training_state: the TD3 training state
+            env: the environment
+            deterministic: the whether to select action in a deterministic way.
+                Defaults to False.
+
+        Returns:
+            the new environment state
+            the new TD3 training state
+            the played transition
+        """
+        next_env_state, training_state, transition = self.play_step_fn(
+            env_state, training_state, env, deterministic
+        )
+        actions = transition.actions
+
+        truncations = next_env_state.info["truncation"]
+        transition = QDTransition(
+            obs=env_state.obs,
+            next_obs=next_env_state.obs,
+            rewards=next_env_state.reward,
+            dones=next_env_state.done,
+            actions=actions,
+            truncations=truncations,
+            state_desc=env_state.info["state_descriptor"],
+            next_state_desc=next_env_state.info["state_descriptor"],
+        )
+
+        return (
+            next_env_state,
+            training_state,
+            transition,
+        )
 
     @partial(
         jax.jit,
@@ -222,8 +264,7 @@ class TD3:
     )
     def eval_policy_fn(
         self,
-        policy_params: Params,
-        random_key: RNGKey,
+        training_state: TD3TrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
             [EnvState, Params, RNGKey],
@@ -234,8 +275,7 @@ class TD3:
         environments.
 
         Args:
-            policy_params: Params of the NN defining the policy.
-            random_key: a random key
+            training_state: TD3 training state.
             eval_env_first_state: the first state of the environment.
             play_step_fn: function defining how to play a step in the env.
 
@@ -243,25 +283,74 @@ class TD3:
             true return averaged over batch dimension, shape: (1,)
             true return per env, shape: (env_batch_size,)
         """
-
-        state, transitions = generate_unroll(
+        # TODO: this generate unroll shouldn't take a random key
+        state, training_state, transitions = generate_unroll(
             init_state=eval_env_first_state,
-            policy_params=policy_params,
-            random_key=random_key,
+            training_state=training_state,
             episode_length=self._config.episode_length,
             play_step_fn=play_step_fn,
         )
 
-        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
-        true_return = (
-            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
-            / state.info[eval_metrics_key].completed_episodes
-        )
-
         transitions = get_first_episode(transitions)
+
         true_returns = jnp.nansum(transitions.rewards, axis=0)
+        true_return = jnp.mean(true_returns, axis=-1)
 
         return true_return, true_returns
+
+    @partial(
+        jax.jit,
+        static_argnames=(
+            "self",
+            "play_step_fn",
+            "bd_extraction_fn",
+        ),
+    )
+    def eval_qd_policy_fn(
+        self,
+        training_state: TD3TrainingState,
+        eval_env_first_state: EnvState,
+        play_step_fn: Callable[
+            [EnvState, Params, RNGKey],
+            Tuple[EnvState, TD3TrainingState, QDTransition],
+        ],
+        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
+    ) -> Tuple[Reward, Descriptor, Reward, Descriptor]:
+        """Evaluates the agent's policy over an entire episode, across all batched
+        environments for QD environments. Averaged BDs are returned as well.
+
+
+        Args:
+            training_state: the SAC training state
+            eval_env_first_state: the initial state for evaluation
+            play_step_fn: the play_step function used to collect the evaluation episode
+
+        Returns:
+            the true return averaged over batch dimension, shape: (1,)
+            the descriptor averaged over batch dimension, shape: (num_descriptors,)
+            the true return per environment, shape: (env_batch_size,)
+            the descriptor per environment, shape: (env_batch_size, num_descriptors)
+
+        """
+
+        state, training_state, transitions = generate_unroll(
+            init_state=eval_env_first_state,
+            training_state=training_state,
+            episode_length=self._config.episode_length,
+            play_step_fn=play_step_fn,
+        )
+        transitions = get_first_episode(transitions)
+        true_returns = jnp.nansum(transitions.rewards, axis=0)
+        true_return = jnp.mean(true_returns, axis=-1)
+
+        transitions = jax.tree_util.tree_map(
+            lambda x: jnp.swapaxes(x, 0, 1), transitions
+        )
+        masks = jnp.isnan(transitions.rewards)
+        bds = bd_extraction_fn(transitions, masks)
+
+        mean_bd = jnp.mean(bds, axis=0)
+        return true_return, mean_bd, true_returns, bds
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
@@ -291,14 +380,21 @@ class TD3:
 
         # Update Critic
         random_key, subkey = jax.random.split(random_key)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
+        critic_loss, critic_gradient = jax.value_and_grad(td3_critic_loss_fn)(
             training_state.critic_params,
-            training_state.target_policy_params,
-            training_state.target_critic_params,
-            samples,
-            subkey,
+            target_policy_params=training_state.target_policy_params,
+            target_critic_params=training_state.target_critic_params,
+            policy_fn=self._policy.apply,
+            critic_fn=self._critic.apply,
+            policy_noise=self._config.policy_noise,
+            noise_clip=self._config.noise_clip,
+            reward_scaling=self._config.reward_scaling,
+            discount=self._config.discount,
+            transitions=samples,
+            random_key=subkey,
         )
-        critic_updates, critic_optimizer_state = self._critic_optimizer.update(
+        critic_optimizer = optax.adam(learning_rate=self._config.critic_learning_rate)
+        critic_updates, critic_optimizer_state = critic_optimizer.update(
             critic_gradient, training_state.critic_optimizer_state
         )
         critic_params = optax.apply_updates(
@@ -313,14 +409,19 @@ class TD3:
         )
 
         # Update policy
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+        policy_loss, policy_gradient = jax.value_and_grad(td3_policy_loss_fn)(
             training_state.policy_params,
-            training_state.critic_params,
-            samples,
+            critic_params=training_state.critic_params,
+            policy_fn=self._policy.apply,
+            critic_fn=self._critic.apply,
+            transitions=samples,
         )
 
         def update_policy_step() -> Tuple[Params, Params, optax.OptState]:
-            (policy_updates, policy_optimizer_state,) = self._policy_optimizer.update(
+            policy_optimizer = optax.adam(
+                learning_rate=self._config.policy_learning_rate
+            )
+            (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
                 policy_gradient, training_state.policy_optimizer_state
             )
             policy_params = optax.apply_updates(
@@ -349,7 +450,7 @@ class TD3:
         )
 
         # Create new training state
-        new_training_state = TD3TrainingState(
+        new_training_state = training_state.replace(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
             policy_params=policy_params,

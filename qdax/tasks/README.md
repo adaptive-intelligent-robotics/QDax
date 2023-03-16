@@ -175,4 +175,12 @@ Notes:
 
 ### Example Usage
 
-See [Example in Notebook](../../examples/notebooks/mapelites_example.ipynb)
+See [Example in Notebook](../../examples/mapelites.ipynb)
+
+## Jumanji-RL
+
+QDax provide utils to interact easily with the suite of environments implemented in [Jumanji](https://github.com/instadeepai/jumanji).
+
+### Example Usage
+
+See [Example in Notebook](../../examples/jumanji_snake.ipynb)

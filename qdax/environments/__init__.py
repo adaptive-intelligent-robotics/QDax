@@ -10,6 +10,7 @@ from qdax.environments.bd_extractors import (
     get_final_xy_position,
 )
 from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.environments.humanoidtrap import HumanoidTrap
 from qdax.environments.init_state_wrapper import FixedInitialStateWrapper
 from qdax.environments.locomotion_wrappers import (
     FeetContactWrapper,
@@ -24,6 +25,7 @@ from qdax.environments.wrappers import CompletedEvalWrapper
 reward_offset = {
     "pointmaze": 2.3431,
     "anttrap": 3.38,
+    "humanoidtrap": 0.0,
     "antnotrap": 3.38,
     "antmaze": 40.32,
     "ant_omni": 3.0,
@@ -38,6 +40,7 @@ reward_offset = {
 behavior_descriptor_extractor = {
     "pointmaze": get_final_xy_position,
     "anttrap": get_final_xy_position,
+    "humanoidtrap": get_final_xy_position,
     "antnotrap": get_final_xy_position,
     "antmaze": get_final_xy_position,
     "ant_omni": get_final_xy_position,
@@ -51,6 +54,7 @@ behavior_descriptor_extractor = {
 
 _qdax_envs = {
     "pointmaze": PointMaze,
+    "humanoid_w_trap": HumanoidTrap,
 }
 
 _qdax_custom_envs = {
@@ -58,6 +62,11 @@ _qdax_custom_envs = {
         "env": "ant",
         "wrappers": [XYPositionWrapper, TrapWrapper],
         "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}, {}],
+    },
+    "humanoidtrap": {
+        "env": "humanoid_w_trap",
+        "wrappers": [XYPositionWrapper],
+        "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}],
     },
     "antnotrap": {
         "env": "ant",
@@ -125,7 +134,10 @@ def create(
         env = _qdax_envs[env_name](**kwargs)
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
-        env = brax.envs._envs[base_env_name](legacy_spring=True, **kwargs)
+        if base_env_name in brax.envs._envs.keys():
+            env = brax.envs._envs[base_env_name](legacy_spring=True, **kwargs)
+        elif base_env_name in _qdax_envs.keys():
+            env = _qdax_envs[base_env_name](**kwargs)  # type: ignore
     else:
         raise NotImplementedError("This environment name does not exist!")
 

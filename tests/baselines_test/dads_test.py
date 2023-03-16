@@ -11,7 +11,7 @@ from brax.envs import State as EnvState
 from qdax import environments
 from qdax.baselines.dads import DADS, DadsConfig, DadsTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
-from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
+from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 
 
 def test_dads() -> None:
@@ -87,7 +87,6 @@ def test_dads() -> None:
         # SAC config
         batch_size=batch_size,
         episode_length=episode_length,
-        grad_updates_per_step=grad_updates_per_step,
         tau=tau,
         normalize_observations=normalize_observations,
         learning_rate=learning_rate,

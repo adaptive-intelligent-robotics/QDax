@@ -24,8 +24,7 @@ from qdax.core.neuroevolution.normalization_utils import (
     normalize_with_rmstd,
     update_running_mean_std,
 )
-from qdax.core.neuroevolution.sac_utils import generate_unroll
-from qdax.environments import CompletedEvalWrapper
+from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
 from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
@@ -88,8 +87,11 @@ class DADS(SAC):
         )
 
         # define the action distribution
-        parametric_action_distribution = NormalTanhDistribution(event_size=action_size)
-        self._sample_action_fn = parametric_action_distribution.sample
+        self._action_size = action_size
+        self._parametric_action_distribution = NormalTanhDistribution(
+            event_size=action_size
+        )
+        self._sample_action_fn = self._parametric_action_distribution.sample
 
         # define the losses
         (
@@ -105,7 +107,7 @@ class DADS(SAC):
             discount=self._config.discount,
             action_size=action_size,
             num_skills=self._config.num_skills,
-            parametric_action_distribution=parametric_action_distribution,
+            parametric_action_distribution=self._parametric_action_distribution,
         )
 
         # define the optimizers
@@ -374,15 +376,9 @@ class DADS(SAC):
             play_step_fn=play_step_fn,
         )
 
-        eval_metrics_key = CompletedEvalWrapper.STATE_INFO_KEY
-        true_return = (
-            state.info[eval_metrics_key].completed_episodes_metrics["reward"]
-            / state.info[eval_metrics_key].completed_episodes
-        )
-
         transitions = get_first_episode(transitions)
-
         true_returns = jnp.nansum(transitions.rewards, axis=0)
+        true_return = jnp.mean(true_returns, axis=-1)
 
         reshaped_transitions = jax.tree_util.tree_map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
@@ -434,7 +430,7 @@ class DADS(SAC):
 
         dynamics_loss, dynamics_gradient = jax.value_and_grad(self._dynamics_loss_fn,)(
             training_state.dynamics_params,
-            transitions,
+            transitions=transitions,
         )
 
         (dynamics_updates, dynamics_optimizer_state,) = self._dynamics_optimizer.update(
@@ -499,13 +495,11 @@ class DADS(SAC):
             alpha_loss,
             random_key,
         ) = self._update_alpha(
+            alpha_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
             random_key=random_key,
         )
-
-        # use the previous alpha
-        alpha = jnp.exp(training_state.alpha_params)
 
         # update critic
         (
@@ -515,8 +509,10 @@ class DADS(SAC):
             critic_loss,
             random_key,
         ) = self._update_critic(
+            critic_lr=self._config.learning_rate,
+            reward_scaling=self._config.reward_scaling,
+            discount=self._config.discount,
             training_state=training_state,
-            alpha=alpha,
             transitions=transitions,
             random_key=random_key,
         )
@@ -528,8 +524,8 @@ class DADS(SAC):
             policy_loss,
             random_key,
         ) = self._update_actor(
+            policy_lr=self._config.learning_rate,
             training_state=training_state,
-            alpha=alpha,
             transitions=transitions,
             random_key=random_key,
         )
@@ -554,7 +550,7 @@ class DADS(SAC):
             "critic_loss": critic_loss,
             "dynamics_loss": dynamics_loss,
             "alpha_loss": alpha_loss,
-            "alpha": alpha,
+            "alpha": jnp.exp(alpha_params),
             "training_observed_reward_mean": jnp.mean(transitions.rewards),
             "target_mean": jnp.mean(transitions.next_state_desc),
             "target_std": jnp.std(transitions.next_state_desc),

@@ -152,6 +152,7 @@ COG_NAMES = {
     "walker2d": "torso",
     "hopper": "torso",
     "humanoid": "torso",
+    "humanoid_w_trap": "torso",
 }
 
 

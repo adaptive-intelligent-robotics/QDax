@@ -23,7 +23,7 @@ from qdax.types import (
 )
 
 
-def create_policy_network_play_step_fn(
+def make_policy_network_play_step_fn_brax(
     env: brax.envs.Env,
     policy_network: nn.Module,
 ) -> Callable[
@@ -138,7 +138,7 @@ def scoring_function_brax_envs(
     mask = jnp.roll(is_done, 1, axis=1)
     mask = mask.at[:, 0].set(0)
 
-    # Scores - add offset to ensure positive fitness (through positive rewards)
+    # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
     descriptors = behavior_descriptor_extractor(data, mask)
 
@@ -199,7 +199,9 @@ def reset_based_scoring_function_brax_envs(
     """
 
     random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey, jax.tree_leaves(policies_params)[0].shape[0])
+    keys = jax.random.split(
+        subkey, jax.tree_util.tree_leaves(policies_params)[0].shape[0]
+    )
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)
 
@@ -241,7 +243,7 @@ def create_brax_scoring_fn(
         bd_extraction_fn: The behaviour descriptor extraction function.
         random_key: a random key used for stochastic operations.
         play_step_fn: the function used to perform environment rollouts and collect
-            evaluation episodes. If None, we use create_policy_network_play_step_fn
+            evaluation episodes. If None, we use make_policy_network_play_step_fn_brax
             to generate it.
         episode_length: The maximal episode length.
         deterministic: Whether we reset the initial state of the robot to the same
@@ -256,7 +258,7 @@ def create_brax_scoring_fn(
         The updated random key.
     """
     if play_step_fn is None:
-        play_step_fn = create_policy_network_play_step_fn(env, policy_network)
+        play_step_fn = make_policy_network_play_step_fn_brax(env, policy_network)
 
     # Deterministic case
     if deterministic:

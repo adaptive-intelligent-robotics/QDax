@@ -1,12 +1,16 @@
-"""Defines some types used in PaRL"""
+"""Defines some types used in QDax"""
 
 from typing import Dict, Generic, TypeVar, Union
 
 import brax.envs
 import jax
 import jax.numpy as jnp
+import jumanji
 from chex import ArrayTree
 from typing_extensions import TypeAlias
+
+JumanjiState: TypeAlias = ArrayTree
+JumanjiTimeStep: TypeAlias = jumanji.types.TimeStep
 
 # MDP types
 Observation: TypeAlias = jnp.ndarray

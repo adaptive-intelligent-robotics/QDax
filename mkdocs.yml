@@ -125,6 +125,9 @@ nav:
     - SMERL: examples/smerl.ipynb
     - CMA ES: examples/cmaes.ipynb
     - NSGA2/SPEA2: examples/nsga2_spea2.ipynb
+    - PBT: examples/sac_pbt.ipynb
+    - MAPElites PBT: examples/me_sac_pbt.ipynb
+    - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
       - Core algorithms:
@@ -136,6 +139,7 @@ nav:
         - CMA MEGA: api_documentation/core/cma_mega.md
         - MOME: api_documentation/core/mome.md
         - ME ES: api_documentation/core/mees.md
+        - ME PBT: api_documentation/core/me_pbt.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
@@ -146,8 +150,10 @@ nav:
         - Genetic Algorithm: api_documentation/core/genetic_algorithm.md
         - NSGA2: api_documentation/core/nsga2.md
         - SPEA2: api_documentation/core/spea2.md
+        - PBT: api_documentation/core/pbt.md
       - Containers: api_documentation/core/containers.md
       - Emitters: api_documentation/core/emitters.md
       - Neuroevolution: api_documentation/core/neuroevolution.md
     - Environments: api_documentation/environments.md
+    - Tasks: api_documentation/tasks.md
     - Utils: api_documentation/utils.md
