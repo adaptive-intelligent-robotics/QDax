@@ -83,7 +83,7 @@ class SAC:
 
         # define the networks
         self._policy, self._critic = make_sac_networks(
-            action_size=action_size, 
+            action_size=action_size,
             critic_hidden_layer_size=self._config.critic_hidden_layer_size,
             policy_hidden_layer_size=self._config.policy_hidden_layer_size,
         )
