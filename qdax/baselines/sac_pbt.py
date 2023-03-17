@@ -110,7 +110,8 @@ class PBTSacConfig:
     tau: float = 0.005
     normalize_observations: bool = False
     alpha_init: float = 1.0
-    hidden_layer_sizes: tuple = (256, 256)
+    policy_hidden_layer_size: tuple = (256, 256)
+    critic_hidden_layer_size: tuple = (256, 256)
     fix_alpha: bool = False
 
 
@@ -123,7 +124,8 @@ class PBTSAC(SAC):
             tau=config.tau,
             normalize_observations=config.normalize_observations,
             alpha_init=config.alpha_init,
-            hidden_layer_sizes=config.hidden_layer_sizes,
+            policy_hidden_layer_size=config.policy_hidden_layer_size,
+            critic_hidden_layer_size=config.critic_hidden_layer_size,
             fix_alpha=config.fix_alpha,
             # unused default values for parameters that will be learnt as part of PBT
             learning_rate=3e-4,

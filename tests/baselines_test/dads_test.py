@@ -30,7 +30,8 @@ def test_dads() -> None:
     tau = 0.005
     grad_updates_per_step = 0.25
     normalize_observations = False
-    hidden_layer_sizes = (256, 256)
+    critic_hidden_layer_size: tuple = (256, 256)
+    policy_hidden_layer_size: tuple = (64, 64)
     alpha_init = 1.0
     fix_alpha = False
     discount = 0.97
@@ -93,7 +94,8 @@ def test_dads() -> None:
         alpha_init=alpha_init,
         discount=discount,
         reward_scaling=reward_scaling,
-        hidden_layer_sizes=hidden_layer_sizes,
+        critic_hidden_layer_size=critic_hidden_layer_size,
+        policy_hidden_layer_size=policy_hidden_layer_size,
         fix_alpha=fix_alpha,
         # DADS config
         num_skills=num_skills,
