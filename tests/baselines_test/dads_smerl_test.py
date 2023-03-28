@@ -32,7 +32,7 @@ def test_dads_smerl() -> None:
     grad_updates_per_step = 0.25
     normalize_observations = False
     critic_hidden_layer_size: tuple = (256, 256)
-    policy_hidden_layer_size: tuple = (64, 64)
+    policy_hidden_layer_size: tuple = (256, 256)
     alpha_init = 1.0
     fix_alpha = False
     discount = 0.97

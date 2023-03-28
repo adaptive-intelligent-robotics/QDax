@@ -32,7 +32,7 @@ def test_sac() -> None:
     discount = 0.95
     reward_scaling = 10.0
     critic_hidden_layer_size: tuple = (256, 256)
-    policy_hidden_layer_size: tuple = (64, 64)
+    policy_hidden_layer_size: tuple = (256, 256)
     fix_alpha = False
 
     # Initialize environments
