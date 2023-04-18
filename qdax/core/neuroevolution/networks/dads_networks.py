@@ -126,7 +126,8 @@ class DynamicsNetwork(hk.Module):
 def make_dads_networks(
     action_size: int,
     descriptor_size: int,
-    hidden_layer_sizes: Tuple[int, ...] = (256, 256),
+    critic_hidden_layer_size: Tuple[int, ...] = (256, 256),
+    policy_hidden_layer_size: Tuple[int, ...] = (256, 256),
     omit_input_dynamics_dim: int = 2,
     identity_covariance: bool = True,
     dynamics_initializer: Optional[Initializer] = None,
@@ -155,7 +156,7 @@ def make_dads_networks(
         network = hk.Sequential(
             [
                 hk.nets.MLP(
-                    list(hidden_layer_sizes) + [2 * action_size],
+                    list(policy_hidden_layer_size) + [2 * action_size],
                     w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
                     activation=jax.nn.relu,
                 ),
@@ -167,7 +168,7 @@ def make_dads_networks(
         network1 = hk.Sequential(
             [
                 hk.nets.MLP(
-                    list(hidden_layer_sizes) + [1],
+                    list(critic_hidden_layer_size) + [1],
                     w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
                     activation=jax.nn.relu,
                 ),
@@ -176,7 +177,7 @@ def make_dads_networks(
         network2 = hk.Sequential(
             [
                 hk.nets.MLP(
-                    list(hidden_layer_sizes) + [1],
+                    list(critic_hidden_layer_size) + [1],
                     w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
                     activation=jax.nn.relu,
                 ),
@@ -191,7 +192,7 @@ def make_dads_networks(
         obs: StateDescriptor, skill: Skill, target: StateDescriptor
     ) -> jnp.ndarray:
         dynamics_network = DynamicsNetwork(
-            hidden_layer_sizes,
+            critic_hidden_layer_size,
             descriptor_size,
             omit_input_dynamics_dim=omit_input_dynamics_dim,
             identity_covariance=identity_covariance,

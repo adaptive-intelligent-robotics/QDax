@@ -13,7 +13,7 @@ def test_csv_logger() -> None:
         csv_logger.log(metrics)
 
     metrics = {"bad_name": 0.0, "max_fitness": 0.0, "coverage": 0.0}
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         csv_logger.log(metrics)
 
     file_exist = os.path.exists(file_location)
