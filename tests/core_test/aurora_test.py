@@ -31,7 +31,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     max_iterations = 5
     seed = 42
     policy_hidden_layer_sizes = (64, 64)
-    num_centroids = 50
+    max_size = 50
 
     lstm_batch_size = 12
 
@@ -148,7 +148,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     )
 
     aurora_dims = hidden_size
-    centroids = jnp.zeros(shape=(num_centroids, aurora_dims))
+    centroids = jnp.zeros(shape=(max_size, aurora_dims))
 
     @jax.jit
     def update_scan_fn(carry: Any, unused: Any) -> Any:
@@ -214,12 +214,12 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     # init step of the aurora algorithm
     repertoire, _, random_key = aurora.init(
         init_variables,
-        centroids,
         random_key,
         model_params,
         mean_observations,
         std_observations,
-        l_value_init,
+        jnp.array(l_value_init),
+        max_size,
     )
 
     # initializing means and stds and AURORA
@@ -288,11 +288,11 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             )
             repertoire = repertoire.init(
                 genotypes=repertoire.genotypes,
-                centroids=repertoire.centroids,
                 fitnesses=repertoire.fitnesses,
                 descriptors=new_descriptors,
                 observations=repertoire.observations,
                 l_value=repertoire.l_value,
+                max_size=repertoire.max_size,
             )
             num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
@@ -306,7 +306,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             prop_gain = 1 * 10e-6
             l_value = (
                 repertoire.l_value
-                + (prop_gain * (current_error))
+                + (prop_gain * current_error)
                 + (prop_gain * change_rate)
             )
 
@@ -314,11 +314,11 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
             repertoire = repertoire.init(
                 genotypes=repertoire.genotypes,
-                centroids=repertoire.centroids,
                 fitnesses=repertoire.fitnesses,
                 descriptors=repertoire.descriptors,
                 observations=repertoire.observations,
                 l_value=l_value,
+                max_size=repertoire.max_size,
             )
 
         iteration += 1

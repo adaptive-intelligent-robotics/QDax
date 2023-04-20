@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable, Optional, Tuple
 
+import flax.struct
 import jax
 import jax.numpy as jnp
 from chex import ArrayTree
@@ -12,7 +13,15 @@ from chex import ArrayTree
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Centroid, Descriptor, Fitness, Genotype, Metrics, Params, RNGKey
+from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.types import Descriptor, Fitness, Genotype, Metrics, Params, RNGKey, Observation
+
+
+@flax.struct.dataclass
+class AuroraExtraInfo:
+    model_params: Params
+    mean_observations: jnp.ndarray
+    std_observations: jnp.ndarray
 
 
 class AURORA:
@@ -32,26 +41,30 @@ class AURORA:
     def __init__(
         self,
         scoring_function: Callable[
-            [Genotype, RNGKey, Params, jnp.ndarray, jnp.ndarray],
+            [Genotype, RNGKey],
             Tuple[Fitness, Descriptor, ArrayTree, RNGKey],
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
+        bd_extraction_fn: Callable[
+            [QDTransition, jnp.ndarray, Params, Observation, Observation], Descriptor
+        ],
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
+        self._bd_extraction_fn = bd_extraction_fn
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         init_genotypes: Genotype,
-        centroids: Centroid,
         random_key: RNGKey,
         model_params: Params,
         mean_observations: jnp.ndarray,
         std_observations: jnp.ndarray,
         l_value: jnp.ndarray,
+        max_size: int,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
         """Initialize an unstructured repertoire with an initial population of
         genotypes. Requires the definition of centroids that can be computed with
@@ -84,9 +97,9 @@ class AURORA:
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            centroids=centroids,
             observations=extra_scores["last_valid_observations"],  # type: ignore
             l_value=l_value,
+            max_size=max_size,
         )
 
         # get initial state of the emitter
