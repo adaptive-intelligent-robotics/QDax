@@ -48,6 +48,17 @@ class AuroraExtraInfoNormalization(AuroraExtraInfo):
     mean_observations: jnp.ndarray
     std_observations: jnp.ndarray
 
+    @classmethod
+    def create(cls,
+               model_params: Params,
+               mean_observations: jnp.ndarray,
+               std_observations: jnp.ndarray,
+               ):
+        return cls(model_params=model_params,
+                   mean_observations=mean_observations,
+                   std_observations=std_observations,
+                   )
+
 
 def get_aurora_encoding(
     observations: jnp.ndarray,

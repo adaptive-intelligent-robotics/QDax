@@ -14,7 +14,7 @@ from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.environments.bd_extractors import get_aurora_encoding
+from qdax.environments.bd_extractors import get_aurora_encoding, AuroraExtraInfoNormalization
 from qdax.tasks.brax_envs import get_aurora_scoring_fn, create_default_brax_task_components
 from qdax.types import EnvState, Params, RNGKey, Observation
 from qdax.utils import train_seq2seq
@@ -140,43 +140,20 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         model=model,
     )
 
+    train_fn = functools.partial(
+        train_seq2seq.lstm_ae_train,
+        hidden_size=hidden_size,
+        batch_size=lstm_batch_size,
+    )
+
     # Instantiate AURORA
     aurora = AURORA(
         scoring_function=aurora_scoring_fn,
         emitter=mixing_emitter,
         metrics_function=metrics_fn,
         encoder_function=encoder_fn,
+        training_function=train_fn,
     )
-
-    @jax.jit
-    def update_scan_fn(carry: Any, _: Any) -> Any:
-        """Scan the udpate function."""
-        # TODO: fix shadowing names from outer scopes.
-        (
-            repertoire,
-            random_key,
-            model_params,
-            mean_observations,
-            std_observations,
-        ) = carry
-
-        # update
-        (repertoire, _, metrics, random_key,) = aurora.update(
-            repertoire,
-            None,
-            random_key,
-            model_params,
-            mean_observations,
-            std_observations,
-        )
-
-        return (
-            (repertoire, random_key, model_params, mean_observations, std_observations),
-            metrics,
-        )
-
-
-
 
     # init the model params
     random_key, subkey = jax.random.split(random_key)
@@ -220,22 +197,30 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     current_step_estimation = 0
 
     # Main loop
-    n_target = 1024
+    target_repertoire_size = 1024
 
-    previous_error = jnp.sum(repertoire.fitnesses != -jnp.inf) - n_target
+    previous_error = jnp.sum(repertoire.fitnesses != -jnp.inf) - target_repertoire_size
 
     iteration = 0
-    while iteration < max_iterations:
 
-        (
-            (repertoire, random_key, model_params, mean_observations, std_observations),
-            metrics,
-        ) = jax.lax.scan(
-            update_scan_fn,
-            (repertoire, random_key, model_params, mean_observations, std_observations),
-            (),
-            length=log_freq,
+    emitter_state = None
+
+    while iteration < max_iterations:
+        collected_metrics = []
+        aurora_extra_info = AuroraExtraInfoNormalization.create(
+            model_params=model_params,
+            mean_observations=mean_observations,
+            std_observations=std_observations,
         )
+        # update
+        for _ in range(log_freq):
+            repertoire, emitter_state, metrics, random_key = aurora.update(
+                repertoire,
+                emitter_state,
+                random_key,
+                aurora_extra_info=aurora_extra_info,
+            )
+            collected_metrics.append(metrics)
 
         # update nb steps estimation
         current_step_estimation += batch_size * episode_length * log_freq
@@ -244,61 +229,12 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         if (iteration + 1) in schedules:
             # train the autoencoder
             random_key, subkey = jax.random.split(random_key)
-            (
-                model_params,
-                mean_observations,
-                std_observations,
-            ) = train_seq2seq.lstm_ae_train(
-                subkey,
-                repertoire,
-                model_params,
-                iteration,
-                hidden_size=hidden_size,
-                batch_size=lstm_batch_size,
-            )
-
-            # re-addition of all the new behavioural descriotpors with the new ae
-            normalized_observations = (
-                repertoire.observations - mean_observations
-            ) / std_observations
-
-            new_descriptors = model.apply(
-                {"params": model_params}, normalized_observations, method=model.encode
-            )
-            repertoire = repertoire.init(
-                genotypes=repertoire.genotypes,
-                fitnesses=repertoire.fitnesses,
-                descriptors=new_descriptors,
-                observations=repertoire.observations,
-                l_value=repertoire.l_value,
-                max_size=repertoire.max_size,
-            )
-            num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
+            repertoire = aurora.train(repertoire, model_params, iteration, subkey)
 
         elif iteration % 2 == 0:
-            # update the l value
-            num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
-
-            # CVC Implementation to keep a constant number of individuals in the archive
-            current_error = num_indivs - n_target
-            change_rate = current_error - previous_error
-            prop_gain = 1 * 10e-6
-            l_value = (
-                repertoire.l_value
-                + (prop_gain * current_error)
-                + (prop_gain * change_rate)
-            )
-
-            previous_error = current_error
-
-            repertoire = repertoire.init(
-                genotypes=repertoire.genotypes,
-                fitnesses=repertoire.fitnesses,
-                descriptors=repertoire.descriptors,
-                observations=repertoire.observations,
-                l_value=l_value,
-                max_size=repertoire.max_size,
-            )
+            repertoire, previous_error = aurora.container_size_control(repertoire,
+                                                                       target_size=target_repertoire_size,
+                                                                       previous_error=previous_error)
 
         iteration += 1
 

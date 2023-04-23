@@ -16,6 +16,7 @@ from flax.training import train_state
 
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
+from qdax.environments.bd_extractors import AuroraExtraInfoNormalization
 from qdax.types import Observation, Params, RNGKey
 
 Array = Any
@@ -95,7 +96,7 @@ def lstm_ae_train(
     epoch: int,
     hidden_size: int = 10,
     batch_size: int = 128,
-) -> Tuple[Params, Observation, Observation]:
+) -> AuroraExtraInfoNormalization:
 
     if epoch > 100:
         num_epochs = 25
@@ -197,4 +198,4 @@ def lstm_ae_train(
 
     params = state.params
 
-    return params, mean_obs, std_obs
+    return AuroraExtraInfoNormalization.create(params, mean_obs, std_obs)

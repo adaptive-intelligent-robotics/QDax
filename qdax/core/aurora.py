@@ -46,11 +46,75 @@ class AURORA:
         encoder_function: Callable[
             [Observation, AuroraExtraInfo], Descriptor
         ],
+        training_function: Callable[
+            [RNGKey, UnstructuredRepertoire, Params, int], AuroraExtraInfo
+        ],
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
         self._encoder_fn = encoder_function
+        self._train_fn = training_function
+
+    def train(
+            self,
+            repertoire: UnstructuredRepertoire,
+            model_params: Params,
+            iteration: int,
+            random_key: RNGKey,
+    ):
+        random_key, subkey = jax.random.split(random_key)
+        aurora_extra_info = self._train_fn(
+            random_key,
+            repertoire,
+            model_params,
+            iteration,
+        )
+
+        # re-addition of all the new behavioural descriptors with the new ae
+        new_descriptors = self._encoder_fn(repertoire.observations, aurora_extra_info)
+
+        return repertoire.init(
+                genotypes=repertoire.genotypes,
+                fitnesses=repertoire.fitnesses,
+                descriptors=new_descriptors,
+                observations=repertoire.observations,
+                l_value=repertoire.l_value,
+                max_size=repertoire.max_size,
+            )
+        return aurora_extra_info
+
+
+    @partial(jax.jit, static_argnames=("self",))
+    def container_size_control(
+            self,
+            repertoire: UnstructuredRepertoire,
+            target_size: int,
+            previous_error: jnp.ndarray,
+    ):
+        # update the l value
+        num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
+
+        # CVC Implementation to keep a constant number of individuals in the archive
+        current_error = num_indivs - target_size
+        change_rate = current_error - previous_error
+        prop_gain = 1 * 10e-6
+        l_value = (
+                repertoire.l_value
+                + (prop_gain * current_error)
+                + (prop_gain * change_rate)
+        )
+
+        repertoire = repertoire.init(
+            genotypes=repertoire.genotypes,
+            fitnesses=repertoire.fitnesses,
+            descriptors=repertoire.descriptors,
+            observations=repertoire.observations,
+            l_value=l_value,
+            max_size=repertoire.max_size,
+        )
+
+        return repertoire, current_error
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
@@ -60,7 +124,7 @@ class AURORA:
         aurora_extra_info: AuroraExtraInfo,
         l_value: jnp.ndarray,
         max_size: int,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
+    ) -> Tuple[UnstructuredRepertoire, Optional[EmitterState], RNGKey]:
         """Initialize an unstructured repertoire with an initial population of
         genotypes. Requires the definition of centroids that can be computed with
         any method such as CVT or Euclidean mapping.
@@ -136,10 +200,7 @@ class AURORA:
             repertoire: unstructured repertoire
             emitter_state: state of the emitter
             random_key: a jax PRNG random key
-            model_params: params of the model used to define the behavior descriptor.
-            mean_observations: mean of the observations gathered.
-            std_observations: standard deviation of the observations
-                gathered.
+            aurora_extra_info: extra info for the encoding # TODO
 
         Results:
             the updated MAP-Elites repertoire
@@ -164,7 +225,7 @@ class AURORA:
 
         # add genotypes and observations in the repertoire
         repertoire = repertoire.add(
-            genotypes, descriptors, fitnesses, extra_scores["last_valid_observations"]
+            genotypes, descriptors, fitnesses, observations,
         )
 
         # update emitter state after scoring is made
