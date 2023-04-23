@@ -14,9 +14,9 @@ from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.environments.bd_extractors import get_aurora_bd
-from qdax.tasks.brax_envs import scoring_aurora_function
-from qdax.types import EnvState, Params, RNGKey
+from qdax.environments.bd_extractors import get_aurora_encoding
+from qdax.tasks.brax_envs import get_aurora_scoring_fn, create_default_brax_task_components
+from qdax.types import EnvState, Params, RNGKey, Observation
 from qdax.utils import train_seq2seq
 
 
@@ -25,12 +25,9 @@ from qdax.utils import train_seq2seq
     [("halfcheetah_uni", 10), ("walker2d_uni", 10), ("hopper_uni", 10)],
 )
 def test_aurora(env_name: str, batch_size: int) -> None:
-    batch_size = batch_size
-    env_name = env_name
     episode_length = 250
     max_iterations = 5
     seed = 42
-    policy_hidden_layer_sizes = (64, 64)
     max_size = 50
 
     lstm_batch_size = 12
@@ -45,18 +42,13 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     log_freq = 5
 
-    # Init environment
-    env = environments.create(env_name, episode_length=episode_length)
-
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
 
-    # Init policy network
-    policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)
-    policy_network = MLP(
-        layer_sizes=policy_layer_sizes,
-        kernel_init=jax.nn.initializers.lecun_uniform(),
-        final_activation=jnp.tanh,
+    # Init environment
+    env, policy_network, scoring_fn, random_key = create_default_brax_task_components(
+        env_name=env_name,
+        random_key=random_key,
     )
 
     # Init population of controllers
@@ -65,54 +57,34 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
-    # Create the initial environment states
-    random_key, subkey = jax.random.split(random_key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    init_states = reset_fn(keys)
+    def observation_extractor_fn(
+            data: QDTransition,
+    ) -> Observation:
+        """Extract observation from the state."""
+        state_obs = data.obs[:, ::traj_sampling_freq, :max_observation_size]
 
-    # Define the fonction to play a step with the policy in the environment
-    def play_step_fn(
-        env_state: EnvState,
-        policy_params: Params,
-        random_key: RNGKey,
-    ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
-        """
-        Play an environment step and return the updated state and the transition.
-        """
+        # add the x/y position - (batch_size, traj_length, 2)
+        state_desc = data.state_desc[:, ::traj_sampling_freq]
 
-        actions = policy_network.apply(policy_params, env_state.obs)
+        print("State Observations: ", state_obs)
+        print("XY positions: ", state_desc)
 
-        state_desc = env_state.info["state_descriptor"]
-        next_state = env.step(env_state, actions)
+        if observation_option == "full":
+            observations = jnp.concatenate([state_desc, state_obs], axis=-1)
+            print("New observations: ", observations)
+        elif observation_option == "no_sd":
+            observations = state_obs
+        elif observation_option == "only_sd":
+            observations = state_desc
+        else:
+            raise ValueError("Unknown observation option.")
 
-        transition = QDTransition(
-            obs=env_state.obs,
-            next_obs=next_state.obs,
-            rewards=next_state.reward,
-            dones=next_state.done,
-            actions=actions,
-            truncations=next_state.info["truncation"],
-            state_desc=state_desc,
-            next_state_desc=next_state.info["state_descriptor"],
-        )
-
-        return next_state, policy_params, random_key, transition
+        return observations
 
     # Prepare the scoring function
-    bd_extraction_fn = functools.partial(
-        get_aurora_bd,
-        option=observation_option,
-        hidden_size=hidden_size,
-        traj_sampling_freq=traj_sampling_freq,
-        max_observation_size=max_observation_size,
-    )
-    scoring_fn = functools.partial(
-        scoring_aurora_function,
-        init_states=init_states,
-        episode_length=episode_length,
-        play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+    aurora_scoring_fn = get_aurora_scoring_fn(
+        scoring_fn=scoring_fn,
+        observation_extractor_fn=observation_extractor_fn,
     )
 
     # Define emitter
@@ -140,19 +112,46 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    # Instantiate AURORA
-    aurora = AURORA(
-        scoring_function=scoring_fn,
-        emitter=mixing_emitter,
-        metrics_function=metrics_fn,
+    # Init algorithm
+    # AutoEncoder Params and INIT
+    obs_dim = jnp.minimum(env.observation_size, max_observation_size)
+    if observation_option == "full":
+        observations_dims = (
+            episode_length // traj_sampling_freq,
+            obs_dim + prior_descriptor_dim,
+        )
+    elif observation_option == "no_sd":
+        observations_dims = (
+            episode_length // traj_sampling_freq,
+            obs_dim,
+        )
+    elif observation_option == "only_sd":
+        observations_dims = (episode_length // traj_sampling_freq, prior_descriptor_dim)
+    else:
+        raise ValueError(f"Unknown observation option: {observation_option}")
+
+    # define the seq2seq model
+    model = train_seq2seq.get_model(
+        observations_dims[-1], True, hidden_size=hidden_size
     )
 
-    aurora_dims = hidden_size
-    centroids = jnp.zeros(shape=(max_size, aurora_dims))
+    encoder_fn = functools.partial(
+        get_aurora_encoding,
+        model=model,
+    )
+
+    # Instantiate AURORA
+    aurora = AURORA(
+        scoring_function=aurora_scoring_fn,
+        emitter=mixing_emitter,
+        metrics_function=metrics_fn,
+        encoder_function=encoder_fn,
+    )
 
     @jax.jit
-    def update_scan_fn(carry: Any, unused: Any) -> Any:
+    def update_scan_fn(carry: Any, _: Any) -> Any:
         """Scan the udpate function."""
+        # TODO: fix shadowing names from outer scopes.
         (
             repertoire,
             random_key,
@@ -176,28 +175,8 @@ def test_aurora(env_name: str, batch_size: int) -> None:
             metrics,
         )
 
-    # Init algorithm
-    # AutoEncoder Params and INIT
-    obs_dim = jnp.minimum(env.observation_size, max_observation_size)
-    if observation_option == "full":
-        observations_dims = (
-            episode_length // traj_sampling_freq,
-            obs_dim + prior_descriptor_dim,
-        )
-    elif observation_option == "no_sd":
-        observations_dims = (
-            episode_length // traj_sampling_freq,
-            obs_dim,
-        )
-    elif observation_option == "only_sd":
-        observations_dims = (episode_length // traj_sampling_freq, prior_descriptor_dim)
-    else:
-        ValueError("The chosen option is not correct.")
 
-    # define the seq2seq model
-    model = train_seq2seq.get_model(
-        observations_dims[-1], True, hidden_size=hidden_size
-    )
+
 
     # init the model params
     random_key, subkey = jax.random.split(random_key)

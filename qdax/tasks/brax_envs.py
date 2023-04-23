@@ -9,7 +9,7 @@ import jax.numpy as jnp
 
 import qdax.environments
 from qdax import environments
-from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.core.neuroevolution.mdp_utils import generate_unroll
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import (
@@ -83,6 +83,15 @@ def make_policy_network_play_step_fn_brax(
     return default_play_step_fn
 
 
+def get_mask_from_transitions(
+        data: Transition,
+) -> jnp.ndarray:
+    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
+    mask = jnp.roll(is_done, 1, axis=1)
+    mask = mask.at[:, 0].set(0)
+    return mask
+
+
 @partial(
     jax.jit,
     static_argnames=(
@@ -135,9 +144,7 @@ def scoring_function_brax_envs(
     _final_state, data = jax.vmap(unroll_fn)(init_states, policies_params)
 
     # create a mask to extract data properly
-    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
-    mask = jnp.roll(is_done, 1, axis=1)
-    mask = mask.at[:, 0].set(0)
+    mask = get_mask_from_transitions(data)
 
     # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
@@ -341,22 +348,10 @@ def create_default_brax_task_components(
     return env, policy_network, scoring_fn, random_key
 
 
-def scoring_aurora_function(
-    policies_params: Genotype,
-    random_key: RNGKey,
-    model_params: Params,
-    mean_observations: jnp.ndarray,
-    std_observations: jnp.ndarray,
-    init_states: brax.envs.State,
-    episode_length: int,
-    play_step_fn: Callable[
-        [EnvState, Params, RNGKey],
-        Tuple[EnvState, Params, RNGKey, QDTransition],
-    ],
-    behavior_descriptor_extractor: Callable[
-        [QDTransition, jnp.ndarray, Params, Observation, Observation], Descriptor
-    ],
-) -> Tuple[Fitness, Descriptor, Dict[str, Union[jnp.ndarray, QDTransition]], RNGKey]:
+def get_aurora_scoring_fn(
+    scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]],
+    observation_extractor_fn: Callable[[Transition], Observation],
+) -> Callable[[Genotype, RNGKey], Tuple[Fitness, Optional[Descriptor], ExtraScores, RNGKey]]:
     """Evaluates policies contained in flatten_variables in parallel
 
     This rollout is only deterministic when all the init states are the same.
@@ -367,37 +362,14 @@ def scoring_aurora_function(
     choice was made for performance reason, as the reset function of brax envs
     is quite time consuming. If pure stochasticity of the environment is needed
     for a use case, please open an issue.
-
     """
 
-    # Perform rollouts with each policy
-    random_key, subkey = jax.random.split(random_key)
-    unroll_fn = partial(
-        generate_unroll,
-        episode_length=episode_length,
-        play_step_fn=play_step_fn,
-        random_key=subkey,
-    )
-
-    _final_state, data = jax.vmap(unroll_fn)(init_states, policies_params)
-
-    # create a mask to extract data properly
-    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
-    mask = jnp.roll(is_done, 1, axis=1)
-    mask = mask.at[:, 0].set(0)
-
-    # scores - add offset to ensure positive fitness (through positive rewards)
-    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    descriptors, observations = behavior_descriptor_extractor(
-        data, mask, model_params, mean_observations, std_observations
-    )
-
-    return (
-        fitnesses,
-        descriptors,
-        {
-            "transitions": data,
-            "last_valid_observations": observations,
-        },
-        random_key,
-    )
+    @functools.wraps(scoring_fn)
+    def _wrapper(params: Params,    # Perform rollouts with each policy
+                 random_key: RNGKey):
+        fitnesses, _, extra_scores, random_key = scoring_fn(params, random_key)
+        data = extra_scores["data"]
+        observation = observation_extractor_fn(data)  # type: ignore
+        extra_scores["last_valid_observations"] = observation
+        return fitnesses, None, extra_scores, random_key
+    return _wrapper

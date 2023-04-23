@@ -1,3 +1,4 @@
+import flax.struct
 import jax
 import jax.numpy as jnp
 
@@ -39,43 +40,31 @@ def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descri
     return descriptors
 
 
-def get_aurora_bd(
-    data: QDTransition,
-    mask: jnp.ndarray,
-    model_params: Params,
-    mean_observations: jnp.ndarray,
-    std_observations: jnp.ndarray,
-    option: str = "full",
-    hidden_size: int = 10,
-    traj_sampling_freq: int = 10,
-    max_observation_size: int = 25,
+
+class AuroraExtraInfo(flax.struct.PyTreeNode):
+    model_params: Params
+
+class AuroraExtraInfoNormalization(AuroraExtraInfo):
+    mean_observations: jnp.ndarray
+    std_observations: jnp.ndarray
+
+
+def get_aurora_encoding(
+    observations: jnp.ndarray,
+    model: flax.linen.Module,
+    aurora_extra_info: AuroraExtraInfoNormalization,
 ) -> Descriptor:
-    """Compute final aurora embedding.
+    """
+    Compute final aurora embedding.
 
     This function suppose that state descriptor is the xy position, as it
     just select the final one of the state descriptors given.
     """
-    # reshape mask for bd extraction
-    mask = jnp.expand_dims(mask, axis=-1)
-
-    state_obs = data.obs[:, ::traj_sampling_freq, :max_observation_size]
-
-    # add the x/y position - (batch_size, traj_length, 2)
-    state_desc = data.state_desc[:, ::traj_sampling_freq]
-
-    print("State Observations: ", state_obs)
-    print("XY positions: ", state_desc)
-
-    if option == "full":
-        observations = jnp.concatenate([state_desc, state_obs], axis=-1)
-        print("New observations: ", observations)
-    elif option == "no_sd":
-        observations = state_obs
-    elif option == "only_sd":
-        observations = state_desc
+    model_params = aurora_extra_info.model_params
+    mean_observations = aurora_extra_info.mean_observations
+    std_observations = aurora_extra_info.std_observations
 
     # lstm seq2seq
-    model = train_seq2seq.get_model(observations.shape[-1], True, hidden_size)
     normalized_observations = (observations - mean_observations) / std_observations
     descriptors = model.apply(
         {"params": model_params}, normalized_observations, method=model.encode
@@ -83,4 +72,4 @@ def get_aurora_bd(
 
     print("Observations out of get aurora bd: ", observations)
 
-    return descriptors.squeeze(), observations.squeeze()
+    return descriptors.squeeze()

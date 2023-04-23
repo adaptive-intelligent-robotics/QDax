@@ -25,6 +25,7 @@ PRNGKey = Any
 def get_model(
     obs_size: int, teacher_force: bool = False, hidden_size: int = 10
 ) -> Seq2seq:
+    # TODO: add docstring
     return Seq2seq(
         teacher_force=teacher_force, hidden_size=hidden_size, obs_size=obs_size
     )
@@ -33,6 +34,7 @@ def get_model(
 def get_initial_params(
     model: Seq2seq, rng: PRNGKey, encoder_input_shape: Tuple[int, ...]
 ) -> Dict[str, Any]:
+    # TODO: add docstring
     """Returns the initial parameters of a seq2seq model."""
     rng1, rng2, rng3 = jax.random.split(rng, 3)
     variables = model.init(
@@ -47,6 +49,8 @@ def get_initial_params(
 def train_step(
     state: train_state.TrainState, batch: Array, lstm_rng: PRNGKey
 ) -> Tuple[train_state.TrainState, Dict[str, float]]:
+    # TODO: add docstring
+
     """Trains one step."""
     lstm_key = jax.random.fold_in(lstm_rng, state.step)
     dropout_key, lstm_key = jax.random.split(lstm_key, 2)

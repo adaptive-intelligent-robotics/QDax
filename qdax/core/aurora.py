@@ -14,14 +14,11 @@ from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.environments.bd_extractors import AuroraExtraInfo
 from qdax.types import Descriptor, Fitness, Genotype, Metrics, Params, RNGKey, Observation
 
 
-@flax.struct.dataclass
-class AuroraExtraInfo:
-    model_params: Params
-    mean_observations: jnp.ndarray
-    std_observations: jnp.ndarray
+
 
 
 class AURORA:
@@ -46,23 +43,21 @@ class AURORA:
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
-        bd_extraction_fn: Callable[
-            [QDTransition, jnp.ndarray, Params, Observation, Observation], Descriptor
+        encoder_function: Callable[
+            [Observation, AuroraExtraInfo], Descriptor
         ],
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
-        self._bd_extraction_fn = bd_extraction_fn
+        self._encoder_fn = encoder_function
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         init_genotypes: Genotype,
         random_key: RNGKey,
-        model_params: Params,
-        mean_observations: jnp.ndarray,
-        std_observations: jnp.ndarray,
+        aurora_extra_info: AuroraExtraInfo,
         l_value: jnp.ndarray,
         max_size: int,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
@@ -88,16 +83,19 @@ class AURORA:
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             init_genotypes,
             random_key,
-            model_params,
-            mean_observations,
-            std_observations,
         )
+
+        observations = extra_scores["last_valid_observations"]
+
+        descriptors = self._encoder_fn(observations,
+                                       aurora_extra_info)
+
 
         repertoire = UnstructuredRepertoire.init(
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            observations=extra_scores["last_valid_observations"],  # type: ignore
+            observations=observations,  # type: ignore
             l_value=l_value,
             max_size=max_size,
         )
@@ -124,9 +122,7 @@ class AURORA:
         repertoire: MapElitesRepertoire,
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
-        model_params: Params,
-        mean_observations: jnp.ndarray,
-        std_observations: jnp.ndarray,
+        aurora_extra_info: AuroraExtraInfo,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics, RNGKey]:
         """Main step of the AURORA algorithm.
 
@@ -159,10 +155,12 @@ class AURORA:
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             genotypes,
             random_key,
-            model_params,
-            mean_observations,
-            std_observations,
         )
+
+        observations = extra_scores["last_valid_observations"]
+
+        descriptors = self._encoder_fn(observations,
+                                       aurora_extra_info)
 
         # add genotypes and observations in the repertoire
         repertoire = repertoire.add(
