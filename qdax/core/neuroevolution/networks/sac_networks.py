@@ -9,7 +9,8 @@ from qdax.types import Action, Observation
 
 def make_sac_networks(
     action_size: int,
-    hidden_layer_sizes: Tuple[int, ...] = (256, 256),
+    critic_hidden_layer_size: Tuple[int, ...] = (256, 256),
+    policy_hidden_layer_size: Tuple[int, ...] = (256, 256),
 ) -> Tuple[hk.Transformed, hk.Transformed]:
     """Creates networks used in SAC.
 
@@ -27,7 +28,7 @@ def make_sac_networks(
         network = hk.Sequential(
             [
                 hk.nets.MLP(
-                    list(hidden_layer_sizes) + [2 * action_size],
+                    list(policy_hidden_layer_size) + [2 * action_size],
                     w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
                     activation=jax.nn.relu,
                 ),
@@ -39,7 +40,7 @@ def make_sac_networks(
         network1 = hk.Sequential(
             [
                 hk.nets.MLP(
-                    list(hidden_layer_sizes) + [1],
+                    list(critic_hidden_layer_size) + [1],
                     w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
                     activation=jax.nn.relu,
                 ),
@@ -48,7 +49,7 @@ def make_sac_networks(
         network2 = hk.Sequential(
             [
                 hk.nets.MLP(
-                    list(hidden_layer_sizes) + [1],
+                    list(critic_hidden_layer_size) + [1],
                     w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
                     activation=jax.nn.relu,
                 ),

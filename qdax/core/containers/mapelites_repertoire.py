@@ -343,7 +343,8 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             (
                 "This type of repertoire does not store the extra scores "
                 "computed by the scoring function"
-            )
+            ),
+            stacklevel=2,
         )
 
         # retrieve one genotype from the population
@@ -386,7 +387,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         # default genotypes is all 0
         default_genotypes = jax.tree_util.tree_map(
-            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape),
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
             genotype,
         )
 

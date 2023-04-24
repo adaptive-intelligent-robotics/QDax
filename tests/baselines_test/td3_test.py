@@ -8,7 +8,7 @@ from brax.envs import State as EnvState
 from qdax import environments
 from qdax.baselines.td3 import TD3, TD3Config, TD3TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
-from qdax.core.neuroevolution.mdp_utils import do_iteration_fn, warmstart_buffer
+from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 
 
 def test_td3() -> None:
@@ -66,7 +66,6 @@ def test_td3() -> None:
         episode_length=episode_length,
         batch_size=batch_size,
         policy_delay=policy_delay,
-        grad_updates_per_step=grad_updates_per_step,
         soft_tau_update=soft_tau_update,
         expl_noise=expl_noise,
         critic_hidden_layer_size=critic_hidden_layer_size,
@@ -125,12 +124,10 @@ def test_td3() -> None:
         ) = do_iteration(*carry)
         return (training_state, env_state, replay_buffer), metrics
 
-    # Warmup the buffer
-    key, subkey = jax.random.split(key)
-    replay_buffer, env_state = warmstart_buffer(
+    # Warmstart the buffer
+    replay_buffer, env_state, training_state = warmstart_buffer(
         replay_buffer=replay_buffer,
-        policy_params=training_state.policy_params,
-        random_key=subkey,
+        training_state=training_state,
         env_state=env_state,
         num_warmstart_steps=warmup_steps,
         env_batch_size=env_batch_size,
@@ -138,9 +135,7 @@ def test_td3() -> None:
     )
 
     # Evaluate untrained policy
-    true_return, _true_returns = eval_policy(
-        policy_params=training_state.policy_params, random_key=training_state.random_key
-    )
+    true_return, true_returns = eval_policy(training_state=training_state)
 
     total_num_iterations = num_steps // env_batch_size
 
@@ -153,10 +148,7 @@ def test_td3() -> None:
     )
 
     # Evaluate
-    final_true_return, final_true_returns = eval_policy(
-        policy_params=training_state.policy_params,
-        random_key=training_state.random_key,
-    )
+    final_true_return, final_true_returns = eval_policy(training_state=training_state)
 
     pytest.assume(final_true_return > true_return)
 

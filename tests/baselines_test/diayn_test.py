@@ -11,7 +11,7 @@ from brax.envs import State as EnvState
 from qdax import environments
 from qdax.baselines.diayn import DIAYN, DiaynConfig, DiaynTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
-from qdax.core.neuroevolution.sac_utils import do_iteration_fn, warmstart_buffer
+from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 
 
 def test_diayn() -> None:
@@ -33,7 +33,8 @@ def test_diayn() -> None:
     alpha_init = 1.0
     discount = 0.97
     reward_scaling = 1.0
-    hidden_layer_sizes = (64, 64)
+    critic_hidden_layer_size: tuple = (256, 256)
+    policy_hidden_layer_size: tuple = (256, 256)
     fix_alpha = False
     normalize_observations = False
     # DIAYN config
@@ -79,14 +80,14 @@ def test_diayn() -> None:
         # SAC config
         batch_size=batch_size,
         episode_length=episode_length,
-        grad_updates_per_step=grad_updates_per_step,
         tau=tau,
         normalize_observations=normalize_observations,
         learning_rate=learning_rate,
         alpha_init=alpha_init,
         discount=discount,
         reward_scaling=reward_scaling,
-        hidden_layer_sizes=hidden_layer_sizes,
+        critic_hidden_layer_size=critic_hidden_layer_size,
+        policy_hidden_layer_size=policy_hidden_layer_size,
         fix_alpha=fix_alpha,
         # DIAYN config
         num_skills=num_skills,

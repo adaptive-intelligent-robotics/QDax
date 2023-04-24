@@ -1,6 +1,6 @@
+import functools
 from typing import Callable, Tuple
 
-import jax
 import jax.numpy as jnp
 from brax.training.distribution import ParametricDistribution
 
@@ -54,34 +54,44 @@ def make_dads_loss_fn(
         parametric_action_distribution=parametric_action_distribution,
     )
 
-    @jax.jit
-    def _dynamics_loss_fn(
-        dynamics_params: Params,
-        transitions: QDTransition,
-    ) -> jnp.ndarray:
-        """Computes the loss used to train the dynamics network.
-
-        Args:
-            dynamics_params: the parameters of the neural network
-                used to predict the dynamics.
-            transitions: the batch of transitions used to train. They
-                have been sampled from a replay buffer beforehand.
-
-        Returns:
-            The loss obtained on the batch of transitions.
-        """
-
-        active_skills = transitions.obs[:, -num_skills:]
-        target = transitions.next_state_desc
-        log_prob = dynamics_fn(  # type: ignore
-            dynamics_params,
-            obs=transitions.state_desc,
-            skill=active_skills,
-            target=target,
-        )
-
-        # prevent training on malformed target
-        loss = -jnp.mean(log_prob * (1 - transitions.dones))
-        return loss
+    _dynamics_loss_fn = functools.partial(
+        dads_dynamics_loss_fn, dynamics_fn=dynamics_fn, num_skills=num_skills
+    )
 
     return _alpha_loss_fn, _policy_loss_fn, _critic_loss_fn, _dynamics_loss_fn
+
+
+def dads_dynamics_loss_fn(
+    dynamics_params: Params,
+    dynamics_fn: Callable[
+        [Params, StateDescriptor, Skill, StateDescriptor], jnp.ndarray
+    ],
+    num_skills: int,
+    transitions: QDTransition,
+) -> jnp.ndarray:
+    """Computes the loss used to train the dynamics network.
+
+    Args:
+        dynamics_params: the parameters of the neural network
+            used to predict the dynamics.
+        dynamics_fn: the apply function of the dynamics network
+        num_skills: the number of skills.
+        transitions: the batch of transitions used to train. They
+            have been sampled from a replay buffer beforehand.
+
+    Returns:
+        The loss obtained on the batch of transitions.
+    """
+
+    active_skills = transitions.obs[:, -num_skills:]
+    target = transitions.next_state_desc
+    log_prob = dynamics_fn(  # type: ignore
+        dynamics_params,
+        obs=transitions.state_desc,
+        skill=active_skills,
+        target=target,
+    )
+
+    # prevent training on malformed target
+    loss = -jnp.mean(log_prob * (1 - transitions.dones))
+    return loss
