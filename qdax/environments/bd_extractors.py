@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import functools
-
 import flax.struct
 import jax
 import jax.numpy as jnp

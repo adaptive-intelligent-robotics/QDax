@@ -141,10 +141,12 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     )
 
     # define the encoder function
-    encoder_fn = jax.jit(functools.partial(
-        get_aurora_encoding,
-        model=model,
-    ))
+    encoder_fn = jax.jit(
+        functools.partial(
+            get_aurora_encoding,
+            model=model,
+        )
+    )
 
     # define the training function
     train_fn = functools.partial(
