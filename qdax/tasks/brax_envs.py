@@ -278,7 +278,7 @@ def create_brax_scoring_fn(
         def deterministic_reset(_: RNGKey, _init_state: EnvState) -> EnvState:
             return _init_state
 
-        play_reset_fn = partial(deterministic_reset, init_state=init_state)
+        play_reset_fn = partial(deterministic_reset, _init_state=init_state)
 
     # Stochastic case
     elif play_reset_fn is None:
@@ -375,7 +375,7 @@ def get_aurora_scoring_fn(
         params: Params, random_key: RNGKey  # Perform rollouts with each policy
     ) -> Tuple[Fitness, Optional[Descriptor], ExtraScores, RNGKey]:
         fitnesses, _, extra_scores, random_key = scoring_fn(params, random_key)
-        data = extra_scores["data"]
+        data = extra_scores["transitions"]
         observation = observation_extractor_fn(data)  # type: ignore
         extra_scores["last_valid_observations"] = observation
         return fitnesses, None, extra_scores, random_key

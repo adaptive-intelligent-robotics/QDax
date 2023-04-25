@@ -65,8 +65,8 @@ class AuroraExtraInfoNormalization(AuroraExtraInfo):
 
 def get_aurora_encoding(
     observations: jnp.ndarray,
-    model: flax.linen.Module,
     aurora_extra_info: AuroraExtraInfoNormalization,
+    model: flax.linen.Module,
 ) -> Descriptor:
     """
     Compute final aurora embedding.
