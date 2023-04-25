@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 
 import flax.struct
 import jax
@@ -29,9 +29,9 @@ def get_cells_indices(
     """
 
     def _get_cells_indices(
-        descriptors: jnp.ndarray,
-        centroids: jnp.ndarray,
-        k_nn: int,
+        _descriptors: jnp.ndarray,
+        _centroids: jnp.ndarray,
+        _k_nn: int,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """Inner function.
 
@@ -39,10 +39,10 @@ def get_cells_indices(
         centroids of shape (num_centroids, num_descriptors)
         """
 
-        distances = jax.vmap(jnp.linalg.norm)(descriptors - centroids)
+        distances = jax.vmap(jnp.linalg.norm)(_descriptors - _centroids)
 
         # Negating distances because we want the smallest ones
-        min_dist, min_args = jax.lax.top_k(-1 * distances, k_nn)
+        min_dist, min_args = jax.lax.top_k(-1 * distances, _k_nn)
 
         return min_args, -1 * min_dist
 
@@ -151,6 +151,14 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
     l_value: jnp.ndarray
     max_size: int = flax.struct.field(pytree_node=False)
 
+    def get_maximal_size(self) -> int:
+        """Returns the maximal number of individuals in the repertoire."""
+        return self.max_size
+
+    def get_number_genotypes(self) -> jnp.ndarray:
+        """Returns the number of genotypes in the repertoire."""
+        return jnp.sum(self.fitnesses != -jnp.inf)
+
     def save(self, path: str = "./") -> None:
         """Saves the grid on disk in the form of .npy files.
 
@@ -243,7 +251,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             batch_of_descriptors, filtered_descriptors, 2
         )
 
-        # Save the second nearest neighbours to check a condition
+        # Save the second-nearest neighbours to check a condition
         second_neighbours = batch_of_distances.at[..., 1].get()
 
         # Keep the Nearest neighbours
@@ -291,7 +299,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
 
         # ReIndexing of all the inputs to the correct sorted way
-        batch_of_distances = batch_of_distances.at[sorted_bds].get()
         batch_of_descriptors = batch_of_descriptors.at[sorted_bds].get()
         batch_of_genotypes = jax.tree_map(
             lambda x: x.at[sorted_bds].get(), batch_of_genotypes
@@ -416,7 +423,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             fitnesses: fitness of the initial genotypes of shape (batch_size,)
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
             observations: observations experienced in the evaluation task.
             l_value: threshold distance of the repertoire.
             max_size: maximal size of the container
@@ -424,7 +430,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         Returns:
             an initialized unstructured repertoire.
         """
-
 
         # Initialize grid with default values
         default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)

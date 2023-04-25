@@ -62,7 +62,7 @@ class AURORA:
             model_params: Params,
             iteration: int,
             random_key: RNGKey,
-    ):
+    ) -> Tuple[UnstructuredRepertoire, AuroraExtraInfo]:
         random_key, subkey = jax.random.split(random_key)
         aurora_extra_info = self._train_fn(
             random_key,
@@ -74,15 +74,17 @@ class AURORA:
         # re-addition of all the new behavioural descriptors with the new ae
         new_descriptors = self._encoder_fn(repertoire.observations, aurora_extra_info)
 
-        return repertoire.init(
+        return (
+            repertoire.init(
                 genotypes=repertoire.genotypes,
                 fitnesses=repertoire.fitnesses,
                 descriptors=new_descriptors,
                 observations=repertoire.observations,
                 l_value=repertoire.l_value,
                 max_size=repertoire.max_size,
-            )
-        return aurora_extra_info
+            ),
+            aurora_extra_info
+        )
 
 
     @partial(jax.jit, static_argnames=("self",))
@@ -116,33 +118,29 @@ class AURORA:
 
         return repertoire, current_error
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         init_genotypes: Genotype,
-        random_key: RNGKey,
         aurora_extra_info: AuroraExtraInfo,
         l_value: jnp.ndarray,
         max_size: int,
-    ) -> Tuple[UnstructuredRepertoire, Optional[EmitterState], RNGKey]:
+        random_key: RNGKey,
+    ) -> Tuple[UnstructuredRepertoire, Optional[EmitterState], AuroraExtraInfo, RNGKey]:
         """Initialize an unstructured repertoire with an initial population of
-        genotypes. Requires the definition of centroids that can be computed with
-        any method such as CVT or Euclidean mapping.
+        genotypes. Also performs the first training of the AURORA encoder.
 
         Args:
             init_genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            aurora_extra_info: information to perform AURORA encodings,
+                such as the encoder parameters
+            l_value: threshold distance for the unstructured repertoire
+            max_size: maximum size of the repertoire
             random_key: a random key used for stochastic operations.
-            model_params: parameters of the model used to define the behavior
-                descriptors.
-            mean_observations: mean of the observations gathered.
-            std_observations: standard deviation of the observations
-                gathered.
 
         Returns:
-            an initialized unstructured repertoire with the initial state of
-            the emitter.
+            an initialized unstructured repertoire, with the initial state of
+            the emitter, and the updated information to perform AURORA encodings
         """
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             init_genotypes,
@@ -154,12 +152,11 @@ class AURORA:
         descriptors = self._encoder_fn(observations,
                                        aurora_extra_info)
 
-
         repertoire = UnstructuredRepertoire.init(
             genotypes=init_genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            observations=observations,  # type: ignore
+            observations=observations,
             l_value=l_value,
             max_size=max_size,
         )
@@ -178,7 +175,13 @@ class AURORA:
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state, random_key
+        random_key, subkey = jax.random.split(random_key)
+        repertoire, updated_aurora_extra_info = self.train(repertoire,
+                                                           aurora_extra_info.model_params,
+                                                           iteration=0,
+                                                           random_key=subkey)
+
+        return repertoire, emitter_state, updated_aurora_extra_info, random_key
 
     @partial(jax.jit, static_argnames=("self",))
     def update(

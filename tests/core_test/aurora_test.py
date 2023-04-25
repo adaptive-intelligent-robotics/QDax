@@ -1,23 +1,48 @@
 """Tests AURORA implementation"""
 
 import functools
-from typing import Any, Dict, Tuple
+from typing import Tuple
 
+import brax.envs
 import jax
 import jax.numpy as jnp
 import pytest
 
 from qdax import environments
 from qdax.core.aurora import AURORA
-from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
-from qdax.core.emitters.mutation_operators import isoline_variation
-from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.environments.bd_extractors import get_aurora_encoding, AuroraExtraInfoNormalization
 from qdax.tasks.brax_envs import get_aurora_scoring_fn, create_default_brax_task_components
-from qdax.types import EnvState, Params, RNGKey, Observation
+from qdax.types import Observation
 from qdax.utils import train_seq2seq
+from qdax.utils.metrics import default_qd_metrics
+from tests.core_test.map_elites_test import get_mixing_emitter
+
+
+def get_observation_dims(observation_option: str,
+                         env: brax.envs.Env,
+                         max_observation_size: int,
+                         episode_length: int,
+                         traj_sampling_freq: int,
+                         prior_descriptor_dim: int,
+                         ) -> Tuple[int, int]:
+    obs_dim = jnp.minimum(env.observation_size, max_observation_size)
+    if observation_option == "full":
+        observations_dims = (
+            episode_length // traj_sampling_freq,
+            obs_dim + prior_descriptor_dim,
+        )
+    elif observation_option == "no_sd":
+        observations_dims = (
+            episode_length // traj_sampling_freq,
+            obs_dim,
+        )
+    elif observation_option == "only_sd":
+        observations_dims = (episode_length // traj_sampling_freq, prior_descriptor_dim)
+    else:
+        raise ValueError(f"Unknown observation option: {observation_option}")
+
+    return observations_dims
 
 
 @pytest.mark.parametrize(
@@ -66,12 +91,8 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         # add the x/y position - (batch_size, traj_length, 2)
         state_desc = data.state_desc[:, ::traj_sampling_freq]
 
-        print("State Observations: ", state_obs)
-        print("XY positions: ", state_desc)
-
         if observation_option == "full":
             observations = jnp.concatenate([state_desc, state_obs], axis=-1)
-            print("New observations: ", observations)
         elif observation_option == "no_sd":
             observations = state_obs
         elif observation_option == "only_sd":
@@ -88,65 +109,43 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     )
 
     # Define emitter
-    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
-    mixing_emitter = MixingEmitter(
-        mutation_fn=lambda x, y: (x, y),
-        variation_fn=variation_fn,
-        variation_percentage=1.0,
-        batch_size=batch_size,
-    )
+    mixing_emitter = get_mixing_emitter(batch_size)
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
 
     # Define a metrics function
-    def metrics_fn(repertoire: UnstructuredRepertoire) -> Dict:
-
-        # Get metrics
-        grid_empty = repertoire.fitnesses == -jnp.inf
-        qd_score = jnp.sum(repertoire.fitnesses, where=~grid_empty)
-        # Add offset for positive qd_score
-        qd_score += reward_offset * episode_length * jnp.sum(1.0 - grid_empty)
-        coverage = 100 * jnp.mean(1.0 - grid_empty)
-        max_fitness = jnp.max(repertoire.fitnesses)
-
-        return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
+    metrics_fn = functools.partial(default_qd_metrics, qd_offset=reward_offset)
 
     # Init algorithm
     # AutoEncoder Params and INIT
-    obs_dim = jnp.minimum(env.observation_size, max_observation_size)
-    if observation_option == "full":
-        observations_dims = (
-            episode_length // traj_sampling_freq,
-            obs_dim + prior_descriptor_dim,
-        )
-    elif observation_option == "no_sd":
-        observations_dims = (
-            episode_length // traj_sampling_freq,
-            obs_dim,
-        )
-    elif observation_option == "only_sd":
-        observations_dims = (episode_length // traj_sampling_freq, prior_descriptor_dim)
-    else:
-        raise ValueError(f"Unknown observation option: {observation_option}")
+    observations_dims = get_observation_dims(observation_option=observation_option,
+                                             env=env,
+                                             max_observation_size=max_observation_size,
+                                             episode_length=episode_length,
+                                             traj_sampling_freq=traj_sampling_freq,
+                                             prior_descriptor_dim=prior_descriptor_dim,
+                                             )
 
     # define the seq2seq model
     model = train_seq2seq.get_model(
         observations_dims[-1], True, hidden_size=hidden_size
     )
 
+    # define the encoder function
     encoder_fn = functools.partial(
         get_aurora_encoding,
         model=model,
     )
 
+    # define the training function
     train_fn = functools.partial(
         train_seq2seq.lstm_ae_train,
-        hidden_size=hidden_size,
+        model=model,
         batch_size=lstm_batch_size,
     )
 
-    # Instantiate AURORA
+    # Instantiate AURORA algorithm
     aurora = AURORA(
         scoring_function=aurora_scoring_fn,
         emitter=mixing_emitter,
@@ -161,33 +160,29 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         model, subkey, (1, *observations_dims)
     )
 
-    print(jax.tree_map(lambda x: x.shape, model_params))
-
     # define arbitrary observation's mean/std
     mean_observations = jnp.zeros(observations_dims[-1])
     std_observations = jnp.ones(observations_dims[-1])
 
-    # init step of the aurora algorithm
-    repertoire, _, random_key = aurora.init(
-        init_variables,
-        random_key,
+    # init all the information needed by AURORA to compute encodings
+    aurora_extra_info = AuroraExtraInfoNormalization.create(
         model_params,
         mean_observations,
         std_observations,
-        jnp.array(l_value_init),
+    )
+
+    # init step of the aurora algorithm
+    repertoire, emitter_state, aurora_extra_info, random_key = aurora.init(
+        init_variables,
+        aurora_extra_info,
+        jnp.asarray(l_value_init),
         max_size,
+        random_key,
     )
 
     # initializing means and stds and AURORA
     random_key, subkey = jax.random.split(random_key)
-    model_params, mean_observations, std_observations = train_seq2seq.lstm_ae_train(
-        subkey,
-        repertoire,
-        model_params,
-        0,
-        hidden_size=hidden_size,
-        batch_size=lstm_batch_size,
-    )
+    repertoire, aurora_extra_info = aurora.train(repertoire, model_params, iteration=0, random_key=subkey)
 
     # design aurora's schedule
     default_update_base = 10
@@ -196,23 +191,17 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     current_step_estimation = 0
 
+    ############################
     # Main loop
+    ############################
+
     target_repertoire_size = 1024
 
     previous_error = jnp.sum(repertoire.fitnesses != -jnp.inf) - target_repertoire_size
 
     iteration = 0
-
-    emitter_state = None
-
     while iteration < max_iterations:
-        collected_metrics = []
-        aurora_extra_info = AuroraExtraInfoNormalization.create(
-            model_params=model_params,
-            mean_observations=mean_observations,
-            std_observations=std_observations,
-        )
-        # update
+        # standard MAP-Elites-like loop
         for _ in range(log_freq):
             repertoire, emitter_state, metrics, random_key = aurora.update(
                 repertoire,
@@ -220,18 +209,18 @@ def test_aurora(env_name: str, batch_size: int) -> None:
                 random_key,
                 aurora_extra_info=aurora_extra_info,
             )
-            collected_metrics.append(metrics)
 
         # update nb steps estimation
         current_step_estimation += batch_size * episode_length * log_freq
 
-        # autoencoder steps and CVC
+        # autoencoder steps and Container Size Control (CSC)
         if (iteration + 1) in schedules:
-            # train the autoencoder
+            # train the autoencoder (includes the CSC)
             random_key, subkey = jax.random.split(random_key)
-            repertoire = aurora.train(repertoire, model_params, iteration, subkey)
+            repertoire, aurora_extra_info = aurora.train(repertoire, model_params, iteration, subkey)
 
         elif iteration % 2 == 0:
+            # only CSC
             repertoire, previous_error = aurora.container_size_control(repertoire,
                                                                        target_size=target_repertoire_size,
                                                                        previous_error=previous_error)
