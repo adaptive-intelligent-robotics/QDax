@@ -137,14 +137,14 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     # define the seq2seq model
     model = train_seq2seq.get_model(
-        observations_dims[-1], True, hidden_size=hidden_size
+        int(observations_dims[-1]), True, hidden_size=hidden_size
     )
 
     # define the encoder function
-    encoder_fn = functools.partial(
+    encoder_fn = jax.jit(functools.partial(
         get_aurora_encoding,
         model=model,
-    )
+    ))
 
     # define the training function
     train_fn = functools.partial(
@@ -213,7 +213,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     while iteration < max_iterations:
         # standard MAP-Elites-like loop
         for _ in range(log_freq):
-            repertoire, emitter_state, metrics, random_key = aurora.update(
+            repertoire, emitter_state, _, random_key = aurora.update(
                 repertoire,
                 emitter_state,
                 random_key,

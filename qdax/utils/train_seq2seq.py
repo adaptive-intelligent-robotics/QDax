@@ -130,6 +130,9 @@ def lstm_ae_train(
     # compute mean/std of the obs for normalization
     mean_obs = jnp.nanmean(repertoire.observations, axis=(0, 1))
     std_obs = jnp.nanstd(repertoire.observations, axis=(0, 1))
+    # the std where they were NaNs was set to zero. But here we divide by the
+    # std, so we replace the zeros by inf here.
+    std_obs = jnp.where(std_obs == 0, x=jnp.inf, y=std_obs)
 
     # TODO: maybe we could just compute this data on the valid dataset
 
@@ -176,10 +179,6 @@ def lstm_ae_train(
     for epoch in range(num_epochs):
         random_key, shuffle_key = jax.random.split(random_key, 2)
         valid_indexes = jax.random.permutation(shuffle_key, valid_indexes, axis=0)
-
-        # the std where they were NaNs was set to zero. But here we divide by the
-        # std, so we replace the zeros by inf here.
-        std_obs = jnp.where(std_obs == 0, x=jnp.inf, y=std_obs)
 
         # create dataset with the observation from the sample of valid indexes
         training_dataset = (

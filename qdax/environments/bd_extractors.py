@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import functools
+
 import flax.struct
 import jax
 import jax.numpy as jnp
@@ -83,7 +85,5 @@ def get_aurora_encoding(
     descriptors = model.apply(
         {"params": model_params}, normalized_observations, method=model.encode
     )
-
-    print("Observations out of get aurora bd: ", observations)
 
     return descriptors.squeeze()
