@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import flax.struct
 import jax
 import jax.numpy as jnp
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.types import Descriptor, Params
-from qdax.utils import train_seq2seq
 
 
 def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
@@ -40,24 +41,26 @@ def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descri
     return descriptors
 
 
-
 class AuroraExtraInfo(flax.struct.PyTreeNode):
     model_params: Params
+
 
 class AuroraExtraInfoNormalization(AuroraExtraInfo):
     mean_observations: jnp.ndarray
     std_observations: jnp.ndarray
 
     @classmethod
-    def create(cls,
-               model_params: Params,
-               mean_observations: jnp.ndarray,
-               std_observations: jnp.ndarray,
-               ):
-        return cls(model_params=model_params,
-                   mean_observations=mean_observations,
-                   std_observations=std_observations,
-                   )
+    def create(
+        cls,
+        model_params: Params,
+        mean_observations: jnp.ndarray,
+        std_observations: jnp.ndarray,
+    ) -> AuroraExtraInfoNormalization:
+        return cls(
+            model_params=model_params,
+            mean_observations=mean_observations,
+            std_observations=std_observations,
+        )
 
 
 def get_aurora_encoding(

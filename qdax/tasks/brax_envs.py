@@ -1,6 +1,6 @@
 import functools
 from functools import partial
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple
 
 import brax.envs
 import flax.linen as nn
@@ -84,7 +84,7 @@ def make_policy_network_play_step_fn_brax(
 
 
 def get_mask_from_transitions(
-        data: Transition,
+    data: Transition,
 ) -> jnp.ndarray:
     is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
     mask = jnp.roll(is_done, 1, axis=1)
@@ -275,8 +275,8 @@ def create_brax_scoring_fn(
         init_state = env.reset(subkey)
 
         # Define the function to deterministically reset the environment
-        def deterministic_reset(key: RNGKey, init_state: EnvState) -> EnvState:
-            return init_state
+        def deterministic_reset(_: RNGKey, _init_state: EnvState) -> EnvState:
+            return _init_state
 
         play_reset_fn = partial(deterministic_reset, init_state=init_state)
 
@@ -351,9 +351,13 @@ def create_default_brax_task_components(
 
 
 def get_aurora_scoring_fn(
-    scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]],
+    scoring_fn: Callable[
+        [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
+    ],
     observation_extractor_fn: Callable[[Transition], Observation],
-) -> Callable[[Genotype, RNGKey], Tuple[Fitness, Optional[Descriptor], ExtraScores, RNGKey]]:
+) -> Callable[
+    [Genotype, RNGKey], Tuple[Fitness, Optional[Descriptor], ExtraScores, RNGKey]
+]:
     """Evaluates policies contained in flatten_variables in parallel
 
     This rollout is only deterministic when all the init states are the same.
@@ -362,16 +366,18 @@ def get_aurora_scoring_fn(
 
     When the init states are different, this is not purely stochastic. This
     choice was made for performance reason, as the reset function of brax envs
-    is quite time consuming. If pure stochasticity of the environment is needed
+    is quite time-consuming. If pure stochasticity of the environment is needed
     for a use case, please open an issue.
     """
 
     @functools.wraps(scoring_fn)
-    def _wrapper(params: Params,    # Perform rollouts with each policy
-                 random_key: RNGKey):
+    def _wrapper(
+        params: Params, random_key: RNGKey  # Perform rollouts with each policy
+    ) -> Tuple[Fitness, Optional[Descriptor], ExtraScores, RNGKey]:
         fitnesses, _, extra_scores, random_key = scoring_fn(params, random_key)
         data = extra_scores["data"]
         observation = observation_extractor_fn(data)  # type: ignore
         extra_scores["last_valid_observations"] = observation
         return fitnesses, None, extra_scores, random_key
+
     return _wrapper

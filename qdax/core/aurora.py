@@ -5,7 +5,6 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable, Optional, Tuple
 
-import flax.struct
 import jax
 import jax.numpy as jnp
 from chex import ArrayTree
@@ -13,12 +12,16 @@ from chex import ArrayTree
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.environments.bd_extractors import AuroraExtraInfo
-from qdax.types import Descriptor, Fitness, Genotype, Metrics, Params, RNGKey, Observation
-
-
-
+from qdax.types import (
+    Descriptor,
+    Fitness,
+    Genotype,
+    Metrics,
+    Observation,
+    Params,
+    RNGKey,
+)
 
 
 class AURORA:
@@ -43,9 +46,7 @@ class AURORA:
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
-        encoder_function: Callable[
-            [Observation, AuroraExtraInfo], Descriptor
-        ],
+        encoder_function: Callable[[Observation, AuroraExtraInfo], Descriptor],
         training_function: Callable[
             [RNGKey, UnstructuredRepertoire, Params, int], AuroraExtraInfo
         ],
@@ -57,11 +58,11 @@ class AURORA:
         self._train_fn = training_function
 
     def train(
-            self,
-            repertoire: UnstructuredRepertoire,
-            model_params: Params,
-            iteration: int,
-            random_key: RNGKey,
+        self,
+        repertoire: UnstructuredRepertoire,
+        model_params: Params,
+        iteration: int,
+        random_key: RNGKey,
     ) -> Tuple[UnstructuredRepertoire, AuroraExtraInfo]:
         random_key, subkey = jax.random.split(random_key)
         aurora_extra_info = self._train_fn(
@@ -83,17 +84,16 @@ class AURORA:
                 l_value=repertoire.l_value,
                 max_size=repertoire.max_size,
             ),
-            aurora_extra_info
+            aurora_extra_info,
         )
-
 
     @partial(jax.jit, static_argnames=("self",))
     def container_size_control(
-            self,
-            repertoire: UnstructuredRepertoire,
-            target_size: int,
-            previous_error: jnp.ndarray,
-    ):
+        self,
+        repertoire: UnstructuredRepertoire,
+        target_size: int,
+        previous_error: jnp.ndarray,
+    ) -> Tuple[UnstructuredRepertoire, jnp.ndarray]:
         # update the l value
         num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
@@ -102,9 +102,7 @@ class AURORA:
         change_rate = current_error - previous_error
         prop_gain = 1 * 10e-6
         l_value = (
-                repertoire.l_value
-                + (prop_gain * current_error)
-                + (prop_gain * change_rate)
+            repertoire.l_value + (prop_gain * current_error) + (prop_gain * change_rate)
         )
 
         repertoire = repertoire.init(
@@ -149,8 +147,7 @@ class AURORA:
 
         observations = extra_scores["last_valid_observations"]
 
-        descriptors = self._encoder_fn(observations,
-                                       aurora_extra_info)
+        descriptors = self._encoder_fn(observations, aurora_extra_info)
 
         repertoire = UnstructuredRepertoire.init(
             genotypes=init_genotypes,
@@ -176,10 +173,9 @@ class AURORA:
         )
 
         random_key, subkey = jax.random.split(random_key)
-        repertoire, updated_aurora_extra_info = self.train(repertoire,
-                                                           aurora_extra_info.model_params,
-                                                           iteration=0,
-                                                           random_key=subkey)
+        repertoire, updated_aurora_extra_info = self.train(
+            repertoire, aurora_extra_info.model_params, iteration=0, random_key=subkey
+        )
 
         return repertoire, emitter_state, updated_aurora_extra_info, random_key
 
@@ -223,12 +219,14 @@ class AURORA:
 
         observations = extra_scores["last_valid_observations"]
 
-        descriptors = self._encoder_fn(observations,
-                                       aurora_extra_info)
+        descriptors = self._encoder_fn(observations, aurora_extra_info)
 
         # add genotypes and observations in the repertoire
         repertoire = repertoire.add(
-            genotypes, descriptors, fitnesses, observations,
+            genotypes,
+            descriptors,
+            fitnesses,
+            observations,
         )
 
         # update emitter state after scoring is made

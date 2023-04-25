@@ -346,7 +346,9 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # assign fake position when relevant : num_centroids is out of bounds
         batch_of_indices = jnp.where(
-            addition_condition, x=batch_of_indices, y=self.max_size,
+            addition_condition,
+            x=batch_of_indices,
+            y=self.max_size,
         )
 
         # create new grid
@@ -434,9 +436,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         # Initialize grid with default values
         default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)
         default_genotypes = jax.tree_map(
-            lambda x: jnp.full(
-                shape=(max_size,) + x.shape[1:], fill_value=jnp.nan
-            ),
+            lambda x: jnp.full(shape=(max_size,) + x.shape[1:], fill_value=jnp.nan),
             genotypes,
         )
         default_descriptors = jnp.zeros(shape=(max_size, descriptors.shape[-1]))

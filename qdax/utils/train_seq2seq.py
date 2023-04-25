@@ -116,7 +116,7 @@ def lstm_ae_train(
     repertoire: UnstructuredRepertoire,
     params: Params,
     epoch: int,
-    model,
+    model: Seq2seq,
     batch_size: int = 128,
 ) -> AuroraExtraInfoNormalization:
 

@@ -11,21 +11,28 @@ import pytest
 from qdax import environments
 from qdax.core.aurora import AURORA
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.environments.bd_extractors import get_aurora_encoding, AuroraExtraInfoNormalization
-from qdax.tasks.brax_envs import get_aurora_scoring_fn, create_default_brax_task_components
+from qdax.environments.bd_extractors import (
+    AuroraExtraInfoNormalization,
+    get_aurora_encoding,
+)
+from qdax.tasks.brax_envs import (
+    create_default_brax_task_components,
+    get_aurora_scoring_fn,
+)
 from qdax.types import Observation
 from qdax.utils import train_seq2seq
 from qdax.utils.metrics import default_qd_metrics
 from tests.core_test.map_elites_test import get_mixing_emitter
 
 
-def get_observation_dims(observation_option: str,
-                         env: brax.envs.Env,
-                         max_observation_size: int,
-                         episode_length: int,
-                         traj_sampling_freq: int,
-                         prior_descriptor_dim: int,
-                         ) -> Tuple[int, int]:
+def get_observation_dims(
+    observation_option: str,
+    env: brax.envs.Env,
+    max_observation_size: int,
+    episode_length: int,
+    traj_sampling_freq: int,
+    prior_descriptor_dim: int,
+) -> Tuple[int, int]:
     obs_dim = jnp.minimum(env.observation_size, max_observation_size)
     if observation_option == "full":
         observations_dims = (
@@ -83,7 +90,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
     def observation_extractor_fn(
-            data: QDTransition,
+        data: QDTransition,
     ) -> Observation:
         """Extract observation from the state."""
         state_obs = data.obs[:, ::traj_sampling_freq, :max_observation_size]
@@ -119,13 +126,14 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     # Init algorithm
     # AutoEncoder Params and INIT
-    observations_dims = get_observation_dims(observation_option=observation_option,
-                                             env=env,
-                                             max_observation_size=max_observation_size,
-                                             episode_length=episode_length,
-                                             traj_sampling_freq=traj_sampling_freq,
-                                             prior_descriptor_dim=prior_descriptor_dim,
-                                             )
+    observations_dims = get_observation_dims(
+        observation_option=observation_option,
+        env=env,
+        max_observation_size=max_observation_size,
+        episode_length=episode_length,
+        traj_sampling_freq=traj_sampling_freq,
+        prior_descriptor_dim=prior_descriptor_dim,
+    )
 
     # define the seq2seq model
     model = train_seq2seq.get_model(
@@ -182,7 +190,9 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     # initializing means and stds and AURORA
     random_key, subkey = jax.random.split(random_key)
-    repertoire, aurora_extra_info = aurora.train(repertoire, model_params, iteration=0, random_key=subkey)
+    repertoire, aurora_extra_info = aurora.train(
+        repertoire, model_params, iteration=0, random_key=subkey
+    )
 
     # design aurora's schedule
     default_update_base = 10
@@ -217,13 +227,17 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         if (iteration + 1) in schedules:
             # train the autoencoder (includes the CSC)
             random_key, subkey = jax.random.split(random_key)
-            repertoire, aurora_extra_info = aurora.train(repertoire, model_params, iteration, subkey)
+            repertoire, aurora_extra_info = aurora.train(
+                repertoire, model_params, iteration, subkey
+            )
 
         elif iteration % 2 == 0:
             # only CSC
-            repertoire, previous_error = aurora.container_size_control(repertoire,
-                                                                       target_size=target_repertoire_size,
-                                                                       previous_error=previous_error)
+            repertoire, previous_error = aurora.container_size_control(
+                repertoire,
+                target_size=target_repertoire_size,
+                previous_error=previous_error,
+            )
 
         iteration += 1
 

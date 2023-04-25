@@ -1,17 +1,14 @@
 """Tests MAP Elites implementation"""
 
 import functools
-from typing import Dict, Tuple
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 import pytest
 
 from qdax import environments
-from qdax.core.containers.mapelites_repertoire import (
-    MapElitesRepertoire,
-    compute_cvt_centroids,
-)
+from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
@@ -22,7 +19,7 @@ from qdax.types import EnvState, Params, RNGKey
 from qdax.utils.metrics import default_qd_metrics
 
 
-def get_mixing_emitter(batch_size) -> MixingEmitter:
+def get_mixing_emitter(batch_size: int) -> MixingEmitter:
     """Create a mixing emitter with a given batch size."""
     variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
     mixing_emitter = MixingEmitter(
