@@ -9,6 +9,5 @@ dependencies:
 - pip:
     - --find-links https://storage.googleapis.com/jax-releases/jax_releases.html
     - jaxlib==0.3.15
-    - optax==0.1.4
     - -r requirements.txt
     - -r requirements-dev.txt
