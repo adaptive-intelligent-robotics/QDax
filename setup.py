@@ -30,6 +30,7 @@ setup(
         "brax>=0.0.15",
         "gym>=0.23.1",
         "numpy>=1.22.3",
+        "optax>=0.1, <0.1.5",
         "scikit-learn>=1.0.2",
         "scipy>=1.8.0",
     ],
