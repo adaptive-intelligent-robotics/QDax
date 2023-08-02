@@ -144,7 +144,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         descriptors: an array that contains the descriptors of solutions in each cell
             of the repertoire, ordered by centroids. The array shape
             is (num_centroids, num_descriptors).
-        centroids: an array the contains the centroids of the tesselation. The array
+        centroids: an array that contains the centroids of the tesselation. The array
             shape is (num_centroids, num_descriptors).
     """
 
