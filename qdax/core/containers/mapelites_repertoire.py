@@ -29,7 +29,7 @@ def compute_cvt_centroids(
     """Compute centroids for CVT tessellation.
 
     Args:
-        num_descriptors: number od scalar descriptors
+        num_descriptors: number of scalar descriptors
         num_init_cvt_samples: number of sampled point to be sued for clustering to
             determine the centroids. The larger the number of centroids and the
             number of descriptors, the higher this value must be (e.g. 100000 for
