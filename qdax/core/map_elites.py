@@ -64,7 +64,7 @@ class MAPElites:
         Args:
             init_genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            centroids: tessellation centroids of shape (batch_size, num_descriptors)
             random_key: a random key used for stochastic operations.
 
         Returns:
