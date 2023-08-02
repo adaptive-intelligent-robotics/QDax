@@ -26,7 +26,7 @@ def compute_cvt_centroids(
     maxval: Union[float, List[float]],
     random_key: RNGKey,
 ) -> Tuple[jnp.ndarray, RNGKey]:
-    """Compute centroids for CVT tesselation.
+    """Compute centroids for CVT tessellation.
 
     Args:
         num_descriptors: number od scalar descriptors
@@ -69,7 +69,7 @@ def compute_euclidean_centroids(
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
 ) -> jnp.ndarray:
-    """Compute centroids for square Euclidean tesselation.
+    """Compute centroids for square Euclidean tessellation.
 
     Args:
         grid_shape: number of centroids per BD dimension
@@ -144,7 +144,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         descriptors: an array that contains the descriptors of solutions in each cell
             of the repertoire, ordered by centroids. The array shape
             is (num_centroids, num_descriptors).
-        centroids: an array that contains the centroids of the tesselation. The array
+        centroids: an array that contains the centroids of the tessellation. The array
             shape is (num_centroids, num_descriptors).
     """
 
