@@ -23,7 +23,7 @@ class MAPElites:
     """Core elements of the MAP-Elites algorithm.
 
     Note: Although very similar to the GeneticAlgorithm, we decided to keep the
-    MAPElites class independant of the GeneticAlgorithm class at the moment to keep
+    MAPElites class independent of the GeneticAlgorithm class at the moment to keep
     elements explicit.
 
     Args:
