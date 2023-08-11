@@ -1,0 +1,382 @@
+"""This file contains the class to define the repertoire used to
+store individuals in the Multi-Objective MAP-Elites algorithm as
+well as several variants."""
+
+from __future__ import annotations
+
+from typing import Callable, Optional
+
+import jax
+import jax.numpy as jnp
+from jax.flatten_util import ravel_pytree
+
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    get_cells_indices,
+)
+from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, Spread
+
+
+def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
+    """Computes dispersion of a batch of n_evals descriptors.
+
+    Args:
+        descriptors: (n_evals, n_descriptors) array of descriptors.
+    Returns:
+        The float dispersion of the descriptors (this is represented as a scalar
+        jnp.ndarray).
+    """
+    # Compute Pairwise Distances
+    #
+    # See here for how these computations work:
+    # https://jaykmody.com/blog/distance-matrices-with-numpy/
+
+    # This has the same effect as taking the dot product of each row with
+    # itself.
+    x2 = jnp.sum(descriptors**2, axis=1)
+    y2 = x2
+
+    # We can compute all x_i * y_j and store it in a matrix at xy[i][j] by
+    # taking the matrix multiplication between X and X_train transpose
+    # if you're struggling to understand this, draw out the matrices and
+    # do the matrix multiplication by hand.
+    # (m, d) x (d, n) -> (m, n)
+    xy = descriptors @ descriptors.T
+
+    # each row in xy needs to be added with x2[i]
+    # each column of xy needs to be added with y2[j]
+    # to get everything to play well, we'll need to reshape
+    # x2 from (m) -> (m, 1), numpy will handle the rest of the broadcasting for us
+    # see: https://numpy.org/doc/stable/user/basics.broadcasting.html
+    x2 = x2.reshape(-1, 1)
+    dists = jnp.sqrt(
+        x2 - 2 * xy + y2
+    )  # (m, 1) repeat columnwise + (m, n) + (n) repeat rowwise -> (m, n)
+
+    # Compute dispersion -- this is the mean of the unique pairwise distances.
+    #
+    # Zero out the duplicate distances since the distance matrix is diagonal.
+    # Setting k=1 will also remove entries on the diagonal since they are zero.
+    dists = jnp.triu(dists, k=1)
+
+    n_evals = len(descriptors)
+    n_pairwise = n_evals * (n_evals - 1.0) / 2.0
+
+    return jnp.sum(dists) / n_pairwise
+
+
+def _mode(x: jnp.ndarray) -> jnp.ndarray:
+    """Computes mode (most common item) of an array.
+
+    The return type is a scalar ndarray.
+    """
+    unique_vals, counts = jnp.unique(x, return_counts=True, size=x.size)
+    return unique_vals[jnp.argmax(counts)]
+
+
+class MELSRepertoire(MapElitesRepertoire):
+    """Class for the repertoire in Map Elites Low-Spread.
+
+    This class inherits from MapElitesRepertoire. In addition to the stored data in
+    MapElitesRepertoire (genotypes, fitnesses, descriptors, centroids),
+    this repertoire also maintains an array of spreads. We inherit the save, load, add,
+    and init_default methods of MapElitesRepertoire.
+
+    Refer to Mace 2023 for more info on Map Elites Low-Spread:
+    https://dl.acm.org/doi/abs/10.1145/3583131.3590433
+
+    Args:
+        genotypes: a PyTree containing all the genotypes in the repertoire ordered
+            by the centroids. Each leaf has a shape (num_centroids, num_features). The
+            PyTree can be a simple Jax array or a more complex nested structure such
+            as to represent parameters of neural network in Flax.
+        fitnesses: an array that contains the fitness of solutions in each cell of the
+            repertoire, ordered by centroids. The array shape is (num_centroids,).
+        descriptors: an array that contains the descriptors of solutions in each cell
+            of the repertoire, ordered by centroids. The array shape
+            is (num_centroids, num_descriptors).
+        centroids: an array that contains the centroids of the tessellation. The array
+            shape is (num_centroids, num_descriptors).
+        spreads: an array that contains the spread of solutions in each cell of the
+            repertoire, ordered by centroids. The array shape is (num_centroids,).
+    """
+
+    spreads: Spread
+
+    def save(self, path: str = "./") -> None:
+        """Saves the repertoire on disk in the form of .npy files.
+
+        Flattens the genotypes to store it with .npy format. Supposes that
+        a user will have access to the reconstruction function when loading
+        the genotypes.
+
+        Args:
+            path: Path where the data will be saved. Defaults to "./".
+        """
+
+        def flatten_genotype(genotype: Genotype) -> jnp.ndarray:
+            flatten_genotype, _ = ravel_pytree(genotype)
+            return flatten_genotype
+
+        # flatten all the genotypes
+        flat_genotypes = jax.vmap(flatten_genotype)(self.genotypes)
+
+        # save data
+        jnp.save(path + "genotypes.npy", flat_genotypes)
+        jnp.save(path + "fitnesses.npy", self.fitnesses)
+        jnp.save(path + "descriptors.npy", self.descriptors)
+        jnp.save(path + "centroids.npy", self.centroids)
+        jnp.save(path + "spreads.npy", self.spreads)
+
+    @classmethod
+    def load(cls, reconstruction_fn: Callable, path: str = "./") -> MELSRepertoire:
+        """Loads a Map Elites Low-Spread Repertoire.
+
+        Args:
+            reconstruction_fn: Function to reconstruct a PyTree
+                from a flat array.
+            path: Path where the data is saved. Defaults to "./".
+
+        Returns:
+            A Map Elites Low-Spread Repertoire.
+        """
+
+        flat_genotypes = jnp.load(path + "genotypes.npy")
+        genotypes = jax.vmap(reconstruction_fn)(flat_genotypes)
+
+        fitnesses = jnp.load(path + "fitnesses.npy")
+        descriptors = jnp.load(path + "descriptors.npy")
+        centroids = jnp.load(path + "centroids.npy")
+        spreads = jnp.load(path + "spreads.npy")
+
+        return cls(
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            centroids=centroids,
+            spreads=spreads,
+        )
+
+    @jax.jit
+    def add(
+        self,
+        batch_of_genotypes: Genotype,
+        batch_of_descriptors: Descriptor,
+        batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
+    ) -> MELSRepertoire:
+        """
+        Add a batch of elements to the repertoire.
+
+        If multiple solutions may be added to a single cell, this method will
+        arbitrarily pick one -- the exact choice depends on the implementation of
+        jax.at[].set(), which can be non-deterministic:
+        https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html
+        We do not currently check if one solution dominates the others (dominate means
+        that the solution has both highest fitness and lowest spread among the
+        solutions for that cell).
+
+        Args:
+            batch_of_genotypes: a batch of genotypes to be added to the repertoire.
+                Similarly to the self.genotypes argument, this is a PyTree in which
+                the leaves have a shape (batch_size, num_features)
+            batch_of_descriptors: an array that contains the descriptors of the
+                aforementioned genotypes over all evals. Its shape is
+                (batch_size * n_evals, num_descriptors). Note that we "aggregate"
+                descriptors by finding the most frequent cell of the solution. Thus, the
+                actual descriptors stored in the repertoire are just the coordinates of
+                the centroid of the most frequent cell.
+            batch_of_fitnesses: an array that contains the fitnesses of the
+                aforementioned genotypes over all evals. Its shape is
+                (batch_size * n_evals,)
+            batch_of_extra_scores: unused tree that contains the extra_scores of
+                aforementioned genotypes.
+
+        Returns:
+            The updated MAP-Elites repertoire.
+        """
+        batch_size = jax.tree_util.tree_leaves(batch_of_genotypes)[0].shape[0]
+        n_evals = batch_of_fitnesses.shape[0] // batch_size
+
+        assert (
+            len(batch_of_fitnesses) == len(batch_of_descriptors) == batch_size * n_evals
+        ), (
+            "Fitnesses and descriptors must have length batch_size * n_evals "
+            f"= {batch_size} * {n_evals} = {batch_size * n_evals}"
+        )
+
+        # Compute indices/cells of all descriptors.
+        batch_of_all_indices = get_cells_indices(
+            batch_of_descriptors, self.centroids
+        ).reshape((batch_size, n_evals))
+
+        # Compute most frequent cell of each solution.
+        batch_of_indices = jax.vmap(_mode)(batch_of_all_indices)[:, None]
+
+        # Compute dispersion / spread.
+        batch_of_spreads = jax.vmap(_dispersion)(
+            batch_of_descriptors.reshape((batch_size, n_evals, -1))
+        )
+        batch_of_spreads = jnp.expand_dims(batch_of_spreads, axis=-1)
+
+        # Compute canonical descriptors as the descriptor of the centroid of the most
+        # frequent cell. It may also be possible to compute the mean of all the
+        # descriptors that fell in that cell.
+        batch_of_descriptors = jnp.take_along_axis(
+            self.centroids, batch_of_indices, axis=0
+        )
+
+        # Compute canonical fitnesses as the average fitness.
+        #
+        # Shape: (batch_size, 1)
+        batch_of_fitnesses = batch_of_fitnesses.reshape((batch_size, n_evals)).mean(
+            axis=-1, keepdims=True
+        )
+
+        num_centroids = self.centroids.shape[0]
+
+        # ---------------
+        #
+        # TODO: Use this old code to check if a solution dominates the others.
+        #
+        #  # get fitness segment max
+        #  best_fitnesses = jax.ops.segment_max(
+        #      batch_of_fitnesses,
+        #      batch_of_indices.astype(jnp.int32).squeeze(axis=-1),
+        #      num_segments=num_centroids,
+        #  )
+        #  # get lower spreads for all trajs that belong to the same cell
+        #  lower_spreads = jax.ops.segment_min(
+        #      batch_of_spreads,
+        #      batch_of_indices.astype(jnp.int32).squeeze(axis=-1),
+        #      num_segments=num_centroids,
+        #  )
+
+        #  cond_values_fitnesses = jnp.take_along_axis(best_fitnesses, batch_of_indices,
+        #  0)
+        #  cond_values_spreads = jnp.take_along_axis(lower_spreads, batch_of_indices, 0)
+
+        #  # put dominated fitness to -jnp.inf
+        #  batch_of_fitnesses = jnp.where(
+        #      batch_of_fitnesses == cond_values_fitnesses,
+        #      x=batch_of_fitnesses,
+        #      y=-jnp.inf,
+        #  )
+        #  # put dominated spread to jnp.inf
+        #  batch_of_spreads = jnp.where(
+        #      batch_of_spreads == cond_values_spreads, x=batch_of_spreads, y=jnp.inf
+        #  )
+
+        #  # get current repertoire fitnesses and spreads
+        #  repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
+        #  current_fitnesses = jnp.take_along_axis(
+        #      repertoire_fitnesses, batch_of_indices, 0
+        #  )
+
+        #  repertoire_spreads = jnp.expand_dims(self.spreads, axis=-1)
+        #  current_spreads = jnp.take_along_axis(repertoire_spreads, batch_of_indices,0)
+
+        #  # get addition condition
+        #  addition_condition_fitness = batch_of_fitnesses > current_fitnesses
+        #  addition_condition_spread = batch_of_spreads <= current_spreads
+        #  addition_condition = jnp.logical_and(
+        #      addition_condition_fitness, addition_condition_spread
+        #  )
+        #
+        # ---------------
+
+        # get current repertoire fitnesses and spreads
+        repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
+        current_fitnesses = jnp.take_along_axis(
+            repertoire_fitnesses, batch_of_indices, 0
+        )
+
+        repertoire_spreads = jnp.expand_dims(self.spreads, axis=-1)
+        current_spreads = jnp.take_along_axis(repertoire_spreads, batch_of_indices, 0)
+
+        # get addition condition
+        addition_condition_fitness = batch_of_fitnesses > current_fitnesses
+        addition_condition_spread = batch_of_spreads <= current_spreads
+        addition_condition = jnp.logical_and(
+            addition_condition_fitness, addition_condition_spread
+        )
+
+        # assign fake position when relevant : num_centroids is out of bound
+        batch_of_indices = jnp.where(
+            addition_condition, x=batch_of_indices, y=num_centroids
+        )
+
+        # create new repertoire
+        new_repertoire_genotypes = jax.tree_util.tree_map(
+            lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
+                batch_of_indices.squeeze(axis=-1)
+            ].set(new_genotypes),
+            self.genotypes,
+            batch_of_genotypes,
+        )
+
+        # compute new fitness and descriptors
+        new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze(axis=-1)].set(
+            batch_of_fitnesses.squeeze(axis=-1)
+        )
+        new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
+            batch_of_descriptors
+        )
+        new_spreads = self.spreads.at[batch_of_indices.squeeze(axis=-1)].set(
+            batch_of_spreads.squeeze(axis=-1)
+        )
+
+        return MELSRepertoire(
+            genotypes=new_repertoire_genotypes,
+            fitnesses=new_fitnesses,
+            descriptors=new_descriptors,
+            centroids=self.centroids,
+            spreads=new_spreads,
+        )
+
+    @classmethod
+    def init_default(
+        cls,
+        genotype: Genotype,
+        centroids: Centroid,
+    ) -> MELSRepertoire:
+        """Initialize a Map Elites Low-Spread repertoire with an initial population of
+        genotypes. Requires the definition of centroids that can be computed with any
+        method such as CVT or Euclidean mapping.
+
+        Note: this function has been kept outside of the object MELS, so
+        it can be called easily called from other modules.
+
+        Args:
+            genotype: the typical genotype that will be stored.
+            centroids: the centroids of the repertoire.
+
+        Returns:
+            A repertoire filled with default values.
+        """
+
+        # get number of centroids
+        num_centroids = centroids.shape[0]
+
+        # default fitness is -inf
+        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+
+        # default genotypes is all 0
+        default_genotypes = jax.tree_util.tree_map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
+            genotype,
+        )
+
+        # default descriptor is all zeros
+        default_descriptors = jnp.zeros_like(centroids)
+
+        # default spread is inf so that any spread will be less
+        default_spreads = jnp.full(shape=num_centroids, fill_value=jnp.inf)
+
+        return cls(
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            descriptors=default_descriptors,
+            centroids=centroids,
+            spreads=default_spreads,
+        )
