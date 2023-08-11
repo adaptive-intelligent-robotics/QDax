@@ -75,14 +75,14 @@ def _mode(x: jnp.ndarray) -> jnp.ndarray:
 
 
 class MELSRepertoire(MapElitesRepertoire):
-    """Class for the repertoire in Map Elites Low-Spread.
+    """Class for the repertoire in MAP-Elites Low-Spread.
 
     This class inherits from MapElitesRepertoire. In addition to the stored data in
     MapElitesRepertoire (genotypes, fitnesses, descriptors, centroids), this repertoire
     also maintains an array of spreads. We overload the save, load, add, and
     init_default methods of MapElitesRepertoire.
 
-    Refer to Mace 2023 for more info on Map Elites Low-Spread:
+    Refer to Mace 2023 for more info on MAP-Elites Low-Spread:
     https://dl.acm.org/doi/abs/10.1145/3583131.3590433
 
     Args:
@@ -130,7 +130,7 @@ class MELSRepertoire(MapElitesRepertoire):
 
     @classmethod
     def load(cls, reconstruction_fn: Callable, path: str = "./") -> MELSRepertoire:
-        """Loads a Map Elites Low-Spread Repertoire.
+        """Loads a MAP-Elites Low-Spread Repertoire.
 
         Args:
             reconstruction_fn: Function to reconstruct a PyTree
@@ -138,7 +138,7 @@ class MELSRepertoire(MapElitesRepertoire):
             path: Path where the data is saved. Defaults to "./".
 
         Returns:
-            A Map Elites Low-Spread Repertoire.
+            A MAP-Elites Low-Spread Repertoire.
         """
 
         flat_genotypes = jnp.load(path + "genotypes.npy")
@@ -334,7 +334,7 @@ class MELSRepertoire(MapElitesRepertoire):
         genotype: Genotype,
         centroids: Centroid,
     ) -> MELSRepertoire:
-        """Initialize a Map Elites Low-Spread repertoire with an initial population of
+        """Initialize a MAP-Elites Low-Spread repertoire with an initial population of
         genotypes. Requires the definition of centroids that can be computed with any
         method such as CVT or Euclidean mapping.
 
