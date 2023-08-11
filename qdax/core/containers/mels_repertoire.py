@@ -229,56 +229,6 @@ class MELSRepertoire(MapElitesRepertoire):
 
         num_centroids = self.centroids.shape[0]
 
-        # ---------------
-        #
-        # TODO: Use this old code to check if a solution dominates the others.
-        #
-        #  # get fitness segment max
-        #  best_fitnesses = jax.ops.segment_max(
-        #      batch_of_fitnesses,
-        #      batch_of_indices.astype(jnp.int32).squeeze(axis=-1),
-        #      num_segments=num_centroids,
-        #  )
-        #  # get lower spreads for all trajs that belong to the same cell
-        #  lower_spreads = jax.ops.segment_min(
-        #      batch_of_spreads,
-        #      batch_of_indices.astype(jnp.int32).squeeze(axis=-1),
-        #      num_segments=num_centroids,
-        #  )
-
-        #  cond_values_fitnesses = jnp.take_along_axis(best_fitnesses, batch_of_indices,
-        #  0)
-        #  cond_values_spreads = jnp.take_along_axis(lower_spreads, batch_of_indices, 0)
-
-        #  # put dominated fitness to -jnp.inf
-        #  batch_of_fitnesses = jnp.where(
-        #      batch_of_fitnesses == cond_values_fitnesses,
-        #      x=batch_of_fitnesses,
-        #      y=-jnp.inf,
-        #  )
-        #  # put dominated spread to jnp.inf
-        #  batch_of_spreads = jnp.where(
-        #      batch_of_spreads == cond_values_spreads, x=batch_of_spreads, y=jnp.inf
-        #  )
-
-        #  # get current repertoire fitnesses and spreads
-        #  repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        #  current_fitnesses = jnp.take_along_axis(
-        #      repertoire_fitnesses, batch_of_indices, 0
-        #  )
-
-        #  repertoire_spreads = jnp.expand_dims(self.spreads, axis=-1)
-        #  current_spreads = jnp.take_along_axis(repertoire_spreads, batch_of_indices,0)
-
-        #  # get addition condition
-        #  addition_condition_fitness = batch_of_fitnesses > current_fitnesses
-        #  addition_condition_spread = batch_of_spreads <= current_spreads
-        #  addition_condition = jnp.logical_and(
-        #      addition_condition_fitness, addition_condition_spread
-        #  )
-        #
-        # ---------------
-
         # get current repertoire fitnesses and spreads
         repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
         current_fitnesses = jnp.take_along_axis(
