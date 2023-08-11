@@ -168,13 +168,18 @@ class MELSRepertoire(MapElitesRepertoire):
         """
         Add a batch of elements to the repertoire.
 
-        If multiple solutions may be added to a single cell, this method will
+        The key difference between this method and the default add() in
+        MapElitesRepertoire is that it expects each individual to be evaluated `n_evals`
+        times, resulting in `n_evals` fitnesses and `n_evals` descriptors per
+        individual.
+
+        If multiple individuals may be added to a single cell, this method will
         arbitrarily pick one -- the exact choice depends on the implementation of
         jax.at[].set(), which can be non-deterministic:
         https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html
-        We do not currently check if one solution dominates the others (dominate means
-        that the solution has both highest fitness and lowest spread among the
-        solutions for that cell).
+        We do not currently check if one of the multiple individuals dominates the
+        others (dominate means that the individual has both highest fitness and lowest
+        spread among the individuals for that cell).
 
         Args:
             batch_of_genotypes: a batch of genotypes to be added to the repertoire.
@@ -182,13 +187,13 @@ class MELSRepertoire(MapElitesRepertoire):
                 the leaves have a shape (batch_size, num_features)
             batch_of_descriptors: an array that contains the descriptors of the
                 aforementioned genotypes over all evals. Its shape is
-                (batch_size * n_evals, num_descriptors). Note that we "aggregate"
-                descriptors by finding the most frequent cell of the solution. Thus, the
-                actual descriptors stored in the repertoire are just the coordinates of
-                the centroid of the most frequent cell.
+                (batch_size, n_evals, num_descriptors). Note that we "aggregate"
+                descriptors by finding the most frequent cell of each individual. Thus,
+                the actual descriptors stored in the repertoire are just the coordinates
+                of the centroid of the most frequent cell.
             batch_of_fitnesses: an array that contains the fitnesses of the
-                aforementioned genotypes over all evals. Its shape is
-                (batch_size * n_evals,)
+                aforementioned genotypes over all evals. Its shape is (batch_size,
+                n_evals)
             batch_of_extra_scores: unused tree that contains the extra_scores of
                 aforementioned genotypes.
 
