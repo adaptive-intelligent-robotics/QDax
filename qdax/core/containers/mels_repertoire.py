@@ -202,13 +202,6 @@ class MELSRepertoire(MapElitesRepertoire):
         """
         batch_size, n_evals = batch_of_fitnesses.shape
 
-        assert (
-            len(batch_of_fitnesses) == len(batch_of_descriptors) == batch_size * n_evals
-        ), (
-            "Fitnesses and descriptors must have length batch_size * n_evals "
-            f"= {batch_size} * {n_evals} = {batch_size * n_evals}"
-        )
-
         # Compute indices/cells of all descriptors.
         batch_of_all_indices = get_cells_indices(
             batch_of_descriptors.reshape(batch_size * n_evals, -1), self.centroids
