@@ -78,9 +78,9 @@ class MELSRepertoire(MapElitesRepertoire):
     """Class for the repertoire in Map Elites Low-Spread.
 
     This class inherits from MapElitesRepertoire. In addition to the stored data in
-    MapElitesRepertoire (genotypes, fitnesses, descriptors, centroids),
-    this repertoire also maintains an array of spreads. We inherit the save, load, add,
-    and init_default methods of MapElitesRepertoire.
+    MapElitesRepertoire (genotypes, fitnesses, descriptors, centroids), this repertoire
+    also maintains an array of spreads. We overload the save, load, add, and
+    init_default methods of MapElitesRepertoire.
 
     Refer to Mace 2023 for more info on Map Elites Low-Spread:
     https://dl.acm.org/doi/abs/10.1145/3583131.3590433
@@ -198,10 +198,9 @@ class MELSRepertoire(MapElitesRepertoire):
                 aforementioned genotypes.
 
         Returns:
-            The updated MAP-Elites repertoire.
+            The updated repertoire.
         """
-        batch_size = jax.tree_util.tree_leaves(batch_of_genotypes)[0].shape[0]
-        n_evals = batch_of_fitnesses.shape[0] // batch_size
+        batch_size, n_evals = batch_of_fitnesses.shape
 
         assert (
             len(batch_of_fitnesses) == len(batch_of_descriptors) == batch_size * n_evals
@@ -212,7 +211,7 @@ class MELSRepertoire(MapElitesRepertoire):
 
         # Compute indices/cells of all descriptors.
         batch_of_all_indices = get_cells_indices(
-            batch_of_descriptors, self.centroids
+            batch_of_descriptors.reshape(batch_size * n_evals, -1), self.centroids
         ).reshape((batch_size, n_evals))
 
         # Compute most frequent cell of each solution.
@@ -225,8 +224,7 @@ class MELSRepertoire(MapElitesRepertoire):
         batch_of_spreads = jnp.expand_dims(batch_of_spreads, axis=-1)
 
         # Compute canonical descriptors as the descriptor of the centroid of the most
-        # frequent cell. It may also be possible to compute the mean of all the
-        # descriptors that fell in that cell.
+        # frequent cell. Note that this line redefines the earlier batch_of_descriptors.
         batch_of_descriptors = jnp.take_along_axis(
             self.centroids, batch_of_indices, axis=0
         )
@@ -234,9 +232,7 @@ class MELSRepertoire(MapElitesRepertoire):
         # Compute canonical fitnesses as the average fitness.
         #
         # Shape: (batch_size, 1)
-        batch_of_fitnesses = batch_of_fitnesses.reshape((batch_size, n_evals)).mean(
-            axis=-1, keepdims=True
-        )
+        batch_of_fitnesses = batch_of_fitnesses.mean(axis=-1, keepdims=True)
 
         num_centroids = self.centroids.shape[0]
 
