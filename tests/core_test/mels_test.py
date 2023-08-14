@@ -112,6 +112,8 @@ def test_mels(env_name: str, batch_size: int) -> None:
             lambda x: jnp.repeat(x, num_evals, axis=0), policies_params
         )
 
+        # Call the Brax scoring function, taking into account previously defined
+        # inputs like `init_states`.
         fitnesses, descriptors, extra_scores, random_key = scoring_function_brax_envs(
             policies_params=policies_params,
             random_key=random_key,
@@ -121,12 +123,11 @@ def test_mels(env_name: str, batch_size: int) -> None:
             behavior_descriptor_extractor=bd_extraction_fn,
         )
 
+        # Reshape results for ME-LS.
         extra_scores["transitions"] = jax.tree_util.tree_map(
             lambda x: x.reshape((batch_size, num_evals, *x.shape[1:])),
             extra_scores["transitions"],
         )
-
-        # Reshape results for ME-LS.
         return (
             fitnesses.reshape((batch_size, num_evals)),
             descriptors.reshape((batch_size, num_evals, -1)),
