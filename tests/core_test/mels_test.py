@@ -1,4 +1,4 @@
-"""Tests MAP-Elites Low-Spread implementation"""
+"""Tests MAP-Elites Low-Spread implementation."""
 
 import functools
 from typing import Dict, Tuple
@@ -79,9 +79,8 @@ def test_mels(env_name: str, batch_size: int) -> None:
         policy_params: Params,
         random_key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
-        """
-        Play an environment step and return the updated state and the transition.
-        """
+        """Play an environment step and return the updated state and the
+        transition."""
 
         actions = policy_network.apply(policy_params, env_state.obs)
 
@@ -122,7 +121,10 @@ def test_mels(env_name: str, batch_size: int) -> None:
             behavior_descriptor_extractor=bd_extraction_fn,
         )
 
-        # TODO: Reshape extra_scores.
+        extra_scores["transitions"] = jax.tree_util.tree_map(
+            lambda x: x.reshape((batch_size, num_evals, *x.shape[1:])),
+            extra_scores["transitions"],
+        )
 
         # Reshape results for ME-LS.
         return (
