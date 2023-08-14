@@ -159,7 +159,7 @@ def test_mels(env_name: str, batch_size: int) -> None:
 
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    # Instantiate MAP-Elites
+    # Instantiate ME-LS.
     mels = MELS(
         scoring_function=scoring_fn,
         emitter=mixing_emitter,
