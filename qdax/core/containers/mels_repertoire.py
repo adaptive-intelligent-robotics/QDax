@@ -60,7 +60,7 @@ def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
     dists = jnp.triu(dists, k=1)
 
     num_evals = len(descriptors)
-    n_pairwise = num_evals * (num_evals - 1.0) / 2.0
+    n_pairwise = num_evals * (num_evals - 1) / 2.0
 
     return jnp.sum(dists) / n_pairwise
 
@@ -181,6 +181,8 @@ class MELSRepertoire(MapElitesRepertoire):
         others (dominate means that the individual has both highest fitness and lowest
         spread among the individuals for that cell).
 
+        If `num_evals` is only 1, the spreads will default to 0.
+
         Args:
             batch_of_genotypes: a batch of genotypes to be added to the repertoire.
                 Similarly to the self.genotypes argument, this is a PyTree in which
@@ -210,9 +212,15 @@ class MELSRepertoire(MapElitesRepertoire):
         # Compute most frequent cell of each solution.
         batch_of_indices = jax.vmap(_mode)(batch_of_all_indices)[:, None]
 
-        # Compute dispersion / spread.
-        batch_of_spreads = jax.vmap(_dispersion)(
-            batch_of_descriptors.reshape((batch_size, num_evals, -1))
+        # Compute dispersion / spread. The dispersion is set to zero if
+        # num_evals is 1.
+        batch_of_spreads = jax.lax.cond(
+            num_evals == 1,
+            lambda desc: jnp.zeros(batch_size),
+            lambda desc: jax.vmap(_dispersion)(
+                desc.reshape((batch_size, num_evals, -1))
+            ),
+            batch_of_descriptors,
         )
         batch_of_spreads = jnp.expand_dims(batch_of_spreads, axis=-1)
 

@@ -165,3 +165,66 @@ def test_mels_repertoire() -> None:
             jnp.allclose(repertoire.descriptors, expected_descriptors_2, atol=1e-6)
         )
         pytest.assume(jnp.allclose(repertoire.spreads, expected_spreads_2, atol=1e-6))
+
+
+def test_single_eval() -> None:
+    genotype_size = 12
+    num_centroids = 4
+    num_descriptors = 2
+
+    # create a repertoire instance
+    repertoire = MELSRepertoire(
+        genotypes=jnp.zeros(shape=(num_centroids, genotype_size)),
+        fitnesses=jnp.ones(shape=(num_centroids,)) * (-jnp.inf),
+        descriptors=jnp.zeros(shape=(num_centroids, num_descriptors)),
+        centroids=jnp.array(
+            [
+                [1.0, 1.0],
+                [2.0, 1.0],
+                [2.0, 2.0],
+                [1.0, 2.0],
+            ]
+        ),
+        spreads=jnp.full(shape=(num_centroids,), fill_value=jnp.inf),
+    )
+
+    # Insert a single solution with only one eval.
+
+    # create fake genotypes and scores to add
+    fake_genotypes = jnp.ones(shape=(1, genotype_size))
+    # the solution gets one fitness and one descriptor.
+    fake_fitnesses = jnp.array([[0.0]])
+    fake_descriptors = jnp.array([[[0.0, 1.0]]])
+    fake_extra_scores: ExtraScores = {}
+
+    # do an addition
+    repertoire = repertoire.add(
+        fake_genotypes, fake_descriptors, fake_fitnesses, fake_extra_scores
+    )
+
+    # check that the repertoire looks as expected
+    expected_genotypes = jnp.array(
+        [
+            [1.0 for _ in range(genotype_size)],
+            [0.0 for _ in range(genotype_size)],
+            [0.0 for _ in range(genotype_size)],
+            [0.0 for _ in range(genotype_size)],
+        ]
+    )
+    expected_fitnesses = jnp.array([0.0, -jnp.inf, -jnp.inf, -jnp.inf])
+    expected_descriptors = jnp.array(
+        [
+            [1.0, 1.0],  # Centroid coordinates.
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 0.0],
+        ]
+    )
+    # Spread should be 0 since there's only one eval.
+    expected_spreads = jnp.array([0.0, jnp.inf, jnp.inf, jnp.inf])
+
+    # check values
+    pytest.assume(jnp.allclose(repertoire.genotypes, expected_genotypes, atol=1e-6))
+    pytest.assume(jnp.allclose(repertoire.fitnesses, expected_fitnesses, atol=1e-6))
+    pytest.assume(jnp.allclose(repertoire.descriptors, expected_descriptors, atol=1e-6))
+    pytest.assume(jnp.allclose(repertoire.spreads, expected_spreads, atol=1e-6))
