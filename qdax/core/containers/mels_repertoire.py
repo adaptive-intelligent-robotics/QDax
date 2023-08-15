@@ -26,32 +26,9 @@ def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
         The float dispersion of the descriptors (this is represented as a scalar
         jnp.ndarray).
     """
-    # Compute Pairwise Distances
-    #
-    # See here for how these computations work:
-    # https://jaykmody.com/blog/distance-matrices-with-numpy/
 
-    # This has the same effect as taking the dot product of each row with
-    # itself.
-    x2 = jnp.sum(descriptors**2, axis=1)
-    y2 = x2
-
-    # We can compute all x_i * y_j and store it in a matrix at xy[i][j] by
-    # taking the matrix multiplication between X and X_train transpose
-    # if you're struggling to understand this, draw out the matrices and
-    # do the matrix multiplication by hand.
-    # (m, d) x (d, n) -> (m, n)
-    xy = descriptors @ descriptors.T
-
-    # each row in xy needs to be added with x2[i]
-    # each column of xy needs to be added with y2[j]
-    # to get everything to play well, we'll need to reshape
-    # x2 from (m) -> (m, 1), numpy will handle the rest of the broadcasting for us
-    # see: https://numpy.org/doc/stable/user/basics.broadcasting.html
-    x2 = x2.reshape(-1, 1)
-    dists = jnp.sqrt(
-        x2 - 2 * xy + y2
-    )  # (m, 1) repeat columnwise + (m, n) + (n) repeat rowwise -> (m, n)
+    # Pairwise distances between the descriptors.
+    dists = jnp.linalg.norm(descriptors[:, None] - descriptors, axis=2)
 
     # Compute dispersion -- this is the mean of the unique pairwise distances.
     #
