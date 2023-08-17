@@ -2,23 +2,69 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import jax
+import jax.numpy as jnp
 
 from qdax.core.containers.mels_repertoire import MELSRepertoire
-from qdax.core.emitters.emitter import EmitterState
+from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.map_elites import MAPElites
-from qdax.types import Centroid, Genotype, RNGKey
+from qdax.types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    Metrics,
+    RNGKey,
+)
 
 
 class MELS(MAPElites):
     """Core elements of the MAP-Elites Low-Spread algorithm.
 
-    Note: most functions are inherited from MAPElites. The only function
-    that had to be overwritten is the init function as it has to use the MELSRepertoire
-    instead of MapElitesRepertoire.
+    Most methods in this class are inherited from MAPElites.
+
+    The same scoring function can be passed into both MAPElites and this class.
+    We have overridden __init__ such that it takes in the scoring function and
+    wraps it such that every solution is evaluated `num_evals` times.
+
+    We also overrode the init method to use the MELSRepertoire instead of
+    MapElitesRepertoire.
     """
+
+    def __init__(
+        self,
+        scoring_function: Callable[
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
+        ],
+        emitter: Emitter,
+        metrics_function: Callable[[MELSRepertoire], Metrics],
+        num_evals: int,
+    ) -> None:
+        def multi_eval_scoring_function(
+            genotypes: Genotype, random_key: RNGKey
+        ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+            """Evaluates the given genotypes `num_evals` times."""
+            subkeys = jax.random.split(random_key, num_evals + 1)
+            random_key = subkeys[0]
+            fitnesses, descriptors, extra_scores, _ = jax.vmap(
+                scoring_function, in_axes=(None, 0)
+            )(genotypes, subkeys[1:])
+
+            # The vmap will output arrays with shape (num_evals, batch_size, ...)
+            # but we need to have (batch_size, num_evals, ...) for MELSRepertoire.
+            fitnesses = jax.tree_map(lambda x: jnp.swapaxes(x, 0, 1), fitnesses)
+            descriptors = jax.tree_map(lambda x: jnp.swapaxes(x, 0, 1), descriptors)
+            extra_scores = jax.tree_map(lambda x: jnp.swapaxes(x, 0, 1), extra_scores)
+
+            return fitnesses, descriptors, extra_scores, random_key
+
+        self._scoring_function = multi_eval_scoring_function
+        self._emitter = emitter
+        self._metrics_function = metrics_function
+        self._num_evals = num_evals
 
     @partial(jax.jit, static_argnames=("self",))
     def init(

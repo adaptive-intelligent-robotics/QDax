@@ -15,16 +15,8 @@ from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.mels import MELS
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.tasks.brax_envs import scoring_function_brax_envs
-from qdax.types import (
-    Descriptor,
-    EnvState,
-    ExtraScores,
-    Fitness,
-    Genotype,
-    Params,
-    RNGKey,
-)
+from qdax.tasks.brax_envs import reset_based_scoring_function_brax_envs
+from qdax.types import EnvState, Params, RNGKey
 
 
 @pytest.mark.parametrize(
@@ -65,14 +57,6 @@ def test_mels(env_name: str, batch_size: int) -> None:
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
-    # Create the initial environment states. Note that there are batch_size * num_evals
-    # environments since each controller must be evaluated num_evals times.
-    keys = jax.random.split(random_key, batch_size * num_evals + 1)
-    random_key = keys[0]
-    subkeys = keys[1:]
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    init_states = reset_fn(subkeys)
-
     # Define the function to play a step with the policy in the environment
     def play_step_fn(
         env_state: EnvState,
@@ -102,38 +86,13 @@ def test_mels(env_name: str, batch_size: int) -> None:
 
     # Prepare the scoring function
     bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
-
-    def scoring_fn(
-        policies_params: Genotype,
-        random_key: RNGKey,
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
-        # Repeat each policy so that it can be evaluated num_evals times.
-        policies_params = jax.tree_util.tree_map(
-            lambda x: jnp.repeat(x, num_evals, axis=0), policies_params
-        )
-
-        # Call the Brax scoring function, taking into account previously defined
-        # inputs like `init_states`.
-        fitnesses, descriptors, extra_scores, random_key = scoring_function_brax_envs(
-            policies_params=policies_params,
-            random_key=random_key,
-            init_states=init_states,
-            episode_length=episode_length,
-            play_step_fn=play_step_fn,
-            behavior_descriptor_extractor=bd_extraction_fn,
-        )
-
-        # Reshape results for ME-LS.
-        extra_scores["transitions"] = jax.tree_util.tree_map(
-            lambda x: x.reshape((batch_size, num_evals, *x.shape[1:])),
-            extra_scores["transitions"],
-        )
-        return (
-            fitnesses.reshape((batch_size, num_evals)),
-            descriptors.reshape((batch_size, num_evals, -1)),
-            extra_scores,
-            random_key,
-        )
+    scoring_fn = functools.partial(
+        reset_based_scoring_function_brax_envs,
+        episode_length=episode_length,
+        play_reset_fn=env.reset,
+        play_step_fn=play_step_fn,
+        behavior_descriptor_extractor=bd_extraction_fn,
+    )
 
     # Define emitter
     variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
@@ -164,6 +123,7 @@ def test_mels(env_name: str, batch_size: int) -> None:
         scoring_function=scoring_fn,
         emitter=mixing_emitter,
         metrics_function=metrics_fn,
+        num_evals=num_evals,
     )
 
     # Compute the centroids
