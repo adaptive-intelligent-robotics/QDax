@@ -5,7 +5,9 @@ from qdax.core.containers.mels_repertoire import MELSRepertoire
 from qdax.types import ExtraScores
 
 
-def test_mels_repertoire() -> None:
+def test_add_to_mels_repertoire() -> None:
+    """Test several additions to the MELSRepertoire, including adding a solution
+    and overwriting it by adding multiple solutions."""
     genotype_size = 12
     num_centroids = 4
     num_descriptors = 2
@@ -167,7 +169,11 @@ def test_mels_repertoire() -> None:
         pytest.assume(jnp.allclose(repertoire.spreads, expected_spreads_2, atol=1e-6))
 
 
-def test_single_eval() -> None:
+def test_add_with_single_eval() -> None:
+    """Tries adding with a single evaluation.
+
+    This is a special case because the spread defaults to 0.
+    """
     genotype_size = 12
     num_centroids = 4
     num_descriptors = 2
