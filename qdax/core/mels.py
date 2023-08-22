@@ -18,32 +18,7 @@ from qdax.types import (
     Metrics,
     RNGKey,
 )
-
-
-def multi_eval_scoring_function(
-    genotypes: Genotype,
-    random_key: RNGKey,
-    scoring_function: Callable[
-        [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
-    ],
-    num_evals: int,
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
-    """Evaluates the given genotypes `num_evals` times with the given
-    `scoring_function`.
-
-    Intended to be curried by passing in a scoring_function and num_evals.
-    """
-    subkeys = jax.random.split(random_key, num_evals + 1)
-    random_key = subkeys[0]
-    fitnesses, descriptors, extra_scores, _ = jax.vmap(
-        scoring_function,
-        # The 0 vectorizes over the num_evals random keys.
-        in_axes=(None, 0),
-        # Indicates that the vectorized axis will become axis 1, i.e.,
-        # the final output is shape (batch_size, num_evals, ...)
-        out_axes=1,
-    )(genotypes, subkeys[1:])
-    return fitnesses, descriptors, extra_scores, random_key
+from qdax.utils.sampling import multi_sample_scoring_function
 
 
 class MELS(MAPElites):
@@ -53,7 +28,7 @@ class MELS(MAPElites):
 
     The same scoring function can be passed into both MAPElites and this class.
     We have overridden __init__ such that it takes in the scoring function and
-    wraps it such that every solution is evaluated `num_evals` times.
+    wraps it such that every solution is evaluated `num_samples` times.
 
     We also overrode the init method to use the MELSRepertoire instead of
     MapElitesRepertoire.
@@ -66,16 +41,16 @@ class MELS(MAPElites):
         ],
         emitter: Emitter,
         metrics_function: Callable[[MELSRepertoire], Metrics],
-        num_evals: int,
+        num_samples: int,
     ) -> None:
         self._scoring_function = partial(
-            multi_eval_scoring_function,
-            scoring_function=scoring_function,
-            num_evals=num_evals,
+            multi_sample_scoring_function,
+            scoring_fn=scoring_function,
+            num_samples=num_samples,
         )
         self._emitter = emitter
         self._metrics_function = metrics_function
-        self._num_evals = num_evals
+        self._num_samples = num_samples
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
