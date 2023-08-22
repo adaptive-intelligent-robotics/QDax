@@ -26,7 +26,7 @@ from qdax.types import EnvState, Params, RNGKey
 def test_mels(env_name: str, batch_size: int) -> None:
     batch_size = batch_size
     env_name = env_name
-    num_evals = 5
+    num_samples = 5
     episode_length = 100
     num_iterations = 5
     seed = 42
@@ -51,7 +51,7 @@ def test_mels(env_name: str, batch_size: int) -> None:
     )
 
     # Init population of controllers. There are batch_size controllers, and each
-    # controller will be evaluated num_evals times.
+    # controller will be evaluated num_samples times.
     random_key, subkey = jax.random.split(random_key)
     keys = jax.random.split(subkey, num=batch_size)
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
@@ -123,7 +123,7 @@ def test_mels(env_name: str, batch_size: int) -> None:
         scoring_function=scoring_fn,
         emitter=mixing_emitter,
         metrics_function=metrics_fn,
-        num_evals=num_evals,
+        num_samples=num_samples,
     )
 
     # Compute the centroids

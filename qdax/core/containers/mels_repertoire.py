@@ -18,10 +18,10 @@ from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, Spr
 
 
 def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
-    """Computes dispersion of a batch of num_evals descriptors.
+    """Computes dispersion of a batch of num_samples descriptors.
 
     Args:
-        descriptors: (num_evals, num_descriptors) array of descriptors.
+        descriptors: (num_samples, num_descriptors) array of descriptors.
     Returns:
         The float dispersion of the descriptors (this is represented as a scalar
         jnp.ndarray).
@@ -36,8 +36,8 @@ def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
     # Setting k=1 will also remove entries on the diagonal since they are zero.
     dists = jnp.triu(dists, k=1)
 
-    num_evals = len(descriptors)
-    n_pairwise = num_evals * (num_evals - 1) / 2.0
+    num_samples = len(descriptors)
+    n_pairwise = num_samples * (num_samples - 1) / 2.0
 
     return jnp.sum(dists) / n_pairwise
 
@@ -147,8 +147,8 @@ class MELSRepertoire(MapElitesRepertoire):
 
         The key difference between this method and the default add() in
         MapElitesRepertoire is that it expects each individual to be evaluated
-        `num_evals` times, resulting in `num_evals` fitnesses and `num_evals`
-        descriptors per individual.
+        `num_samples` times, resulting in `num_samples` fitnesses and
+        `num_samples` descriptors per individual.
 
         If multiple individuals may be added to a single cell, this method will
         arbitrarily pick one -- the exact choice depends on the implementation of
@@ -158,7 +158,7 @@ class MELSRepertoire(MapElitesRepertoire):
         others (dominate means that the individual has both highest fitness and lowest
         spread among the individuals for that cell).
 
-        If `num_evals` is only 1, the spreads will default to 0.
+        If `num_samples` is only 1, the spreads will default to 0.
 
         Args:
             batch_of_genotypes: a batch of genotypes to be added to the repertoire.
@@ -166,36 +166,36 @@ class MELSRepertoire(MapElitesRepertoire):
                 the leaves have a shape (batch_size, num_features)
             batch_of_descriptors: an array that contains the descriptors of the
                 aforementioned genotypes over all evals. Its shape is
-                (batch_size, num_evals, num_descriptors). Note that we "aggregate"
+                (batch_size, num_samples, num_descriptors). Note that we "aggregate"
                 descriptors by finding the most frequent cell of each individual. Thus,
                 the actual descriptors stored in the repertoire are just the coordinates
                 of the centroid of the most frequent cell.
             batch_of_fitnesses: an array that contains the fitnesses of the
                 aforementioned genotypes over all evals. Its shape is (batch_size,
-                num_evals)
+                num_samples)
             batch_of_extra_scores: unused tree that contains the extra_scores of
                 aforementioned genotypes.
 
         Returns:
             The updated repertoire.
         """
-        batch_size, num_evals = batch_of_fitnesses.shape
+        batch_size, num_samples = batch_of_fitnesses.shape
 
         # Compute indices/cells of all descriptors.
         batch_of_all_indices = get_cells_indices(
-            batch_of_descriptors.reshape(batch_size * num_evals, -1), self.centroids
-        ).reshape((batch_size, num_evals))
+            batch_of_descriptors.reshape(batch_size * num_samples, -1), self.centroids
+        ).reshape((batch_size, num_samples))
 
         # Compute most frequent cell of each solution.
         batch_of_indices = jax.vmap(_mode)(batch_of_all_indices)[:, None]
 
         # Compute dispersion / spread. The dispersion is set to zero if
-        # num_evals is 1.
+        # num_samples is 1.
         batch_of_spreads = jax.lax.cond(
-            num_evals == 1,
+            num_samples == 1,
             lambda desc: jnp.zeros(batch_size),
             lambda desc: jax.vmap(_dispersion)(
-                desc.reshape((batch_size, num_evals, -1))
+                desc.reshape((batch_size, num_samples, -1))
             ),
             batch_of_descriptors,
         )
