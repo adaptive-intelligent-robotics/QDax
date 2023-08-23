@@ -26,6 +26,7 @@ Fitness: TypeAlias = jnp.ndarray
 Genotype: TypeAlias = ArrayTree
 Descriptor: TypeAlias = jnp.ndarray
 Centroid: TypeAlias = jnp.ndarray
+Spread: TypeAlias = jnp.ndarray
 Gradient: TypeAlias = jnp.ndarray
 
 Skill: TypeAlias = jnp.ndarray
