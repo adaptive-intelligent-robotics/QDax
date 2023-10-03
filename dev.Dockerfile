@@ -1,4 +1,4 @@
-FROM mambaorg/micromamba:0.22.0 as conda
+FROM mambaorg/micromamba:1.5.1 as conda
 
 # Speed up the build, and avoid unnecessary writes to disk
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 CONDA_DIR=/opt/conda
@@ -16,7 +16,7 @@ RUN micromamba create -y --file /tmp/environment.yaml \
 
 
 FROM python as test-image
-ENV PATH=/opt/conda/envs/qdaxpy38/bin/:$PATH APP_FOLDER=/app
+ENV PATH=/opt/conda/envs/qdaxpy39/bin/:$PATH APP_FOLDER=/app
 ENV PYTHONPATH=$APP_FOLDER:$PYTHONPATH
 
 COPY --from=conda /opt/conda/envs/. /opt/conda/envs/
@@ -26,7 +26,7 @@ RUN pip install -r requirements-dev.txt
 
 
 FROM nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04 as cuda-image
-ENV PATH=/opt/conda/envs/qdaxpy38/bin/:$PATH APP_FOLDER=/app
+ENV PATH=/opt/conda/envs/qdaxpy39/bin/:$PATH APP_FOLDER=/app
 ENV PYTHONPATH=$APP_FOLDER:$PYTHONPATH
 
 
@@ -40,7 +40,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-11.0/targets/x86_64-linux/l
 
 ENV TZ=Europe/Paris
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN pip --no-cache-dir install jaxlib==0.3.15+cuda11.cudnn82 \
+RUN pip --no-cache-dir install jaxlib==0.4.16+cuda11.cudnn86 \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html \
     && rm -rf /tmp/*
 
@@ -70,7 +70,7 @@ RUN apt-get update && \
     libosmesa6-dev \
     patchelf \
     python3-opengl \
-    python3-dev=3.8* \
+    python3-dev=3.9* \
     python3-pip \
     screen \
     sudo \
