@@ -25,7 +25,7 @@ COPY requirements-dev.txt ./
 RUN pip install -r requirements-dev.txt
 
 
-FROM nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04 as cuda-image
+FROM nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04 as cuda-image
 ENV PATH=/opt/conda/envs/qdaxpy39/bin/:$PATH APP_FOLDER=/app
 ENV PYTHONPATH=$APP_FOLDER:$PYTHONPATH
 
