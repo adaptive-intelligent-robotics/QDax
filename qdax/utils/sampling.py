@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
-@partial(jax.jit, static_argnames=("num_samples"))
+@partial(jax.jit, static_argnames=("num_samples",))
 def dummy_extra_scores_extractor(
     extra_scores: ExtraScores,
     num_samples: int,
@@ -34,6 +34,60 @@ def dummy_extra_scores_extractor(
     static_argnames=(
         "scoring_fn",
         "num_samples",
+    ),
+)
+def multi_sample_scoring_function(
+    policies_params: Genotype,
+    random_key: RNGKey,
+    scoring_fn: Callable[
+        [Genotype, RNGKey],
+        Tuple[Fitness, Descriptor, ExtraScores, RNGKey],
+    ],
+    num_samples: int,
+) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    """
+    Wrap scoring_function to perform sampling.
+
+    This function returns the fitnesses, descriptors, and extra_scores computed
+    over num_samples evaluations with the scoring_fn.
+
+    Args:
+        policies_params: policies to evaluate
+        random_key: JAX random key
+        scoring_fn: scoring function used for evaluation
+        num_samples: number of samples to generate for each individual
+
+    Returns:
+        (n, num_samples) array of fitnesses,
+        (n, num_samples, num_descriptors) array of descriptors,
+        dict with num_samples extra_scores per individual,
+        JAX random key
+    """
+
+    random_key, subkey = jax.random.split(random_key)
+    keys = jax.random.split(subkey, num=num_samples)
+
+    # evaluate
+    sample_scoring_fn = jax.vmap(
+        scoring_fn,
+        # vectorizing over axis 0 vectorizes over the num_samples random keys
+        in_axes=(None, 0),
+        # indicates that the vectorized axis will become axis 1, i.e., the final
+        # output is shape (batch_size, num_samples, ...)
+        out_axes=1,
+    )
+    all_fitnesses, all_descriptors, all_extra_scores, _ = sample_scoring_fn(
+        policies_params, keys
+    )
+
+    return all_fitnesses, all_descriptors, all_extra_scores, random_key
+
+
+@partial(
+    jax.jit,
+    static_argnames=(
+        "scoring_fn",
+        "num_samples",
         "extra_scores_extractor",
     ),
 )
@@ -49,14 +103,16 @@ def sampling(
         [ExtraScores, int], ExtraScores
     ] = dummy_extra_scores_extractor,
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
-    """
-    Wrap scoring_function to perform sampling.
+    """Wrap scoring_function to perform sampling.
+
+    This function averages the fitnesses and descriptors for each individual
+    over `num_samples` evaluations.
 
     Args:
         policies_params: policies to evaluate
-        random_key
+        random_key: JAX random key
         scoring_fn: scoring function used for evaluation
-        num_samples
+        num_samples: number of samples to generate for each individual
         extra_scores_extractor: function to extract the extra_scores from
             multiple samples of the same policy.
 
@@ -65,14 +121,13 @@ def sampling(
         The extra_score extract from samples with extra_scores_extractor
         A new random key
     """
-
-    random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey, num=num_samples)
-
-    # evaluate
-    sample_scoring_fn = jax.vmap(scoring_fn, (None, 0), 1)
-    all_fitnesses, all_descriptors, all_extra_scores, _ = sample_scoring_fn(
-        policies_params, keys
+    (
+        all_fitnesses,
+        all_descriptors,
+        all_extra_scores,
+        random_key,
+    ) = multi_sample_scoring_function(
+        policies_params, random_key, scoring_fn, num_samples
     )
 
     # average results

@@ -71,7 +71,8 @@ class SacConfig:
     alpha_init: float = 1.0
     discount: float = 0.97
     reward_scaling: float = 1.0
-    hidden_layer_sizes: tuple = (256, 256)
+    critic_hidden_layer_size: tuple = (256, 256)
+    policy_hidden_layer_size: tuple = (256, 256)
     fix_alpha: bool = False
 
 
@@ -82,7 +83,9 @@ class SAC:
 
         # define the networks
         self._policy, self._critic = make_sac_networks(
-            action_size=action_size, hidden_layer_sizes=self._config.hidden_layer_sizes
+            action_size=action_size,
+            critic_hidden_layer_size=self._config.critic_hidden_layer_size,
+            policy_hidden_layer_size=self._config.policy_hidden_layer_size,
         )
 
         # define the action distribution
