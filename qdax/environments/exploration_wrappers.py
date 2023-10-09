@@ -1,9 +1,9 @@
 import warnings
 
-import brax
+import brax.v1 as brax
 import jax.numpy as jnp
-from brax import jumpy as jp
-from brax.envs import State, env
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env, State, Wrapper
 from google.protobuf import text_format  # type: ignore
 
 from qdax.environments.locomotion_wrappers import COG_NAMES
@@ -103,7 +103,7 @@ ENV_TRAP_COLLISION = {
 }
 
 
-class TrapWrapper(env.Wrapper):
+class TrapWrapper(Wrapper):
     """Wraps gym environments to add a Trap in the environment.
 
     Utilisation is simple: create an environment with Brax, pass
@@ -143,7 +143,7 @@ class TrapWrapper(env.Wrapper):
 
     """
 
-    def __init__(self, env: env.Env, env_name: str) -> None:
+    def __init__(self, env: Env, env_name: str) -> None:
         if (
             env_name not in ENV_SYSTEM_CONFIG.keys()
             or env_name not in COG_NAMES.keys()
@@ -323,7 +323,7 @@ ENV_MAZE_COLLISION = {
 }
 
 
-class MazeWrapper(env.Wrapper):
+class MazeWrapper(Wrapper):
     """Wraps gym environments to add a maze in the environment
     and a new reward (distance to the goal).
 
@@ -364,7 +364,7 @@ class MazeWrapper(env.Wrapper):
 
     """
 
-    def __init__(self, env: env.Env, env_name: str) -> None:
+    def __init__(self, env: Env, env_name: str) -> None:
         if (
             env_name not in ENV_SYSTEM_CONFIG.keys()
             or env_name not in COG_NAMES.keys()

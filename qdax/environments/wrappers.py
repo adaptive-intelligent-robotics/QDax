@@ -1,9 +1,9 @@
 from typing import Dict
 
-import brax.envs
+from brax.v1.envs import State, Wrapper
 import flax.struct
 import jax
-from brax import jumpy as jp
+from brax.v1 import jumpy as jp
 
 
 class CompletedEvalMetrics(flax.struct.PyTreeNode):
@@ -13,12 +13,12 @@ class CompletedEvalMetrics(flax.struct.PyTreeNode):
     completed_episodes_steps: jp.ndarray
 
 
-class CompletedEvalWrapper(brax.envs.env.Wrapper):
+class CompletedEvalWrapper(Wrapper):
     """Brax env with eval metrics for completed episodes."""
 
     STATE_INFO_KEY = "completed_eval_metrics"
 
-    def reset(self, rng: jp.ndarray) -> brax.envs.env.State:
+    def reset(self, rng: jp.ndarray) -> State:
         reset_state = self.env.reset(rng)
         reset_state.metrics["reward"] = reset_state.reward
         eval_metrics = CompletedEvalMetrics(
@@ -35,8 +35,8 @@ class CompletedEvalWrapper(brax.envs.env.Wrapper):
         return reset_state
 
     def step(
-        self, state: brax.envs.env.State, action: jp.ndarray
-    ) -> brax.envs.env.State:
+        self, state: State, action: jp.ndarray
+    ) -> State:
         state_metrics = state.info[self.STATE_INFO_KEY]
         if not isinstance(state_metrics, CompletedEvalMetrics):
             raise ValueError(f"Incorrect type for state_metrics: {type(state_metrics)}")
