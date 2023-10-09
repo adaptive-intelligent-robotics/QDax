@@ -3,7 +3,8 @@ name: ci
 on:
   push:
     branches: [main, develop]
-  pull_request:
+  pull_request_target:
+    types: [assigned, opened, synchronize, reopened]
 
 env:
   REGISTRY: ghcr.io
@@ -25,6 +26,11 @@ jobs:
   build:
     needs: [setup]
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
