@@ -3,6 +3,8 @@ name: ci
 on:
   push:
     branches: [main, develop]
+  pull_request_target:
+    types: [assigned, opened, synchronize, reopened]
   pull_request:
 
 env:
