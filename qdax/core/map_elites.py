@@ -23,7 +23,7 @@ class MAPElites:
     """Core elements of the MAP-Elites algorithm.
 
     Note: Although very similar to the GeneticAlgorithm, we decided to keep the
-    MAPElites class independant of the GeneticAlgorithm class at the moment to keep
+    MAPElites class independent of the GeneticAlgorithm class at the moment to keep
     elements explicit.
 
     Args:
@@ -64,7 +64,7 @@ class MAPElites:
         Args:
             init_genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            centroids: tessellation centroids of shape (batch_size, num_descriptors)
             random_key: a random key used for stochastic operations.
 
         Returns:
