@@ -26,6 +26,7 @@ try:
     from evosax import Strategies
 except:
     import warnings
+
     warnings.warn("evosax not installed, custom CMA_ME will not work")
 
 from qdax.core.emitters.termination import cma_criterion
@@ -38,7 +39,8 @@ from qdax.core.emitters.evosax_cma_me import (
     EvosaxCMAOptimizingEmitter,
     EvosaxCMARndEmitter,
     EvosaxCMARndEmitterState,
-) 
+)
+
 
 def net_shape(net):
     return jax.tree_map(lambda x: x.shape, net)
@@ -51,14 +53,14 @@ class CMAMEPolicies(EvosaxCMAMEEmitter):
         centroids: Centroid,
         min_count: Optional[int] = None,
         max_count: Optional[float] = None,
-        es_params = None,
+        es_params=None,
         es_type="Sep_CMA_ES",
     ):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
         Rapid Illumination of Behavior Space" by Fontaine et al.
 
-        This implementation relies on the Evosax library for ES and adds a wrapper to optimize 
+        This implementation relies on the Evosax library for ES and adds a wrapper to optimize
         QDax neural networks.
 
         Args:
@@ -119,7 +121,7 @@ class CMAMEPolicies(EvosaxCMAMEEmitter):
                 lambda x: x[0],
                 init_genotypes,
             )
-        
+
         self.reshaper = QDaxReshaper.init(init_genotypes)
 
         self.es = Strategies[self.es_type](
@@ -135,16 +137,14 @@ class CMAMEPolicies(EvosaxCMAMEEmitter):
         # Initialize the ES state
         random_key, init_key = jax.random.split(random_key)
         es_params = self.es.default_params
-        es_state = self.es.initialize(
-            init_key, params=es_params
-        )
+        es_state = self.es.initialize(init_key, params=es_params)
 
         # return the initial state
         random_key, subkey = jax.random.split(random_key)
         return (
             EvosaxCMAEmitterState(
                 random_key=subkey,
-                es_state=es_state, 
+                es_state=es_state,
                 es_params=es_params,
                 previous_fitnesses=default_fitnesses,
                 emit_count=0,
@@ -258,18 +258,17 @@ class CMAMEPolicies(EvosaxCMAMEEmitter):
         new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
 
         es_state = emitter_state.es_state.replace(
-            mean = new_mean,
+            mean=new_mean,
         )
 
-        emitter_state = emitter_state.replace(
-            es_state=es_state, emit_count=0
-        )
+        emitter_state = emitter_state.replace(es_state=es_state, emit_count=0)
 
         return emitter_state, random_key
 
 
 class PolicyCMAPoolEmitter(CMAPoolEmitter):
     """CMA-ME pool emitter for policies"""
+
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
     ) -> Tuple[CMAPoolEmitterState, RNGKey]:
@@ -304,14 +303,20 @@ class PolicyCMAPoolEmitter(CMAPoolEmitter):
 
 
 class PolicyCMAOptimizingEmitter(CMAMEPolicies, EvosaxCMAOptimizingEmitter):
+    """CMA-ME optimizing emitter for policies"""
+
     pass
 
 
 class PolicyCMAImprovementEmitter(CMAMEPolicies, EvosaxCMAImprovementEmitter):
+    """CMA-ME improvement emitter for policies"""
+
     pass
 
 
 class PolicyCMARndEmitter(CMAMEPolicies, EvosaxCMARndEmitter):
+    """CMA-ME RND emitter for policies"""
+
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
     ) -> Tuple[CMAEmitterState, RNGKey]:
@@ -348,9 +353,7 @@ class PolicyCMARndEmitter(CMAMEPolicies, EvosaxCMARndEmitter):
         # Initialize the ES state
         random_key, init_key = jax.random.split(random_key)
         es_params = self.es.default_params
-        es_state = self.es.initialize(
-            init_key, params=es_params
-        )
+        es_state = self.es.initialize(init_key, params=es_params)
 
         # take a random direction
         random_key, subkey = jax.random.split(random_key)
@@ -364,7 +367,7 @@ class PolicyCMARndEmitter(CMAMEPolicies, EvosaxCMARndEmitter):
         return (
             EvosaxCMARndEmitterState(
                 random_key=subkey,
-                es_state=es_state, 
+                es_state=es_state,
                 es_params=es_params,
                 previous_fitnesses=default_fitnesses,
                 emit_count=0,

@@ -25,7 +25,9 @@ try:
     from evosax import EvoState, EvoParams, Strategies
 except:
     import warnings
+
     warnings.warn("evosax not installed, custom CMA_ME will not work")
+
 
 class EvosaxCMAEmitterState(EmitterState):
     """
@@ -48,7 +50,12 @@ class EvosaxCMAEmitterState(EmitterState):
     previous_fitnesses: Fitness
     emit_count: int
 
+
 class EvosaxCMARndEmitterState(EvosaxCMAEmitterState):
+    """
+    Emitter state for the CMA-ME RND emitter.
+    """
+
     random_direction: Descriptor
 
 
@@ -60,7 +67,7 @@ class EvosaxCMAMEEmitter(CMAEmitter):
         centroids: Centroid,
         min_count: Optional[int] = None,
         max_count: Optional[float] = None,
-        es_params = {},
+        es_params={},
         es_type="CMA_ES",
     ):
         """
@@ -107,12 +114,22 @@ class EvosaxCMAMEEmitter(CMAEmitter):
             self.stop_condition = cma_criterion
         else:
             self.stop_condition = lambda f, s, p: False
-        
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
     ) -> Tuple[CMAEmitterState, RNGKey]:
+        """
+        Initializes the CMA-ME emitter
+
+        Args:
+            init_genotypes: initial genotypes to add to the grid.
+            random_key: a random key to handle stochastic operations.
+
+        Returns:
+            The initial state of the emitter.
+        """
+
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
@@ -120,16 +137,14 @@ class EvosaxCMAMEEmitter(CMAEmitter):
         # Initialize the ES state
         random_key, init_key = jax.random.split(random_key)
         es_params = self.es.default_params
-        es_state = self.es.initialize(
-            init_key, params=es_params
-        )
+        es_state = self.es.initialize(init_key, params=es_params)
 
         # return the initial state
         random_key, subkey = jax.random.split(random_key)
         return (
             EvosaxCMAEmitterState(
                 random_key=subkey,
-                es_state=es_state, 
+                es_state=es_state,
                 es_params=es_params,
                 previous_fitnesses=default_fitnesses,
                 emit_count=0,
@@ -165,7 +180,7 @@ class EvosaxCMAMEEmitter(CMAEmitter):
         offsprings, es_state = self.es.ask(subkey, es_state, es_params)
 
         return offsprings, random_key
-    
+
     @partial(
         jax.jit,
         static_argnames=("self",),
@@ -230,40 +245,32 @@ class EvosaxCMAMEEmitter(CMAEmitter):
         reinitialize = (
             jnp.all(improvements < 0) * (emit_count > self._min_count)
             + (emit_count > self._max_count)
-            + self.stop_condition(
-                None,
-                emitter_state.es_state,
-                emitter_state.es_params
-            )
+            + self.stop_condition(None, emitter_state.es_state, emitter_state.es_params)
             + flat_criteria_condition
         )
 
         # If true, draw randomly and re-initialize parameters
         def update_and_reinit(
-            operand: Tuple[
-                CMAEmitterState, MapElitesRepertoire, int, RNGKey
-            ],
+            operand: Tuple[CMAEmitterState, MapElitesRepertoire, int, RNGKey],
         ) -> Tuple[CMAEmitterState, RNGKey]:
             return self._update_and_init_emitter_state(*operand)
 
         def update_wo_reinit(
-            operand: Tuple[
-                CMAEmitterState, MapElitesRepertoire, int, RNGKey
-            ],
+            operand: Tuple[CMAEmitterState, MapElitesRepertoire, int, RNGKey],
         ) -> Tuple[CMAEmitterState, RNGKey]:
             """Update the emitter when no reinit event happened.
-            The QDax implementation with custom CMA-ES bypasses the masked update 
-            of the CMAES, so we remove it too too. 
+            The QDax implementation with custom CMA-ES bypasses the masked update
+            of the CMAES, so we remove it too too.
             """
 
             (emitter_state, repertoire, emit_count, random_key) = operand
 
             es_state = emitter_state.es_state
             # Update CMA Parameters
-            
+
             # Flip the sign of the improvements
             flipped_sorted_improvements = -sorted_improvements
-            
+
             es_state = self.es.tell(
                 sorted_candidates,
                 flipped_sorted_improvements,
@@ -326,25 +333,29 @@ class EvosaxCMAMEEmitter(CMAEmitter):
         new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
 
         es_state = emitter_state.es_state.replace(
-            mean = new_mean,
+            mean=new_mean,
         )
 
-        emitter_state = emitter_state.replace(
-            es_state=es_state, emit_count=0
-        )
+        emitter_state = emitter_state.replace(es_state=es_state, emit_count=0)
 
         return emitter_state, random_key
-    
+
 
 class EvosaxCMAOptimizingEmitter(EvosaxCMAMEEmitter, CMAOptimizingEmitter):
+    """CMA-ME Optimizing Emitter using Evosax"""
+
     pass
 
 
 class EvosaxCMAImprovementEmitter(EvosaxCMAMEEmitter, CMAImprovementEmitter):
+    """CMA-ME Improvement Emitter using Evosax"""
+
     pass
 
 
 class EvosaxCMARndEmitter(EvosaxCMAMEEmitter, CMARndEmitter):
+    """CMA-ME RND Emitter using Evosax"""
+
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey
@@ -359,16 +370,14 @@ class EvosaxCMARndEmitter(EvosaxCMAMEEmitter, CMARndEmitter):
         Returns:
             The initial state of the emitter.
         """
-    # Initialize repertoire with default values
+        # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
 
         # Initialize the ES state
         random_key, init_key = jax.random.split(random_key)
         es_params = self.es.default_params
-        es_state = self.es.initialize(
-            init_key, params=es_params
-        )
+        es_state = self.es.initialize(init_key, params=es_params)
 
         # take a random direction
         random_key, direction_key = jax.random.split(random_key)
@@ -382,7 +391,7 @@ class EvosaxCMARndEmitter(EvosaxCMAMEEmitter, CMARndEmitter):
         return (
             EvosaxCMARndEmitterState(
                 random_key=subkey,
-                es_state=es_state, 
+                es_state=es_state,
                 es_params=es_params,
                 previous_fitnesses=default_fitnesses,
                 emit_count=0,
