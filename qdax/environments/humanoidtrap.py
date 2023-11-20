@@ -3,10 +3,10 @@ Highly inspired from brax humanoid."""
 
 from typing import Any, Dict
 
-import brax
-from brax import jumpy as jp
-from brax.envs import env
-from brax.physics import bodies
+import brax.v1 as brax
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env, State
+from brax.v1.physics import bodies
 
 TRAP_CONFIG = """bodies {
     name: "Trap"
@@ -58,7 +58,7 @@ collide_include {
 """
 
 
-class HumanoidTrap(env.Env):
+class HumanoidTrap(Env):
     """Trains a humanoid to run in the +x direction.
 
     RMQ: uses legacy spring from Brax.
@@ -76,7 +76,7 @@ class HumanoidTrap(env.Env):
         self.inertia = body.inertia
         self.inertia_matrix = jp.array([jp.diag(a) for a in self.inertia])
 
-    def reset(self, rng: jp.ndarray) -> env.State:
+    def reset(self, rng: jp.ndarray) -> State:
         """Resets the environment to an initial state."""
         rng, rng1, rng2 = jp.random_split(rng, 3)
         qpos = self.sys.default_angle() + jp.random_uniform(
@@ -93,9 +93,9 @@ class HumanoidTrap(env.Env):
             "reward_alive": zero,
             "reward_impact": zero,
         }
-        return env.State(qp, obs, reward, done, metrics)
+        return State(qp, obs, reward, done, metrics)
 
-    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+    def step(self, state: State, action: jp.ndarray) -> State:
         """Run one timestep of the environment's dynamics."""
         qp, info = self.sys.step(state.qp, action)
         obs = self._get_obs(qp, info, action)

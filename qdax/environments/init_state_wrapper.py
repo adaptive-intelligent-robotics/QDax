@@ -1,8 +1,8 @@
 from typing import Callable, Optional
 
-import brax
-from brax import jumpy as jp
-from brax.envs import Env, State, Wrapper
+import brax.v1 as brax
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env, State, Wrapper
 
 
 class FixedInitialStateWrapper(Wrapper):
@@ -51,7 +51,7 @@ class FixedInitialStateWrapper(Wrapper):
         # Run the default reset method of parent environment
         state = self.env.reset(rng)
 
-        # Compute new initial positions and velicities
+        # Compute new initial positions and velocities
         qpos = self.sys.default_angle()
         qvel = jp.zeros((self.sys.num_joint_dof,))
 

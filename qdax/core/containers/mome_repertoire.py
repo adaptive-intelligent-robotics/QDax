@@ -377,7 +377,7 @@ class MOMERepertoire(MapElitesRepertoire):
                 (batch_size, num_criteria)
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            centroids: tessellation centroids of shape (batch_size, num_descriptors)
             pareto_front_max_length: maximum size of the pareto fronts
             extra_scores: unused extra_scores of the initial genotypes
 
