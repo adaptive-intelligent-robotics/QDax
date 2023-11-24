@@ -343,7 +343,7 @@ class PolicyCMARndEmitter(CMAMEPolicies, EvosaxCMARndEmitter):
         self.es = Strategies[self.es_type](
             num_dims=self.reshaper.genotype_dim,
             popsize=self.batch_size,
-            sigma_init=self._sigma_g,
+            **self.es_params,
         )
 
         # Initialize repertoire with default values
