@@ -40,7 +40,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-11.0/targets/x86_64-linux/l
 
 ENV TZ=Europe/Paris
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN pip --no-cache-dir install jaxlib==0.4.16+cuda11.cudnn86 \
+RUN pip --no-cache-dir install jaxlib==0.3.15+cuda11.cudnn82 \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html \
     && rm -rf /tmp/*
 
