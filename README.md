@@ -2,7 +2,6 @@
 <img src="docs/img/qdax_logo.png" alt="qdax_logo" width="140"></img>
 </div>
 
-
 # QDax: Accelerated Quality-Diversity
 
 [![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
