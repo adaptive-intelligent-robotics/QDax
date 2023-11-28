@@ -1,12 +1,12 @@
 from typing import Dict, List, Union
 
-import brax.envs
+import brax
 import jax
 import jax.numpy as jnp
 import pytest
-from brax import jumpy as jp
 from brax.physics.base import vec_to_arr
 from brax.physics.config_pb2 import Joint
+from brax.v1 import jumpy as jp
 
 from qdax import environments
 
