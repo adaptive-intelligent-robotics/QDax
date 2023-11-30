@@ -26,7 +26,7 @@ def test_jumanji_utils() -> None:
     batch_size = population_size
 
     # Instantiate a Jumanji environment using the registry
-    env = jumanji.make("Snake-6x6-v0")
+    env = jumanji.make("Snake-v1")
 
     # Reset your (jit-able) environment
     key = jax.random.PRNGKey(0)
