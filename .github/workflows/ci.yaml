@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v3
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          ref: "${{ github.event.pull_request.merge_commit_sha }}"
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Docker Buildx
         id: buildx
@@ -113,7 +113,7 @@ jobs:
         uses: actions/checkout@v3
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          ref: "${{ github.event.pull_request.merge_commit_sha }}"
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run pre-commits
         run: |
@@ -138,7 +138,7 @@ jobs:
         uses: actions/checkout@v3
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          ref: "refs/pull/${{ github.event.number }}/merge"
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run pytests
         run: |
