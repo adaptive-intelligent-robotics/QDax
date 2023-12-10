@@ -5,6 +5,7 @@ import functools
 import jax
 import jax.numpy as jnp
 import jumanji
+import jumanji.environments.routing.snake
 import numpy as np
 import pytest
 
@@ -49,8 +50,10 @@ def test_jumanji_utils() -> None:
         final_activation=jax.nn.softmax,
     )
 
-    def observation_processing(observation: jumanji.types.Observation) -> Observation:
-        network_input = jnp.ravel(observation)
+    def observation_processing(
+        observation: jumanji.environments.routing.snake.types.Observation,
+    ) -> Observation:
+        network_input = jnp.ravel(observation.grid)
         return network_input
 
     play_step_fn = make_policy_network_play_step_fn_jumanji(
@@ -64,7 +67,7 @@ def test_jumanji_utils() -> None:
     keys = jax.random.split(subkey, num=batch_size)
 
     # compute observation size from observation spec
-    observation_size = np.prod(np.array(env.observation_spec().shape))
+    observation_size = np.prod(np.array(env.observation_spec().grid.shape))
 
     fake_batch = jnp.zeros(shape=(batch_size, observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
@@ -136,4 +139,5 @@ def test_jumanji_utils() -> None:
 
 
 if __name__ == "__main__":
+    pytest.assume
     test_jumanji_utils()
