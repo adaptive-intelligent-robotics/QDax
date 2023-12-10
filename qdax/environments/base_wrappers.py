@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from typing import Any, List, Tuple
 
-from brax import jumpy as jp
-from brax.envs.env import Env, State
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env, State
 
 
 class QDEnv(Env):

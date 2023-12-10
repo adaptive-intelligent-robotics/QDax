@@ -144,6 +144,7 @@ nav:
         - AURORA: api_documentation/core/aurora.md
         - PGA AURORA: api_documentation/core/pga_aurora.md
         - ME PBT: api_documentation/core/me_pbt.md
+        - ME LS: api_documentation/core/mels.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
