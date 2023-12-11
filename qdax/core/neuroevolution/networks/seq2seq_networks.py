@@ -36,7 +36,8 @@ class EncoderLSTM(nn.Module):
     ) -> Tuple[Tuple[Array, Array], Array]:
         """Applies the module."""
         lstm_state, is_eos = carry
-        new_lstm_state, y = nn.LSTMCell()(lstm_state, x)
+        features = lstm_state[0].shape[-1]
+        new_lstm_state, y = nn.LSTMCell(features)(lstm_state, x)
 
         def select_carried_state(new_state: Array, old_state: Array) -> Array:
             return jnp.where(is_eos[:, np.newaxis], old_state, new_state)
@@ -51,8 +52,8 @@ class EncoderLSTM(nn.Module):
     @staticmethod
     def initialize_carry(batch_size: int, hidden_size: int) -> Tuple[Array, Array]:
         # Use a dummy key since the default state init fn is just zeros.
-        return nn.LSTMCell.initialize_carry(  # type: ignore
-            jax.random.PRNGKey(0), (batch_size,), hidden_size
+        return nn.LSTMCell(hidden_size, parent=None).initialize_carry(  # type: ignore
+            jax.random.PRNGKey(0), (batch_size, hidden_size)
         )
 
 
@@ -101,7 +102,10 @@ class DecoderLSTM(nn.Module):
         lstm_state, last_prediction = carry
         if not self.teacher_force:
             x = last_prediction
-        lstm_state, y = nn.LSTMCell()(lstm_state, x)
+
+        features = lstm_state[0].shape[-1]
+        new_lstm_state, y = nn.LSTMCell(features)(lstm_state, x)
+
         logits = nn.Dense(features=self.obs_size)(y)
 
         return (lstm_state, logits), (logits, logits)
