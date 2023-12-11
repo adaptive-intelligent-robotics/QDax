@@ -42,10 +42,27 @@ def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descri
 
 
 class AuroraExtraInfo(flax.struct.PyTreeNode):
+    """
+    Information specific to the AURORA algorithm.
+
+    Args:
+        model_params: the parameters of the dimensionality reduction model
+    """
+
     model_params: Params
 
 
 class AuroraExtraInfoNormalization(AuroraExtraInfo):
+    """
+    Information specific to the AURORA algorithm. In particular, it contains
+    the normalization parameters for the observations.
+
+    Args:
+        model_params: the parameters of the dimensionality reduction model
+        mean_observations: the mean of observations
+        std_observations: the std of observations
+    """
+
     mean_observations: jnp.ndarray
     std_observations: jnp.ndarray
 

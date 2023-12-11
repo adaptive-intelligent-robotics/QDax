@@ -199,7 +199,7 @@ class AURORA:
             repertoire: unstructured repertoire
             emitter_state: state of the emitter
             random_key: a jax PRNG random key
-            aurora_extra_info: extra info for the encoding # TODO
+            aurora_extra_info: extra info for computing encodings
 
         Results:
             the updated MAP-Elites repertoire
