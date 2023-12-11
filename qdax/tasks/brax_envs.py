@@ -9,7 +9,7 @@ import jax.numpy as jnp
 
 import qdax.environments
 from qdax import environments
-from qdax.core.neuroevolution.buffers.buffer import QDTransition
+from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.core.neuroevolution.mdp_utils import generate_unroll
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.types import (
@@ -18,6 +18,7 @@ from qdax.types import (
     ExtraScores,
     Fitness,
     Genotype,
+    Observation,
     Params,
     RNGKey,
 )
@@ -82,6 +83,15 @@ def make_policy_network_play_step_fn_brax(
     return default_play_step_fn
 
 
+def get_mask_from_transitions(
+    data: Transition,
+) -> jnp.ndarray:
+    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
+    mask = jnp.roll(is_done, 1, axis=1)
+    mask = mask.at[:, 0].set(0)
+    return mask
+
+
 @partial(
     jax.jit,
     static_argnames=(
@@ -134,9 +144,7 @@ def scoring_function_brax_envs(
     _final_state, data = jax.vmap(unroll_fn)(init_states, policies_params)
 
     # create a mask to extract data properly
-    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
-    mask = jnp.roll(is_done, 1, axis=1)
-    mask = mask.at[:, 0].set(0)
+    mask = get_mask_from_transitions(data)
 
     # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
@@ -267,10 +275,10 @@ def create_brax_scoring_fn(
         init_state = env.reset(subkey)
 
         # Define the function to deterministically reset the environment
-        def deterministic_reset(key: RNGKey, init_state: EnvState) -> EnvState:
-            return init_state
+        def deterministic_reset(_: RNGKey, _init_state: EnvState) -> EnvState:
+            return _init_state
 
-        play_reset_fn = partial(deterministic_reset, init_state=init_state)
+        play_reset_fn = partial(deterministic_reset, _init_state=init_state)
 
     # Stochastic case
     elif play_reset_fn is None:
@@ -340,3 +348,36 @@ def create_default_brax_task_components(
     )
 
     return env, policy_network, scoring_fn, random_key
+
+
+def get_aurora_scoring_fn(
+    scoring_fn: Callable[
+        [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
+    ],
+    observation_extractor_fn: Callable[[Transition], Observation],
+) -> Callable[
+    [Genotype, RNGKey], Tuple[Fitness, Optional[Descriptor], ExtraScores, RNGKey]
+]:
+    """Evaluates policies contained in flatten_variables in parallel
+
+    This rollout is only deterministic when all the init states are the same.
+    If the init states are fixed but different, as a policy is not necessarly
+    evaluated with the same environment everytime, this won't be determinist.
+
+    When the init states are different, this is not purely stochastic. This
+    choice was made for performance reason, as the reset function of brax envs
+    is quite time-consuming. If pure stochasticity of the environment is needed
+    for a use case, please open an issue.
+    """
+
+    @functools.wraps(scoring_fn)
+    def _wrapper(
+        params: Params, random_key: RNGKey  # Perform rollouts with each policy
+    ) -> Tuple[Fitness, Optional[Descriptor], ExtraScores, RNGKey]:
+        fitnesses, _, extra_scores, random_key = scoring_fn(params, random_key)
+        data = extra_scores["transitions"]
+        observation = observation_extractor_fn(data)  # type: ignore
+        extra_scores["last_valid_observations"] = observation
+        return fitnesses, None, extra_scores, random_key
+
+    return _wrapper

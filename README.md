@@ -2,6 +2,7 @@
 <img src="docs/img/qdax_logo.png" alt="qdax_logo" width="140"></img>
 </div>
 
+
 # QDax: Accelerated Quality-Diversity
 
 [![Documentation Status](https://readthedocs.org/projects/qdax/badge/?version=latest)](https://qdax.readthedocs.io/en/latest/?badge=latest)
@@ -122,6 +123,7 @@ repertoire.genotypes, repertoire.fitnesses, repertoire.descriptors
 ## QDax core algorithms
 QDax currently supports the following algorithms:
 
+
 | Algorithm                                                                                                                     | Example                                                                                                                                                                                         |
 |-------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [MAP-Elites](https://arxiv.org/abs/1504.04909)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)  |
@@ -135,7 +137,6 @@ QDax currently supports the following algorithms:
 | [MAP-Elites Evolution Strategies (MEES)](https://dl.acm.org/doi/pdf/10.1145/3377930.3390217)                                  | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mees.ipynb)       |
 | [MAP-Elites PBT (ME-PBT)](https://openreview.net/forum?id=CBfYffLqWqb)                                                        | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/me_sac_pbt.ipynb) |
 | [MAP-Elites Low-Spread (ME-LS)](https://dl.acm.org/doi/abs/10.1145/3583131.3590433)                                           | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/me_ls.ipynb)      |
-
 
 
 ## QDax baseline algorithms
@@ -165,11 +166,13 @@ Issues and contributions are welcome. Please refer to the [contribution guide](h
 ## Citing QDax
 If you use QDax in your research and want to cite it in your work, please use:
 ```
-@article{lim2022accelerated,
-  title={Accelerated Quality-Diversity for Robotics through Massive Parallelism},
-  author={Lim, Bryan and Allard, Maxime and Grillotti, Luca and Cully, Antoine},
-  journal={arXiv preprint arXiv:2202.01258},
-  year={2022}
+@misc{chalumeau2023qdax,
+    title={QDax: A Library for Quality-Diversity and Population-based Algorithms with Hardware Acceleration},
+    author={Felix Chalumeau and Bryan Lim and Raphael Boige and Maxime Allard and Luca Grillotti and Manon Flageat and Valentin Macé and Arthur Flajolet and Thomas Pierrot and Antoine Cully},
+    year={2023},
+    eprint={2308.03665},
+    archivePrefix={arXiv},
+    primaryClass={cs.AI}
 }
 ```
 

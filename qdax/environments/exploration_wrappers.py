@@ -85,11 +85,16 @@ collide_include {
 }
 """
 
+try:
+    HALFCHEETAH_SYSTEM_CONFIG = brax.envs.halfcheetah._SYSTEM_CONFIG
+except AttributeError:
+    HALFCHEETAH_SYSTEM_CONFIG = brax.envs.half_cheetah._SYSTEM_CONFIG
+
 # storing the classic env configurations
 # those are the configs from the official brax repo
 ENV_SYSTEM_CONFIG = {
     "ant": brax.envs.ant._SYSTEM_CONFIG,
-    "halfcheetah": brax.envs.half_cheetah._SYSTEM_CONFIG,
+    "halfcheetah": HALFCHEETAH_SYSTEM_CONFIG,
     "walker2d": brax.envs.walker2d._SYSTEM_CONFIG,
     "hopper": brax.envs.hopper._SYSTEM_CONFIG,
     # "humanoid": brax.envs.humanoid._SYSTEM_CONFIG,

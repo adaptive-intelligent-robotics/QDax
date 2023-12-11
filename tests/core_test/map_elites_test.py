@@ -1,17 +1,14 @@
 """Tests MAP Elites implementation"""
 
 import functools
-from typing import Dict, Tuple
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 import pytest
 
 from qdax import environments
-from qdax.core.containers.mapelites_repertoire import (
-    MapElitesRepertoire,
-    compute_cvt_centroids,
-)
+from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
@@ -19,6 +16,19 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.types import EnvState, Params, RNGKey
+from qdax.utils.metrics import default_qd_metrics
+
+
+def get_mixing_emitter(batch_size: int) -> MixingEmitter:
+    """Create a mixing emitter with a given batch size."""
+    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
+    mixing_emitter = MixingEmitter(
+        mutation_fn=lambda x, y: (x, y),
+        variation_fn=variation_fn,
+        variation_percentage=1.0,
+        batch_size=batch_size,
+    )
+    return mixing_emitter
 
 
 @pytest.mark.parametrize(
@@ -102,29 +112,13 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     )
 
     # Define emitter
-    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
-    mixing_emitter = MixingEmitter(
-        mutation_fn=lambda x, y: (x, y),
-        variation_fn=variation_fn,
-        variation_percentage=1.0,
-        batch_size=batch_size,
-    )
+    mixing_emitter = get_mixing_emitter(batch_size)
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
 
     # Define a metrics function
-    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict:
-
-        # Get metrics
-        grid_empty = repertoire.fitnesses == -jnp.inf
-        qd_score = jnp.sum(repertoire.fitnesses, where=~grid_empty)
-        # Add offset for positive qd_score
-        qd_score += reward_offset * episode_length * jnp.sum(1.0 - grid_empty)
-        coverage = 100 * jnp.mean(1.0 - grid_empty)
-        max_fitness = jnp.max(repertoire.fitnesses)
-
-        return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
+    metrics_fn = functools.partial(default_qd_metrics, qd_offset=reward_offset)
 
     # Instantiate MAP-Elites
     map_elites = MAPElites(
