@@ -27,6 +27,7 @@ setup(
         "jinja2<3.1.0",
         "jumanji>=0.3.1",
         "flax>=0.7.4",
+        "chex>=0.1.83",
         "brax>=0.9.2",
         "gym>=0.23.1",
         "numpy>=1.22.3",
@@ -45,7 +46,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
 )
