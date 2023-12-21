@@ -228,6 +228,34 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         return samples, random_key
 
+    @partial(jax.jit, static_argnames=("num_samples",))
+    def sample_with_descs(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
+        """Sample elements in the repertoire.
+
+        Args:
+            random_key: a jax PRNG random key
+            num_samples: the number of elements to be sampled
+
+        Returns:
+            samples: a batch of genotypes sampled in the repertoire
+            random_key: an updated jax PRNG random key
+        """
+
+        repertoire_empty = self.fitnesses == -jnp.inf
+        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
+
+        random_key, subkey = jax.random.split(random_key)
+        samples = jax.tree_util.tree_map(
+            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+            self.genotypes,
+        )
+        descs = jax.tree_util.tree_map(
+            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+            self.descriptors,
+        )
+
+        return samples, descs, random_key
+
     @jax.jit
     def add(
         self,

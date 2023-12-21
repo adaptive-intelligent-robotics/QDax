@@ -10,7 +10,7 @@ import jax
 import optax
 
 from qdax.core.containers.archive import Archive
-from qdax.core.containers.repertoire import Repertoire
+from qdax.core.containers.repertoire import MapElitesRepertoire
 from qdax.core.emitters.qpg_emitter import (
     QualityPGConfig,
     QualityPGEmitter,
@@ -77,12 +77,18 @@ class DiversityPGEmitter(QualityPGEmitter):
         self._score_novelty = score_novelty
 
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[DiversityPGEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
-            init_genotypes: The initial population.
+            genotypes: The initial population.
             random_key: A random key.
 
         Returns:
@@ -90,7 +96,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         """
 
         # init elements of diversity emitter state with QualityEmitterState.init()
-        diversity_emitter_state, random_key = super().init(init_genotypes, random_key)
+        diversity_emitter_state, random_key = super().init(genotypes, random_key)
 
         # store elements in a dictionary
         attributes_dict = vars(diversity_emitter_state)
@@ -116,7 +122,7 @@ class DiversityPGEmitter(QualityPGEmitter):
     def state_update(
         self,
         emitter_state: DiversityPGEmitterState,
-        repertoire: Optional[Repertoire],
+        repertoire: Optional[MapElitesRepertoire],
         genotypes: Optional[Genotype],
         fitnesses: Optional[Fitness],
         descriptors: Optional[Descriptor],

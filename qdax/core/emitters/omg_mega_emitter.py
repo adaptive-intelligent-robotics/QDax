@@ -84,20 +84,26 @@ class OMGMEGAEmitter(Emitter):
         self._num_descriptors = num_descriptors
 
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[OMGMEGAEmitterState, RNGKey]:
         """Initialises the state of the emitter. Creates an empty repertoire
         that will later contain the gradients of the individuals.
 
         Args:
-            init_genotypes: The genotypes of the initial population.
+            genotypes: The genotypes of the initial population.
             random_key: a random key to handle stochastic operations.
 
         Returns:
             The initial emitter state.
         """
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], init_genotypes)
+        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
 
         # add a dimension of size num descriptors + 1
         gradient_genotype = jax.tree_util.tree_map(
@@ -190,7 +196,7 @@ class OMGMEGAEmitter(Emitter):
             lambda x, y: x + y, genotypes, update_grad
         )
 
-        return new_genotypes, random_key
+        return new_genotypes, {}, random_key
 
     @partial(
         jax.jit,
