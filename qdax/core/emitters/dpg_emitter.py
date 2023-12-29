@@ -10,7 +10,7 @@ import jax
 import optax
 
 from qdax.core.containers.archive import Archive
-from qdax.core.containers.repertoire import MapElitesRepertoire
+from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.qpg_emitter import (
     QualityPGConfig,
     QualityPGEmitter,
@@ -79,7 +79,7 @@ class DiversityPGEmitter(QualityPGEmitter):
     def init(
         self,
         random_key: RNGKey,
-        repertoire: MapElitesRepertoire,
+        repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -96,7 +96,13 @@ class DiversityPGEmitter(QualityPGEmitter):
         """
 
         # init elements of diversity emitter state with QualityEmitterState.init()
-        diversity_emitter_state, random_key = super().init(genotypes, random_key)
+        diversity_emitter_state, random_key = super().init(
+            random_key,
+            repertoire,
+            genotypes,
+            fitnesses,
+            descriptors,
+            extra_scores,)
 
         # store elements in a dictionary
         attributes_dict = vars(diversity_emitter_state)
@@ -107,6 +113,12 @@ class DiversityPGEmitter(QualityPGEmitter):
             state_descriptor_size=self._env.state_descriptor_length,
             max_size=self._config.archive_max_size,
         )
+
+        # get the transitions out of the dictionary
+        assert "transitions" in extra_scores.keys(), "Missing transitions or wrong key"
+        transitions = extra_scores["transitions"]
+
+        archive = archive.insert(transitions.state_desc)
 
         # init emitter state
         emitter_state = DiversityPGEmitterState(
@@ -122,7 +134,7 @@ class DiversityPGEmitter(QualityPGEmitter):
     def state_update(
         self,
         emitter_state: DiversityPGEmitterState,
-        repertoire: Optional[MapElitesRepertoire],
+        repertoire: Optional[Repertoire],
         genotypes: Optional[Genotype],
         fitnesses: Optional[Fitness],
         descriptors: Optional[Descriptor],
