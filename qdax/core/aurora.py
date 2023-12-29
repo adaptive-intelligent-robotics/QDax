@@ -118,7 +118,7 @@ class AURORA:
 
     def init(
         self,
-        init_genotypes: Genotype,
+        genotypes: Genotype,
         aurora_extra_info: AuroraExtraInfo,
         l_value: jnp.ndarray,
         max_size: int,
@@ -128,7 +128,7 @@ class AURORA:
         genotypes. Also performs the first training of the AURORA encoder.
 
         Args:
-            init_genotypes: initial genotypes, pytree in which leaves
+            genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
             aurora_extra_info: information to perform AURORA encodings,
                 such as the encoder parameters
@@ -141,7 +141,7 @@ class AURORA:
             the emitter, and the updated information to perform AURORA encodings
         """
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
-            init_genotypes,
+            genotypes,
             random_key,
         )
 
@@ -150,7 +150,7 @@ class AURORA:
         descriptors = self._encoder_fn(observations, aurora_extra_info)
 
         repertoire = UnstructuredRepertoire.init(
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             observations=observations,
@@ -160,13 +160,13 @@ class AURORA:
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            init_genotypes=init_genotypes, random_key=random_key
+            genotypes=genotypes, random_key=random_key
         )
 
         # update emitter state
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             extra_scores=extra_scores,
