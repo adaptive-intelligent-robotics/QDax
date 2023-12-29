@@ -160,12 +160,8 @@ class AURORA:
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            genotypes=genotypes, random_key=random_key
-        )
-
-        # update emitter state
-        emitter_state = self._emitter.state_update(
-            emitter_state=emitter_state,
+            random_key=random_key,
+            repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
@@ -208,9 +204,10 @@ class AURORA:
             a new key
         """
         # generate offsprings with the emitter
-        genotypes, random_key = self._emitter.emit(
+        genotypes, extra_info, random_key = self._emitter.emit(
             repertoire, emitter_state, random_key
         )
+
         # scores the offsprings
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             genotypes,
@@ -232,10 +229,11 @@ class AURORA:
         # update emitter state after scoring is made
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
+            repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            extra_scores=extra_scores,
+            extra_scores=extra_scores | extra_info,
         )
 
         # update the metrics

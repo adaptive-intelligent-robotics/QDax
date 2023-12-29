@@ -175,7 +175,8 @@ def scoring_actor_dc_function_brax_envs(
     init_states: EnvState,
     episode_length: int,
     play_step_actor_dc_fn: Callable[
-        [EnvState, Descriptor, Params, RNGKey], Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition]
+        [EnvState, Descriptor, Params, RNGKey],
+        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition]
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
@@ -188,8 +189,10 @@ def scoring_actor_dc_function_brax_envs(
     When the init states are different, this is not purely stochastic.
 
     Args:
-        policy_dc_params: The parameters of closed-loop descriptor-conditioned policy to evaluate.
-        descriptors: The descriptors the descriptor-conditioned policy attempts to achieve.
+        policy_dc_params: The parameters of closed-loop
+            descriptor-conditioned policy to evaluate.
+        descriptors: The descriptors the
+            descriptor-conditioned policy attempts to achieve.
         random_key: A jax random key
         episode_length: The maximal rollout length.
         play_step_fn: The function to play a step of the environment.
@@ -313,7 +316,8 @@ def reset_based_scoring_actor_dc_function_brax_envs(
     episode_length: int,
     play_reset_fn: Callable[[RNGKey], EnvState],
     play_step_actor_dc_fn: Callable[
-        [EnvState, Descriptor, Params, RNGKey], Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition]
+        [EnvState, Descriptor, Params, RNGKey],
+        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition]
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
@@ -330,11 +334,14 @@ def reset_based_scoring_actor_dc_function_brax_envs(
     "play_reset_fn = lambda random_key: init_state".
 
     Args:
-        policy_dc_params: The parameters of closed-loop descriptor-conditioned policy to evaluate.
-        descriptors: The descriptors the descriptor-conditioned policy attempts to achieve.
+        policy_dc_params: The parameters of closed-loop
+            descriptor-conditioned policy to evaluate.
+        descriptors: The descriptors the
+            descriptor-conditioned policy attempts to achieve.
         random_key: A jax random key
         episode_length: The maximal rollout length.
-        play_reset_fn: The function to reset the environment and obtain initial states.
+        play_reset_fn: The function to reset the environment
+            and obtain initial states.
         play_step_fn: The function to play a step of the environment.
         behavior_descriptor_extractor: The function to extract the behavior descriptor.
 
@@ -346,11 +353,17 @@ def reset_based_scoring_actor_dc_function_brax_envs(
     """
 
     random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey, jax.tree_util.tree_leaves(actors_dc_params)[0].shape[0])
+    keys = jax.random.split(subkey,
+                            jax.tree_util.tree_leaves(actors_dc_params)[0].shape[0])
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)
 
-    fitnesses, descriptors, extra_scores, random_key = scoring_actor_dc_function_brax_envs(
+    (
+        fitnesses,
+        descriptors,
+        extra_scores,
+        random_key,
+    ) = scoring_actor_dc_function_brax_envs(
         actors_dc_params=actors_dc_params,
         descs=descs,
         random_key=random_key,

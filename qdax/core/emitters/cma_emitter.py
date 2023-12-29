@@ -141,7 +141,7 @@ class CMAEmitter(Emitter, ABC):
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         Emits new individuals. Interestingly, this method does not directly modifies
         individuals from the repertoire but sample from a distribution. Hence the

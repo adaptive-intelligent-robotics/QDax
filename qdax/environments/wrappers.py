@@ -3,7 +3,7 @@ from typing import Dict
 import flax.struct
 import jax
 from brax.v1 import jumpy as jp
-from brax.v1.envs import State, Wrapper, Env
+from brax.v1.envs import Env, State, Wrapper
 
 
 class CompletedEvalMetrics(flax.struct.PyTreeNode):
@@ -70,6 +70,7 @@ class CompletedEvalWrapper(Wrapper):
         nstate.info[self.STATE_INFO_KEY] = eval_metrics
         return nstate
 
+
 class ClipRewardWrapper(Wrapper):
     """Wraps gym environments to clip the reward to be greater than 0.
 
@@ -78,18 +79,26 @@ class ClipRewardWrapper(Wrapper):
     work like before and will simply clip the reward to be greater than 0.
     """
 
-    def __init__(self, env: Env, clip_min=None, clip_max=None) -> None:
+    def __init__(
+            self,
+            env: Env,
+            clip_min: float = None,
+            clip_max: float = None
+    ) -> None:
         super().__init__(env)
         self._clip_min = clip_min
         self._clip_max = clip_max
 
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
-        return state.replace(reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+        return state.replace(
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
 
     def step(self, state: State, action: jp.ndarray) -> State:
         state = self.env.step(state, action)
-        return state.replace(reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+        return state.replace(
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+
 
 class AffineRewardWrapper(Wrapper):
     """Wraps gym environments to clip the reward.
@@ -99,18 +108,25 @@ class AffineRewardWrapper(Wrapper):
     work like before and will simply clip the reward to be greater than 0.
     """
 
-    def __init__(self, env: Env, clip_min=None, clip_max=None) -> None:
+    def __init__(
+            self, env: Env,
+            clip_min: float = None,
+            clip_max: float = None
+    ) -> None:
         super().__init__(env)
         self._clip_min = clip_min
         self._clip_max = clip_max
 
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
-        return state.replace(reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+        return state.replace(
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
 
     def step(self, state: State, action: jp.ndarray) -> State:
         state = self.env.step(state, action)
-        return state.replace(reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+        return state.replace(
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+
 
 class OffsetRewardWrapper(Wrapper):
     """Wraps gym environments to offset the reward to be greater than 0.
@@ -120,7 +136,7 @@ class OffsetRewardWrapper(Wrapper):
     work like before and will simply clip the reward to be greater than 0.
     """
 
-    def __init__(self, env: Env, offset=0.) -> None:
+    def __init__(self, env: Env, offset: float = 0.) -> None:
         super().__init__(env)
         self._offset = offset
 

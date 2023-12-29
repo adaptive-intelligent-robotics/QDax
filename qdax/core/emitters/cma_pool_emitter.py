@@ -97,7 +97,7 @@ class CMAPoolEmitter(Emitter):
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAPoolEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         Emits new individuals.
 

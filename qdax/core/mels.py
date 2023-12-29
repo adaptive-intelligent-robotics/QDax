@@ -89,7 +89,12 @@ class MELS(MAPElites):
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            genotypes=genotypes, random_key=random_key
+            random_key=random_key,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
         )
 
         # update emitter state

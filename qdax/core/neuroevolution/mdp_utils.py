@@ -9,7 +9,7 @@ from brax.envs import State as EnvState
 from flax.struct import PyTreeNode
 
 from qdax.core.neuroevolution.buffers.buffer import Transition
-from qdax.types import Genotype, Params, RNGKey, Descriptor
+from qdax.types import Descriptor, Genotype, Params, RNGKey
 
 
 class TrainingState(PyTreeNode):
@@ -85,8 +85,8 @@ def generate_unroll_actor_dc(
         ],
     ],
 ) -> Tuple[EnvState, Transition]:
-    """Generates an episode according to the agent's policy and descriptor, returns the final state of
-    the episode and the transitions of the episode.
+    """Generates an episode according to the agent's policy and descriptor,
+    returns the final state of the episode and the transitions of the episode.
 
     Args:
         init_state: first state of the rollout.
@@ -103,7 +103,13 @@ def generate_unroll_actor_dc(
     def _scan_play_step_fn(
         carry: Tuple[EnvState, Params, Descriptor, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, Params, Descriptor, RNGKey], Transition]:
-        env_state, actor_dc_params, desc, random_key, transitions = play_step_actor_dc_fn(*carry)
+        (
+            env_state,
+            actor_dc_params,
+            desc,
+            random_key,
+            transitions,
+        ) = play_step_actor_dc_fn(*carry)
         return (env_state, actor_dc_params, desc, random_key), transitions
 
     (state, _, _, _), transitions = jax.lax.scan(

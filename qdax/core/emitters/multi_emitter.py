@@ -82,7 +82,13 @@ class MultiEmitter(Emitter):
         # init all emitter states - gather them
         emitter_states = []
         for emitter, subkey_emitter in zip(self.emitters, subkeys):
-            emitter_state, _ = emitter.init(subkey_emitter, repertoire, genotypes, fitnesses, descriptors, extra_scores)
+            emitter_state, _ = emitter.init(
+                subkey_emitter,
+                repertoire,
+                genotypes,
+                fitnesses,
+                descriptors,
+                extra_scores)
             emitter_states.append(emitter_state)
 
         return MultiEmitterState(tuple(emitter_states)), random_key
@@ -93,7 +99,7 @@ class MultiEmitter(Emitter):
         repertoire: Optional[Repertoire],
         emitter_state: Optional[MultiEmitterState],
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Emit new population. Use all the sub emitters to emit subpopulation
         and gather them.
 
@@ -114,13 +120,16 @@ class MultiEmitter(Emitter):
 
         # emit from all emitters and gather offsprings
         all_offsprings = []
-        all_extra_info = {}
+        all_extra_info: ExtraScores = {}
         for emitter, sub_emitter_state, subkey_emitter in zip(
             self.emitters,
             emitter_state.emitter_states,
             subkeys,
         ):
-            genotype, extra_info, _ = emitter.emit(repertoire, sub_emitter_state, subkey_emitter)
+            genotype, extra_info, _ = emitter.emit(
+                repertoire,
+                sub_emitter_state,
+                subkey_emitter)
             batch_size = jax.tree_util.tree_leaves(genotype)[0].shape[0]
             assert batch_size == emitter.batch_size
             all_offsprings.append(genotype)

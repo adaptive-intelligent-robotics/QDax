@@ -172,7 +172,7 @@ class PBTEmitter(Emitter):
         repertoire: Repertoire,
         emitter_state: PBTEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Do a single PGA-ME iteration: train critics and greedy policy,
         make mutations (evo and pg), score solution, fill replay buffer and insert back
         in the MAP-Elites grid.

@@ -132,7 +132,7 @@ class OMGMEGAEmitter(Emitter):
         repertoire: MapElitesRepertoire,
         emitter_state: OMGMEGAEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         OMG emitter function that samples elements in the repertoire and does a gradient
         update with random coefficients to create new candidates.

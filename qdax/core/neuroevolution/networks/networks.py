@@ -5,7 +5,6 @@ from typing import Any, Callable, Optional, Tuple
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
-from brax.training import networks
 
 
 class MLP(nn.Module):
@@ -46,6 +45,7 @@ class MLP(nn.Module):
                     hidden = self.final_activation(hidden)
 
         return hidden
+
 
 class MLPDC(nn.Module):
     """Descriptor-conditioned MLP module."""
@@ -106,6 +106,7 @@ class QModule(nn.Module):
             res.append(q)
         return jnp.concatenate(res, axis=-1)
 
+
 class QModuleDC(nn.Module):
     """Q Module."""
 
@@ -113,7 +114,12 @@ class QModuleDC(nn.Module):
     n_critics: int = 2
 
     @nn.compact
-    def __call__(self, obs: jnp.ndarray, actions: jnp.ndarray, desc: jnp.ndarray) -> jnp.ndarray:
+    def __call__(
+        self,
+        obs: jnp.ndarray,
+        actions: jnp.ndarray,
+        desc: jnp.ndarray
+    ) -> jnp.ndarray:
         hidden = jnp.concatenate([obs, actions], axis=-1)
         res = []
         for _ in range(self.n_critics):

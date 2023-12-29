@@ -66,12 +66,7 @@ class GeneticAlgorithm:
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            genotypes=genotypes, random_key=random_key
-        )
-
-        # update emitter state
-        emitter_state = self._emitter.state_update(
-            emitter_state=emitter_state,
+            random_key=random_key,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -108,7 +103,7 @@ class GeneticAlgorithm:
         """
 
         # generate offsprings
-        genotypes, random_key = self._emitter.emit(
+        genotypes, extra_info, random_key = self._emitter.emit(
             repertoire, emitter_state, random_key
         )
 
@@ -127,7 +122,7 @@ class GeneticAlgorithm:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=None,
-            extra_scores=extra_scores,
+            extra_scores=extra_scores | extra_info,
         )
 
         # update the metrics

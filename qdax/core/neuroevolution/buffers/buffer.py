@@ -7,7 +7,15 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Action, Done, Observation, Reward, RNGKey, StateDescriptor, Descriptor
+from qdax.types import (
+    Action,
+    Descriptor,
+    Done,
+    Observation,
+    Reward,
+    RNGKey,
+    StateDescriptor,
+)
 
 
 class Transition(flax.struct.PyTreeNode):
@@ -348,7 +356,8 @@ class DCGTransition(QDTransition):
         ]
         state_desc = flattened_transition[
             :,
-            (2 * obs_dim + 3 + action_dim) : (2 * obs_dim + 3 + action_dim + state_desc_dim),
+            (2 * obs_dim + 3 + action_dim) : (
+                2 * obs_dim + 3 + action_dim + state_desc_dim),
         ]
         next_state_desc = flattened_transition[
             :,
@@ -383,7 +392,11 @@ class DCGTransition(QDTransition):
 
     @classmethod
     def init_dummy(  # type: ignore
-        cls, observation_dim: int, action_dim: int, descriptor_dim: int) -> QDTransition:
+        cls,
+        observation_dim: int,
+        action_dim: int,
+        descriptor_dim: int
+    ) -> QDTransition:
         """
         Initialize a dummy transition that then can be passed to constructors to get
         all shapes right.

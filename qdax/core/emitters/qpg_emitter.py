@@ -200,7 +200,7 @@ class QualityPGEmitter(Emitter):
         repertoire: Repertoire,
         emitter_state: QualityPGEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Do a step of PG emission.
 
         Args:

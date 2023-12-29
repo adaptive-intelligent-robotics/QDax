@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.neuroevolution.buffers.buffer import Transition
-from qdax.types import Action, Observation, Descriptor, Params, RNGKey
+from qdax.types import Action, Descriptor, Observation, Params, RNGKey
 
 
 def make_td3_loss_fn(
@@ -104,6 +104,7 @@ def make_td3_loss_dc_fn(
     policy_noise: float,
 ) -> Tuple[
     Callable[[Params, Params, Transition], jnp.ndarray],
+    Callable[[Params, Params, Transition], jnp.ndarray],
     Callable[[Params, Params, Params, Transition, RNGKey], jnp.ndarray],
 ]:
     """Creates the loss functions for TD3.
@@ -128,8 +129,12 @@ def make_td3_loss_dc_fn(
         transitions: Transition,
     ) -> jnp.ndarray:
         """Policy loss function for TD3 agent"""
-        action = policy_fn(policy_params, obs=transitions.obs)
-        q_value = critic_fn(critic_params, obs=transitions.obs, actions=action, desc=transitions.desc_prime)
+        action = policy_fn(policy_params, transitions.obs)
+        q_value = critic_fn(
+            critic_params,
+            transitions.obs,
+            action,
+            transitions.desc_prime)
         q1_action = jnp.take(q_value, jnp.asarray([0]), axis=-1)
         policy_loss = -jnp.mean(q1_action)
         return policy_loss
@@ -141,8 +146,13 @@ def make_td3_loss_dc_fn(
         transitions: Transition,
     ) -> jnp.ndarray:
         """Descriptor-conditioned policy loss function for TD3 agent"""
-        action = actor_fn(actor_params, obs=transitions.obs, desc=transitions.desc_prime)
-        q_value = critic_fn(critic_params, obs=transitions.obs, actions=action, desc=transitions.desc_prime)
+        action = actor_fn(actor_params, transitions.obs, transitions.desc_prime)
+        q_value = critic_fn(
+            critic_params,
+            transitions.obs,
+            action,
+            transitions.desc_prime
+        )
         q1_action = jnp.take(q_value, jnp.asarray([0]), axis=-1)
         policy_loss = -jnp.mean(q1_action)
         return policy_loss
@@ -162,15 +172,18 @@ def make_td3_loss_dc_fn(
         ).clip(-noise_clip, noise_clip)
 
         next_action = (
-            actor_fn(target_actor_params, obs=transitions.next_obs, desc=transitions.desc_prime) + noise
+            actor_fn(target_actor_params, transitions.next_obs,
+                     transitions.desc_prime) + noise
         ).clip(-1.0, 1.0)
-        next_q = critic_fn(target_critic_params, obs=transitions.next_obs, actions=next_action, desc=transitions.desc_prime)
+        next_q = critic_fn(target_critic_params, transitions.next_obs,
+                           next_action, transitions.desc_prime)
         next_v = jnp.min(next_q, axis=-1)
         target_q = jax.lax.stop_gradient(
             transitions.rewards * reward_scaling
             + (1.0 - transitions.dones) * discount * next_v
         )
-        q_old_action = critic_fn(critic_params, obs=transitions.obs, actions=transitions.actions, desc=transitions.desc_prime)
+        q_old_action = critic_fn(critic_params, transitions.obs,
+                                 transitions.actions, transitions.desc_prime)
         q_error = q_old_action - jnp.expand_dims(target_q, -1)
 
         # Better bootstrapping for truncated episodes.
@@ -207,7 +220,7 @@ def td3_policy_loss_fn(
 
     action = policy_fn(policy_params, transitions.obs)
     q_value = critic_fn(
-        critic_params, obs=transitions.obs, actions=action  # type: ignore
+        critic_params, transitions.obs, action  # type: ignore
     )
     q1_action = jnp.take(q_value, jnp.asarray([0]), axis=-1)
     policy_loss = -jnp.mean(q1_action)

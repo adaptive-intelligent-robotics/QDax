@@ -43,7 +43,7 @@ class Emitter(ABC):
         outputted.
 
         Args:
-            init_genotypes: The genotypes of the initial population.
+            genotypes: The genotypes of the initial population.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -57,7 +57,7 @@ class Emitter(ABC):
         repertoire: Optional[Repertoire],
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Function used to emit a population of offspring by any possible
         mean. New population can be sampled from a distribution or obtained
         through mutations of individuals sampled from the repertoire.

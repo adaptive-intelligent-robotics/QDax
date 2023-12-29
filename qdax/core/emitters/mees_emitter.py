@@ -306,7 +306,7 @@ class MEESEmitter(Emitter):
         repertoire: MapElitesRepertoire,
         emitter_state: MEESEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Return the offspring generated through gradient update.
 
         Params:
