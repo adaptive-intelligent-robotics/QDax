@@ -73,7 +73,14 @@ class CMAPoolEmitter(Emitter):
             carry: RNGKey, unused: Any
         ) -> Tuple[RNGKey, CMAEmitterState]:
             random_key = carry
-            emitter_state, random_key = self._emitter.init(genotypes, random_key)
+            emitter_state, random_key = self._emitter.init(
+                random_key,
+                repertoire,
+                genotypes,
+                fitnesses,
+                descriptors,
+                extra_scores,
+            )
             return random_key, emitter_state
 
         # init all the emitter states
@@ -117,11 +124,11 @@ class CMAPoolEmitter(Emitter):
         )
 
         # use it to emit offsprings
-        offsprings, random_key = self._emitter.emit(
+        offsprings, extra_info, random_key = self._emitter.emit(
             repertoire, used_emitter_state, random_key
         )
 
-        return offsprings, {}, random_key
+        return offsprings, extra_info, random_key
 
     @partial(
         jax.jit,

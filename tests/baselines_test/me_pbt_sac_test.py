@@ -126,7 +126,7 @@ def test_me_pbt_sac() -> None:
             lambda x: jnp.repeat(x, population_size, axis=0), first_states
         )
         population_returns, population_bds, _, _ = eval_policy(genotypes, first_states)
-        return population_returns, population_bds, None, random_key
+        return population_returns, population_bds, {}, random_key
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
