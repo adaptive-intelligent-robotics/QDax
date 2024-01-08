@@ -143,7 +143,7 @@ class MAPElites:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            extra_scores=extra_scores | extra_info,
+            extra_scores={**extra_scores, **extra_info},
         )
 
         # update the metrics

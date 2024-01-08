@@ -122,7 +122,7 @@ class GeneticAlgorithm:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=None,
-            extra_scores=extra_scores | extra_info,
+            extra_scores={**extra_scores, **extra_info},
         )
 
         # update the metrics

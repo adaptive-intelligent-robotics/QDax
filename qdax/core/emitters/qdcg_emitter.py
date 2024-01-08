@@ -450,7 +450,7 @@ class QualityDCGEmitter(Emitter):
             length=self._config.num_critic_training_steps,
         )
 
-        return emitter_state
+        return emitter_state # type: ignore
 
     @partial(jax.jit, static_argnames=("self",))
     def _train_critics(

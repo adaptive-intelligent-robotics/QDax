@@ -133,7 +133,7 @@ class MultiEmitter(Emitter):
             batch_size = jax.tree_util.tree_leaves(genotype)[0].shape[0]
             assert batch_size == emitter.batch_size
             all_offsprings.append(genotype)
-            all_extra_info = all_extra_info | extra_info
+            all_extra_info = {**all_extra_info, **extra_info}
 
         # concatenate offsprings together
         offsprings = jax.tree_util.tree_map(
