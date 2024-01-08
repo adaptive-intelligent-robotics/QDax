@@ -118,6 +118,18 @@ class OMGMEGAEmitter(Emitter):
             genotype=gradient_genotype, centroids=self._centroids
         )
 
+        # get gradients out of the extra scores
+        assert "gradients" in extra_scores.keys(), "Missing gradients or wrong key"
+        gradients = extra_scores["gradients"]
+
+        # update the gradients repertoire
+        gradients_repertoire = gradients_repertoire.add(
+            gradients,
+            descriptors,
+            fitnesses,
+            extra_scores,
+        )
+
         return (
             OMGMEGAEmitterState(gradients_repertoire=gradients_repertoire),
             random_key,
