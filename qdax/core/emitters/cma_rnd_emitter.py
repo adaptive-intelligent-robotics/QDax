@@ -35,7 +35,13 @@ class CMARndEmitterState(CMAEmitterState):
 class CMARndEmitter(CMAEmitter):
     @partial(jax.jit, static_argnames=("self",))
     def init(
-        self, genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[CMARndEmitterState, RNGKey]:
         """
         Initializes the CMA-MEGA emitter
