@@ -157,12 +157,10 @@ class QualityDCGEmitter(Emitter):
         critic_params = self._critic_network.init(
             subkey, obs=fake_obs, actions=fake_action, desc=fake_desc
         )
-        target_critic_params = jax.tree_util.tree_map(
-            lambda x: x, critic_params)
+        target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
 
         random_key, subkey = jax.random.split(random_key)
-        actor_params = self._actor_network.init(
-            subkey, obs=fake_obs, desc=fake_desc)
+        actor_params = self._actor_network.init(subkey, obs=fake_obs, desc=fake_desc)
         target_actor_params = jax.tree_util.tree_map(lambda x: x, actor_params)
 
         # Prepare init optimizer states
@@ -184,12 +182,12 @@ class QualityDCGEmitter(Emitter):
         transitions = extra_scores["transitions"]
         episode_length = transitions.obs.shape[1]
 
-        desc = jnp.repeat(
-            descriptors[:, jnp.newaxis, :], episode_length, axis=1)
+        desc = jnp.repeat(descriptors[:, jnp.newaxis, :], episode_length, axis=1)
         desc_normalized = jax.vmap(jax.vmap(self._normalize_desc))(desc)
 
         transitions = transitions.replace(
-            desc=desc_normalized, desc_prime=desc_normalized)
+            desc=desc_normalized, desc_prime=desc_normalized
+        )
         replay_buffer = replay_buffer.insert(transitions)
 
         # Initial training state
@@ -217,27 +215,35 @@ class QualityDCGEmitter(Emitter):
         Returns:
             batch of similarity measures.
         """
-        return jnp.exp(-jnp.linalg.norm(
-            descs_1 - descs_2, axis=-1)/self._config.lengthscale)
+        return jnp.exp(
+            -jnp.linalg.norm(descs_1 - descs_2, axis=-1) / self._config.lengthscale
+        )
 
     @partial(jax.jit, static_argnames=("self",))
     def _normalize_desc(self, desc: Descriptor) -> Descriptor:
-        return 2*(desc - self._env.behavior_descriptor_limits[0])/(
-            self._env.behavior_descriptor_limits[1] -
-            self._env.behavior_descriptor_limits[0]) - 1
+        return (
+            2
+            * (desc - self._env.behavior_descriptor_limits[0])
+            / (
+                self._env.behavior_descriptor_limits[1]
+                - self._env.behavior_descriptor_limits[0]
+            )
+            - 1
+        )
 
     @partial(jax.jit, static_argnames=("self",))
     def _unnormalize_desc(self, desc_normalized: Descriptor) -> Descriptor:
-        return 0.5 * (self._env.behavior_descriptor_limits[1] -
-                      self._env.behavior_descriptor_limits[0]) * desc_normalized + \
-            0.5 * (self._env.behavior_descriptor_limits[1] +
-                   self._env.behavior_descriptor_limits[0])
+        return 0.5 * (
+            self._env.behavior_descriptor_limits[1]
+            - self._env.behavior_descriptor_limits[0]
+        ) * desc_normalized + 0.5 * (
+            self._env.behavior_descriptor_limits[1]
+            + self._env.behavior_descriptor_limits[0]
+        )
 
     @partial(jax.jit, static_argnames=("self",))
     def _compute_equivalent_kernel_bias_with_desc(
-        self,
-        actor_dc_params: Params,
-        desc: Descriptor
+        self, actor_dc_params: Params, desc: Descriptor
     ) -> Tuple[Params, Params]:
         """
         Compute the equivalent bias of the first layer of the actor network
@@ -248,28 +254,30 @@ class QualityDCGEmitter(Emitter):
         bias = actor_dc_params["params"]["Dense_0"]["bias"]
 
         # Compute the equivalent bias
-        equivalent_kernel = kernel[:-desc.shape[0], :]
-        equivalent_bias = bias + jnp.dot(desc, kernel[-desc.shape[0]:])
+        equivalent_kernel = kernel[: -desc.shape[0], :]
+        equivalent_bias = bias + jnp.dot(desc, kernel[-desc.shape[0] :])
 
         return equivalent_kernel, equivalent_bias
 
     @partial(jax.jit, static_argnames=("self",))
     def _compute_equivalent_params_with_desc(
-        self,
-        actor_dc_params: Params,
-        desc: Descriptor
+        self, actor_dc_params: Params, desc: Descriptor
     ) -> Params:
         desc_normalized = self._normalize_desc(desc)
         (
             equivalent_kernel,
             equivalent_bias,
         ) = self._compute_equivalent_kernel_bias_with_desc(
-            actor_dc_params, desc_normalized)
+            actor_dc_params, desc_normalized
+        )
         actor_dc_params["params"]["Dense_0"]["kernel"] = equivalent_kernel
         actor_dc_params["params"]["Dense_0"]["bias"] = equivalent_bias
         return actor_dc_params
 
-    @partial(jax.jit, static_argnames=("self",),)
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def emit(
         self,
         repertoire: Repertoire,
@@ -288,29 +296,39 @@ class QualityDCGEmitter(Emitter):
         """
         # PG emitter
         parents_pg, descs_pg, random_key = repertoire.sample_with_descs(
-            random_key, self._config.qpg_batch_size)
+            random_key, self._config.qpg_batch_size
+        )
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
         # Actor injection emitter
         _, descs_ai, random_key = repertoire.sample_with_descs(
-            random_key, self._config.ai_batch_size)
+            random_key, self._config.ai_batch_size
+        )
         descs_ai = descs_ai.reshape(
-            descs_ai.shape[0], self._env.behavior_descriptor_length)
+            descs_ai.shape[0], self._env.behavior_descriptor_length
+        )
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 
         # Concatenate PG and AI genotypes
-        genotypes = jax.tree_util.tree_map(lambda x1, x2: jnp.concatenate(
-            (x1, x2), axis=0), genotypes_pg, genotypes_ai)
+        genotypes = jax.tree_util.tree_map(
+            lambda x1, x2: jnp.concatenate((x1, x2), axis=0), genotypes_pg, genotypes_ai
+        )
 
-        return genotypes, {
-            "desc_prime": jnp.concatenate([descs_pg, descs_ai], axis=0)}, random_key
+        return (
+            genotypes,
+            {"desc_prime": jnp.concatenate([descs_pg, descs_ai], axis=0)},
+            random_key,
+        )
 
-    @partial(jax.jit, static_argnames=("self",),)
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def emit_pg(
         self,
         emitter_state: QualityDCGEmitterState,
         parents: Genotype,
-        descs: Descriptor
+        descs: Descriptor,
     ) -> Genotype:
         """Emit the offsprings generated through pg mutation.
 
@@ -332,7 +350,10 @@ class QualityDCGEmitter(Emitter):
 
         return offsprings
 
-    @partial(jax.jit, static_argnames=("self",),)
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def emit_ai(
         self, emitter_state: QualityDCGEmitterState, descs: Descriptor
     ) -> Genotype:
@@ -348,8 +369,9 @@ class QualityDCGEmitter(Emitter):
         Returns:
             A new set of offsprings.
         """
-        offsprings = jax.vmap(self._compute_equivalent_params_with_desc, in_axes=(
-            None, 0))(emitter_state.actor_params, descs)
+        offsprings = jax.vmap(
+            self._compute_equivalent_params_with_desc, in_axes=(None, 0)
+        )(emitter_state.actor_params, descs)
 
         return offsprings
 
@@ -368,7 +390,10 @@ class QualityDCGEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    @partial(jax.jit, static_argnames=("self",),)
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def state_update(
         self,
         emitter_state: QualityDCGEmitterState,
@@ -404,19 +429,20 @@ class QualityDCGEmitter(Emitter):
         episode_length = transitions.obs.shape[1]
 
         desc_prime = jnp.concatenate(
-            [extra_scores["desc_prime"],
-             descriptors[self._config.qpg_batch_size+self._config.ai_batch_size:]],
-            axis=0)
-        desc_prime = jnp.repeat(
-            desc_prime[:, jnp.newaxis, :], episode_length, axis=1)
-        desc = jnp.repeat(
-            descriptors[:, jnp.newaxis, :], episode_length, axis=1)
+            [
+                extra_scores["desc_prime"],
+                descriptors[self._config.qpg_batch_size + self._config.ai_batch_size :],
+            ],
+            axis=0,
+        )
+        desc_prime = jnp.repeat(desc_prime[:, jnp.newaxis, :], episode_length, axis=1)
+        desc = jnp.repeat(descriptors[:, jnp.newaxis, :], episode_length, axis=1)
 
-        desc_prime_normalized = jax.vmap(
-            jax.vmap(self._normalize_desc))(desc_prime)
+        desc_prime_normalized = jax.vmap(jax.vmap(self._normalize_desc))(desc_prime)
         desc_normalized = jax.vmap(jax.vmap(self._normalize_desc))(desc)
         transitions = transitions.replace(
-            desc=desc_normalized, desc_prime=desc_prime_normalized)
+            desc=desc_normalized, desc_prime=desc_prime_normalized
+        )
 
         # Add transitions to replay buffer
         replay_buffer = emitter_state.replay_buffer.insert(transitions)
@@ -425,18 +451,28 @@ class QualityDCGEmitter(Emitter):
         # sample transitions from the replay buffer
         random_key, subkey = jax.random.split(emitter_state.random_key)
         transitions, random_key = replay_buffer.sample(
-            subkey, self._config.num_critic_training_steps*self._config.batch_size)
+            subkey, self._config.num_critic_training_steps * self._config.batch_size
+        )
         transitions = jax.tree_util.tree_map(
-            lambda x: jnp.reshape(x,
-                                  (self._config.num_critic_training_steps,
-                                   self._config.batch_size, *x.shape[1:])),
-            transitions)
-        transitions = transitions.replace(rewards=self._similarity(
-            transitions.desc, transitions.desc_prime)*transitions.rewards)
+            lambda x: jnp.reshape(
+                x,
+                (
+                    self._config.num_critic_training_steps,
+                    self._config.batch_size,
+                    *x.shape[1:],
+                ),
+            ),
+            transitions,
+        )
+        transitions = transitions.replace(
+            rewards=self._similarity(transitions.desc, transitions.desc_prime)
+            * transitions.rewards
+        )
         emitter_state = emitter_state.replace(random_key=random_key)
 
         def scan_train_critics(
-            carry: QualityDCGEmitterState, transitions: DCGTransition,
+            carry: QualityDCGEmitterState,
+            transitions: DCGTransition,
         ) -> Tuple[QualityDCGEmitterState, Any]:
             emitter_state = carry
             new_emitter_state = self._train_critics(emitter_state, transitions)
@@ -450,7 +486,7 @@ class QualityDCGEmitter(Emitter):
             length=self._config.num_critic_training_steps,
         )
 
-        return emitter_state # type: ignore
+        return emitter_state  # type: ignore
 
     @partial(jax.jit, static_argnames=("self",))
     def _train_critics(
@@ -589,7 +625,10 @@ class QualityDCGEmitter(Emitter):
             target_actor_params,
         )
 
-    @partial(jax.jit, static_argnames=("self",),)
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def _mutation_function_pg(
         self,
         policy_params: Genotype,
@@ -612,21 +651,28 @@ class QualityDCGEmitter(Emitter):
         # Get transitions
         transitions, random_key = emitter_state.replay_buffer.sample(
             emitter_state.random_key,
-            sample_size=self._config.num_pg_training_steps*self._config.batch_size)
+            sample_size=self._config.num_pg_training_steps * self._config.batch_size,
+        )
         descs_prime = jnp.tile(
-            descs, (self._config.num_pg_training_steps*self._config.batch_size, 1))
+            descs, (self._config.num_pg_training_steps * self._config.batch_size, 1)
+        )
         descs_prime_normalized = jax.vmap(self._normalize_desc)(descs_prime)
         transitions = transitions.replace(
-            rewards=self._similarity(
-                transitions.desc,
-                descs_prime_normalized)*transitions.rewards,
-            desc_prime=descs_prime_normalized)
+            rewards=self._similarity(transitions.desc, descs_prime_normalized)
+            * transitions.rewards,
+            desc_prime=descs_prime_normalized,
+        )
         transitions = jax.tree_util.tree_map(
             lambda x: jnp.reshape(
                 x,
-                (self._config.num_pg_training_steps,
-                 self._config.batch_size, *x.shape[1:])),
-            transitions)
+                (
+                    self._config.num_pg_training_steps,
+                    self._config.batch_size,
+                    *x.shape[1:],
+                ),
+            ),
+            transitions,
+        )
 
         # Replace random_key
         emitter_state = emitter_state.replace(random_key=random_key)

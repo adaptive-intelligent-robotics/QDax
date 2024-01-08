@@ -102,7 +102,8 @@ class DiversityPGEmitter(QualityPGEmitter):
             genotypes,
             fitnesses,
             descriptors,
-            extra_scores,)
+            extra_scores,
+        )
 
         # store elements in a dictionary
         attributes_dict = vars(diversity_emitter_state)

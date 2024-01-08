@@ -9,6 +9,7 @@ import jax.numpy as jnp
 
 class MLP(nn.Module):
     """MLP module."""
+
     layer_sizes: Tuple[int, ...]
     activation: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
     kernel_init: Callable[..., Any] = jax.nn.initializers.lecun_uniform()
@@ -49,6 +50,7 @@ class MLP(nn.Module):
 
 class MLPDC(nn.Module):
     """Descriptor-conditioned MLP module."""
+
     layer_sizes: Tuple[int, ...]
     activation: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
     kernel_init: Callable[..., Any] = jax.nn.initializers.lecun_uniform()
@@ -115,10 +117,7 @@ class QModuleDC(nn.Module):
 
     @nn.compact
     def __call__(
-        self,
-        obs: jnp.ndarray,
-        actions: jnp.ndarray,
-        desc: jnp.ndarray
+        self, obs: jnp.ndarray, actions: jnp.ndarray, desc: jnp.ndarray
     ) -> jnp.ndarray:
         hidden = jnp.concatenate([obs, actions], axis=-1)
         res = []

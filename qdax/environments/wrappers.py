@@ -80,10 +80,7 @@ class ClipRewardWrapper(Wrapper):
     """
 
     def __init__(
-            self,
-            env: Env,
-            clip_min: float = None,
-            clip_max: float = None
+        self, env: Env, clip_min: float = None, clip_max: float = None
     ) -> None:
         super().__init__(env)
         self._clip_min = clip_min
@@ -92,12 +89,14 @@ class ClipRewardWrapper(Wrapper):
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
         return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
+        )
 
     def step(self, state: State, action: jp.ndarray) -> State:
         state = self.env.step(state, action)
         return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
+        )
 
 
 class AffineRewardWrapper(Wrapper):
@@ -109,9 +108,7 @@ class AffineRewardWrapper(Wrapper):
     """
 
     def __init__(
-            self, env: Env,
-            clip_min: float = None,
-            clip_max: float = None
+        self, env: Env, clip_min: float = None, clip_max: float = None
     ) -> None:
         super().__init__(env)
         self._clip_min = clip_min
@@ -120,12 +117,14 @@ class AffineRewardWrapper(Wrapper):
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
         return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
+        )
 
     def step(self, state: State, action: jp.ndarray) -> State:
         state = self.env.step(state, action)
         return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max))
+            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
+        )
 
 
 class OffsetRewardWrapper(Wrapper):
@@ -136,7 +135,7 @@ class OffsetRewardWrapper(Wrapper):
     work like before and will simply clip the reward to be greater than 0.
     """
 
-    def __init__(self, env: Env, offset: float = 0.) -> None:
+    def __init__(self, env: Env, offset: float = 0.0) -> None:
         super().__init__(env)
         self._offset = offset
 

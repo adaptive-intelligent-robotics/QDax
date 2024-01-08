@@ -176,7 +176,7 @@ def scoring_actor_dc_function_brax_envs(
     episode_length: int,
     play_step_actor_dc_fn: Callable[
         [EnvState, Descriptor, Params, RNGKey],
-        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition]
+        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
@@ -317,7 +317,7 @@ def reset_based_scoring_actor_dc_function_brax_envs(
     play_reset_fn: Callable[[RNGKey], EnvState],
     play_step_actor_dc_fn: Callable[
         [EnvState, Descriptor, Params, RNGKey],
-        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition]
+        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition],
     ],
     behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
@@ -353,8 +353,9 @@ def reset_based_scoring_actor_dc_function_brax_envs(
     """
 
     random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey,
-                            jax.tree_util.tree_leaves(actors_dc_params)[0].shape[0])
+    keys = jax.random.split(
+        subkey, jax.tree_util.tree_leaves(actors_dc_params)[0].shape[0]
+    )
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)
 

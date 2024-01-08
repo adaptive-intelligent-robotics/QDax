@@ -74,7 +74,7 @@ class DCGMEEmitter(MultiEmitter):
             config=qdcg_config,
             policy_network=policy_network,
             actor_network=actor_network,
-            env=env
+            env=env,
         )
 
         # define the GA emitter

@@ -88,7 +88,8 @@ class MultiEmitter(Emitter):
                 genotypes,
                 fitnesses,
                 descriptors,
-                extra_scores)
+                extra_scores,
+            )
             emitter_states.append(emitter_state)
 
         return MultiEmitterState(tuple(emitter_states)), random_key
@@ -127,9 +128,8 @@ class MultiEmitter(Emitter):
             subkeys,
         ):
             genotype, extra_info, _ = emitter.emit(
-                repertoire,
-                sub_emitter_state,
-                subkey_emitter)
+                repertoire, sub_emitter_state, subkey_emitter
+            )
             batch_size = jax.tree_util.tree_leaves(genotype)[0].shape[0]
             assert batch_size == emitter.batch_size
             all_offsprings.append(genotype)
