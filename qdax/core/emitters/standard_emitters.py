@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.custom_types import ExtraScores, Genotype, RNGKey
+from qdax.types import ExtraScores, Genotype, RNGKey
 
 
 class MixingEmitter(Emitter):
@@ -31,6 +31,7 @@ class MixingEmitter(Emitter):
         repertoire: Repertoire,
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         Emitter that performs both mutation and variation. Two batches of
@@ -75,6 +76,7 @@ class MixingEmitter(Emitter):
                 x_mutation,
             )
 
+        return genotypes, {}, random_key
         return genotypes, {}, random_key
 
     @property

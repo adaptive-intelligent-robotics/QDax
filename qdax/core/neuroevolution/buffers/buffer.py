@@ -7,7 +7,7 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from qdax.custom_types import (
+from qdax.types import (
     Action,
     Descriptor,
     Done,
@@ -270,7 +270,7 @@ class QDTransition(Transition):
         return dummy_transition
 
 
-class DCRLTransition(QDTransition):
+class DCGTransition(QDTransition):
     """Stores data corresponding to a transition collected by a QD algorithm."""
 
     desc: Descriptor
@@ -325,8 +325,8 @@ class DCRLTransition(QDTransition):
     def from_flatten(
         cls,
         flattened_transition: jnp.ndarray,
-        transition: DCRLTransition,
-    ) -> DCRLTransition:
+        transition: QDTransition,
+    ) -> QDTransition:
         """
         Creates a transition from a flattened transition in a jnp.ndarray.
         Args:
@@ -394,7 +394,7 @@ class DCRLTransition(QDTransition):
     @classmethod
     def init_dummy(  # type: ignore
         cls, observation_dim: int, action_dim: int, descriptor_dim: int
-    ) -> DCRLTransition:
+    ) -> QDTransition:
         """
         Initialize a dummy transition that then can be passed to constructors to get
         all shapes right.
@@ -404,7 +404,7 @@ class DCRLTransition(QDTransition):
         Returns:
             a dummy transition
         """
-        dummy_transition = DCRLTransition(
+        dummy_transition = DCGTransition(
             obs=jnp.zeros(shape=(1, observation_dim)),
             next_obs=jnp.zeros(shape=(1, observation_dim)),
             rewards=jnp.zeros(shape=(1,)),
