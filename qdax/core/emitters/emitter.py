@@ -30,14 +30,20 @@ class EmitterState(PyTreeNode):
 
 class Emitter(ABC):
     def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: Repertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[Optional[EmitterState], RNGKey]:
         """Initialises the state of the emitter. Some emitters do
         not need a state, in which case, the value None can be
         outputted.
 
         Args:
-            init_genotypes: The genotypes of the initial population.
+            genotypes: The genotypes of the initial population.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -51,7 +57,7 @@ class Emitter(ABC):
         repertoire: Optional[Repertoire],
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Function used to emit a population of offspring by any possible
         mean. New population can be sampled from a distribution or obtained
         through mutations of individuals sampled from the repertoire.

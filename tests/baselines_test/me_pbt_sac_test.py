@@ -126,7 +126,7 @@ def test_me_pbt_sac() -> None:
             lambda x: jnp.repeat(x, population_size, axis=0), first_states
         )
         population_returns, population_bds, _, _ = eval_policy(genotypes, first_states)
-        return population_returns, population_bds, None, random_key
+        return population_returns, population_bds, {}, random_key
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
@@ -178,7 +178,7 @@ def test_me_pbt_sac() -> None:
     repertoire, emitter_state, keys = map_elites.get_distributed_init_fn(
         devices=devices, centroids=centroids
     )(
-        init_genotypes=training_states, random_key=keys
+        genotypes=training_states, random_key=keys
     )  # type: ignore
 
     update_fn = map_elites.get_distributed_update_fn(num_iterations=1, devices=devices)

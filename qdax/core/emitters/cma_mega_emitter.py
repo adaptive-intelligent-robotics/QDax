@@ -100,14 +100,20 @@ class CMAMEGAEmitter(Emitter):
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[CMAMEGAState, RNGKey]:
         """
         Initializes the CMA-MEGA emitter.
 
 
         Args:
-            init_genotypes: initial genotypes to add to the grid.
+            genotypes: initial genotypes to add to the grid.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -117,7 +123,7 @@ class CMAMEGAEmitter(Emitter):
         # define init theta as 0
         theta = jax.tree_util.tree_map(
             lambda x: jnp.zeros_like(x[:1, ...]),
-            init_genotypes,
+            genotypes,
         )
 
         # score it
@@ -147,7 +153,7 @@ class CMAMEGAEmitter(Emitter):
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAMEGAState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         Emits new individuals. Interestingly, this method does not directly modifies
         individuals from the repertoire but sample from a distribution. Hence the
@@ -181,7 +187,7 @@ class CMAMEGAEmitter(Emitter):
         # Compute new candidates
         new_thetas = jax.tree_util.tree_map(lambda x, y: x + y, theta, update_grad)
 
-        return new_thetas, random_key
+        return new_thetas, {}, random_key
 
     @partial(
         jax.jit,
