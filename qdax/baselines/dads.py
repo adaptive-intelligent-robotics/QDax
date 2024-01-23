@@ -84,6 +84,8 @@ class DADS(SAC):
             action_size=action_size,
             descriptor_size=descriptor_size,
             omit_input_dynamics_dim=config.omit_input_dynamics_dim,
+            policy_hidden_layer_size=config.policy_hidden_layer_size,
+            critic_hidden_layer_size=config.critic_hidden_layer_size,
         )
 
         # define the action distribution

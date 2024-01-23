@@ -1,7 +1,7 @@
-"""Tests MAP Elites implementation"""
+"""Tests MAP-Elites Low-Spread implementation."""
 
 import functools
-from typing import Tuple
+from typing import Dict, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -9,35 +9,24 @@ import pytest
 
 from qdax import environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
+from qdax.core.containers.mels_repertoire import MELSRepertoire
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
-from qdax.core.map_elites import MAPElites
+from qdax.core.mels import MELS
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.tasks.brax_envs import reset_based_scoring_function_brax_envs
 from qdax.types import EnvState, Params, RNGKey
-from qdax.utils.metrics import default_qd_metrics
-
-
-def get_mixing_emitter(batch_size: int) -> MixingEmitter:
-    """Create a mixing emitter with a given batch size."""
-    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
-    mixing_emitter = MixingEmitter(
-        mutation_fn=lambda x, y: (x, y),
-        variation_fn=variation_fn,
-        variation_percentage=1.0,
-        batch_size=batch_size,
-    )
-    return mixing_emitter
 
 
 @pytest.mark.parametrize(
     "env_name, batch_size",
     [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
 )
-def test_map_elites(env_name: str, batch_size: int) -> None:
+def test_mels(env_name: str, batch_size: int) -> None:
     batch_size = batch_size
     env_name = env_name
+    num_samples = 5
     episode_length = 100
     num_iterations = 5
     seed = 42
@@ -61,27 +50,21 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
         final_activation=jnp.tanh,
     )
 
-    # Init population of controllers
+    # Init population of controllers. There are batch_size controllers, and each
+    # controller will be evaluated num_samples times.
     random_key, subkey = jax.random.split(random_key)
     keys = jax.random.split(subkey, num=batch_size)
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
-    # Create the initial environment states
-    random_key, subkey = jax.random.split(random_key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    init_states = reset_fn(keys)
-
-    # Define the fonction to play a step with the policy in the environment
+    # Define the function to play a step with the policy in the environment
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,
         random_key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
-        """
-        Play an environment step and return the updated state and the transition.
-        """
+        """Play an environment step and return the updated state and the
+        transition."""
 
         actions = policy_network.apply(policy_params, env_state.obs)
 
@@ -104,27 +87,43 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     # Prepare the scoring function
     bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function_brax_envs,
-        init_states=init_states,
+        reset_based_scoring_function_brax_envs,
         episode_length=episode_length,
+        play_reset_fn=env.reset,
         play_step_fn=play_step_fn,
         behavior_descriptor_extractor=bd_extraction_fn,
     )
 
     # Define emitter
-    mixing_emitter = get_mixing_emitter(batch_size)
+    variation_fn = functools.partial(isoline_variation, iso_sigma=0.05, line_sigma=0.1)
+    mixing_emitter = MixingEmitter(
+        mutation_fn=lambda x, y: (x, y),
+        variation_fn=variation_fn,
+        variation_percentage=1.0,
+        batch_size=batch_size,
+    )
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
 
     # Define a metrics function
-    metrics_fn = functools.partial(default_qd_metrics, qd_offset=reward_offset)
+    def metrics_fn(repertoire: MELSRepertoire) -> Dict:
+        # Get metrics
+        grid_empty = repertoire.fitnesses == -jnp.inf
+        qd_score = jnp.sum(repertoire.fitnesses, where=~grid_empty)
+        # Add offset for positive qd_score
+        qd_score += reward_offset * episode_length * jnp.sum(1.0 - grid_empty)
+        coverage = 100 * jnp.mean(1.0 - grid_empty)
+        max_fitness = jnp.max(repertoire.fitnesses)
 
-    # Instantiate MAP-Elites
-    map_elites = MAPElites(
+        return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
+
+    # Instantiate ME-LS.
+    mels = MELS(
         scoring_function=scoring_fn,
         emitter=mixing_emitter,
         metrics_function=metrics_fn,
+        num_samples=num_samples,
     )
 
     # Compute the centroids
@@ -138,13 +137,13 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
+    repertoire, emitter_state, random_key = mels.init(
         init_variables, centroids, random_key
     )
 
     # Run the algorithm
     (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
-        map_elites.scan_update,
+        mels.scan_update,
         (repertoire, emitter_state, random_key),
         (),
         length=num_iterations,
@@ -154,4 +153,4 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
 
 
 if __name__ == "__main__":
-    test_map_elites(env_name="pointmaze", batch_size=10)
+    test_mels(env_name="pointmaze", batch_size=10)

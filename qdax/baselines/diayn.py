@@ -78,7 +78,8 @@ class DIAYN(SAC):
         self._policy, self._critic, self._discriminator = make_diayn_networks(
             num_skills=self._config.num_skills,
             action_size=action_size,
-            hidden_layer_sizes=self._config.hidden_layer_sizes,
+            policy_hidden_layer_size=self._config.policy_hidden_layer_size,
+            critic_hidden_layer_size=self._config.critic_hidden_layer_size,
         )
 
         # define the action distribution

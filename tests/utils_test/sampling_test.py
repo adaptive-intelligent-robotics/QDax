@@ -1,5 +1,5 @@
 import functools
-from typing import Tuple
+from typing import Callable, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -10,7 +10,17 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.types import EnvState, Params, RNGKey
-from qdax.utils.sampling import sampling
+from qdax.utils.sampling import (
+    average,
+    closest,
+    iqr,
+    mad,
+    median,
+    mode,
+    sampling,
+    sampling_reproducibility,
+    std,
+)
 
 
 def test_sampling() -> None:
@@ -74,7 +84,7 @@ def test_sampling() -> None:
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
     init_states = reset_fn(keys)
 
-    # Compare scoring against perforing a single sample
+    # Create the scoring function
     bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
     scoring_fn = functools.partial(
         scoring_function_brax_envs,
@@ -83,34 +93,141 @@ def test_sampling() -> None:
         play_step_fn=play_step_fn,
         behavior_descriptor_extractor=bd_extraction_fn,
     )
-    scoring_1_sample_fn = functools.partial(
-        sampling,
-        scoring_fn=scoring_fn,
-        num_samples=1,
-    )
 
-    # Evaluate individuals using the scoring functions
-    fitnesses, descriptors, _, _ = scoring_fn(init_variables, random_key)
-    sample_fitnesses, sample_descriptors, _, _ = scoring_1_sample_fn(
-        init_variables, random_key
-    )
+    # Test function for different extractors
+    def sampling_test(
+        fitness_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+        descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+    ) -> None:
 
-    # Compare
-    pytest.assume(jnp.allclose(descriptors, sample_descriptors, rtol=1e-05, atol=1e-08))
-    pytest.assume(jnp.allclose(fitnesses, sample_fitnesses, rtol=1e-05, atol=1e-08))
+        # Compare scoring against perforing a single sample
+        scoring_1_sample_fn = functools.partial(
+            sampling,
+            scoring_fn=scoring_fn,
+            num_samples=1,
+            fitness_extractor=fitness_extractor,
+            descriptor_extractor=descriptor_extractor,
+        )
 
-    # Compare scoring against perforing multiple samples
-    scoring_multi_sample_fn = functools.partial(
-        sampling,
-        scoring_fn=scoring_fn,
-        num_samples=sample_number,
-    )
+        # Evaluate individuals using the scoring functions
+        fitnesses, descriptors, _, _ = scoring_fn(init_variables, random_key)
+        sample_fitnesses, sample_descriptors, _, _ = scoring_1_sample_fn(
+            init_variables, random_key
+        )
 
-    # Evaluate individuals using the scoring functions
-    sample_fitnesses, sample_descriptors, _, _ = scoring_multi_sample_fn(
-        init_variables, random_key
-    )
+        # Compare
+        pytest.assume(
+            jnp.allclose(descriptors, sample_descriptors, rtol=1e-05, atol=1e-08)
+        )
+        pytest.assume(jnp.allclose(fitnesses, sample_fitnesses, rtol=1e-05, atol=1e-08))
 
-    # Compare
-    pytest.assume(jnp.allclose(descriptors, sample_descriptors, rtol=1e-05, atol=1e-08))
-    pytest.assume(jnp.allclose(fitnesses, sample_fitnesses, rtol=1e-05, atol=1e-08))
+        # Compare scoring against perforing multiple samples
+        scoring_multi_sample_fn = functools.partial(
+            sampling,
+            scoring_fn=scoring_fn,
+            num_samples=sample_number,
+            fitness_extractor=fitness_extractor,
+            descriptor_extractor=descriptor_extractor,
+        )
+
+        # Evaluate individuals using the scoring functions
+        sample_fitnesses, sample_descriptors, _, _ = scoring_multi_sample_fn(
+            init_variables, random_key
+        )
+
+        # Compare
+        pytest.assume(
+            jnp.allclose(descriptors, sample_descriptors, rtol=1e-05, atol=1e-08)
+        )
+        pytest.assume(jnp.allclose(fitnesses, sample_fitnesses, rtol=1e-05, atol=1e-08))
+
+    # Call the test for each type of extractor
+    sampling_test(average, average)
+    sampling_test(median, median)
+    sampling_test(mode, mode)
+    sampling_test(closest, closest)
+
+    # Test function for different reproducibility extractors
+    def sampling_reproducibility_test(
+        fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+        descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+    ) -> None:
+
+        # Compare scoring against perforing a single sample
+        scoring_1_sample_fn = functools.partial(
+            sampling_reproducibility,
+            scoring_fn=scoring_fn,
+            num_samples=1,
+            fitness_reproducibility_extractor=fitness_reproducibility_extractor,
+            descriptor_reproducibility_extractor=descriptor_reproducibility_extractor,
+        )
+
+        # Evaluate individuals using the scoring functions
+        (
+            _,
+            _,
+            _,
+            fitnesses_reproducibility,
+            descriptors_reproducibility,
+            _,
+        ) = scoring_1_sample_fn(init_variables, random_key)
+
+        # Compare - all reproducibility should be 0
+        pytest.assume(
+            jnp.allclose(
+                fitnesses_reproducibility,
+                jnp.zeros_like(fitnesses_reproducibility),
+                rtol=1e-05,
+                atol=1e-05,
+            )
+        )
+        pytest.assume(
+            jnp.allclose(
+                descriptors_reproducibility,
+                jnp.zeros_like(descriptors_reproducibility),
+                rtol=1e-05,
+                atol=1e-05,
+            )
+        )
+
+        # Compare scoring against perforing multiple samples
+        scoring_multi_sample_fn = functools.partial(
+            sampling_reproducibility,
+            scoring_fn=scoring_fn,
+            num_samples=sample_number,
+            fitness_reproducibility_extractor=fitness_reproducibility_extractor,
+            descriptor_reproducibility_extractor=descriptor_reproducibility_extractor,
+        )
+
+        # Evaluate individuals using the scoring functions
+        (
+            _,
+            _,
+            _,
+            fitnesses_reproducibility,
+            descriptors_reproducibility,
+            _,
+        ) = scoring_multi_sample_fn(init_variables, random_key)
+
+        # Compare - all reproducibility should be 0
+        pytest.assume(
+            jnp.allclose(
+                fitnesses_reproducibility,
+                jnp.zeros_like(fitnesses_reproducibility),
+                rtol=1e-05,
+                atol=1e-05,
+            )
+        )
+        pytest.assume(
+            jnp.allclose(
+                descriptors_reproducibility,
+                jnp.zeros_like(descriptors_reproducibility),
+                rtol=1e-05,
+                atol=1e-05,
+            )
+        )
+
+    # Call the test for each type of extractor
+    sampling_reproducibility_test(std, std)
+    sampling_reproducibility_test(mad, mad)
+    sampling_reproducibility_test(iqr, iqr)

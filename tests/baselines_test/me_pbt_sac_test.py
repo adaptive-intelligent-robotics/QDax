@@ -27,7 +27,8 @@ def test_me_pbt_sac() -> None:
     episode_length = 100
     tau = 0.005
     alpha_init = 1.0
-    hidden_layer_sizes = (64, 64)
+    policy_hidden_layer_size = (64, 64)
+    critic_hidden_layer_size = (64, 64)
     fix_alpha = False
     normalize_observations = False
 
@@ -79,7 +80,8 @@ def test_me_pbt_sac() -> None:
         tau=tau,
         normalize_observations=normalize_observations,
         alpha_init=alpha_init,
-        hidden_layer_sizes=hidden_layer_sizes,
+        policy_hidden_layer_size=policy_hidden_layer_size,
+        critic_hidden_layer_size=critic_hidden_layer_size,
         fix_alpha=fix_alpha,
     )
 
