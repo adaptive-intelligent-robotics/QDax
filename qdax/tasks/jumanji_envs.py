@@ -152,8 +152,8 @@ def jumanji_scoring_function(
     deterministic or pseudo-deterministic environments.
 
     This rollout is only deterministic when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarly
-    evaluated with the same environment everytime, this won't be determinist.
+    If the init states are fixed but different, as a policy is not necessary
+    evaluated with the same environment every time, this won't be deterministic.
     When the init states are different, this is not purely stochastic.
     """
 

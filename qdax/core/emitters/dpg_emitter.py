@@ -53,7 +53,7 @@ class DiversityPGEmitter(QualityPGEmitter):
     """
     A diversity policy gradient emitter used to implement QDPG algorithm.
 
-    Please not that the inheritence between DiversityPGEmitter and QualityPGEmitter
+    Please not that the inheritance between DiversityPGEmitter and QualityPGEmitter
     could be increased with changes in the way transitions samples are handled in
     the QualityPGEmitter. But this would modify the computation/memory strategy of the
     current implementation. Hence, we won't apply this yet and will discuss this with

@@ -162,7 +162,7 @@ class SAC:
         random_key: RNGKey,
         deterministic: bool = False,
     ) -> Tuple[Action, RNGKey]:
-        """Selects an action acording to SAC policy.
+        """Selects an action according to SAC policy.
 
         Args:
             obs: agent observation(s)

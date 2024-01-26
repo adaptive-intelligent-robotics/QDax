@@ -13,7 +13,7 @@ from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 def square(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    Seach space should be [0,1]^n
+    Search space should be [0,1]^n
     BD space should be [0,1]^n
     """
     freq = 5
@@ -24,7 +24,7 @@ def square(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    Seach space should be [0,1]^n
+    Search space should be [0,1]^n
     BD space should be [0,1]^n
     """
     freq = 5
@@ -35,7 +35,7 @@ def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    Seach space should be [0,1]^n
+    Search space should be [0,1]^n
     BD space should be [0,1]^n
     """
 
@@ -52,7 +52,7 @@ def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    Seach space should be [0,1]^n
+    Search space should be [0,1]^n
     BD space should be [0,1]^n
     """
     f = jnp.prod(params)
@@ -62,7 +62,7 @@ def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    Seach space should be [0,1]^n
+    Search space should be [0,1]^n
     BD space should be [0,1]^n
     """
     coeff = 20

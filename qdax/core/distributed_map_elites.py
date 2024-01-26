@@ -158,7 +158,8 @@ class DistributedMAPElites(MAPElites):
             devices: hardware devices.
 
         Returns:
-            A callable function that inits the MAP-Elites algorithm in a ditributed way.
+            A callable function that inits the MAP-Elites algorithm in a distributed
+            way.
         """
         return jax.pmap(  # type: ignore
             partial(self.init, centroids=centroids),
