@@ -110,7 +110,7 @@ class PointMaze(Env):
         x_init = jp.random_uniform(rng1, (), low=self._x_min, high=self._x_max) / 10
         y_init = jp.random_uniform(rng2, (), low=self._y_min, high=-0.7)
         obs_init = jp.array([x_init, y_init])
-        # create fake qp (to reusebrax.State)
+        # create fake qp (to reuse brax.State)
         fake_qp = brax.QP.zero()
         # init reward, metrics and infos
         reward, done = jp.zeros(2)

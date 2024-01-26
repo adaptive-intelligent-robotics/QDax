@@ -43,7 +43,7 @@ class OMGMEGAEmitter(Emitter):
     times. One solution that we are discussing and that is very similar to the first
     solution discussed above, would be to decompose the addition mechanism in two
     phases: one outputting the indices at which individuals will be added, and then
-    the actual insertion step. This would enable to reusethe same indices to add
+    the actual insertion step. This would enable to reuse the same indices to add
     the gradients instead of having to recompute them.
 
     The two design choices seem acceptable and enable to have OMG MEGA compatible
