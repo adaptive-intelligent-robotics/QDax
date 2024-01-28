@@ -3,6 +3,7 @@ Emitter and utils necessary to reproducing the MAP-Elites-ES algorithm
 from "Scaling MAP-Elites to Deep Neuroevolution" by Colas et al:
 https://dl.acm.org/doi/pdf/10.1145/3377930.3390217
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

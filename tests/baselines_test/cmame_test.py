@@ -113,7 +113,11 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         initial_population, centroids, random_key
     )
 
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         map_elites.scan_update,
         (repertoire, emitter_state, random_key),
         (),

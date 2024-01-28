@@ -5,6 +5,7 @@ QDPG has been updated to enter in the container+emitter framework of QD. Further
 it has been updated to work better with Jax in term of time cost. Those changes have
 been made in accordance with the authors of this algorithm.
 """
+
 import functools
 from dataclasses import dataclass
 from typing import Callable

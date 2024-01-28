@@ -142,7 +142,11 @@ def test_mels(env_name: str, batch_size: int) -> None:
     )
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         mels.scan_update,
         (repertoire, emitter_state, random_key),
         (),

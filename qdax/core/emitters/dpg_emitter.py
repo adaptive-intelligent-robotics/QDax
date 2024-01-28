@@ -1,6 +1,7 @@
 """ Implements the Diversity PG inspired by QDPG algorithm in jax for brax environments,
 based on: https://arxiv.org/abs/2006.08505
 """
+
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Optional, Tuple
@@ -161,7 +162,10 @@ class DiversityPGEmitter(QualityPGEmitter):
             return new_emitter_state, ()
 
         # sample transitions
-        (transitions, random_key,) = emitter_state.replay_buffer.sample(
+        (
+            transitions,
+            random_key,
+        ) = emitter_state.replay_buffer.sample(
             random_key=emitter_state.random_key,
             sample_size=self._config.num_critic_training_steps
             * self._config.batch_size,
@@ -230,7 +234,11 @@ class DiversityPGEmitter(QualityPGEmitter):
         )
 
         # Update greedy policy
-        (policy_optimizer_state, actor_params, target_actor_params,) = jax.lax.cond(
+        (
+            policy_optimizer_state,
+            actor_params,
+            target_actor_params,
+        ) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
             lambda x: self._update_actor(*x),
             lambda _: (
@@ -329,7 +337,11 @@ class DiversityPGEmitter(QualityPGEmitter):
             transitions,
         )
 
-        (emitter_state, policy_params, policy_optimizer_state,), _ = jax.lax.scan(
+        (
+            emitter_state,
+            policy_params,
+            policy_optimizer_state,
+        ), _ = jax.lax.scan(
             scan_train_policy,
             (emitter_state, policy_params, policy_optimizer_state),
             (transitions),

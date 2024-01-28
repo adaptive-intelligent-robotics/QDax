@@ -366,7 +366,11 @@ class QualityPGEmitter(Emitter):
         )
 
         # Update greedy actor
-        (actor_optimizer_state, actor_params, target_actor_params,) = jax.lax.cond(
+        (
+            actor_optimizer_state,
+            actor_params,
+            target_actor_params,
+        ) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
             lambda x: self._update_actor(*x),
             lambda _: (
@@ -514,7 +518,11 @@ class QualityPGEmitter(Emitter):
                 new_policy_optimizer_state,
             ), ()
 
-        (emitter_state, policy_params, policy_optimizer_state,), _ = jax.lax.scan(
+        (
+            emitter_state,
+            policy_params,
+            policy_optimizer_state,
+        ), _ = jax.lax.scan(
             scan_train_policy,
             (emitter_state, policy_params, policy_optimizer_state),
             (),
