@@ -30,7 +30,6 @@ def compute_pareto_dominance(
     return jnp.any(jnp.logical_and(diff_greater_than_zero, diff_geq_than_zero))
 
 
-
 def compute_pareto_front(batch_of_criteria: jnp.ndarray) -> jnp.ndarray:
     """Returns an array of boolean that states for each element if it is
     in the pareto front or not.
