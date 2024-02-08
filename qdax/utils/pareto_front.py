@@ -76,6 +76,7 @@ def compute_masked_pareto_dominance(
 
     return jnp.any(jnp.logical_and(diff_greater_than_zero, diff_geq_than_zero))
 
+
 def compute_masked_pareto_front(
     batch_of_criteria: jnp.ndarray, mask: Mask
 ) -> jnp.ndarray:
