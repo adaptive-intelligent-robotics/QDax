@@ -1,8 +1,10 @@
 # Contributing
 
-We'd love to accept your patches and contributions to this project. When contributing to the repository, please make sure to first discuss the changes you wish to make via an issue.
+We'd love to accept your patches and contributions to this project. When contributing to the repository, please make sure to first discuss the changes you wish to make via a [github issue](https://github.com/adaptive-intelligent-robotics/QDax/issues).
 
-Then, there are just a few small guidelines you need to follow.
+After the issue is discussed and the solution is determined, you will be invited to fork the repository and create a branch to implement the solution. Once ready to be merged, you can create a [Pull Request](https://github.com/adaptive-intelligent-robotics/QDax/pulls) on github and request to merge into the branch **develop**.
+
+When implementing your contribution, there are just a few guidelines you need to follow.
 
 ## Installing Pre-commit hooks
 
