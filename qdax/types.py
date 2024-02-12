@@ -45,5 +45,5 @@ class ParetoFront(Generic[T]):
 Mask: TypeAlias = jnp.ndarray
 
 # Others
-RNGKey: TypeAlias = jax.random.KeyArray
+RNGKey: TypeAlias = jax.random.Array
 Metrics: TypeAlias = Dict[str, jnp.ndarray]
