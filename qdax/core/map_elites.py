@@ -1,4 +1,5 @@
 """Core components of the MAP-Elites algorithm."""
+
 from __future__ import annotations
 
 from functools import partial
@@ -173,7 +174,12 @@ class MAPElites:
             The updated repertoire and emitter state, with a new random key and metrics.
         """
         repertoire, emitter_state, random_key = carry
-        (repertoire, emitter_state, metrics, random_key,) = self.update(
+        (
+            repertoire,
+            emitter_state,
+            metrics,
+            random_key,
+        ) = self.update(
             repertoire,
             emitter_state,
             random_key,

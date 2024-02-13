@@ -79,7 +79,12 @@ def run_me() -> None:
 
     # Run MAP-Elites loop
     for _ in range(num_iterations):
-        (repertoire, emitter_state, metrics, random_key,) = map_elites.update(
+        (
+            repertoire,
+            emitter_state,
+            metrics,
+            random_key,
+        ) = map_elites.update(
             repertoire,
             emitter_state,
             random_key,

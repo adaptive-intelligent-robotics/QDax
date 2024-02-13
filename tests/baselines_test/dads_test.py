@@ -1,5 +1,6 @@
 """Training script for the algorithm DADS, should be launched with hydra.
     e.g. python train_dads.py config=dads_ant"""
+
 from functools import partial
 from typing import Any, Tuple
 

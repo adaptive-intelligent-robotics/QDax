@@ -102,7 +102,7 @@ def plot_2d_map_elites_repertoire(
     Args:
         centroids: the centroids of the repertoire
         repertoire_fitnesses: the fitness of the repertoire
-        minval: minimum values for the descritors
+        minval: minimum values for the descriptors
         maxval: maximum values for the descriptors
         repertoire_descriptors: the descriptors. Defaults to None.
         ax: a matplotlib axe for the figure to plot. Defaults to None.
@@ -229,7 +229,7 @@ def plot_map_elites_results(
         env_steps: the array containing the number of steps done in the environment.
         metrics: a dictionary containing metrics from the optimizatoin process.
         repertoire: the final repertoire obtained.
-        min_bd: the mimimal possible values for the bd.
+        min_bd: the minimal possible values for the bd.
         max_bd: the maximal possible values for the bd.
 
     Returns:

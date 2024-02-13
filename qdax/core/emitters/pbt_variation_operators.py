@@ -94,7 +94,10 @@ def td3_pbt_variation_fn(
         training_state1.critic_params,
         training_state2.critic_params,
     )
-    (policy_params, critic_params,), random_key = isoline_variation(
+    (
+        policy_params,
+        critic_params,
+    ), random_key = isoline_variation(
         x1=(policy_params1, critic_params1),
         x2=(policy_params2, critic_params2),
         random_key=random_key,

@@ -15,9 +15,9 @@ class Archive(PyTreeNode):
 
     An example of use of the archive is the algorithm QDPG: state
     descriptors are stored in this archive and a novelty scorer compares
-    new state desciptors to the state descriptors stored in this archive.
+    new state descriptors to the state descriptors stored in this archive.
 
-    Note: notations suppose that the elements are called state desciptors.
+    Note: notations suppose that the elements are called state descriptors.
     If we where to use this structure for another application, it would be
     better to change the variables name for another one. Does not seem
     necessary at the moment though.
@@ -157,7 +157,7 @@ class Archive(PyTreeNode):
         """
         state_descriptors = state_descriptors.reshape((-1, state_descriptors.shape[-1]))
 
-        # get nearest neigbor for each new state descriptor
+        # get nearest neighbor for each new state descriptor
         values, _indices = knn(self.data, state_descriptors, 1)
 
         # get indices where distance bigger than threshold
@@ -187,7 +187,7 @@ class Archive(PyTreeNode):
             state_descriptor = condition_data["state_descriptor"]
 
             # do the filtering among the added elements
-            # get nearest neigbor for each new state descriptor
+            # get nearest neighbor for each new state descriptor
             values, _indices = knn(new_elements, state_descriptor.reshape(1, -1), 1)
 
             # get indices where distance bigger than threshold
@@ -255,7 +255,7 @@ def score_euclidean_novelty(
 def knn(
     data: jnp.ndarray, new_data: jnp.ndarray, k: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """K nearest neigbors - Brute force implementation.
+    """K nearest neighbors - Brute force implementation.
     Using euclidean distance.
 
     Code from https://www.kernel-operations.io/keops/_auto_benchmarks/
@@ -264,7 +264,7 @@ def knn(
     Args:
         data: given reference data.
         new_data: data to be compared to the reference data.
-        k: number of neigbors to consider.
+        k: number of neighbors to consider.
 
     Returns:
         The distances and indices of the nearest neighbors.

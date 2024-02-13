@@ -63,7 +63,7 @@ def test_mees() -> None:
     fake_batch = jnp.zeros(shape=(1, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
-    # Define the fonction to play a step with the policy in the environment
+    # Define the function to play a step with the policy in the environment
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,
@@ -185,7 +185,11 @@ def test_mees() -> None:
         return (repertoire, emitter_state, random_key), metrics
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         update_scan_fn,
         (repertoire, emitter_state, random_key),
         (),

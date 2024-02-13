@@ -1,4 +1,5 @@
 """Core components of the MAP-Elites algorithm."""
+
 from __future__ import annotations
 
 from functools import partial
@@ -158,7 +159,8 @@ class DistributedMAPElites(MAPElites):
             devices: hardware devices.
 
         Returns:
-            A callable function that inits the MAP-Elites algorithm in a ditributed way.
+            A callable function that inits the MAP-Elites algorithm in a distributed
+            way.
         """
         return jax.pmap(  # type: ignore
             partial(self.init, centroids=centroids),
@@ -195,7 +197,12 @@ class DistributedMAPElites(MAPElites):
             repertoire, emitter_state, random_key = carry
 
             # apply one step of update
-            (repertoire, emitter_state, metrics, random_key,) = self.update(
+            (
+                repertoire,
+                emitter_state,
+                metrics,
+                random_key,
+            ) = self.update(
                 repertoire,
                 emitter_state,
                 random_key,
@@ -209,7 +216,11 @@ class DistributedMAPElites(MAPElites):
             random_key: RNGKey,
         ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey, Metrics]:
             """Apply num_iterations of update."""
-            (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+            (
+                repertoire,
+                emitter_state,
+                random_key,
+            ), metrics = jax.lax.scan(
                 _scan_update,
                 (repertoire, emitter_state, random_key),
                 (),

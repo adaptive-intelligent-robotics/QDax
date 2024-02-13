@@ -68,7 +68,7 @@ class DADS(SAC):
     of skills, is used to evaluate the skills in the environment and hence
     to generate transitions. The sampling is hence fixed and perfectly uniform.
 
-    We plan to add continous skill as an option in the future. We also plan
+    We plan to add continuous skill as an option in the future. We also plan
     to release the current constraint on the number of batched environments
     by sampling from the skills rather than having this fixed setting.
     """
@@ -430,12 +430,17 @@ class DADS(SAC):
         """
         training_state, transitions = operand
 
-        dynamics_loss, dynamics_gradient = jax.value_and_grad(self._dynamics_loss_fn,)(
+        dynamics_loss, dynamics_gradient = jax.value_and_grad(
+            self._dynamics_loss_fn,
+        )(
             training_state.dynamics_params,
             transitions=transitions,
         )
 
-        (dynamics_updates, dynamics_optimizer_state,) = self._dynamics_optimizer.update(
+        (
+            dynamics_updates,
+            dynamics_optimizer_state,
+        ) = self._dynamics_optimizer.update(
             dynamics_gradient, training_state.dynamics_optimizer_state
         )
         dynamics_params = optax.apply_updates(
@@ -483,14 +488,18 @@ class DADS(SAC):
         random_key = training_state.random_key
 
         # Update skill-dynamics
-        (dynamics_params, dynamics_loss, dynamics_optimizer_state,) = jax.lax.cond(
+        (
+            dynamics_params,
+            dynamics_loss,
+            dynamics_optimizer_state,
+        ) = jax.lax.cond(
             training_state.steps % self._config.dynamics_update_freq == 0,
             self._update_dynamics,
             self._not_update_dynamics,
             (training_state, transitions),
         )
 
-        # udpate alpha
+        # update alpha
         (
             alpha_params,
             alpha_optimizer_state,

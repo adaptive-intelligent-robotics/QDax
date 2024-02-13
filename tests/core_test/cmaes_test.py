@@ -41,7 +41,7 @@ def test_cmaes() -> None:
         # sample
         samples, random_key = cmaes.sample(state, random_key)
 
-        # udpate
+        # update
         state = cmaes.update(state, samples)
 
         # check stop condition
