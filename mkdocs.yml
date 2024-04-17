@@ -129,6 +129,7 @@ nav:
     - PGA AURORA: examples/pga_aurora.ipynb
     - PBT: examples/sac_pbt.ipynb
     - MAPElites PBT: examples/me_sac_pbt.ipynb
+    - MAPElites Low Spread: examples/mels.ipynb
     - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
