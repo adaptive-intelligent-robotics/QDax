@@ -69,7 +69,7 @@ def test_me_pbt_sac() -> None:
     )
     min_bd, max_bd = env.behavior_descriptor_limits
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     key, subkey = jax.random.split(key)
     eval_env_first_states = jax.jit(eval_env.reset)(rng=subkey)
 

@@ -47,7 +47,7 @@ def test_mees() -> None:
     env = environments.create(env_name, episode_length=episode_length)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # Init policy network
     policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)

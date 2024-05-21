@@ -30,7 +30,7 @@ def test_jumanji_utils() -> None:
     env = jumanji.make("Snake-v1")
 
     # Reset your (jit-able) environment
-    key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
     state, _timestep = jax.jit(env.reset)(key)
 
     # Interact with the (jit-able) environment
@@ -38,7 +38,7 @@ def test_jumanji_utils() -> None:
     state, _timestep = jax.jit(env.step)(state, action)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # get number of actions
     num_actions = env.action_spec().maximum + 1
