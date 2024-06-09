@@ -140,11 +140,13 @@ class MAERepertoire(MapElitesRepertoire):
 
         # get addition condition
         repertoire_thresholds = jnp.expand_dims(self.thresholds, axis=-1)
-        current_thresholds_nan = jnp.take_along_axis(
+        current_thresholds_with_inf = jnp.take_along_axis(
             repertoire_thresholds, batch_of_indices, 0
         )
         current_thresholds = jnp.where(
-            jnp.isnan(current_thresholds_nan), x=-jnp.inf, y=current_thresholds_nan
+            jnp.isinf(current_thresholds_with_inf),
+            x=-jnp.inf,
+            y=current_thresholds_with_inf,
         )
         addition_condition = batch_of_fitnesses > current_thresholds
 
@@ -181,13 +183,13 @@ class MAERepertoire(MapElitesRepertoire):
         )
 
         new_thresholds = self.thresholds.at[batch_of_indices.squeeze(axis=-1)].set(
-            updated_thresholds.squeeze(axis=-1)
+            updated_thresholds
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
             batch_of_descriptors
         )
 
-        return MAERepertoire(
+        return self.replace(  # type: ignore
             genotypes=new_repertoire_genotypes,
             fitnesses=new_fitnesses,
             descriptors=new_descriptors,
@@ -282,7 +284,7 @@ class MAERepertoire(MapElitesRepertoire):
         if min_threshold is not None:
             default_thresholds = jnp.full_like(default_fitnesses, min_threshold)
         else:
-            default_thresholds = jnp.full_like(default_fitnesses, jnp.nan)
+            default_thresholds = jnp.full_like(default_fitnesses, -jnp.inf)
 
         # default genotypes is all 0
         default_genotypes = jax.tree_util.tree_map(
