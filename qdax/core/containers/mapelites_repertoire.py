@@ -56,7 +56,7 @@ def compute_cvt_centroids(
         init="k-means++",
         n_clusters=num_centroids,
         n_init=1,
-        random_state=RandomState(subkey),
+        random_state=RandomState(jax.random.key_data(subkey)),
     )
     k_means.fit(x)
     centroids = k_means.cluster_centers_

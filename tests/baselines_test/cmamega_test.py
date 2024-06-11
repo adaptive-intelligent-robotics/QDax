@@ -95,7 +95,7 @@ def test_cma_mega() -> None:
         max_fitness = jnp.max(adjusted_fitness)
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    random_key = jax.random.PRNGKey(0)
+    random_key = jax.random.key(0)
     initial_population = jax.random.uniform(
         random_key, shape=(batch_size, num_dimensions)
     )

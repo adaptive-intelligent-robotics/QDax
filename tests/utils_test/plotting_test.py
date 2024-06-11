@@ -38,7 +38,7 @@ def test_onion_grid(num_descriptors: int, grid_shape: Tuple[int, ...]) -> None:
     minval = jnp.array([0] * num_descriptors)
     maxval = jnp.array([1] * num_descriptors)
 
-    random_key = jax.random.PRNGKey(seed=0)
+    random_key = jax.random.key(seed=0)
     random_key, key_desc, key_fit = jax.random.split(random_key, num=3)
 
     number_samples_test = 300

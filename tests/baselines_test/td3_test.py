@@ -49,7 +49,7 @@ def test_td3() -> None:
         auto_reset=True,
         eval_metrics=True,
     )
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     key, subkey = jax.random.split(key)
     env_state = jax.jit(env.reset)(rng=key)
     eval_env_first_state = jax.jit(eval_env.reset)(rng=key)

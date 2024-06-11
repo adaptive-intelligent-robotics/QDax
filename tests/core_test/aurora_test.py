@@ -75,7 +75,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     log_freq = 5
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # Init environment
     env, policy_network, scoring_fn, random_key = create_default_brax_task_components(

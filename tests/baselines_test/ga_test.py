@@ -71,7 +71,7 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
         return fitnesses, {}, random_key
 
     # initial population
-    random_key = jax.random.PRNGKey(42)
+    random_key = jax.random.key(42)
     random_key, subkey = jax.random.split(random_key)
     init_genotypes = jax.random.uniform(
         subkey,

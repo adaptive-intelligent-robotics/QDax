@@ -68,7 +68,7 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
         grid_shape = tuple([resolution_per_axis for _ in range(bd_size)])
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # Init population of parameters
     init_variables = task.get_initial_parameters(init_batch_size)
