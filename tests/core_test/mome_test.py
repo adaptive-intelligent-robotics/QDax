@@ -131,7 +131,11 @@ def test_mome(num_descriptors: int) -> None:
     )
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         mome.scan_update,
         (repertoire, emitter_state, random_key),
         (),

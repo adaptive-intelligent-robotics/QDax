@@ -1,6 +1,5 @@
 """Utilities functions to perform normalization (generally on observations in RL)."""
 
-
 from typing import NamedTuple
 
 import jax.numpy as jnp

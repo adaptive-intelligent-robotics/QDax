@@ -1,4 +1,5 @@
 """Core components of a basic genetic algorithm."""
+
 from functools import partial
 from typing import Any, Callable, Optional, Tuple
 

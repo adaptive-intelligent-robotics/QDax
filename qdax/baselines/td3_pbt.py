@@ -291,7 +291,10 @@ class PBTTD3(TD3):
 
         def update_policy_step() -> Tuple[Params, Params, optax.OptState]:
             policy_optimizer = optax.adam(learning_rate=training_state.policy_lr)
-            (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
+            (
+                policy_updates,
+                policy_optimizer_state,
+            ) = policy_optimizer.update(
                 policy_gradient, training_state.policy_optimizer_state
             )
             policy_params = optax.apply_updates(

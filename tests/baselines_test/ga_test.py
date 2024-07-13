@@ -119,7 +119,11 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
         )
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         algo_instance.scan_update,
         (repertoire, emitter_state, random_key),
         (),

@@ -35,7 +35,7 @@ class CMAMEGAState(EmitterState):
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
         previous_fitnesses: store last fitnesses of the repertoire. Used to
-            compute the improvment.
+            compute the improvement.
     """
 
     theta: Genotype
@@ -62,7 +62,7 @@ class CMAMEGAEmitter(Emitter):
         Fontaine et al.
 
         Args:
-            scoring_function: a function to score individuals, outputing fitness,
+            scoring_function: a function to score individuals, outputting fitness,
                 descriptors and extra scores. With this emitter, the extra score
                 contains gradients and normalized gradients.
             batch_size: number of solutions sampled at each iteration

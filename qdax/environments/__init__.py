@@ -25,7 +25,7 @@ from qdax.environments.locomotion_wrappers import (
 from qdax.environments.pointmaze import PointMaze
 from qdax.environments.wrappers import CompletedEvalWrapper
 
-# experimentally determinated offset (except for antmaze)
+# experimentally determined offset (except for antmaze)
 # should be sufficient to have only positive rewards but no guarantee
 reward_offset = {
     "pointmaze": 2.3431,

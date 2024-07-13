@@ -2,6 +2,7 @@
 Definition of CMAES class, containing main functions necessary to build
 a CMA optimization script. Link to the paper: https://arxiv.org/abs/1604.00772
 """
+
 from functools import partial
 from typing import Callable, Optional, Tuple
 
@@ -261,7 +262,7 @@ class CMAES:
             # unpack data
             cov, num_updates = operand
 
-            # enfore symmetry - did not change anything
+            # enforce symmetry - did not change anything
             cov = jnp.triu(cov) + jnp.triu(cov, 1).T
 
             # get eigen decomposition: eigenvalues, eigenvectors
