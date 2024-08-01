@@ -236,26 +236,32 @@ class MEESEmitter(Emitter):
         static_argnames=("self",),
     )
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[MEESEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
-            init_genotypes: The initial population.
+            genotypes: The initial population.
             random_key: A random key.
 
         Returns:
             The initial state of the MEESEmitter, a new random key.
         """
         # Initialisation requires one initial genotype
-        if jax.tree_util.tree_leaves(init_genotypes)[0].shape[0] > 1:
-            init_genotypes = jax.tree_util.tree_map(
+        if jax.tree_util.tree_leaves(genotypes)[0].shape[0] > 1:
+            genotypes = jax.tree_util.tree_map(
                 lambda x: x[0],
-                init_genotypes,
+                genotypes,
             )
 
         # Initialise optimizer
-        initial_optimizer_state = self._optimizer.init(init_genotypes)
+        initial_optimizer_state = self._optimizer.init(genotypes)
 
         # Create empty Novelty archive
         if self._config.use_explore:
@@ -270,7 +276,7 @@ class MEESEmitter(Emitter):
         # Create empty updated genotypes and fitness
         last_updated_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.zeros(shape=(self._config.last_updated_size,) + x.shape[1:]),
-            init_genotypes,
+            genotypes,
         )
         last_updated_fitnesses = -jnp.inf * jnp.ones(
             shape=self._config.last_updated_size
@@ -280,7 +286,7 @@ class MEESEmitter(Emitter):
             MEESEmitterState(
                 initial_optimizer_state=initial_optimizer_state,
                 optimizer_state=initial_optimizer_state,
-                offspring=init_genotypes,
+                offspring=genotypes,
                 generation_count=0,
                 novelty_archive=novelty_archive,
                 last_updated_genotypes=last_updated_genotypes,
@@ -300,7 +306,7 @@ class MEESEmitter(Emitter):
         repertoire: MapElitesRepertoire,
         emitter_state: MEESEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Return the offspring generated through gradient update.
 
         Params:
@@ -313,7 +319,7 @@ class MEESEmitter(Emitter):
             a new jax PRNG key
         """
 
-        return emitter_state.offspring, random_key
+        return emitter_state.offspring, {}, random_key
 
     @partial(
         jax.jit,

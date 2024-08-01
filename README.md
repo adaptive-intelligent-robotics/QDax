@@ -166,13 +166,14 @@ Issues and contributions are welcome. Please refer to the [contribution guide](h
 ## Citing QDax
 If you use QDax in your research and want to cite it in your work, please use:
 ```
-@misc{chalumeau2023qdax,
-    title={QDax: A Library for Quality-Diversity and Population-based Algorithms with Hardware Acceleration},
-    author={Felix Chalumeau and Bryan Lim and Raphael Boige and Maxime Allard and Luca Grillotti and Manon Flageat and Valentin Macé and Arthur Flajolet and Thomas Pierrot and Antoine Cully},
-    year={2023},
-    eprint={2308.03665},
-    archivePrefix={arXiv},
-    primaryClass={cs.AI}
+@article{chalumeau2024qdax,
+  title={Qdax: A library for quality-diversity and population-based algorithms with hardware acceleration},
+  author={Chalumeau, Felix and Lim, Bryan and Boige, Raphael and Allard, Maxime and Grillotti, Luca and Flageat, Manon and Mac{\'e}, Valentin and Richard, Guillaume and Flajolet, Arthur and Pierrot, Thomas and others},
+  journal={Journal of Machine Learning Research},
+  volume={25},
+  number={108},
+  pages={1--16},
+  year={2024}
 }
 ```
 

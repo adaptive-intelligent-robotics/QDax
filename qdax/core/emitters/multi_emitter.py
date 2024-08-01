@@ -56,13 +56,19 @@ class MultiEmitter(Emitter):
         return tuple(indexes_separation_batches)
 
     def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: Repertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[Optional[EmitterState], RNGKey]:
         """
         Initialize the state of the emitter.
 
         Args:
-            init_genotypes: The genotypes of the initial population.
+            genotypes: The genotypes of the initial population.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -76,7 +82,14 @@ class MultiEmitter(Emitter):
         # init all emitter states - gather them
         emitter_states = []
         for emitter, subkey_emitter in zip(self.emitters, subkeys):
-            emitter_state, _ = emitter.init(init_genotypes, subkey_emitter)
+            emitter_state, _ = emitter.init(
+                subkey_emitter,
+                repertoire,
+                genotypes,
+                fitnesses,
+                descriptors,
+                extra_scores,
+            )
             emitter_states.append(emitter_state)
 
         return MultiEmitterState(tuple(emitter_states)), random_key
@@ -87,7 +100,7 @@ class MultiEmitter(Emitter):
         repertoire: Optional[Repertoire],
         emitter_state: Optional[MultiEmitterState],
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Emit new population. Use all the sub emitters to emit subpopulation
         and gather them.
 
@@ -108,21 +121,25 @@ class MultiEmitter(Emitter):
 
         # emit from all emitters and gather offsprings
         all_offsprings = []
+        all_extra_info: ExtraScores = {}
         for emitter, sub_emitter_state, subkey_emitter in zip(
             self.emitters,
             emitter_state.emitter_states,
             subkeys,
         ):
-            genotype, _ = emitter.emit(repertoire, sub_emitter_state, subkey_emitter)
+            genotype, extra_info, _ = emitter.emit(
+                repertoire, sub_emitter_state, subkey_emitter
+            )
             batch_size = jax.tree_util.tree_leaves(genotype)[0].shape[0]
             assert batch_size == emitter.batch_size
             all_offsprings.append(genotype)
+            all_extra_info = {**all_extra_info, **extra_info}
 
         # concatenate offsprings together
         offsprings = jax.tree_util.tree_map(
             lambda *x: jnp.concatenate(x, axis=0), *all_offsprings
         )
-        return offsprings, random_key
+        return offsprings, all_extra_info, random_key
 
     @partial(jax.jit, static_argnames=("self",))
     def state_update(

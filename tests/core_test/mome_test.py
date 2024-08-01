@@ -81,7 +81,7 @@ def test_mome(num_descriptors: int) -> None:
     # initial population
     random_key = jax.random.PRNGKey(42)
     random_key, subkey = jax.random.split(random_key)
-    init_genotypes = jax.random.uniform(
+    genotypes = jax.random.uniform(
         subkey,
         (batch_size, num_variables),
         minval=minval,
@@ -127,7 +127,7 @@ def test_mome(num_descriptors: int) -> None:
     )
 
     repertoire, emitter_state, random_key = mome.init(
-        init_genotypes, centroids, pareto_front_max_length, random_key
+        genotypes, centroids, pareto_front_max_length, random_key
     )
 
     # Run the algorithm

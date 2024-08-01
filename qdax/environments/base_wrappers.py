@@ -1,6 +1,7 @@
 from abc import abstractmethod
-from typing import Any, List, Tuple
+from typing import Any, Tuple
 
+import jax
 from brax.v1 import jumpy as jp
 from brax.v1.envs import Env, State
 
@@ -22,7 +23,7 @@ class QDEnv(Env):
 
     @property
     @abstractmethod
-    def state_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def state_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
         pass
 
     @property
@@ -32,7 +33,7 @@ class QDEnv(Env):
 
     @property
     @abstractmethod
-    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def behavior_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
         pass
 
     @property
@@ -71,7 +72,7 @@ class QDWrapper(QDEnv):
         return self.env.state_descriptor_name
 
     @property
-    def state_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def state_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
         return self.env.state_descriptor_limits
 
     @property
@@ -79,7 +80,7 @@ class QDWrapper(QDEnv):
         return self.env.behavior_descriptor_length
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def behavior_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
         return self.env.behavior_descriptor_limits
 
     @property
