@@ -3,8 +3,8 @@ from typing import Optional, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 from qdax.custom_types import Descriptor, Fitness, Genotype
+from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 
 
 def multivariate_normal(

@@ -16,8 +16,8 @@ from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import DCGTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_dc_fn
 from qdax.core.neuroevolution.networks.networks import QModuleDC
-from qdax.environments.base_wrappers import QDEnv
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
+from qdax.environments.base_wrappers import QDEnv
 
 
 @dataclass

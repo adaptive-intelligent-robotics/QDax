@@ -12,7 +12,6 @@ from chex import ArrayTree
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.environments.bd_extractors import AuroraExtraInfo
 from qdax.custom_types import (
     Descriptor,
     Fitness,
@@ -22,6 +21,7 @@ from qdax.custom_types import (
     Params,
     RNGKey,
 )
+from qdax.environments.bd_extractors import AuroraExtraInfo
 
 
 class AURORA:

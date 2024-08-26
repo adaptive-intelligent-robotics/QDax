@@ -6,7 +6,14 @@ from brax.training.distribution import ParametricDistribution
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.losses.sac_loss import make_sac_loss_fn
-from qdax.custom_types import Action, Observation, Params, RNGKey, Skill, StateDescriptor
+from qdax.custom_types import (
+    Action,
+    Observation,
+    Params,
+    RNGKey,
+    Skill,
+    StateDescriptor,
+)
 
 
 def make_dads_loss_fn(

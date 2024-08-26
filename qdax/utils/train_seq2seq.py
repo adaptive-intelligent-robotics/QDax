@@ -16,8 +16,8 @@ from flax.training import train_state
 
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
-from qdax.environments.bd_extractors import AuroraExtraInfoNormalization
 from qdax.custom_types import Params, RNGKey
+from qdax.environments.bd_extractors import AuroraExtraInfoNormalization
 
 Array = Any
 PRNGKey = Any

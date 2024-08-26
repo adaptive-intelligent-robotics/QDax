@@ -11,11 +11,11 @@ import pytest
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
+from qdax.custom_types import Descriptor, Observation
 from qdax.tasks.jumanji_envs import (
     jumanji_scoring_function,
     make_policy_network_play_step_fn_jumanji,
 )
-from qdax.custom_types import Descriptor, Observation
 
 
 def test_jumanji_utils() -> None:

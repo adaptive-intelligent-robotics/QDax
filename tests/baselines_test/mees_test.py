@@ -14,8 +14,8 @@ from qdax.core.emitters.mees_emitter import MEESConfig, MEESEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.custom_types import EnvState, Params, RNGKey
+from qdax.tasks.brax_envs import scoring_function_brax_envs
 
 
 def test_mees() -> None:

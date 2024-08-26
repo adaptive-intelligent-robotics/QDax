@@ -12,8 +12,8 @@ from qdax.baselines.td3_pbt import PBTTD3
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
-from qdax.environments.base_wrappers import QDEnv
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
+from qdax.environments.base_wrappers import QDEnv
 
 
 class PBTEmitterState(EmitterState):

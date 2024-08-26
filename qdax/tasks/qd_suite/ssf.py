@@ -3,8 +3,8 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 from qdax.custom_types import Descriptor, Fitness, Genotype
+from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 
 
 class SsfV0(QDSuiteTask):

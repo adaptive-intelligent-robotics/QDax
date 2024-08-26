@@ -18,7 +18,6 @@ from qdax.core.emitters.qpg_emitter import (
     QualityPGEmitterState,
 )
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.environments.base_wrappers import QDEnv
 from qdax.custom_types import (
     Descriptor,
     ExtraScores,
@@ -29,6 +28,7 @@ from qdax.custom_types import (
     RNGKey,
     StateDescriptor,
 )
+from qdax.environments.base_wrappers import QDEnv
 
 
 @dataclass

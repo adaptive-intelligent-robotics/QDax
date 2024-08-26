@@ -8,7 +8,14 @@ import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
-from qdax.custom_types import Centroid, Descriptor, Fitness, Genotype, Observation, RNGKey
+from qdax.custom_types import (
+    Centroid,
+    Descriptor,
+    Fitness,
+    Genotype,
+    Observation,
+    RNGKey,
+)
 
 
 @partial(jax.jit, static_argnames=("k_nn",))

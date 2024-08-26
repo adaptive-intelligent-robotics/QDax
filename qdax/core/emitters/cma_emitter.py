@@ -13,7 +13,14 @@ from qdax.core.containers.mapelites_repertoire import (
     get_cells_indices,
 )
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    RNGKey,
+)
 
 
 class CMAEmitterState(EmitterState):
