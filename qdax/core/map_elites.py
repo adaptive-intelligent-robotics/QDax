@@ -9,7 +9,7 @@ import jax
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import (
+from qdax.custom_types import (
     Centroid,
     Descriptor,
     ExtraScores,

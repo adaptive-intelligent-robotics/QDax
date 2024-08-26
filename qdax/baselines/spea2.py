@@ -15,7 +15,7 @@ import jax
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 from qdax.core.containers.spea2_repertoire import SPEA2Repertoire
 from qdax.core.emitters.emitter import EmitterState
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class SPEA2(GeneticAlgorithm):

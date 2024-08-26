@@ -7,7 +7,7 @@ import jax
 
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import ExtraScores, Fitness, Genotype, Metrics, RNGKey
+from qdax.custom_types import ExtraScores, Fitness, Genotype, Metrics, RNGKey
 
 
 class GeneticAlgorithm:

@@ -25,7 +25,7 @@ from qdax.core.neuroevolution.normalization_utils import (
     update_running_mean_std,
 )
 from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
-from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
+from qdax.custom_types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
 class DadsTrainingState(TrainingState):

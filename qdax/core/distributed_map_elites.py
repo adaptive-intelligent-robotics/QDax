@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.map_elites import MAPElites
-from qdax.types import Centroid, Genotype, Metrics, RNGKey
+from qdax.custom_types import Centroid, Genotype, Metrics, RNGKey
 
 
 class DistributedMAPElites(MAPElites):

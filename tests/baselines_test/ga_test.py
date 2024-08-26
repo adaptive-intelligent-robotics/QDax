@@ -15,7 +15,7 @@ from qdax.core.emitters.mutation_operators import (
     polynomial_mutation,
 )
 from qdax.core.emitters.standard_emitters import MixingEmitter
-from qdax.types import ExtraScores, Fitness, RNGKey
+from qdax.custom_types import ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_ga_metrics
 
 

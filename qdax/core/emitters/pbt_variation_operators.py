@@ -3,7 +3,7 @@ from typing import Tuple
 from qdax.baselines.sac_pbt import PBTSacTrainingState
 from qdax.baselines.td3_pbt import PBTTD3TrainingState
 from qdax.core.emitters.mutation_operators import isoline_variation
-from qdax.types import RNGKey
+from qdax.custom_types import RNGKey
 
 
 def sac_pbt_variation_fn(

@@ -7,7 +7,7 @@ from brax.v1.envs import Env
 
 import qdax
 from qdax.environments.pointmaze import PointMaze
-from qdax.types import EnvState
+from qdax.custom_types import EnvState
 
 
 def test_pointmaze() -> None:

@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jumanji
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
-from qdax.types import (
+from qdax.custom_types import (
     Descriptor,
     ExtraScores,
     Fitness,

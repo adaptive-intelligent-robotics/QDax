@@ -9,7 +9,7 @@ from brax.envs import State as EnvState
 from flax.struct import PyTreeNode
 
 from qdax.core.neuroevolution.buffers.buffer import Transition
-from qdax.types import Descriptor, Genotype, Params, RNGKey
+from qdax.custom_types import Descriptor, Genotype, Params, RNGKey
 
 
 class TrainingState(PyTreeNode):

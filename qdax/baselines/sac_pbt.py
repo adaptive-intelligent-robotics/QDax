@@ -22,7 +22,7 @@ from qdax.core.neuroevolution.buffers.buffer import (
 )
 from qdax.core.neuroevolution.normalization_utils import normalize_with_rmstd
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn
-from qdax.types import Descriptor, Mask, Metrics, RNGKey
+from qdax.custom_types import Descriptor, Mask, Metrics, RNGKey
 
 
 class PBTSacTrainingState(PBTTrainingState, SacTrainingState):

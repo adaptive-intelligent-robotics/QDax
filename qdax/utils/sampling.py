@@ -6,7 +6,7 @@ from typing import Callable, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 @jax.jit

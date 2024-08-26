@@ -19,7 +19,7 @@ from qdax.tasks.brax_envs import (
     create_default_brax_task_components,
     get_aurora_scoring_fn,
 )
-from qdax.types import Observation
+from qdax.custom_types import Observation
 from qdax.utils import train_seq2seq
 from qdax.utils.metrics import default_qd_metrics
 from tests.core_test.map_elites_test import get_mixing_emitter

@@ -6,7 +6,7 @@ import jax
 from flax.struct import PyTreeNode
 
 from qdax.core.containers.repertoire import Repertoire
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class EmitterState(PyTreeNode):

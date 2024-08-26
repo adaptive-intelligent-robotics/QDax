@@ -14,7 +14,7 @@ from qdax.core.emitters.mutation_operators import (
 )
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.mome import MOME
-from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_moqd_metrics
 
 

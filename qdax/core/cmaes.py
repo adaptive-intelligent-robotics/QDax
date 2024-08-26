@@ -10,7 +10,7 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Fitness, Genotype, Mask, RNGKey
+from qdax.custom_types import Fitness, Genotype, Mask, RNGKey
 
 
 class CMAESState(flax.struct.PyTreeNode):

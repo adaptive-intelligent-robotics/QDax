@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from flax.struct import PyTreeNode
 
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer
-from qdax.types import RNGKey
+from qdax.custom_types import RNGKey
 
 
 class PBTTrainingState(PyTreeNode):

@@ -19,7 +19,7 @@ from qdax.core.emitters.qpg_emitter import (
 )
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.environments.base_wrappers import QDEnv
-from qdax.types import (
+from qdax.custom_types import (
     Descriptor,
     ExtraScores,
     Fitness,

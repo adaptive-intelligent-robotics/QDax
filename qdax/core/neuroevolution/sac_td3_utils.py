@@ -15,7 +15,7 @@ from brax.envs import State as EnvState
 
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.mdp_utils import TrainingState
-from qdax.types import Metrics
+from qdax.custom_types import Metrics
 
 
 @partial(

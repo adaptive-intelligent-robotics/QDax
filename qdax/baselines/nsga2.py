@@ -13,7 +13,7 @@ import jax
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 from qdax.core.containers.nsga2_repertoire import NSGA2Repertoire
 from qdax.core.emitters.emitter import EmitterState
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class NSGA2(GeneticAlgorithm):

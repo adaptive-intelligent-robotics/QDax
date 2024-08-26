@@ -15,7 +15,7 @@ from jax.flatten_util import ravel_pytree
 from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 def compute_cvt_centroids(

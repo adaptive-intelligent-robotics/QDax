@@ -16,7 +16,7 @@ from qdax.core.mels import MELS
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.tasks.brax_envs import reset_based_scoring_function_brax_envs
-from qdax.types import EnvState, Params, RNGKey
+from qdax.custom_types import EnvState, Params, RNGKey
 
 
 @pytest.mark.parametrize(

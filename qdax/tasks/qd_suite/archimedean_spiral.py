@@ -5,7 +5,7 @@ import jax.lax
 import jax.numpy as jnp
 
 from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
-from qdax.types import Descriptor, Fitness, Genotype
+from qdax.custom_types import Descriptor, Fitness, Genotype
 
 
 class ParameterizationGenotype(Enum):

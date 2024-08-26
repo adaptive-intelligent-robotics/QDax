@@ -14,7 +14,7 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, Spread
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, Spread
 
 
 def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:

@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.archive import Archive
-from qdax.types import RNGKey
+from qdax.custom_types import RNGKey
 
 
 class UniformReplacementArchive(Archive):

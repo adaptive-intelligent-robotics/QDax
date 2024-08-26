@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from brax.training.distribution import ParametricDistribution
 
 from qdax.core.neuroevolution.buffers.buffer import Transition
-from qdax.types import Action, Observation, Params, RNGKey
+from qdax.custom_types import Action, Observation, Params, RNGKey
 
 
 def make_sac_loss_fn(

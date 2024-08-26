@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import tensorflow_probability.substrates.jax as tfp
 from jax.nn import initializers
 
-from qdax.types import Action, Observation, Skill, StateDescriptor
+from qdax.custom_types import Action, Observation, Skill, StateDescriptor
 
 
 class GaussianMixture(nn.Module):

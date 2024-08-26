@@ -15,7 +15,7 @@ from qdax.tasks.jumanji_envs import (
     jumanji_scoring_function,
     make_policy_network_play_step_fn_jumanji,
 )
-from qdax.types import Descriptor, Observation
+from qdax.custom_types import Descriptor, Observation
 
 
 def test_jumanji_utils() -> None:

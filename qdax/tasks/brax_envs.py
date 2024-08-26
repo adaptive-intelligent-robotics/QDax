@@ -12,7 +12,7 @@ from qdax import environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.core.neuroevolution.mdp_utils import generate_unroll, generate_unroll_actor_dc
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.types import (
+from qdax.custom_types import (
     Descriptor,
     EnvState,
     ExtraScores,

@@ -16,7 +16,7 @@ from qdax.core.emitters.cma_opt_emitter import CMAOptimizingEmitter
 from qdax.core.emitters.cma_pool_emitter import CMAPoolEmitter
 from qdax.core.emitters.cma_rnd_emitter import CMARndEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
 
 
 @pytest.mark.parametrize(

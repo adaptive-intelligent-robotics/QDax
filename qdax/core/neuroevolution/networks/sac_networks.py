@@ -3,7 +3,7 @@ from typing import Tuple
 import flax.linen as nn
 import jax.numpy as jnp
 
-from qdax.types import Action, Observation
+from qdax.custom_types import Action, Observation
 
 
 class MLP(nn.Module):

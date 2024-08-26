@@ -7,7 +7,7 @@ from qdax.core.emitters.multi_emitter import MultiEmitter
 from qdax.core.emitters.qpg_emitter import QualityPGConfig, QualityPGEmitter
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.environments.base_wrappers import QDEnv
-from qdax.types import Params, RNGKey
+from qdax.custom_types import Params, RNGKey
 
 
 @dataclass

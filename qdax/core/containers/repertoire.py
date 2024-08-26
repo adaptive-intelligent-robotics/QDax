@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 
 import flax
 
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class Repertoire(flax.struct.PyTreeNode, ABC):

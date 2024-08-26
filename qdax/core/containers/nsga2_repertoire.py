@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.types import Fitness, Genotype
+from qdax.custom_types import Fitness, Genotype
 from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
