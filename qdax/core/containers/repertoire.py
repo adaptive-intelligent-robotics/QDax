@@ -19,8 +19,8 @@ class Repertoire(flax.struct.PyTreeNode, ABC):
     to keep the parent classes explicit and transparent.
     """
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def init(cls) -> Repertoire:  # noqa: N805
         """Create a repertoire."""
         pass
