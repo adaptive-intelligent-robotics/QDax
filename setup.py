@@ -22,21 +22,22 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "absl-py>=1.0.0",
-        "jax>=0.4.16",
-        "jaxlib>=0.4.16",  # necessary to build the doc atm
+        "brax>=0.10.4",
+        "chex>=0.1.86",
+        "flax>=0.8.5",
+        "gym>=0.26.2",
+        "jax>=0.4.28",
+        "jaxlib>=0.4.28",  # necessary to build the doc atm
         "jinja2<3.1.0",
         "jumanji>=0.3.1",
-        "flax>=0.7.4",
-        "chex>=0.1.83",
-        "brax>=0.9.2",
-        "gym>=0.23.1",
-        "numpy>=1.22.3",
-        "optax>=0.1.7",
-        "scikit-learn>=1.0.2",
-        "scipy>=1.8.0",
+        "numpy>=1.26.4",
+        "optax>=0.1.9",
+        "scikit-learn>=1.5.1",
+        "scipy>=1.10.1",
+        "tensorflow-probability>=0.24.0",
     ],
     extras_require={
-        "cuda12": ["jax[cuda12]>=0.4.16"],
+        "cuda12": ["jax[cuda12]>=0.4.28"],
     },
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
