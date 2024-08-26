@@ -7,6 +7,7 @@ from jax.nn import initializers
 
 from qdax.types import Action, Observation, Skill, StateDescriptor
 
+
 class GaussianMixture(nn.Module):
     num_dimensions: int
     num_components: int
@@ -20,24 +21,31 @@ class GaussianMixture(nn.Module):
             init = initializers.variance_scaling(1.0, "fan_in", "uniform")
         else:
             init = self.initializer
-        
+
         logits = nn.Dense(self.num_components, kernel_init=init)(inputs)
-        locs = nn.Dense(self.num_dimensions * self.num_components, kernel_init=init)(inputs)
-        
+        locs = nn.Dense(self.num_dimensions * self.num_components, kernel_init=init)(
+            inputs
+        )
+
         shape = [-1, self.num_components, self.num_dimensions]  # [B, D, C]
         locs = locs.reshape(shape)
-        
+
         if not self.identity_covariance:
-            scales = nn.Dense(self.num_dimensions * self.num_components, kernel_init=init)(inputs)
+            scales = nn.Dense(
+                self.num_dimensions * self.num_components, kernel_init=init
+            )(inputs)
             scales = scales.reshape(shape)
         else:
             scales = jnp.ones_like(locs)
 
-        components = tfp.distributions.MultivariateNormalDiag(loc=locs, scale_diag=scales)
+        components = tfp.distributions.MultivariateNormalDiag(
+            loc=locs, scale_diag=scales
+        )
         mixture = tfp.distributions.Categorical(logits=logits)
         return tfp.distributions.MixtureSameFamily(
             mixture_distribution=mixture, components_distribution=components
         )
+
 
 class DynamicsNetwork(nn.Module):
     hidden_layer_sizes: Tuple[int, ...]
@@ -47,7 +55,9 @@ class DynamicsNetwork(nn.Module):
     initializer: Optional[initializers.Initializer] = None
 
     @nn.compact
-    def __call__(self, obs: StateDescriptor, skill: Skill, target: StateDescriptor) -> jnp.ndarray:
+    def __call__(
+        self, obs: StateDescriptor, skill: Skill, target: StateDescriptor
+    ) -> jnp.ndarray:
         if self.initializer is None:
             init = initializers.variance_scaling(1.0, "fan_in", "uniform")
         else:
@@ -61,15 +71,16 @@ class DynamicsNetwork(nn.Module):
             initializer=init,
         )
 
-        obs = obs[:, self.omit_input_dynamics_dim:]
+        obs = obs[:, self.omit_input_dynamics_dim :]
         obs = jnp.concatenate((obs, skill), axis=1)
-        
+
         x = obs
         for features in self.hidden_layer_sizes:
             x = nn.relu(nn.Dense(features, kernel_init=init)(x))
-        
+
         dist = distribution(x)
         return dist.log_prob(target)
+
 
 class Actor(nn.Module):
     action_size: int
@@ -83,6 +94,7 @@ class Actor(nn.Module):
             x = nn.relu(nn.Dense(features, kernel_init=init)(x))
         return nn.Dense(2 * self.action_size, kernel_init=init)(x)
 
+
 class Critic(nn.Module):
     hidden_layer_sizes: Tuple[int, ...]
 
@@ -91,7 +103,7 @@ class Critic(nn.Module):
         init = initializers.variance_scaling(1.0, "fan_in", "uniform")
         input_ = jnp.concatenate([obs, action], axis=-1)
 
-        def make_critic_network():
+        def make_critic_network() -> jnp.ndarray:
             x = input_
             for features in self.hidden_layer_sizes:
                 x = nn.relu(nn.Dense(features, kernel_init=init)(x))
@@ -100,6 +112,7 @@ class Critic(nn.Module):
         value1 = make_critic_network()
         value2 = make_critic_network()
         return jnp.concatenate([value1, value2], axis=-1)
+
 
 def make_dads_networks(
     action_size: int,

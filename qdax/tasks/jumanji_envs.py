@@ -41,6 +41,7 @@ def make_policy_network_play_step_fn_jumanji(
     Returns:
         default_play_step_fn: A function that plays a step of the environment.
     """
+
     # Define the function to play a step with the policy in the environment
     def default_play_step_fn(
         env_state: JumanjiState,

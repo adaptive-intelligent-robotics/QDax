@@ -521,7 +521,11 @@ class QualityDCGEmitter(Emitter):
         )
 
         # Update greedy actor
-        (actor_opt_state, actor_params, target_actor_params,) = jax.lax.cond(
+        (
+            actor_opt_state,
+            actor_params,
+            target_actor_params,
+        ) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
             lambda x: self._update_actor(*x),
             lambda _: (
@@ -701,7 +705,11 @@ class QualityDCGEmitter(Emitter):
                 new_policy_opt_state,
             ), ()
 
-        (emitter_state, policy_params, policy_opt_state,), _ = jax.lax.scan(
+        (
+            emitter_state,
+            policy_params,
+            policy_opt_state,
+        ), _ = jax.lax.scan(
             scan_train_policy,
             (emitter_state, policy_params, policy_opt_state),
             transitions,

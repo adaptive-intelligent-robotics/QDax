@@ -439,7 +439,5 @@ class MazeWrapper(Wrapper):
             jp.array(1, dtype=jp.float32),
             jp.array(0, dtype=jp.float32),
         )
-        done = jp.where(
-            state.qp.pos[0, 2] > 5.0, jp.array(1, dtype=jp.float32), done
-        )
+        done = jp.where(state.qp.pos[0, 2] > 5.0, jp.array(1, dtype=jp.float32), done)
         return state.replace(obs=new_obs, reward=new_reward, done=done)  # type: ignore

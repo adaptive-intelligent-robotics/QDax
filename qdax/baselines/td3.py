@@ -76,7 +76,10 @@ class TD3:
     def __init__(self, config: TD3Config, action_size: int):
         self._config = config
 
-        self._policy, self._critic, = make_td3_networks(
+        (
+            self._policy,
+            self._critic,
+        ) = make_td3_networks(
             action_size=action_size,
             critic_hidden_layer_sizes=self._config.critic_hidden_layer_size,
             policy_hidden_layer_sizes=self._config.policy_hidden_layer_size,
@@ -421,7 +424,10 @@ class TD3:
             policy_optimizer = optax.adam(
                 learning_rate=self._config.policy_learning_rate
             )
-            (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
+            (
+                policy_updates,
+                policy_optimizer_state,
+            ) = policy_optimizer.update(
                 policy_gradient, training_state.policy_optimizer_state
             )
             policy_params = optax.apply_updates(

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import flax.struct
 import jax
@@ -80,7 +80,10 @@ class ClipRewardWrapper(Wrapper):
     """
 
     def __init__(
-        self, env: Env, clip_min: float = None, clip_max: float = None
+        self,
+        env: Env,
+        clip_min: Optional[float] = None,
+        clip_max: Optional[float] = None,
     ) -> None:
         super().__init__(env)
         self._clip_min = clip_min
@@ -108,7 +111,10 @@ class AffineRewardWrapper(Wrapper):
     """
 
     def __init__(
-        self, env: Env, clip_min: float = None, clip_max: float = None
+        self,
+        env: Env,
+        clip_min: Optional[float] = None,
+        clip_max: Optional[float] = None,
     ) -> None:
         super().__init__(env)
         self._clip_min = clip_min

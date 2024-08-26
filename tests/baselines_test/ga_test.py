@@ -32,11 +32,11 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
     batch_size = 100
     genotype_dim = 6
     lag = 2.2
-    base_lag = 0
+    base_lag = 0.0
     num_neighbours = 1
 
     def rastrigin_scorer(
-        genotypes: jnp.ndarray, base_lag: int, lag: int
+        genotypes: jnp.ndarray, base_lag: float, lag: float
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """
         Rastrigin Scorer with first two dimensions as descriptors
@@ -119,7 +119,11 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
         )
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         algo_instance.scan_update,
         (repertoire, emitter_state, random_key),
         (),

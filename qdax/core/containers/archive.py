@@ -40,7 +40,7 @@ class Archive(PyTreeNode):
         fake_data = jnp.isnan(self.data)
 
         # count number of real data
-        return sum(~fake_data)
+        return float(sum(~fake_data))
 
     @classmethod
     def create(
@@ -161,9 +161,7 @@ class Archive(PyTreeNode):
         values, _indices = knn(self.data, state_descriptors, 1)
 
         # get indices where distance bigger than threshold
-        relevant_indices = jnp.where(
-            values.squeeze() > self.acceptance_threshold, 0, 1
-        )
+        relevant_indices = jnp.where(values.squeeze() > self.acceptance_threshold, 0, 1)
 
         def iterate_fn(
             carry: Tuple[Archive, jnp.ndarray, int], condition_data: Dict

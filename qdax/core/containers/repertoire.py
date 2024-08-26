@@ -4,7 +4,7 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractclassmethod, abstractmethod
+from abc import ABC, abstractmethod
 
 import flax
 
@@ -19,7 +19,8 @@ class Repertoire(flax.struct.PyTreeNode, ABC):
     to keep the parent classes explicit and transparent.
     """
 
-    @abstractclassmethod
+    @abstractmethod
+    @classmethod
     def init(cls) -> Repertoire:  # noqa: N805
         """Create a repertoire."""
         pass

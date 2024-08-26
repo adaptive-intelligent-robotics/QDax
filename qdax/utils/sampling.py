@@ -1,4 +1,5 @@
 """Core components of the MAP-Elites-sampling algorithm."""
+
 from functools import partial
 from typing import Callable, Tuple
 

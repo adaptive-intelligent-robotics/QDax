@@ -36,10 +36,10 @@ def test_mome(num_descriptors: int) -> None:
     crossover_percentage = 1.0
     batch_size = 80
     lag = 2.2
-    base_lag = 0
+    base_lag = 0.0
 
     def rastrigin_scorer(
-        genotypes: jnp.ndarray, base_lag: int, lag: int
+        genotypes: jnp.ndarray, base_lag: float, lag: float
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """
         Rastrigin Scorer with first two dimensions as descriptors
@@ -131,7 +131,11 @@ def test_mome(num_descriptors: int) -> None:
     )
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         mome.scan_update,
         (repertoire, emitter_state, random_key),
         (),

@@ -449,7 +449,10 @@ class SAC:
                 random_key=subkey,
             )
             alpha_optimizer = optax.adam(learning_rate=alpha_lr)
-            (alpha_updates, alpha_optimizer_state,) = alpha_optimizer.update(
+            (
+                alpha_updates,
+                alpha_optimizer_state,
+            ) = alpha_optimizer.update(
                 alpha_gradient, training_state.alpha_optimizer_state
             )
             alpha_params = optax.apply_updates(
@@ -503,7 +506,10 @@ class SAC:
             random_key=subkey,
         )
         critic_optimizer = optax.adam(learning_rate=critic_lr)
-        (critic_updates, critic_optimizer_state,) = critic_optimizer.update(
+        (
+            critic_updates,
+            critic_optimizer_state,
+        ) = critic_optimizer.update(
             critic_gradient, training_state.critic_optimizer_state
         )
         critic_params = optax.apply_updates(
@@ -556,7 +562,10 @@ class SAC:
             random_key=subkey,
         )
         policy_optimizer = optax.adam(learning_rate=policy_lr)
-        (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
+        (
+            policy_updates,
+            policy_optimizer_state,
+        ) = policy_optimizer.update(
             policy_gradient, training_state.policy_optimizer_state
         )
         policy_params = optax.apply_updates(
