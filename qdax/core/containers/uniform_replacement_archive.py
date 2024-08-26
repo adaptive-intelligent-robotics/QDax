@@ -74,7 +74,7 @@ class UniformReplacementArchive(Archive):
             subkey, shape=(1,), minval=0, maxval=self.max_size
         )
 
-        index = jnp.where(condition=is_full, x=random_index, y=new_current_position)
+        index = jnp.where(condition=is_full, random_index, new_current_position)
 
         new_data = self.data.at[index].set(state_descriptor)
 

@@ -238,13 +238,13 @@ class CMAMEGAEmitter(Emitter):
         condition = improvements == jnp.inf
 
         # criteria: fitness if new cell, improvement else
-        ranking_criteria = jnp.where(condition, x=fitnesses, y=improvements)
+        ranking_criteria = jnp.where(condition, fitnesses, improvements)
 
         # make sure to have all the new cells first
         new_cell_offset = jnp.max(ranking_criteria) - jnp.min(ranking_criteria)
 
         ranking_criteria = jnp.where(
-            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
+            condition, ranking_criteria + new_cell_offset, ranking_criteria
         )
 
         # sort indices according to the criteria
@@ -282,12 +282,12 @@ class CMAMEGAEmitter(Emitter):
 
         # update theta in case of reinit
         theta = jax.tree_util.tree_map(
-            lambda x, y: jnp.where(reinitialize, x=x, y=y), random_theta, theta
+            lambda x, y: jnp.where(reinitialize, x, y), random_theta, theta
         )
 
         # update cmaes state in case of reinit
         cmaes_state = jax.tree_util.tree_map(
-            lambda x, y: jnp.where(reinitialize, x=x, y=y),
+            lambda x, y: jnp.where(reinitialize, x, y),
             self._cma_initial_state,
             cmaes_state,
         )

@@ -162,7 +162,7 @@ class Archive(PyTreeNode):
 
         # get indices where distance bigger than threshold
         relevant_indices = jnp.where(
-            values.squeeze() > self.acceptance_threshold, x=0, y=1
+            values.squeeze() > self.acceptance_threshold, 0, 1
         )
 
         def iterate_fn(
@@ -192,7 +192,7 @@ class Archive(PyTreeNode):
 
             # get indices where distance bigger than threshold
             not_too_close = jnp.where(
-                values.squeeze() > self.acceptance_threshold, x=0, y=1
+                values.squeeze() > self.acceptance_threshold, 0, 1
             )
             second_condition = not_too_close.sum()
             condition = (first_condition + second_condition) == 0
@@ -280,7 +280,7 @@ def knn(
     dist = jnp.nan_to_num(dist, nan=jnp.inf)
 
     # clipping necessary - numerical approx make some distancies negative
-    dist = jnp.sqrt(jnp.clip(dist, a_min=0.0))
+    dist = jnp.sqrt(jnp.clip(dist, min=0.0))
 
     # return values, indices
     values, indices = qdax_top_k(-dist, k)

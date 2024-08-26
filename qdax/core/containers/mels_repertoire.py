@@ -232,7 +232,7 @@ class MELSRepertoire(MapElitesRepertoire):
 
         # assign fake position when relevant : num_centroids is out of bound
         batch_of_indices = jnp.where(
-            addition_condition, x=batch_of_indices, y=num_centroids
+            addition_condition, batch_of_indices, num_centroids
         )
 
         # create new repertoire

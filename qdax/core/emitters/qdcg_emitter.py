@@ -580,7 +580,7 @@ class QualityDCGEmitter(Emitter):
         critic_params = optax.apply_updates(critic_params, critic_updates)
 
         # Soft update of target critic network
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_critic_params,
@@ -612,7 +612,7 @@ class QualityDCGEmitter(Emitter):
         actor_params = optax.apply_updates(actor_params, policy_updates)
 
         # Soft update of target greedy actor
-        target_actor_params = jax.tree_map(
+        target_actor_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_actor_params,

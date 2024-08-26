@@ -1,127 +1,105 @@
 from typing import Optional, Tuple
 
-import haiku as hk
-import jax
+import flax.linen as nn
 import jax.numpy as jnp
 import tensorflow_probability.substrates.jax as tfp
-from haiku.initializers import Initializer, VarianceScaling
+from jax.nn import initializers
 
 from qdax.types import Action, Observation, Skill, StateDescriptor
 
+class GaussianMixture(nn.Module):
+    num_dimensions: int
+    num_components: int
+    reinterpreted_batch_ndims: Optional[int] = None
+    identity_covariance: bool = True
+    initializer: Optional[initializers.Initializer] = None
 
-class GaussianMixture(hk.Module):
-    """Module that outputs a Gaussian Mixture Distribution."""
-
-    def __init__(
-        self,
-        num_dimensions: int,
-        num_components: int,
-        reinterpreted_batch_ndims: Optional[int] = None,
-        identity_covariance: bool = True,
-        initializer: Optional[Initializer] = None,
-        name: str = "GaussianMixture",
-    ):
-        """Module that outputs a Gaussian Mixture Distribution
-        with identity covariance matrix."""
-
-        super().__init__(name=name)
-        if initializer is None:
-            initializer = VarianceScaling(1.0, "fan_in", "uniform")
-        self._num_dimensions = num_dimensions
-        self._num_components = num_components
-        self._reinterpreted_batch_ndims = reinterpreted_batch_ndims
-        self._identity_covariance = identity_covariance
-        self.initializer = initializer
-        logits_size = self._num_components
-
-        self.logit_layer = hk.Linear(logits_size, w_init=self.initializer)
-
-        # Create two layers that outputs a location and a scale, respectively, for
-        # each dimension and each component.
-        self.loc_layer = hk.Linear(
-            self._num_dimensions * self._num_components, w_init=self.initializer
-        )
-        if not self._identity_covariance:
-            self.scale_layer = hk.Linear(
-                self._num_dimensions * self._num_components, w_init=self.initializer
-            )
-
+    @nn.compact
     def __call__(self, inputs: jnp.ndarray) -> tfp.distributions.Distribution:
-        # Compute logits, locs, and scales if necessary.
-        logits = self.logit_layer(inputs)
-        locs = self.loc_layer(inputs)
-
-        shape = [-1, self._num_components, self._num_dimensions]  # [B, D, C]
-
-        # Reshape the mixture's location and scale parameters appropriately.
+        if self.initializer is None:
+            init = initializers.variance_scaling(1.0, "fan_in", "uniform")
+        else:
+            init = self.initializer
+        
+        logits = nn.Dense(self.num_components, kernel_init=init)(inputs)
+        locs = nn.Dense(self.num_dimensions * self.num_components, kernel_init=init)(inputs)
+        
+        shape = [-1, self.num_components, self.num_dimensions]  # [B, D, C]
         locs = locs.reshape(shape)
-        if not self._identity_covariance:
-
-            scales = self.scale_layer(inputs)
+        
+        if not self.identity_covariance:
+            scales = nn.Dense(self.num_dimensions * self.num_components, kernel_init=init)(inputs)
             scales = scales.reshape(shape)
         else:
             scales = jnp.ones_like(locs)
 
-        # Create the mixture distribution
-        components = tfp.distributions.MultivariateNormalDiag(
-            loc=locs, scale_diag=scales
-        )
+        components = tfp.distributions.MultivariateNormalDiag(loc=locs, scale_diag=scales)
         mixture = tfp.distributions.Categorical(logits=logits)
-        distribution = tfp.distributions.MixtureSameFamily(
+        return tfp.distributions.MixtureSameFamily(
             mixture_distribution=mixture, components_distribution=components
         )
 
-        return distribution
+class DynamicsNetwork(nn.Module):
+    hidden_layer_sizes: Tuple[int, ...]
+    output_size: int
+    omit_input_dynamics_dim: int = 2
+    identity_covariance: bool = True
+    initializer: Optional[initializers.Initializer] = None
 
+    @nn.compact
+    def __call__(self, obs: StateDescriptor, skill: Skill, target: StateDescriptor) -> jnp.ndarray:
+        if self.initializer is None:
+            init = initializers.variance_scaling(1.0, "fan_in", "uniform")
+        else:
+            init = self.initializer
 
-class DynamicsNetwork(hk.Module):
-    """Dynamics network (used in DADS)."""
-
-    def __init__(
-        self,
-        hidden_layer_sizes: tuple,
-        output_size: int,
-        omit_input_dynamics_dim: int = 2,
-        name: Optional[str] = None,
-        identity_covariance: bool = True,
-        initializer: Optional[Initializer] = None,
-    ):
-        super().__init__(name=name)
-        if initializer is None:
-            initializer = VarianceScaling(1.0, "fan_in", "uniform")
-
-        self.distribution = GaussianMixture(
-            output_size,
+        distribution = GaussianMixture(
+            self.output_size,
             num_components=4,
             reinterpreted_batch_ndims=None,
-            identity_covariance=identity_covariance,
-            initializer=initializer,
+            identity_covariance=self.identity_covariance,
+            initializer=init,
         )
-        self.network = hk.Sequential(
-            [
-                hk.nets.MLP(
-                    list(hidden_layer_sizes),
-                    w_init=initializer,
-                    activation=jax.nn.relu,
-                    activate_final=True,
-                ),
-            ]
-        )
-        self._omit_input_dynamics_dim = omit_input_dynamics_dim
 
-    def __call__(
-        self, obs: StateDescriptor, skill: Skill, target: StateDescriptor
-    ) -> jnp.ndarray:
-        """Normalizes the observation, predicts a distribution probability conditioned
-        on (obs,skill) and returns the log_prob of the target.
-        """
-
-        obs = obs[:, self._omit_input_dynamics_dim :]
+        obs = obs[:, self.omit_input_dynamics_dim:]
         obs = jnp.concatenate((obs, skill), axis=1)
-        out = self.network(obs)
-        dist = self.distribution(out)
+        
+        x = obs
+        for features in self.hidden_layer_sizes:
+            x = nn.relu(nn.Dense(features, kernel_init=init)(x))
+        
+        dist = distribution(x)
         return dist.log_prob(target)
 
+class Actor(nn.Module):
+    action_size: int
+    hidden_layer_sizes: Tuple[int, ...]
+
+    @nn.compact
+    def __call__(self, obs: Observation) -> jnp.ndarray:
+        init = initializers.variance_scaling(1.0, "fan_in", "uniform")
+        x = obs
+        for features in self.hidden_layer_sizes:
+            x = nn.relu(nn.Dense(features, kernel_init=init)(x))
+        return nn.Dense(2 * self.action_size, kernel_init=init)(x)
+
+class Critic(nn.Module):
+    hidden_layer_sizes: Tuple[int, ...]
+
+    @nn.compact
+    def __call__(self, obs: Observation, action: Action) -> jnp.ndarray:
+        init = initializers.variance_scaling(1.0, "fan_in", "uniform")
+        input_ = jnp.concatenate([obs, action], axis=-1)
+
+        def make_critic_network():
+            x = input_
+            for features in self.hidden_layer_sizes:
+                x = nn.relu(nn.Dense(features, kernel_init=init)(x))
+            return nn.Dense(1, kernel_init=init)(x)
+
+        value1 = make_critic_network()
+        value2 = make_critic_network()
+        return jnp.concatenate([value1, value2], axis=-1)
 
 def make_dads_networks(
     action_size: int,
@@ -130,78 +108,16 @@ def make_dads_networks(
     policy_hidden_layer_size: Tuple[int, ...] = (256, 256),
     omit_input_dynamics_dim: int = 2,
     identity_covariance: bool = True,
-    dynamics_initializer: Optional[Initializer] = None,
-) -> Tuple[hk.Transformed, hk.Transformed, hk.Transformed]:
-    """Creates networks used in DADS.
-
-    Args:
-        action_size: the size of the environment's action space
-        descriptor_size: the size of the environment's descriptor space (i.e. the
-            dimension of the dynamics network's input)
-        hidden_layer_sizes: the number of neurons for hidden layers.
-            Defaults to (256, 256).
-        omit_input_dynamics_dim: how many descriptors we omit when creating the input
-            of the dynamics networks. Defaults to 2.
-        identity_covariance: whether to fix the covariance matrix of the Gaussian models
-            to identity. Defaults to True.
-        dynamics_initializer: the initializer of the dynamics layers. Defaults to None.
-
-    Returns:
-        the policy network
-        the critic network
-        the dynamics network
-    """
-
-    def _actor_fn(obs: Observation) -> jnp.ndarray:
-        network = hk.Sequential(
-            [
-                hk.nets.MLP(
-                    list(policy_hidden_layer_size) + [2 * action_size],
-                    w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
-                    activation=jax.nn.relu,
-                ),
-            ]
-        )
-        return network(obs)
-
-    def _critic_fn(obs: Observation, action: Action) -> jnp.ndarray:
-        network1 = hk.Sequential(
-            [
-                hk.nets.MLP(
-                    list(critic_hidden_layer_size) + [1],
-                    w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
-                    activation=jax.nn.relu,
-                ),
-            ]
-        )
-        network2 = hk.Sequential(
-            [
-                hk.nets.MLP(
-                    list(critic_hidden_layer_size) + [1],
-                    w_init=hk.initializers.VarianceScaling(1.0, "fan_in", "uniform"),
-                    activation=jax.nn.relu,
-                ),
-            ]
-        )
-        input_ = jnp.concatenate([obs, action], axis=-1)
-        value1 = network1(input_)
-        value2 = network2(input_)
-        return jnp.concatenate([value1, value2], axis=-1)
-
-    def _dynamics_fn(
-        obs: StateDescriptor, skill: Skill, target: StateDescriptor
-    ) -> jnp.ndarray:
-        dynamics_network = DynamicsNetwork(
-            critic_hidden_layer_size,
-            descriptor_size,
-            omit_input_dynamics_dim=omit_input_dynamics_dim,
-            identity_covariance=identity_covariance,
-            initializer=dynamics_initializer,
-        )
-        return dynamics_network(obs, skill, target)
-
-    policy = hk.without_apply_rng(hk.transform(_actor_fn))
-    critic = hk.without_apply_rng(hk.transform(_critic_fn))
-    dynamics = hk.without_apply_rng(hk.transform(_dynamics_fn))
+    dynamics_initializer: Optional[initializers.Initializer] = None,
+) -> Tuple[nn.Module, nn.Module, nn.Module]:
+    policy = Actor(action_size, policy_hidden_layer_size)
+    critic = Critic(critic_hidden_layer_size)
+    dynamics = DynamicsNetwork(
+        critic_hidden_layer_size,
+        descriptor_size,
+        omit_input_dynamics_dim=omit_input_dynamics_dim,
+        identity_covariance=identity_covariance,
+        initializer=dynamics_initializer,
+    )
 
     return policy, critic, dynamics

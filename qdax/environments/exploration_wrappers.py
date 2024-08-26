@@ -436,10 +436,10 @@ class MazeWrapper(Wrapper):
         # this line avoid this by increasing the threshold
         done = jp.where(
             state.qp.pos[0, 2] < 0.2,
-            x=jp.array(1, dtype=jp.float32),
-            y=jp.array(0, dtype=jp.float32),
+            jp.array(1, dtype=jp.float32),
+            jp.array(0, dtype=jp.float32),
         )
         done = jp.where(
-            state.qp.pos[0, 2] > 5.0, x=jp.array(1, dtype=jp.float32), y=done
+            state.qp.pos[0, 2] > 5.0, jp.array(1, dtype=jp.float32), done
         )
         return state.replace(obs=new_obs, reward=new_reward, done=done)  # type: ignore

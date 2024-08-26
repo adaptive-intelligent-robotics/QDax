@@ -168,7 +168,7 @@ class CMARndEmitter(CMAEmitter):
         condition = improvements == jnp.inf
 
         ranking_criteria = jnp.where(
-            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
+            condition, ranking_criteria + new_cell_offset, ranking_criteria
         )
 
         return ranking_criteria  # type: ignore

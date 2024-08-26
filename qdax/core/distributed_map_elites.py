@@ -189,7 +189,7 @@ class DistributedMAPElites(MAPElites):
             of MAP-Elites updates.
         """
 
-        @partial(jax.jit, static_argnames=("self",))
+        @jax.jit
         def _scan_update(
             carry: Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey],
             unused: Any,

@@ -132,7 +132,7 @@ def lstm_ae_train(
     std_obs = jnp.nanstd(repertoire.observations, axis=(0, 1))
     # the std where they were NaNs was set to zero. But here we divide by the
     # std, so we replace the zeros by inf here.
-    std_obs = jnp.where(std_obs == 0, x=jnp.inf, y=std_obs)
+    std_obs = jnp.where(std_obs == 0, jnp.inf, std_obs)
 
     # TODO: maybe we could just compute this data on the valid dataset
 

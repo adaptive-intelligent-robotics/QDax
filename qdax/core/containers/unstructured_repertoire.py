@@ -300,7 +300,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # ReIndexing of all the inputs to the correct sorted way
         batch_of_descriptors = batch_of_descriptors.at[sorted_bds].get()
-        batch_of_genotypes = jax.tree_map(
+        batch_of_genotypes = jax.tree_util.tree_map(
             lambda x: x.at[sorted_bds].get(), batch_of_genotypes
         )
         batch_of_fitnesses = batch_of_fitnesses.at[sorted_bds].get()
@@ -333,7 +333,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # put dominated fitness to -jnp.inf
         batch_of_fitnesses = jnp.where(
-            batch_of_fitnesses == cond_values, x=batch_of_fitnesses, y=-jnp.inf
+            batch_of_fitnesses == cond_values, batch_of_fitnesses, -jnp.inf
         )
 
         # get addition condition
@@ -347,12 +347,12 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         # assign fake position when relevant : num_centroids is out of bounds
         batch_of_indices = jnp.where(
             addition_condition,
-            x=batch_of_indices,
-            y=self.max_size,
+            batch_of_indices,
+            self.max_size,
         )
 
         # create new grid
-        new_grid_genotypes = jax.tree_map(
+        new_grid_genotypes = jax.tree_util.tree_map(
             lambda grid_genotypes, new_genotypes: grid_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),
@@ -398,7 +398,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         grid_empty = self.fitnesses == -jnp.inf
         p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
-        samples = jax.tree_map(
+        samples = jax.tree_util.tree_map(
             lambda x: jax.random.choice(sub_key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
@@ -435,7 +435,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # Initialize grid with default values
         default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)
-        default_genotypes = jax.tree_map(
+        default_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.full(shape=(max_size,) + x.shape[1:], fill_value=jnp.nan),
             genotypes,
         )
