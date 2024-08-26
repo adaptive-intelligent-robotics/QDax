@@ -35,6 +35,9 @@ setup(
         "scikit-learn>=1.0.2",
         "scipy>=1.8.0",
     ],
+    extras_require={
+        "cuda12": ["jax[cuda12]>=0.4.16"],
+    },
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",
     ],
