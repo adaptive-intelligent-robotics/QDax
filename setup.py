@@ -28,7 +28,7 @@ setup(
         "gym>=0.26.2",
         "jax>=0.4.28",
         "jaxlib>=0.4.28",  # necessary to build the doc atm
-        "jinja2<3.1.0",
+        "jinja2>=3.1.4",
         "jumanji>=0.3.1",
         "numpy>=1.26.4",
         "optax>=0.1.9",

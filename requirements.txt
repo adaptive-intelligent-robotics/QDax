@@ -10,7 +10,7 @@ jumanji==0.3.1
 jupyter
 numpy==1.26.4
 optax==0.1.9
-protobuf==3.19.4
+protobuf==3.19.5
 scikit-learn==1.5.1
 scipy==1.10.1
 tensorflow-probability==0.24.0
