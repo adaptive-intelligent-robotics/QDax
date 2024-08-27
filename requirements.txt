@@ -14,4 +14,4 @@ protobuf==3.19.4
 scikit-learn==1.5.1
 scipy==1.10.1
 tensorflow-probability==0.24.0
-typing-extensions==4.3.0
+typing-extensions==4.12.2
