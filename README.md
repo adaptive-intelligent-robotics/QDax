@@ -24,6 +24,12 @@ QDax is available on PyPI and can be installed with:
 ```bash
 pip install qdax
 ```
+
+To install QDax with CUDA 12 support, use:
+```bash
+pip install qdax[cuda12]
+```
+
 Alternatively, the latest commit of QDax can be installed directly from source with:
 ```bash
 pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
