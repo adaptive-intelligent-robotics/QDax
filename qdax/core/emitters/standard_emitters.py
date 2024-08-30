@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import ExtraScores, Genotype, RNGKey
+from qdax.custom_types import ExtraScores, Genotype, RNGKey
 
 
 class MixingEmitter(Emitter):

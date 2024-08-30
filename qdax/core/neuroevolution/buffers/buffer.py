@@ -7,7 +7,7 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from qdax.types import (
+from qdax.custom_types import (
     Action,
     Descriptor,
     Done,

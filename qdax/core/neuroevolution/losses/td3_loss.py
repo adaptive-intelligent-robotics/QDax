@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.neuroevolution.buffers.buffer import Transition
-from qdax.types import Action, Descriptor, Observation, Params, RNGKey
+from qdax.custom_types import Action, Descriptor, Observation, Params, RNGKey
 
 
 def make_td3_loss_fn(

@@ -25,6 +25,7 @@ setup(
         "brax>=0.10.4",
         "chex>=0.1.86",
         "flax>=0.8.5",
+        "gym>=0.26.2",
         "jax>=0.4.28",
         "jaxlib>=0.4.28",  # necessary to build the doc atm
         "jinja2>=3.1.4",
@@ -34,7 +35,15 @@ setup(
         "scikit-learn>=1.5.1",
         "scipy>=1.10.1",
         "tensorflow-probability>=0.24.0",
+        "numpy>=1.26.4",
+        "optax>=0.1.9",
+        "scikit-learn>=1.5.1",
+        "scipy>=1.10.1",
+        "tensorflow-probability>=0.24.0",
     ],
+    extras_require={
+        "cuda12": ["jax[cuda12]>=0.4.28"],
+    },
     extras_require={
         "cuda12": ["jax[cuda12]>=0.4.28"],
     },
@@ -49,6 +58,9 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
