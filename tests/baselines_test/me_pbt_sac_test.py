@@ -67,7 +67,7 @@ def test_me_pbt_sac() -> None:
         episode_length=episode_length,
         auto_reset=True,
     )
-    min_descriptor, max_descriptor = env.behavior_descriptor_limits
+    min_descriptor, max_descriptor = env.descriptor_limits
 
     key = jax.random.PRNGKey(seed)
     key, subkey = jax.random.split(key)
@@ -114,7 +114,7 @@ def test_me_pbt_sac() -> None:
     )
 
     # get scoring function
-    descriptor_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     eval_policy = agent.get_eval_qd_fn(eval_env, descriptor_extraction_fn=descriptor_extraction_fn)
 
     def scoring_function(genotypes, random_key):  # type: ignore
@@ -145,7 +145,7 @@ def test_me_pbt_sac() -> None:
     )
 
     centroids, key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,

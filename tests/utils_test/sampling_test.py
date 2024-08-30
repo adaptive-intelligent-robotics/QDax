@@ -85,13 +85,13 @@ def test_sampling() -> None:
     init_states = reset_fn(keys)
 
     # Create the scoring function
-    descriptor_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
         scoring_function_brax_envs,
         init_states=init_states,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=descriptor_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Test function for different extractors

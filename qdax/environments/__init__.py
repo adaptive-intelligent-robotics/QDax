@@ -42,7 +42,7 @@ reward_offset = {
     "walker2d_uni": 1.413,
 }
 
-behavior_descriptor_extractor = {
+descriptor_extractor = {
     "pointmaze": get_final_xy_position,
     "anttrap": get_final_xy_position,
     "humanoidtrap": get_final_xy_position,

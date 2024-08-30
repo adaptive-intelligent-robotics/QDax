@@ -65,7 +65,7 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
 
     # Compute the centroids
     centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,

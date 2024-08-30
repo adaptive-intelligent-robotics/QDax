@@ -101,20 +101,20 @@ def test_mees() -> None:
     init_states = reset_fn(keys)
 
     # Prepare the scoring function for samples and final indivs
-    descriptor_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
         scoring_function_brax_envs,
         init_states=init_states,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=descriptor_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
     scoring_samples_fn = functools.partial(
         scoring_function_brax_envs,
         init_states=init_states_samples,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=descriptor_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Get minimum reward value to make sure qd_score are positive
@@ -153,12 +153,12 @@ def test_mees() -> None:
         config=mees_emitter_config,
         total_generations=num_iterations,
         scoring_fn=scoring_samples_fn,
-        num_descriptors=env.behavior_descriptor_length,
+        num_descriptors=env.descriptor_length,
     )
 
     # Compute the centroids
     centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,

@@ -145,7 +145,7 @@ class QualityDCGEmitter(Emitter):
         """
 
         observation_size = jax.tree_util.tree_leaves(genotypes)[1].shape[1]
-        descriptor_size = self._env.behavior_descriptor_length
+        descriptor_size = self._env.descriptor_length
         action_size = self._env.action_size
 
         # Initialise critic, greedy actor and population
@@ -223,10 +223,10 @@ class QualityDCGEmitter(Emitter):
     def _normalize_desc(self, desc: Descriptor) -> Descriptor:
         return (
             2
-            * (desc - self._env.behavior_descriptor_limits[0])
+            * (desc - self._env.descriptor_limits[0])
             / (
-                self._env.behavior_descriptor_limits[1]
-                - self._env.behavior_descriptor_limits[0]
+                self._env.descriptor_limits[1]
+                - self._env.descriptor_limits[0]
             )
             - 1
         )
@@ -234,11 +234,11 @@ class QualityDCGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def _unnormalize_desc(self, desc_normalized: Descriptor) -> Descriptor:
         return 0.5 * (
-            self._env.behavior_descriptor_limits[1]
-            - self._env.behavior_descriptor_limits[0]
+            self._env.descriptor_limits[1]
+            - self._env.descriptor_limits[0]
         ) * desc_normalized + 0.5 * (
-            self._env.behavior_descriptor_limits[1]
-            + self._env.behavior_descriptor_limits[0]
+            self._env.descriptor_limits[1]
+            + self._env.descriptor_limits[0]
         )
 
     @partial(jax.jit, static_argnames=("self",))
@@ -305,7 +305,7 @@ class QualityDCGEmitter(Emitter):
             random_key, self._config.ai_batch_size
         )
         descs_ai = descs_ai.reshape(
-            descs_ai.shape[0], self._env.behavior_descriptor_length
+            descs_ai.shape[0], self._env.descriptor_length
         )
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 

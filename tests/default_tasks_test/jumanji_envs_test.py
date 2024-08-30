@@ -136,7 +136,7 @@ def test_jumanji_utils() -> None:
         init_timesteps=init_timesteps,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=descriptor_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     fitnesses, descriptors, extra_scores, random_key = scoring_fn(

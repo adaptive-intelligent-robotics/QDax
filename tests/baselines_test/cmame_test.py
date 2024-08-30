@@ -45,17 +45,17 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         in_bound = (x <= maxval) * (x >= minval)
         return jnp.where(in_bound, x, (maxval / x))
 
-    def _behavior_descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
+    def _descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
         return jnp.sum(clip(x[: x.shape[-1] // 2]))
 
-    def _behavior_descriptor_2(x: jnp.ndarray) -> jnp.ndarray:
+    def _descriptor_2(x: jnp.ndarray) -> jnp.ndarray:
         return jnp.sum(clip(x[x.shape[-1] // 2 :]))
 
-    def _behavior_descriptors(x: jnp.ndarray) -> jnp.ndarray:
-        return jnp.array([_behavior_descriptor_1(x), _behavior_descriptor_2(x)])
+    def _descriptors(x: jnp.ndarray) -> jnp.ndarray:
+        return jnp.array([_descriptor_1(x), _descriptor_2(x)])
 
     def scoring_function(x: jnp.ndarray) -> Tuple[Fitness, Descriptor, Dict]:
-        scores, descriptors = fitness_scoring(x), _behavior_descriptors(x)
+        scores, descriptors = fitness_scoring(x), _descriptors(x)
         return scores, descriptors, {}
 
     def scoring_fn(

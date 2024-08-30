@@ -134,7 +134,7 @@ def generate_jumanji_unroll(
     static_argnames=(
         "episode_length",
         "play_step_fn",
-        "behavior_descriptor_extractor",
+        "descriptor_extractor",
     ),
 )
 def jumanji_scoring_function(
@@ -147,7 +147,7 @@ def jumanji_scoring_function(
         [JumanjiState, JumanjiTimeStep, Params, RNGKey, jumanji.env.Environment],
         Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition],
     ],
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.
@@ -178,7 +178,7 @@ def jumanji_scoring_function(
 
     # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    descriptors = behavior_descriptor_extractor(data, mask)
+    descriptors = descriptor_extractor(data, mask)
 
     return (
         fitnesses,

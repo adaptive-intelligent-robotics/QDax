@@ -151,18 +151,18 @@ def test_pgame() -> None:
     init_states = reset_fn(keys)
 
     # Prepare the scoring function
-    descriptor_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
         scoring_function_brax_envs,
         init_states=init_states,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=descriptor_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Compute the centroids
     centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,

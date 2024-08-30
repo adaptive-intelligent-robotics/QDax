@@ -96,7 +96,7 @@ class FeetContactWrapper(QDEnv):
 
     @property
     def state_descriptor_length(self) -> int:
-        return self.behavior_descriptor_length
+        return self.descriptor_length
 
     @property
     def state_descriptor_name(self) -> str:
@@ -104,15 +104,15 @@ class FeetContactWrapper(QDEnv):
 
     @property
     def state_descriptor_limits(self) -> Tuple[List, List]:
-        return self.behavior_descriptor_limits
+        return self.descriptor_limits
 
     @property
-    def behavior_descriptor_length(self) -> int:
+    def descriptor_length(self) -> int:
         return len(self._feet_contact_idx)
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List, List]:
-        descriptor_length = self.behavior_descriptor_length
+    def descriptor_limits(self) -> Tuple[List, List]:
+        descriptor_length = self.descriptor_length
         return (jnp.zeros((descriptor_length,)), jnp.ones((descriptor_length,)))
 
     @property
@@ -246,11 +246,11 @@ class XYPositionWrapper(QDEnv):
         return self._minval, self._maxval
 
     @property
-    def behavior_descriptor_length(self) -> int:
+    def descriptor_length(self) -> int:
         return self.state_descriptor_length
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def descriptor_limits(self) -> Tuple[List[float], List[float]]:
         return self.state_descriptor_limits
 
     @property

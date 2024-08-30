@@ -85,13 +85,13 @@ def test_mels(env_name: str, batch_size: int) -> None:
         return next_state, policy_params, random_key, transition
 
     # Prepare the scoring function
-    descriptor_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
         reset_based_scoring_function_brax_envs,
         episode_length=episode_length,
         play_reset_fn=env.reset,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=descriptor_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Define emitter
@@ -128,7 +128,7 @@ def test_mels(env_name: str, batch_size: int) -> None:
 
     # Compute the centroids
     centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,

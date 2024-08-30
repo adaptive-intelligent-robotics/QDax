@@ -98,7 +98,7 @@ def get_mask_from_transitions(
     static_argnames=(
         "episode_length",
         "play_step_fn",
-        "behavior_descriptor_extractor",
+        "descriptor_extractor",
     ),
 )
 def scoring_function_brax_envs(
@@ -109,7 +109,7 @@ def scoring_function_brax_envs(
     play_step_fn: Callable[
         [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
     ],
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.
@@ -124,7 +124,7 @@ def scoring_function_brax_envs(
         random_key: A jax random key
         episode_length: The maximal rollout length.
         play_step_fn: The function to play a step of the environment.
-        behavior_descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the behavior descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
@@ -149,7 +149,7 @@ def scoring_function_brax_envs(
 
     # scores
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    descriptors = behavior_descriptor_extractor(data, mask)
+    descriptors = descriptor_extractor(data, mask)
 
     return (
         fitnesses,
@@ -166,7 +166,7 @@ def scoring_function_brax_envs(
     static_argnames=(
         "episode_length",
         "play_step_actor_dc_fn",
-        "behavior_descriptor_extractor",
+        "descriptor_extractor",
     ),
 )
 def scoring_actor_dc_function_brax_envs(
@@ -179,7 +179,7 @@ def scoring_actor_dc_function_brax_envs(
         [EnvState, Descriptor, Params, RNGKey],
         Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition],
     ],
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policy_dc_params in parallel in
     deterministic or pseudo-deterministic environments.
@@ -197,7 +197,7 @@ def scoring_actor_dc_function_brax_envs(
         random_key: A jax random key
         episode_length: The maximal rollout length.
         play_step_fn: The function to play a step of the environment.
-        behavior_descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the behavior descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
@@ -224,7 +224,7 @@ def scoring_actor_dc_function_brax_envs(
 
     # Scores - add offset to ensure positive fitness (through positive rewards)
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    descriptors = behavior_descriptor_extractor(data, mask)
+    descriptors = descriptor_extractor(data, mask)
 
     return (
         fitnesses,
@@ -242,7 +242,7 @@ def scoring_actor_dc_function_brax_envs(
         "episode_length",
         "play_reset_fn",
         "play_step_fn",
-        "behavior_descriptor_extractor",
+        "descriptor_extractor",
     ),
 )
 def reset_based_scoring_function_brax_envs(
@@ -253,7 +253,7 @@ def reset_based_scoring_function_brax_envs(
     play_step_fn: Callable[
         [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
     ],
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policies_params in parallel.
     The play_reset_fn function allows for a more general scoring_function that can be
@@ -273,7 +273,7 @@ def reset_based_scoring_function_brax_envs(
         episode_length: The maximal rollout length.
         play_reset_fn: The function to reset the environment and obtain initial states.
         play_step_fn: The function to play a step of the environment.
-        behavior_descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the behavior descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
@@ -295,7 +295,7 @@ def reset_based_scoring_function_brax_envs(
         init_states=init_states,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=behavior_descriptor_extractor,
+        descriptor_extractor=descriptor_extractor,
     )
 
     return fitnesses, descriptors, extra_scores, random_key
@@ -307,7 +307,7 @@ def reset_based_scoring_function_brax_envs(
         "episode_length",
         "play_reset_fn",
         "play_step_actor_dc_fn",
-        "behavior_descriptor_extractor",
+        "descriptor_extractor",
     ),
 )
 def reset_based_scoring_actor_dc_function_brax_envs(
@@ -320,7 +320,7 @@ def reset_based_scoring_actor_dc_function_brax_envs(
         [EnvState, Descriptor, Params, RNGKey],
         Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition],
     ],
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
     """Evaluates policies contained in policy_dc_params in parallel.
     The play_reset_fn function allows for a more general scoring_function that can be
@@ -344,7 +344,7 @@ def reset_based_scoring_actor_dc_function_brax_envs(
         play_reset_fn: The function to reset the environment
             and obtain initial states.
         play_step_fn: The function to play a step of the environment.
-        behavior_descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the behavior descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
@@ -372,7 +372,7 @@ def reset_based_scoring_actor_dc_function_brax_envs(
         init_states=init_states,
         episode_length=episode_length,
         play_step_actor_dc_fn=play_step_actor_dc_fn,
-        behavior_descriptor_extractor=behavior_descriptor_extractor,
+        descriptor_extractor=descriptor_extractor,
     )
 
     return fitnesses, descriptors, extra_scores, random_key
@@ -442,7 +442,7 @@ def create_brax_scoring_fn(
         episode_length=episode_length,
         play_reset_fn=play_reset_fn,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=descriptor_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     return scoring_fn, random_key
@@ -489,7 +489,7 @@ def create_default_brax_task_components(
         final_activation=jnp.tanh,
     )
 
-    descriptor_extraction_fn = qdax.environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = qdax.environments.descriptor_extractor[env_name]
 
     scoring_fn, random_key = create_brax_scoring_fn(
         env,

@@ -74,7 +74,7 @@ def test_dads() -> None:
     dummy_transition = QDTransition.init_dummy(
         observation_dim=env.observation_size + num_skills,
         action_dim=env.action_size,
-        descriptor_dim=env.behavior_descriptor_length,
+        descriptor_dim=env.descriptor_length,
     )
     replay_buffer = ReplayBuffer.init(
         buffer_size=buffer_size, transition=dummy_transition
@@ -83,7 +83,7 @@ def test_dads() -> None:
     if descriptor_full_state:
         descriptor_size = env.observation_size
     else:
-        descriptor_size = env.behavior_descriptor_length
+        descriptor_size = env.descriptor_length
 
     dads_config = DadsConfig(
         # SAC config
@@ -101,7 +101,7 @@ def test_dads() -> None:
         # DADS config
         num_skills=num_skills,
         descriptor_full_state=descriptor_full_state,
-        omit_input_dynamics_dim=env.behavior_descriptor_length,
+        omit_input_dynamics_dim=env.descriptor_length,
         dynamics_update_freq=dynamics_update_freq,
         normalize_target=normalize_target,
     )

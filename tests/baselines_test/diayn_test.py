@@ -70,7 +70,7 @@ def test_diayn() -> None:
     dummy_transition = QDTransition.init_dummy(
         observation_dim=env.observation_size + num_skills,
         action_dim=env.action_size,
-        descriptor_dim=env.behavior_descriptor_length,
+        descriptor_dim=env.descriptor_length,
     )
     replay_buffer = ReplayBuffer.init(
         buffer_size=buffer_size, transition=dummy_transition
@@ -99,7 +99,7 @@ def test_diayn() -> None:
     if descriptor_full_state:
         descriptor_size = env.observation_size
     else:
-        descriptor_size = env.behavior_descriptor_length
+        descriptor_size = env.descriptor_length
 
     training_state = diayn.init(
         key,
