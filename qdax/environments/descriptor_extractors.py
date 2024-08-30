@@ -14,7 +14,7 @@ def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
     This function suppose that state descriptor is the xy position, as it
     just select the final one of the state descriptors given.
     """
-    # reshape mask for bd extraction
+    # reshape mask for descriptor extraction
     mask = jnp.expand_dims(mask, axis=-1)
 
     # Get behavior descriptor
@@ -31,7 +31,7 @@ def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descri
     This function suppose that state descriptor is the feet contact, as it
     just computes the mean of the state descriptors given.
     """
-    # reshape mask for bd extraction
+    # reshape mask for descriptor extraction
     mask = jnp.expand_dims(mask, axis=-1)
 
     # Get behavior descriptor

@@ -147,7 +147,7 @@ min_param, max_param = task.get_min_max_params()
 min_desc, max_desc = task.get_bounded_min_max_descriptor()  # To consider bounded Descriptor space
 # If the task has a descriptor space that is not bounded, then the unbounded descriptor
 # space can be obtained via the following:
-# min_bd, max_bd = task.get_min_max_bd()
+# min_descriptor, max_descriptor = task.get_min_max_descriptor()
 
 # Get initial batch of parameters
 initial_params = task.get_initial_parameters(batch_size=...)

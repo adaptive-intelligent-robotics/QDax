@@ -21,7 +21,7 @@ from qdax.custom_types import (
     Params,
     RNGKey,
 )
-from qdax.environments.bd_extractors import AuroraExtraInfo
+from qdax.environments.descriptor_extractors import AuroraExtraInfo
 
 
 class AURORA:

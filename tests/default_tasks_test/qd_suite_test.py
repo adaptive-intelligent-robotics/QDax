@@ -55,17 +55,17 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
     batch_size = batch_size
     num_iterations = 5
     min_param, max_param = task.get_min_max_params()
-    min_bd, max_bd = task.get_bounded_min_max_descriptor()
-    bd_size = task.get_descriptor_size()
+    min_descriptor, max_descriptor = task.get_bounded_min_max_descriptor()
+    descriptor_size = task.get_descriptor_size()
 
     grid_shape: Tuple[int, ...]
-    if bd_size == 1:
+    if descriptor_size == 1:
         grid_shape = (100,)
-    elif bd_size == 2:
+    elif descriptor_size == 2:
         grid_shape = (100, 100)
     else:
-        resolution_per_axis = math.floor(math.pow(10000.0, 1.0 / bd_size))
-        grid_shape = tuple([resolution_per_axis for _ in range(bd_size)])
+        resolution_per_axis = math.floor(math.pow(10000.0, 1.0 / descriptor_size))
+        grid_shape = tuple([resolution_per_axis for _ in range(descriptor_size)])
 
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
@@ -107,8 +107,8 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
     # Compute the centroids
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     # Compute initial repertoire

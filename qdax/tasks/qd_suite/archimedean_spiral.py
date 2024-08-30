@@ -22,7 +22,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
     def __init__(
         self,
         parameterization: ParameterizationGenotype,
-        archimedean_bd: ArchimedeanBD,
+        archimedean_descriptor: ArchimedeanBD,
         amplitude: float = 0.01,
         precision: Optional[float] = None,
         alpha: float = 40.0,
@@ -34,7 +34,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         Args:
             parameterization: The parameterization of the genotype,
             can be either angle or arc length.
-            archimedean_bd: The Archimedean BD, can be either euclidean or
+            archimedean_descriptor: The Archimedean BD, can be either euclidean or
             geodesic.
             amplitude: The amplitude of the Archimedean spiral.
             precision: The precision of the approximation of the angle from the
@@ -42,7 +42,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
             alpha: controls the length/maximal angle of the Archimedean spiral.
         """
         self.parameterization = parameterization
-        self.archimedean_bd = archimedean_bd
+        self.archimedean_descriptor = archimedean_descriptor
         self.amplitude = amplitude
         if precision is None:
             self.precision = alpha * jnp.pi / 1e7
@@ -158,28 +158,28 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         constant_fitness = jnp.asarray(1.0)
 
         if (
-            self.archimedean_bd == ArchimedeanBD.geodesic
+            self.archimedean_descriptor == ArchimedeanBD.geodesic
             and self.parameterization == ParameterizationGenotype.arc_length
         ):
             arc_length = params
             return constant_fitness, arc_length
         elif (
-            self.archimedean_bd == ArchimedeanBD.geodesic
+            self.archimedean_descriptor == ArchimedeanBD.geodesic
             and self.parameterization == ParameterizationGenotype.angle
         ):
             angle = params
             arc_length = self.get_arc_length(angle)
             return constant_fitness, arc_length
         elif (
-            self.archimedean_bd == ArchimedeanBD.euclidean
+            self.archimedean_descriptor == ArchimedeanBD.euclidean
             and self.parameterization == ParameterizationGenotype.arc_length
         ):
             arc_length = params
             angle = self._approximate_angle_from_arc_length(arc_length[0])
-            euclidean_bd = self._gamma(angle)
-            return constant_fitness, euclidean_bd
+            euclidean_descriptor = self._gamma(angle)
+            return constant_fitness, euclidean_descriptor
         elif (
-            self.archimedean_bd == ArchimedeanBD.euclidean
+            self.archimedean_descriptor == ArchimedeanBD.euclidean
             and self.parameterization == ParameterizationGenotype.angle
         ):
             angle = params
@@ -194,9 +194,9 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         Returns:
             The size of the descriptor.
         """
-        if self.archimedean_bd == ArchimedeanBD.euclidean:
+        if self.archimedean_descriptor == ArchimedeanBD.euclidean:
             return 2
-        elif self.archimedean_bd == ArchimedeanBD.geodesic:
+        elif self.archimedean_descriptor == ArchimedeanBD.geodesic:
             return 1
         else:
             raise ValueError("Invalid BD")
@@ -212,9 +212,9 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         max_angle = self.alpha * jnp.pi
         max_norm = jnp.linalg.norm(self._gamma(max_angle))
 
-        if self.archimedean_bd == ArchimedeanBD.euclidean:
+        if self.archimedean_descriptor == ArchimedeanBD.euclidean:
             return -max_norm, max_norm
-        elif self.archimedean_bd == ArchimedeanBD.geodesic:
+        elif self.archimedean_descriptor == ArchimedeanBD.geodesic:
             max_arc_length = self.get_arc_length(max_angle)
             return 0.0, max_arc_length.item()
         else:

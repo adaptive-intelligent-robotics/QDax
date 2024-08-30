@@ -424,7 +424,7 @@ class PBTTD3(TD3):
     def get_eval_qd_fn(
         self,
         eval_env: Env,
-        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
+        descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
     ) -> Callable:
         """
         Returns the function the evaluation the PBT population.
@@ -432,13 +432,13 @@ class PBTTD3(TD3):
         Args:
             eval_env: evaluation environment. Might be different from training env
                 if needed.
-            bd_extraction_fn: function to extract the bd from an episode.
+            descriptor_extraction_fn: function to extract the descriptor from an episode.
 
         Returns:
             The function to evaluate the population. It takes as input the population
             training state as well as first eval environment states and returns the
-            population agents mean returns and mean bds over episodes as well as all
-            returns and bds from all agents over all episodes.
+            population agents mean returns and mean descriptors over episodes as well as all
+            returns and descriptors from all agents over all episodes.
         """
         play_eval_step = partial(
             self.play_qd_step_fn,
@@ -449,7 +449,7 @@ class PBTTD3(TD3):
         eval_policy = partial(
             self.eval_qd_policy_fn,
             play_step_fn=play_eval_step,
-            bd_extraction_fn=bd_extraction_fn,
+            descriptor_extraction_fn=descriptor_extraction_fn,
         )
         return jax.vmap(eval_policy)  # type: ignore
 

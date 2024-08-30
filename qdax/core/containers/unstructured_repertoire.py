@@ -85,7 +85,7 @@ def intra_batch_comp(
     )
 
     # If we do not use a fitness (i.e same fitness everywhere), we create a virtual
-    # fitness function to add individuals with the same bd
+    # fitness function to add individuals with the same descriptor
     additional_score = jnp.where(
         jnp.nanmax(eval_scores) == jnp.nanmin(eval_scores), 1.0, 0.0
     )
@@ -125,7 +125,7 @@ def intra_batch_comp(
     ).any()
 
     # Discard Individuals with Nans as their BD (mainly for the readdition where we
-    # have NaN bds)
+    # have NaN descriptors)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
     # Negate to know if we keep the individual
@@ -292,27 +292,27 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             -1,
         )
 
-        # We get all the indices of the empty bds first and then the filled ones
+        # We get all the indices of the empty descriptors first and then the filled ones
         # (because of -1)
-        sorted_bds = jax.lax.top_k(
+        sorted_descriptors = jax.lax.top_k(
             -1 * batch_of_indices.squeeze(), batch_of_indices.shape[0]
         )[1]
         batch_of_indices = jnp.where(
-            jnp.squeeze(batch_of_distances.at[sorted_bds].get() <= self.l_value),
-            batch_of_indices.at[sorted_bds].get(),
+            jnp.squeeze(batch_of_distances.at[sorted_descriptors].get() <= self.l_value),
+            batch_of_indices.at[sorted_descriptors].get(),
             empty_indexes,
         )
 
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
 
         # ReIndexing of all the inputs to the correct sorted way
-        batch_of_descriptors = batch_of_descriptors.at[sorted_bds].get()
+        batch_of_descriptors = batch_of_descriptors.at[sorted_descriptors].get()
         batch_of_genotypes = jax.tree_util.tree_map(
             lambda x: x.at[sorted_bds].get(), batch_of_genotypes
         )
-        batch_of_fitnesses = batch_of_fitnesses.at[sorted_bds].get()
-        batch_of_observations = batch_of_observations.at[sorted_bds].get()
-        not_novel_enough = not_novel_enough.at[sorted_bds].get()
+        batch_of_fitnesses = batch_of_fitnesses.at[sorted_descriptors].get()
+        batch_of_observations = batch_of_observations.at[sorted_descriptors].get()
+        not_novel_enough = not_novel_enough.at[sorted_descriptors].get()
 
         # Check to find Individuals with same BD within the Batch
         keep_indiv = jax.jit(

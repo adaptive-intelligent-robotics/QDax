@@ -18,8 +18,8 @@ def square(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     freq = 5
     f = 1 - jnp.prod(params)
-    bd = jnp.sin(freq * params)
-    return f, bd
+    descriptor = jnp.sin(freq * params)
+    return f, descriptor
 
 
 def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
@@ -29,8 +29,8 @@ def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     freq = 5
     f = jnp.prod(jnp.sin(params * 50))
-    bd = jnp.sin(params * freq)
-    return f, bd
+    descriptor = jnp.sin(params * freq)
+    return f, descriptor
 
 
 def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
@@ -46,8 +46,8 @@ def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
     centre = jnp.ones_like(params) * 0.5
     distance_from_centre = jnp.linalg.norm(params - centre)
     f = _gaussian(distance_from_centre, mu=0.5, sig=0.3)
-    bd = jnp.sin(freq * params)
-    return f, bd
+    descriptor = jnp.sin(freq * params)
+    return f, descriptor
 
 
 def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
@@ -56,8 +56,8 @@ def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     BD space should be [0,1]^n
     """
     f = jnp.prod(params)
-    bd = jnp.round(10 * params) / 10
-    return f, bd
+    descriptor = jnp.round(10 * params) / 10
+    return f, descriptor
 
 
 def continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
@@ -67,8 +67,8 @@ def continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     coeff = 20
     f = jnp.prod(params)
-    bd = params - jnp.sin(coeff * jnp.pi * params) / (coeff * jnp.pi)
-    return f, bd
+    descriptor = params - jnp.sin(coeff * jnp.pi * params) / (coeff * jnp.pi)
+    return f, descriptor
 
 
 def get_scoring_function(

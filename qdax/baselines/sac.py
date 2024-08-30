@@ -366,7 +366,7 @@ class SAC:
         static_argnames=(
             "self",
             "play_step_fn",
-            "bd_extraction_fn",
+            "descriptor_extraction_fn",
         ),
     )
     def eval_qd_policy_fn(
@@ -377,7 +377,7 @@ class SAC:
             [EnvState, Params, RNGKey],
             Tuple[EnvState, SacTrainingState, QDTransition],
         ],
-        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
+        descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
     ) -> Tuple[Reward, Descriptor, Reward, Descriptor]:
         """
         Evaluates the agent's policy over an entire episode, across all batched
@@ -411,10 +411,10 @@ class SAC:
             lambda x: jnp.swapaxes(x, 0, 1), transitions
         )
         masks = jnp.isnan(transitions.rewards)
-        bds = bd_extraction_fn(transitions, masks)
+        descriptors = descriptor_extraction_fn(transitions, masks)
 
-        mean_bd = jnp.mean(bds, axis=0)
-        return true_return, mean_bd, true_returns, bds
+        mean_descriptor = jnp.mean(descriptors, axis=0)
+        return true_return, mean_descriptor, true_returns, descriptors
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_alpha(

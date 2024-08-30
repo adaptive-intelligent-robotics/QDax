@@ -91,7 +91,7 @@ def test_jumanji_utils() -> None:
     init_states, init_timesteps = reset_fn(keys)
 
     # Prepare the scoring function
-    def bd_extraction(
+    def descriptor_extraction(
         data: QDTransition, mask: jnp.ndarray, linear_projection: jnp.ndarray
     ) -> Descriptor:
         """Extract a behavior descriptor from a trajectory.
@@ -125,8 +125,8 @@ def test_jumanji_utils() -> None:
         subkey, (2, observation_size), minval=-1, maxval=1, dtype=jnp.float32
     )
 
-    bd_extraction_fn = functools.partial(
-        bd_extraction, linear_projection=linear_projection
+    descriptor_extraction_fn = functools.partial(
+        descriptor_extraction, linear_projection=linear_projection
     )
 
     # define the scoring function
@@ -136,7 +136,7 @@ def test_jumanji_utils() -> None:
         init_timesteps=init_timesteps,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        behavior_descriptor_extractor=descriptor_extraction_fn,
     )
 
     fitnesses, descriptors, extra_scores, random_key = scoring_fn(

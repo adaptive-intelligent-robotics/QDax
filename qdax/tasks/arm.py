@@ -19,7 +19,7 @@ def arm(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
     Returns:
         f: the fitness of the individual, given as the variance of the angles.
-        bd: the bd of the individual, given as the [x, y] position of the
+        descriptor: the descriptor of the individual, given as the [x, y] position of the
             end-effector of the arm.
             BD is normalized to [0, 1] regardless of the num of DoF.
             Arm is centered at 0.5, 0.5.

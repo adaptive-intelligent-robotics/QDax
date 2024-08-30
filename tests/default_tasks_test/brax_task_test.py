@@ -30,8 +30,8 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     seed = 42
     num_init_cvt_samples = 1000
     num_centroids = 50
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptor = 0.0
+    max_descriptor = 1.0
 
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
@@ -68,8 +68,8 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
         num_descriptors=env.behavior_descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
         random_key=random_key,
     )
 

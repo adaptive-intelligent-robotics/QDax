@@ -381,7 +381,7 @@ def reset_based_scoring_actor_dc_function_brax_envs(
 def create_brax_scoring_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
-    bd_extraction_fn: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extraction_fn: Callable[[QDTransition, jnp.ndarray], Descriptor],
     random_key: RNGKey,
     play_step_fn: Optional[
         Callable[
@@ -401,7 +401,7 @@ def create_brax_scoring_fn(
     Args:
         env: The BRAX environment.
         policy_network: The policy network controller.
-        bd_extraction_fn: The behaviour descriptor extraction function.
+        descriptor_extraction_fn: The behaviour descriptor extraction function.
         random_key: a random key used for stochastic operations.
         play_step_fn: the function used to perform environment rollouts and collect
             evaluation episodes. If None, we use make_policy_network_play_step_fn_brax
@@ -442,7 +442,7 @@ def create_brax_scoring_fn(
         episode_length=episode_length,
         play_reset_fn=play_reset_fn,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        behavior_descriptor_extractor=descriptor_extraction_fn,
     )
 
     return scoring_fn, random_key
@@ -489,12 +489,12 @@ def create_default_brax_task_components(
         final_activation=jnp.tanh,
     )
 
-    bd_extraction_fn = qdax.environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = qdax.environments.behavior_descriptor_extractor[env_name]
 
     scoring_fn, random_key = create_brax_scoring_fn(
         env,
         policy_network,
-        bd_extraction_fn,
+        descriptor_extraction_fn,
         random_key,
         episode_length=episode_length,
         deterministic=deterministic,

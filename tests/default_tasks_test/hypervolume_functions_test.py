@@ -46,8 +46,8 @@ def test_standard_functions(task_name: str, batch_size: int) -> None:
     grid_shape = (100, 100)
     min_param = 0.0
     max_param = 1.0
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptor = 0.0
+    max_descriptor = 1.0
 
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
@@ -92,8 +92,8 @@ def test_standard_functions(task_name: str, batch_size: int) -> None:
     # Compute the centroids
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     # Compute initial repertoire

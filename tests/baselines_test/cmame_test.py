@@ -32,8 +32,8 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
     sigma_g = 0.5
     minval = -5.12
     maxval = 5.12
-    min_bd = -5.12 * 0.5 * num_dimensions
-    max_bd = 5.12 * 0.5 * num_dimensions
+    min_descriptor = -5.12 * 0.5 * num_dimensions
+    max_descriptor = 5.12 * 0.5 * num_dimensions
     pool_size = 3
 
     def sphere_scoring(x: jnp.ndarray) -> jnp.ndarray:
@@ -88,8 +88,8 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
 
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     emitter_kwargs = {

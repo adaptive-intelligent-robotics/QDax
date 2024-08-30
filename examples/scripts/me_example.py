@@ -22,8 +22,8 @@ def run_me() -> None:
     grid_shape = (100, 100)
     min_param = 0.0
     max_param = 1.0
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptorscriptor = 0.0
+    max_descriptor = 1.0
 
     # Init a random key
     random_key = jax.random.PRNGKey(seed)
@@ -68,8 +68,8 @@ def run_me() -> None:
     # Compute the centroids
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     # Initializes repertoire and emitter state
@@ -94,8 +94,8 @@ def run_me() -> None:
     fig, axes = plot_2d_map_elites_repertoire(
         centroids=repertoire.centroids,
         repertoire_fitnesses=repertoire.fitnesses,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
         repertoire_descriptors=repertoire.descriptors,
         # vmin=-0.2,
         # vmax=0.0,

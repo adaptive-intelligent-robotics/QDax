@@ -216,8 +216,8 @@ def plot_map_elites_results(
     env_steps: jnp.ndarray,
     metrics: Dict,
     repertoire: MapElitesRepertoire,
-    min_bd: jnp.ndarray,
-    max_bd: jnp.ndarray,
+    min_descriptor: jnp.ndarray,
+    max_descriptor: jnp.ndarray,
 ) -> Tuple[Optional[Figure], Axes]:
     """Plots three usual QD metrics, namely the coverage, the maximum fitness
     and the QD-score, along the number of environment steps. This function also
@@ -229,8 +229,8 @@ def plot_map_elites_results(
         env_steps: the array containing the number of steps done in the environment.
         metrics: a dictionary containing metrics from the optimizatoin process.
         repertoire: the final repertoire obtained.
-        min_bd: the mimimal possible values for the bd.
-        max_bd: the maximal possible values for the bd.
+        min_descriptor: the mimimal possible values for the descriptor.
+        max_descriptor: the maximal possible values for the descriptor.
 
     Returns:
         A figure and axes with the plots of the metrics and visualisation of the grid.
@@ -275,8 +275,8 @@ def plot_map_elites_results(
     _, axes = plot_2d_map_elites_repertoire(
         centroids=repertoire.centroids,
         repertoire_fitnesses=repertoire.fitnesses,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
         repertoire_descriptors=repertoire.descriptors,
         ax=axes[3],
     )

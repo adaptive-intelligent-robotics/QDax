@@ -112,8 +112,8 @@ class FeetContactWrapper(QDEnv):
 
     @property
     def behavior_descriptor_limits(self) -> Tuple[List, List]:
-        bd_length = self.behavior_descriptor_length
-        return (jnp.zeros((bd_length,)), jnp.ones((bd_length,)))
+        descriptor_length = self.behavior_descriptor_length
+        return (jnp.zeros((descriptor_length,)), jnp.ones((descriptor_length,)))
 
     @property
     def name(self) -> str:

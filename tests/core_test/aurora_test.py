@@ -12,7 +12,7 @@ from qdax import environments
 from qdax.core.aurora import AURORA
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import Observation
-from qdax.environments.bd_extractors import (
+from qdax.environments.descriptor_extractors import (
     AuroraExtraInfoNormalization,
     get_aurora_encoding,
 )

@@ -27,8 +27,8 @@ def test_pgame() -> None:
     policy_hidden_layer_sizes = (64, 64)
     num_init_cvt_samples = 1000
     num_centroids = 50
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptor = 0.0
+    max_descriptor = 1.0
 
     # @title PGA-ME Emitter Definitions Fields
     proportion_mutation_ga = 0.5
@@ -151,13 +151,13 @@ def test_pgame() -> None:
     init_states = reset_fn(keys)
 
     # Prepare the scoring function
-    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.behavior_descriptor_extractor[env_name]
     scoring_fn = functools.partial(
         scoring_function_brax_envs,
         init_states=init_states,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        behavior_descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Compute the centroids
@@ -165,8 +165,8 @@ def test_pgame() -> None:
         num_descriptors=env.behavior_descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
         random_key=random_key,
     )
 
