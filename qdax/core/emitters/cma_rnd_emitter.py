@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from qdax.core.cmaes import CMAESState
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class CMARndEmitterState(CMAEmitterState):
@@ -168,7 +168,7 @@ class CMARndEmitter(CMAEmitter):
         condition = improvements == jnp.inf
 
         ranking_criteria = jnp.where(
-            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
+            condition, ranking_criteria + new_cell_offset, ranking_criteria
         )
 
         return ranking_criteria  # type: ignore

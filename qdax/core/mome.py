@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.map_elites import MAPElites
-from qdax.types import Centroid, RNGKey
+from qdax.custom_types import Centroid, RNGKey
 
 
 class MOME(MAPElites):

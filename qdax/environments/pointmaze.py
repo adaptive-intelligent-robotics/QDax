@@ -150,8 +150,8 @@ class PointMaze(Env):
 
         done = jp.where(
             jp.array(in_zone),
-            x=jp.array(1.0),
-            y=jp.array(0.0),
+            jp.array(1.0),
+            jp.array(0.0),
         )
 
         new_obs = jp.array([x_pos, y_pos])
@@ -199,8 +199,8 @@ class PointMaze(Env):
             y_axis_down_contact_condition_1
             & y_axis_down_contact_condition_2
             & x_axis_contact_condition,
-            x=jp.array(self.lower_wall_height_offset),
-            y=y_pos,
+            jp.array(self.lower_wall_height_offset),
+            y_pos,
         )
 
         # From up - boolean style
@@ -217,8 +217,8 @@ class PointMaze(Env):
             & y_axis_up_contact_condition_2
             & y_axis_up_contact_condition_3
             & x_axis_contact_condition,
-            x=jp.array(self.lower_wall_height_offset + self.wallheight),
-            y=new_y_pos,
+            jp.array(self.lower_wall_height_offset + self.wallheight),
+            new_y_pos,
         )
 
         return new_y_pos
@@ -250,8 +250,8 @@ class PointMaze(Env):
             y_axis_up_contact_condition_1
             & y_axis_up_contact_condition_2
             & x_axis_contact_condition,
-            x=jp.array(self.upper_wall_height_offset + self.wallheight),
-            y=y_pos,
+            jp.array(self.upper_wall_height_offset + self.wallheight),
+            y_pos,
         )
 
         # From down - boolean style
@@ -264,8 +264,8 @@ class PointMaze(Env):
             & y_axis_down_contact_condition_2
             & y_axis_down_contact_condition_3
             & x_axis_contact_condition,
-            x=jp.array(self.upper_wall_height_offset),
-            y=new_y_pos,
+            jp.array(self.upper_wall_height_offset),
+            new_y_pos,
         )
 
         return new_y_pos

@@ -4,7 +4,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Mask, ParetoFront
+from qdax.custom_types import Mask, ParetoFront
 
 
 def compute_pareto_dominance(

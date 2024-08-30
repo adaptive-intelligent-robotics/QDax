@@ -16,7 +16,7 @@ from qdax.core.emitters.cma_opt_emitter import CMAOptimizingEmitter
 from qdax.core.emitters.cma_pool_emitter import CMAPoolEmitter
 from qdax.core.emitters.cma_rnd_emitter import CMARndEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
 
 
 @pytest.mark.parametrize(
@@ -25,7 +25,7 @@ from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
 )
 def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
 
-    num_iterations = 1000
+    num_iterations = 2000
     num_dimensions = 20
     grid_shape = (50, 50)
     batch_size = 36
@@ -43,7 +43,7 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
 
     def clip(x: jnp.ndarray) -> jnp.ndarray:
         in_bound = (x <= maxval) * (x >= minval)
-        return jnp.where(condition=in_bound, x=x, y=(maxval / x))
+        return jnp.where(in_bound, x, (maxval / x))
 
     def _behavior_descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
         return jnp.sum(clip(x[: x.shape[-1] // 2]))
@@ -113,7 +113,11 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         initial_population, centroids, random_key
     )
 
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         map_elites.scan_update,
         (repertoire, emitter_state, random_key),
         (),

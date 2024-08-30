@@ -14,7 +14,7 @@ from qdax.baselines.dads import DADS, DadsConfig, DadsTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 from qdax.core.neuroevolution.normalization_utils import normalize_with_rmstd
-from qdax.types import Metrics, Reward
+from qdax.custom_types import Metrics, Reward
 
 
 @dataclass

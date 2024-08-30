@@ -16,8 +16,8 @@ from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import DCGTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_dc_fn
 from qdax.core.neuroevolution.networks.networks import QModuleDC
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 from qdax.environments.base_wrappers import QDEnv
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 
 
 @dataclass
@@ -521,7 +521,11 @@ class QualityDCGEmitter(Emitter):
         )
 
         # Update greedy actor
-        (actor_opt_state, actor_params, target_actor_params,) = jax.lax.cond(
+        (
+            actor_opt_state,
+            actor_params,
+            target_actor_params,
+        ) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
             lambda x: self._update_actor(*x),
             lambda _: (
@@ -580,7 +584,7 @@ class QualityDCGEmitter(Emitter):
         critic_params = optax.apply_updates(critic_params, critic_updates)
 
         # Soft update of target critic network
-        target_critic_params = jax.tree_map(
+        target_critic_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_critic_params,
@@ -612,7 +616,7 @@ class QualityDCGEmitter(Emitter):
         actor_params = optax.apply_updates(actor_params, policy_updates)
 
         # Soft update of target greedy actor
-        target_actor_params = jax.tree_map(
+        target_actor_params = jax.tree_util.tree_map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_actor_params,
@@ -701,7 +705,11 @@ class QualityDCGEmitter(Emitter):
                 new_policy_opt_state,
             ), ()
 
-        (emitter_state, policy_params, policy_opt_state,), _ = jax.lax.scan(
+        (
+            emitter_state,
+            policy_params,
+            policy_opt_state,
+        ), _ = jax.lax.scan(
             scan_train_policy,
             (emitter_state, policy_params, policy_opt_state),
             transitions,

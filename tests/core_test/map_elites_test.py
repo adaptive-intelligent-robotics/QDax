@@ -14,8 +14,8 @@ from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
+from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.tasks.brax_envs import scoring_function_brax_envs
-from qdax.types import EnvState, Params, RNGKey
 from qdax.utils.metrics import default_qd_metrics
 
 
@@ -143,7 +143,11 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     )
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         map_elites.scan_update,
         (repertoire, emitter_state, random_key),
         (),

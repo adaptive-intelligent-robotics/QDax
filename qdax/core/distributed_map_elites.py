@@ -1,4 +1,5 @@
 """Core components of the MAP-Elites algorithm."""
+
 from __future__ import annotations
 
 from functools import partial
@@ -10,7 +11,7 @@ import jax.numpy as jnp
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.map_elites import MAPElites
-from qdax.types import Centroid, Genotype, Metrics, RNGKey
+from qdax.custom_types import Centroid, Genotype, Metrics, RNGKey
 
 
 class DistributedMAPElites(MAPElites):
@@ -189,7 +190,7 @@ class DistributedMAPElites(MAPElites):
             of MAP-Elites updates.
         """
 
-        @partial(jax.jit, static_argnames=("self",))
+        @jax.jit
         def _scan_update(
             carry: Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey],
             unused: Any,
@@ -200,7 +201,12 @@ class DistributedMAPElites(MAPElites):
             repertoire, emitter_state, random_key = carry
 
             # apply one step of update
-            (repertoire, emitter_state, metrics, random_key,) = self.update(
+            (
+                repertoire,
+                emitter_state,
+                metrics,
+                random_key,
+            ) = self.update(
                 repertoire,
                 emitter_state,
                 random_key,
@@ -214,7 +220,11 @@ class DistributedMAPElites(MAPElites):
             random_key: RNGKey,
         ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey, Metrics]:
             """Apply num_iterations of update."""
-            (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+            (
+                repertoire,
+                emitter_state,
+                random_key,
+            ), metrics = jax.lax.scan(
                 _scan_update,
                 (repertoire, emitter_state, random_key),
                 (),

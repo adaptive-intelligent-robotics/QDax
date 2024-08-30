@@ -14,7 +14,14 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, Spread
+from qdax.custom_types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    Spread,
+)
 
 
 def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
@@ -232,7 +239,7 @@ class MELSRepertoire(MapElitesRepertoire):
 
         # assign fake position when relevant : num_centroids is out of bound
         batch_of_indices = jnp.where(
-            addition_condition, x=batch_of_indices, y=num_centroids
+            addition_condition, batch_of_indices, num_centroids
         )
 
         # create new repertoire

@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.types import Descriptor, Params
+from qdax.custom_types import Descriptor, Params
 
 
 def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
