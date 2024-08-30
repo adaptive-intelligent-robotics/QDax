@@ -5,7 +5,7 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     compute_euclidean_centroids,
 )
-from qdax.types import ExtraScores
+from qdax.custom_types import ExtraScores
 
 
 def test_mapelites_repertoire() -> None:

@@ -12,7 +12,7 @@ from qdax import environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.core.neuroevolution.mdp_utils import generate_unroll, generate_unroll_actor_dc
 from qdax.core.neuroevolution.networks.networks import MLP
-from qdax.types import (
+from qdax.custom_types import (
     Descriptor,
     EnvState,
     ExtraScores,
@@ -41,6 +41,7 @@ def make_policy_network_play_step_fn_brax(
     Returns:
         default_play_step_fn: A function that plays a step of the environment.
     """
+
     # Define the function to play a step with the policy in the environment
     def default_play_step_fn(
         env_state: EnvState,

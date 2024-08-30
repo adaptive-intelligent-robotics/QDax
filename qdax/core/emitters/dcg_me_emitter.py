@@ -6,8 +6,8 @@ import flax.linen as nn
 from qdax.core.emitters.multi_emitter import MultiEmitter
 from qdax.core.emitters.qdcg_emitter import QualityDCGConfig, QualityDCGEmitter
 from qdax.core.emitters.standard_emitters import MixingEmitter
+from qdax.custom_types import Params, RNGKey
 from qdax.environments.base_wrappers import QDEnv
-from qdax.types import Params, RNGKey
 
 
 @dataclass

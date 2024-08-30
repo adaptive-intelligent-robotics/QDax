@@ -4,7 +4,7 @@ from typing import Tuple, Union
 import jax
 from jax import numpy as jnp
 
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class QDSuiteTask(abc.ABC):

@@ -16,8 +16,8 @@ from flax.training import train_state
 
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
+from qdax.custom_types import Params, RNGKey
 from qdax.environments.bd_extractors import AuroraExtraInfoNormalization
-from qdax.types import Params, RNGKey
 
 Array = Any
 PRNGKey = Any
@@ -132,7 +132,7 @@ def lstm_ae_train(
     std_obs = jnp.nanstd(repertoire.observations, axis=(0, 1))
     # the std where they were NaNs was set to zero. But here we divide by the
     # std, so we replace the zeros by inf here.
-    std_obs = jnp.where(std_obs == 0, x=jnp.inf, y=std_obs)
+    std_obs = jnp.where(std_obs == 0, jnp.inf, std_obs)
 
     # TODO: maybe we could just compute this data on the valid dataset
 

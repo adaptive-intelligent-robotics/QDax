@@ -25,7 +25,7 @@ from qdax.core.neuroevolution.normalization_utils import (
     update_running_mean_std,
 )
 from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
-from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
+from qdax.custom_types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
 class DadsTrainingState(TrainingState):
@@ -430,12 +430,17 @@ class DADS(SAC):
         """
         training_state, transitions = operand
 
-        dynamics_loss, dynamics_gradient = jax.value_and_grad(self._dynamics_loss_fn,)(
+        dynamics_loss, dynamics_gradient = jax.value_and_grad(
+            self._dynamics_loss_fn,
+        )(
             training_state.dynamics_params,
             transitions=transitions,
         )
 
-        (dynamics_updates, dynamics_optimizer_state,) = self._dynamics_optimizer.update(
+        (
+            dynamics_updates,
+            dynamics_optimizer_state,
+        ) = self._dynamics_optimizer.update(
             dynamics_gradient, training_state.dynamics_optimizer_state
         )
         dynamics_params = optax.apply_updates(
@@ -483,7 +488,11 @@ class DADS(SAC):
         random_key = training_state.random_key
 
         # Update skill-dynamics
-        (dynamics_params, dynamics_loss, dynamics_optimizer_state,) = jax.lax.cond(
+        (
+            dynamics_params,
+            dynamics_loss,
+            dynamics_optimizer_state,
+        ) = jax.lax.cond(
             training_state.steps % self._config.dynamics_update_freq == 0,
             self._update_dynamics,
             self._not_update_dynamics,

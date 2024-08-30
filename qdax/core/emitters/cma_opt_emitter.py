@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype
 
 
 class CMAOptimizingEmitter(CMAEmitter):

@@ -8,7 +8,7 @@ from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class MultiEmitterState(EmitterState):
