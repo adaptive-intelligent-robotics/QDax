@@ -55,7 +55,7 @@ class CMAEmitter(Emitter, ABC):
     ):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
-        Rapid Illumination of Behavior Space" by Fontaine et al.
+        Rapid Illumination of Descriptor Space" by Fontaine et al.
 
         Args:
             batch_size: number of solutions sampled at each iteration

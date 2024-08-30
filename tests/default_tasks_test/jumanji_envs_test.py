@@ -94,7 +94,7 @@ def test_jumanji_utils() -> None:
     def descriptor_extraction(
         data: QDTransition, mask: jnp.ndarray, linear_projection: jnp.ndarray
     ) -> Descriptor:
-        """Extract a behavior descriptor from a trajectory.
+        """Extract a descriptor from a trajectory.
 
         This extractor takes the mean observation in the trajectory and project
         it in a two dimension space.
@@ -105,7 +105,7 @@ def test_jumanji_utils() -> None:
             linear_projection: a linear projection.
 
         Returns:
-            Behavior descriptors.
+            Descriptors.
         """
 
         # pre-process the observation

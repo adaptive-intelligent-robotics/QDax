@@ -17,7 +17,7 @@ def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
     # reshape mask for descriptor extraction
     mask = jnp.expand_dims(mask, axis=-1)
 
-    # Get behavior descriptor
+    # Get descriptor
     last_index = jnp.int32(jnp.sum(1.0 - mask, axis=1)) - 1
     descriptors = jax.vmap(lambda x, y: x[y])(data.state_desc, last_index)
 
@@ -34,7 +34,7 @@ def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descri
     # reshape mask for descriptor extraction
     mask = jnp.expand_dims(mask, axis=-1)
 
-    # Get behavior descriptor
+    # Get descriptor
     descriptors = jnp.sum(data.state_desc * (1.0 - mask), axis=1)
     descriptors = descriptors / jnp.sum(1.0 - mask, axis=1)
 

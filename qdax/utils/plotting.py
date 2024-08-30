@@ -199,8 +199,8 @@ def plot_2d_map_elites_repertoire(
         )
 
     # aesthetic
-    ax.set_xlabel("Behavior Dimension 1")
-    ax.set_ylabel("Behavior Dimension 2")
+    ax.set_xlabel("Descriptor Dimension 1")
+    ax.set_ylabel("Descriptor Dimension 2")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=my_cmap), cax=cax)
@@ -361,8 +361,8 @@ def plot_skills_trajectory(
     # set aesthetics
     ax.set_ylim(min_values[1], max_values[1])
     ax.set_xlim(min_values[0], max_values[0])
-    ax.set_xlabel("Behavior Dimension 1")
-    ax.set_ylabel("Behavior Dimension 2")
+    ax.set_xlabel("Descriptor Dimension 1")
+    ax.set_ylabel("Descriptor Dimension 2")
     ax.set_aspect("equal")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -705,8 +705,8 @@ def plot_multidimensional_map_elites_grid(
     )
 
     # aesthetic
-    ax.set_xlabel("Behavior Dimension 1")
-    ax.set_ylabel("Behavior Dimension 2")
+    ax.set_xlabel("Descriptor Dimension 1")
+    ax.set_ylabel("Descriptor Dimension 2")
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     norm = Normalize(vmin=vmin, vmax=vmax)

@@ -11,7 +11,7 @@ from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype
 
 class CMAImprovementEmitter(CMAEmitter):
     """Class for the emitter of CMA ME from "Covariance Matrix Adaptation
-    for the Rapid Illumination of Behavior Space" by Fontaine et al.
+    for the Rapid Illumination of Descriptor Space" by Fontaine et al.
 
     This class implements the improvement emitter, where the update of the
     distribution is biased towards solution that improve the QD score.

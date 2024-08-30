@@ -25,7 +25,7 @@ class CMARndEmitterState(CMAEmitterState):
         previous_fitnesses: store last fitnesses of the repertoire. Used to
             compute the improvment.
         emit_count: count the number of emission events.
-        random_direction: direction of the behavior space we are trying to
+        random_direction: direction of the descriptor space we are trying to
             explore.
     """
 

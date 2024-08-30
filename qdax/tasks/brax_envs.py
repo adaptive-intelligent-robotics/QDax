@@ -124,7 +124,7 @@ def scoring_function_brax_envs(
         random_key: A jax random key
         episode_length: The maximal rollout length.
         play_step_fn: The function to play a step of the environment.
-        descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
@@ -197,7 +197,7 @@ def scoring_actor_dc_function_brax_envs(
         random_key: A jax random key
         episode_length: The maximal rollout length.
         play_step_fn: The function to play a step of the environment.
-        descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
@@ -273,7 +273,7 @@ def reset_based_scoring_function_brax_envs(
         episode_length: The maximal rollout length.
         play_reset_fn: The function to reset the environment and obtain initial states.
         play_step_fn: The function to play a step of the environment.
-        descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
@@ -344,7 +344,7 @@ def reset_based_scoring_actor_dc_function_brax_envs(
         play_reset_fn: The function to reset the environment
             and obtain initial states.
         play_step_fn: The function to play a step of the environment.
-        descriptor_extractor: The function to extract the behavior descriptor.
+        descriptor_extractor: The function to extract the descriptor.
 
     Returns:
         fitness: Array of fitnesses of all evaluated policies
