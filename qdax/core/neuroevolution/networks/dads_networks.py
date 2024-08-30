@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import tensorflow_probability.substrates.jax as tfp
 from jax.nn import initializers
 
+from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import Action, Observation, Skill, StateDescriptor
 
 
@@ -74,9 +75,12 @@ class DynamicsNetwork(nn.Module):
         obs = obs[:, self.omit_input_dynamics_dim :]
         obs = jnp.concatenate((obs, skill), axis=1)
 
-        x = obs
-        for features in self.hidden_layer_sizes:
-            x = nn.relu(nn.Dense(features, kernel_init=init)(x))
+        x = MLP(
+            layer_sizes=self.hidden_layer_sizes,
+            kernel_init=init,
+            activation=nn.relu,
+            final_activation=nn.relu,
+        )(obs)
 
         dist = distribution(x)
         return dist.log_prob(target)
@@ -89,10 +93,12 @@ class Actor(nn.Module):
     @nn.compact
     def __call__(self, obs: Observation) -> jnp.ndarray:
         init = initializers.variance_scaling(1.0, "fan_in", "uniform")
-        x = obs
-        for features in self.hidden_layer_sizes:
-            x = nn.relu(nn.Dense(features, kernel_init=init)(x))
-        return nn.Dense(2 * self.action_size, kernel_init=init)(x)
+
+        return MLP(
+            layer_sizes=self.hidden_layer_sizes + (2 * self.action_size,),
+            kernel_init=init,
+            activation=nn.relu,
+        )(obs)
 
 
 class Critic(nn.Module):
@@ -103,15 +109,19 @@ class Critic(nn.Module):
         init = initializers.variance_scaling(1.0, "fan_in", "uniform")
         input_ = jnp.concatenate([obs, action], axis=-1)
 
-        def make_critic_network() -> jnp.ndarray:
-            x = input_
-            for features in self.hidden_layer_sizes:
-                x = nn.relu(nn.Dense(features, kernel_init=init)(x))
-            return nn.Dense(1, kernel_init=init)(x)
+        value_1 = MLP(
+            layer_sizes=self.hidden_layer_sizes + (1,),
+            kernel_init=init,
+            activation=nn.relu,
+        )(input_)
 
-        value1 = make_critic_network()
-        value2 = make_critic_network()
-        return jnp.concatenate([value1, value2], axis=-1)
+        value_2 = MLP(
+            layer_sizes=self.hidden_layer_sizes + (1,),
+            kernel_init=init,
+            activation=nn.relu,
+        )(input_)
+
+        return jnp.concatenate([value_1, value_2], axis=-1)
 
 
 def make_dads_networks(
