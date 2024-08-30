@@ -79,7 +79,7 @@ def compute_euclidean_centroids(
     """Compute centroids for square Euclidean tessellation.
 
     Args:
-        grid_shape: number of centroids per BD dimension
+        grid_shape: number of centroids per descriptor dimension
         minval: minimum descriptors value
         maxval: maximum descriptors value
 

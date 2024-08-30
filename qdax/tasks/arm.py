@@ -8,7 +8,7 @@ from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 def arm(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    Compute the fitness and BD of one individual in the Planar Arm task.
+    Compute the fitness and descriptor of one individual in the Planar Arm task.
     Based on the Planar Arm implementation in fast_map_elites
     (https://github.com/hucebot/fast_map-elites).
 
@@ -21,7 +21,7 @@ def arm(params: Genotype) -> Tuple[Fitness, Descriptor]:
         f: the fitness of the individual, given as the variance of the angles.
         descriptor: the descriptor of the individual, given as the [x, y] position of the
             end-effector of the arm.
-            BD is normalized to [0, 1] regardless of the num of DoF.
+            Descriptor is normalized to [0, 1] regardless of the DoF.
             Arm is centered at 0.5, 0.5.
     """
 

@@ -116,7 +116,7 @@ def test_arm_scoring_function() -> None:
     seed = 42
     random_key = jax.random.PRNGKey(seed)
 
-    # arm has xy BD centered at 0.5 0.5 and min max range is [0,1]
+    # arm has xy descriptor centered at 0.5 0.5 and min max range is [0,1]
     # 0 params of first genotype is horizontal and points towards negative x axis
     # angles move in anticlockwise direction
     genotypes_1 = jnp.ones(shape=(1, 4)) * 0.5  # 0.5

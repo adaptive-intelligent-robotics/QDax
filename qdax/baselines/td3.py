@@ -320,7 +320,7 @@ class TD3:
         descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
     ) -> Tuple[Reward, Descriptor, Reward, Descriptor]:
         """Evaluates the agent's policy over an entire episode, across all batched
-        environments for QD environments. Averaged BDs are returned as well.
+        environments for QD environments. Averaged descriptors are returned as well.
 
 
         Args:

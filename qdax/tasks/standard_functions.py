@@ -8,7 +8,7 @@ from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 def rastrigin(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    2-D BD
+    2-D descriptor
     """
     x = params * 10 - 5  # scaling to [-5, 5]
     f = jnp.asarray(10.0 * x.shape[0]) + jnp.sum(x * x - 10 * jnp.cos(2 * jnp.pi * x))
@@ -17,7 +17,7 @@ def rastrigin(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def sphere(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    2-D BD
+    2-D descriptor
     """
     x = params * 10 - 5  # scaling to [-5, 5]
     f = (x * x).sum()

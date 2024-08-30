@@ -124,7 +124,7 @@ def intra_batch_comp(
         fitness,
     ).any()
 
-    # Discard Individuals with Nans as their BD (mainly for the readdition where we
+    # Discard Individuals with Nans as their descriptor (mainly for the readdition where we
     # have NaN descriptors)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
@@ -314,7 +314,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         batch_of_observations = batch_of_observations.at[sorted_descriptors].get()
         not_novel_enough = not_novel_enough.at[sorted_descriptors].get()
 
-        # Check to find Individuals with same BD within the Batch
+        # Check to find Individuals with same descriptor within the Batch
         keep_indiv = jax.jit(
             jax.vmap(intra_batch_comp, in_axes=(0, 0, None, None, None), out_axes=(0))
         )(

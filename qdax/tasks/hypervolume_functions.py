@@ -14,7 +14,7 @@ from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 def square(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
-    BD space should be [0,1]^n
+    Descriptor space should be [0,1]^n
     """
     freq = 5
     f = 1 - jnp.prod(params)
@@ -25,7 +25,7 @@ def square(params: Genotype) -> Tuple[Fitness, Descriptor]:
 def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
-    BD space should be [0,1]^n
+    Descriptor space should be [0,1]^n
     """
     freq = 5
     f = jnp.prod(jnp.sin(params * 50))
@@ -36,7 +36,7 @@ def checkered(params: Genotype) -> Tuple[Fitness, Descriptor]:
 def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
-    BD space should be [0,1]^n
+    Descriptor space should be [0,1]^n
     """
 
     def _gaussian(x: jnp.ndarray, mu: float, sig: float) -> jnp.ndarray:
@@ -53,7 +53,7 @@ def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
 def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
-    BD space should be [0,1]^n
+    Descriptor space should be [0,1]^n
     """
     f = jnp.prod(params)
     descriptor = jnp.round(10 * params) / 10
@@ -63,7 +63,7 @@ def non_continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
 def continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
     Seach space should be [0,1]^n
-    BD space should be [0,1]^n
+    Descriptor space should be [0,1]^n
     """
     coeff = 20
     f = jnp.prod(params)

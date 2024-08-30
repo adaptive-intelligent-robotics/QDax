@@ -13,7 +13,7 @@ class ParameterizationGenotype(Enum):
     arc_length = "arc_length"
 
 
-class ArchimedeanBD(Enum):
+class ArchimedeanDescriptor(Enum):
     euclidean = "euclidean"
     geodesic = "geodesic"
 
@@ -22,7 +22,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
     def __init__(
         self,
         parameterization: ParameterizationGenotype,
-        archimedean_descriptor: ArchimedeanBD,
+        archimedean_descriptor: ArchimedeanDescriptor,
         amplitude: float = 0.01,
         precision: Optional[float] = None,
         alpha: float = 40.0,
@@ -34,7 +34,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         Args:
             parameterization: The parameterization of the genotype,
             can be either angle or arc length.
-            archimedean_descriptor: The Archimedean BD, can be either euclidean or
+            archimedean_descriptor: The Archimedean Descriptor, can be either euclidean or
             geodesic.
             amplitude: The amplitude of the Archimedean spiral.
             precision: The precision of the approximation of the angle from the
@@ -158,20 +158,20 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         constant_fitness = jnp.asarray(1.0)
 
         if (
-            self.archimedean_descriptor == ArchimedeanBD.geodesic
+            self.archimedean_descriptor == ArchimedeanDescriptor.geodesic
             and self.parameterization == ParameterizationGenotype.arc_length
         ):
             arc_length = params
             return constant_fitness, arc_length
         elif (
-            self.archimedean_descriptor == ArchimedeanBD.geodesic
+            self.archimedean_descriptor == ArchimedeanDescriptor.geodesic
             and self.parameterization == ParameterizationGenotype.angle
         ):
             angle = params
             arc_length = self.get_arc_length(angle)
             return constant_fitness, arc_length
         elif (
-            self.archimedean_descriptor == ArchimedeanBD.euclidean
+            self.archimedean_descriptor == ArchimedeanDescriptor.euclidean
             and self.parameterization == ParameterizationGenotype.arc_length
         ):
             arc_length = params
@@ -179,13 +179,13 @@ class ArchimedeanSpiralV0(QDSuiteTask):
             euclidean_descriptor = self._gamma(angle)
             return constant_fitness, euclidean_descriptor
         elif (
-            self.archimedean_descriptor == ArchimedeanBD.euclidean
+            self.archimedean_descriptor == ArchimedeanDescriptor.euclidean
             and self.parameterization == ParameterizationGenotype.angle
         ):
             angle = params
             return constant_fitness, self._gamma(angle)
         else:
-            raise ValueError("Invalid parameterization and/or BD")
+            raise ValueError("Invalid parameterization and/or Descriptor")
 
     def get_descriptor_size(self) -> int:
         """
@@ -194,12 +194,12 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         Returns:
             The size of the descriptor.
         """
-        if self.archimedean_descriptor == ArchimedeanBD.euclidean:
+        if self.archimedean_descriptor == ArchimedeanDescriptor.euclidean:
             return 2
-        elif self.archimedean_descriptor == ArchimedeanBD.geodesic:
+        elif self.archimedean_descriptor == ArchimedeanDescriptor.geodesic:
             return 1
         else:
-            raise ValueError("Invalid BD")
+            raise ValueError("Invalid descriptor")
 
     def get_min_max_descriptor(self) -> Tuple[float, float]:
         """
@@ -212,13 +212,13 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         max_angle = self.alpha * jnp.pi
         max_norm = jnp.linalg.norm(self._gamma(max_angle))
 
-        if self.archimedean_descriptor == ArchimedeanBD.euclidean:
+        if self.archimedean_descriptor == ArchimedeanDescriptor.euclidean:
             return -max_norm, max_norm
-        elif self.archimedean_descriptor == ArchimedeanBD.geodesic:
+        elif self.archimedean_descriptor == ArchimedeanDescriptor.geodesic:
             max_arc_length = self.get_arc_length(max_angle)
             return 0.0, max_arc_length.item()
         else:
-            raise ValueError("Invalid BD")
+            raise ValueError("Invalid descriptor")
 
     def get_min_max_params(self) -> Tuple[float, float]:
         """
