@@ -284,6 +284,11 @@ def _perform_reevaluation(
 
     # If need for scan, call the sampling function multiple times
     else:
+
+        # Ensure that num_reevals is a multiple of scan_size
+        assert (
+            num_reevals % scan_size == 0
+        ), "num_reevals should be a multiple of scan_size to be able to scan."
         num_loops = num_reevals // scan_size
 
         def _sampling_scan(
