@@ -124,8 +124,8 @@ def intra_batch_comp(
         fitness,
     ).any()
 
-    # Discard Individuals with Nans as their descriptor (mainly for the readdition where we
-    # have NaN descriptors)
+    # Discard individuals with nan as their descriptor (mainly for the readdition
+    # where we have nan descriptors)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
     # Negate to know if we keep the individual
@@ -298,7 +298,9 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             -1 * batch_of_indices.squeeze(), batch_of_indices.shape[0]
         )[1]
         batch_of_indices = jnp.where(
-            jnp.squeeze(batch_of_distances.at[sorted_descriptors].get() <= self.l_value),
+            jnp.squeeze(
+                batch_of_distances.at[sorted_descriptors].get() <= self.l_value
+            ),
             batch_of_indices.at[sorted_descriptors].get(),
             empty_indexes,
         )
@@ -308,7 +310,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         # ReIndexing of all the inputs to the correct sorted way
         batch_of_descriptors = batch_of_descriptors.at[sorted_descriptors].get()
         batch_of_genotypes = jax.tree_util.tree_map(
-            lambda x: x.at[sorted_bds].get(), batch_of_genotypes
+            lambda x: x.at[sorted_descriptors].get(), batch_of_genotypes
         )
         batch_of_fitnesses = batch_of_fitnesses.at[sorted_descriptors].get()
         batch_of_observations = batch_of_observations.at[sorted_descriptors].get()
@@ -389,28 +391,25 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )
 
     @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
+    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
         """Sample elements in the repertoire.
 
         Args:
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
             num_samples: the number of elements to be sampled
 
         Returns:
             samples: a batch of genotypes sampled in the repertoire
-            random_key: an updated jax PRNG random key
         """
-
-        random_key, sub_key = jax.random.split(random_key)
         grid_empty = self.fitnesses == -jnp.inf
         p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
         samples = jax.tree_util.tree_map(
-            lambda x: jax.random.choice(sub_key, x, shape=(num_samples,), p=p),
+            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
 
-        return samples, random_key
+        return samples
 
     @classmethod
     def init(

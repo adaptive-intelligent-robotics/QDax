@@ -80,23 +80,23 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
         cls, training_state: "PBTTD3TrainingState"
     ) -> "PBTTD3TrainingState":
 
-        random_key = training_state.random_key
-        random_key, sub_key = jax.random.split(random_key)
+        key = training_state.key
+        key, sub_key = jax.random.split(key)
         discount = jax.random.uniform(sub_key, shape=(), minval=0.9, maxval=1.0)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         policy_lr = jax.random.uniform(sub_key, shape=(), minval=3e-5, maxval=3e-3)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         critic_lr = jax.random.uniform(sub_key, shape=(), minval=3e-5, maxval=3e-3)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         noise_clip = jax.random.uniform(sub_key, shape=(), minval=0.0, maxval=1.0)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         policy_noise = jax.random.uniform(sub_key, shape=(), minval=0.0, maxval=1.0)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         expl_noise = jax.random.uniform(sub_key, shape=(), minval=0.0, maxval=0.2)
 
         return training_state.replace(  # type: ignore
@@ -105,7 +105,7 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
             critic_lr=critic_lr,
             noise_clip=noise_clip,
             policy_noise=policy_noise,
-            random_key=random_key,
+            key=key,
             expl_noise=expl_noise,
         )
 
@@ -138,13 +138,13 @@ class PBTTD3(TD3):
         TD3.__init__(self, td3_config, action_size)
 
     def init(
-        self, random_key: RNGKey, action_size: int, observation_size: int
+        self, key: RNGKey, action_size: int, observation_size: int
     ) -> PBTTD3TrainingState:
         """Initialise the training state of the PBT-TD3 algorithm, through creation
         of optimizer states and params.
 
         Args:
-            random_key: a random key used for random operations.
+            key: a random key used for random operations.
             action_size: the size of the action array needed to interact with the
                 environment.
             observation_size: the size of the observation array retrieved from the
@@ -154,7 +154,7 @@ class PBTTD3(TD3):
             the initial training state.
         """
 
-        training_state = TD3.init(self, random_key, action_size, observation_size)
+        training_state = TD3.init(self, key, action_size, observation_size)
 
         # Initial training state
         training_state = PBTTD3TrainingState(
@@ -164,7 +164,7 @@ class PBTTD3(TD3):
             critic_params=training_state.critic_params,
             target_policy_params=training_state.target_policy_params,
             target_critic_params=training_state.target_critic_params,
-            random_key=training_state.random_key,
+            key=training_state.key,
             steps=training_state.steps,
             discount=None,
             policy_lr=None,
@@ -203,15 +203,15 @@ class PBTTD3(TD3):
             the played transition
         """
 
-        actions, random_key = self.select_action(
+        actions, key = self.select_action(
             obs=env_state.obs,
             policy_params=training_state.policy_params,
-            random_key=training_state.random_key,
+            key=training_state.key,
             expl_noise=training_state.expl_noise,
             deterministic=deterministic,
         )
         training_state = training_state.replace(
-            random_key=random_key,
+            key=key,
         )
         next_env_state = env.step(env_state, actions)
         transition = Transition(
@@ -245,13 +245,11 @@ class PBTTD3(TD3):
         """
 
         # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-        samples, random_key = replay_buffer.sample(
-            random_key, sample_size=self._config.batch_size
-        )
+        key = training_state.key
+        samples, key = replay_buffer.sample(key, sample_size=self._config.batch_size)
 
         # Update Critic
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         critic_loss, critic_gradient = jax.value_and_grad(td3_critic_loss_fn)(
             training_state.critic_params,
             target_policy_params=training_state.target_policy_params,
@@ -263,7 +261,7 @@ class PBTTD3(TD3):
             reward_scaling=self._config.reward_scaling,
             discount=self._config.discount,
             transitions=samples,
-            random_key=subkey,
+            key=subkey,
         )
         critic_optimizer = optax.adam(learning_rate=training_state.critic_lr)
         critic_updates, critic_optimizer_state = critic_optimizer.update(
@@ -330,7 +328,7 @@ class PBTTD3(TD3):
             policy_optimizer_state=policy_optimizer_state,
             target_critic_params=target_critic_params,
             target_policy_params=target_policy_params,
-            random_key=random_key,
+            key=key,
             steps=training_state.steps + 1,
         )
 
@@ -363,9 +361,9 @@ class PBTTD3(TD3):
         """
 
         def _init_fn(
-            random_key: RNGKey,
-        ) -> Tuple[RNGKey, PBTTD3TrainingState, ReplayBuffer]:
-            random_key, *keys = jax.random.split(random_key, num=1 + population_size)
+            key: RNGKey,
+        ) -> Tuple[PBTTD3TrainingState, ReplayBuffer]:
+            key, *keys = jax.random.split(key, num=population_size + 1)
             keys = jnp.stack(keys)
 
             init_dummy_transition = partial(
@@ -388,7 +386,7 @@ class PBTTD3(TD3):
                 self.init, action_size=action_size, observation_size=observation_size
             )
             training_states = jax.vmap(agent_init)(keys)
-            return random_key, training_states, replay_buffers
+            return training_states, replay_buffers
 
         return _init_fn
 
@@ -432,13 +430,14 @@ class PBTTD3(TD3):
         Args:
             eval_env: evaluation environment. Might be different from training env
                 if needed.
-            descriptor_extraction_fn: function to extract the descriptor from an episode.
+            descriptor_extraction_fn: function to extract the descriptor from an
+                episode.
 
         Returns:
             The function to evaluate the population. It takes as input the population
             training state as well as first eval environment states and returns the
-            population agents mean returns and mean descriptors over episodes as well as all
-            returns and descriptors from all agents over all episodes.
+            population agents mean returns and mean descriptors over episodes,
+            as well as all returns and descriptors from all agents over all episodes.
         """
         play_eval_step = partial(
             self.play_qd_step_fn,

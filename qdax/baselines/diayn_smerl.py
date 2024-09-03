@@ -99,13 +99,16 @@ class DIAYNSMERL(DIAYN):
             the replay buffer
             the training metrics
         """
-        # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
+        key = training_state.key
 
-        samples, returns, random_key = replay_buffer.sample_with_returns(
-            random_key,
+        # Sample a batch of transitions in the buffer
+        key, subkey = jax.random.split(key)
+        samples, returns = replay_buffer.sample_with_returns(
+            subkey,
             sample_size=self._config.batch_size,
         )
+
+        training_state = training_state.update(key=key)
 
         # Optionally replace the state descriptor by the observation
         if self._config.descriptor_full_state:

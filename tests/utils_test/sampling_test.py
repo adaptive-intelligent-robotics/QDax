@@ -34,7 +34,7 @@ def test_sampling() -> None:
     env = environments.create(env_name, episode_length=episode_length)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init policy network
     policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)
@@ -45,7 +45,7 @@ def test_sampling() -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
     fake_batch = jnp.zeros(shape=(1, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
@@ -54,7 +54,7 @@ def test_sampling() -> None:
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
         """
         Play an environment step and return the updated state and the transition.
@@ -76,11 +76,11 @@ def test_sampling() -> None:
             next_state_desc=next_state.info["state_descriptor"],
         )
 
-        return next_state, policy_params, random_key, transition
+        return next_state, policy_params, key, transition
 
     # Create the initial environment states for samples and final indivs
     reset_fn = jax.jit(jax.vmap(env.reset))
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
     init_states = reset_fn(keys)
 
@@ -110,9 +110,9 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
-        fitnesses, descriptors, _, _ = scoring_fn(init_variables, random_key)
+        fitnesses, descriptors, _, _ = scoring_fn(init_variables, key)
         sample_fitnesses, sample_descriptors, _, _ = scoring_1_sample_fn(
-            init_variables, random_key
+            init_variables, key
         )
 
         # Compare
@@ -132,7 +132,7 @@ def test_sampling() -> None:
 
         # Evaluate individuals using the scoring functions
         sample_fitnesses, sample_descriptors, _, _ = scoring_multi_sample_fn(
-            init_variables, random_key
+            init_variables, key
         )
 
         # Compare
@@ -170,7 +170,7 @@ def test_sampling() -> None:
             fitnesses_reproducibility,
             descriptors_reproducibility,
             _,
-        ) = scoring_1_sample_fn(init_variables, random_key)
+        ) = scoring_1_sample_fn(init_variables, key)
 
         # Compare - all reproducibility should be 0
         pytest.assume(
@@ -207,7 +207,7 @@ def test_sampling() -> None:
             fitnesses_reproducibility,
             descriptors_reproducibility,
             _,
-        ) = scoring_multi_sample_fn(init_variables, random_key)
+        ) = scoring_multi_sample_fn(init_variables, key)
 
         # Compare - all reproducibility should be 0
         pytest.assume(

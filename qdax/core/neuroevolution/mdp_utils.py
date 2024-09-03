@@ -26,7 +26,7 @@ class TrainingState(PyTreeNode):
 def generate_unroll(
     init_state: EnvState,
     policy_params: Params,
-    random_key: RNGKey,
+    key: RNGKey,
     episode_length: int,
     play_step_fn: Callable[
         [EnvState, Params, RNGKey],
@@ -44,7 +44,7 @@ def generate_unroll(
     Args:
         init_state: first state of the rollout.
         policy_params: params of the individual.
-        random_key: random key for stochasiticity handling.
+        key: random key for stochasiticity handling.
         episode_length: length of the rollout.
         play_step_fn: function describing how a step need to be taken.
 
@@ -55,12 +55,12 @@ def generate_unroll(
     def _scan_play_step_fn(
         carry: Tuple[EnvState, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[EnvState, Params, RNGKey], Transition]:
-        env_state, policy_params, random_key, transitions = play_step_fn(*carry)
-        return (env_state, policy_params, random_key), transitions
+        env_state, policy_params, key, transitions = play_step_fn(*carry)
+        return (env_state, policy_params, key), transitions
 
     (state, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
-        (init_state, policy_params, random_key),
+        (init_state, policy_params, key),
         (),
         length=episode_length,
     )
@@ -72,7 +72,7 @@ def generate_unroll_actor_dc(
     init_state: EnvState,
     actor_dc_params: Params,
     desc: Descriptor,
-    random_key: RNGKey,
+    key: RNGKey,
     episode_length: int,
     play_step_actor_dc_fn: Callable[
         [EnvState, Descriptor, Params, RNGKey],
@@ -92,7 +92,7 @@ def generate_unroll_actor_dc(
         init_state: first state of the rollout.
         policy_dc_params: descriptor-conditioned policy params.
         desc: descriptor the policy attempts to achieve.
-        random_key: random key for stochasiticity handling.
+        key: random key for stochasiticity handling.
         episode_length: length of the rollout.
         play_step_fn: function describing how a step need to be taken.
 
@@ -107,14 +107,14 @@ def generate_unroll_actor_dc(
             env_state,
             actor_dc_params,
             desc,
-            random_key,
+            key,
             transitions,
         ) = play_step_actor_dc_fn(*carry)
-        return (env_state, actor_dc_params, desc, random_key), transitions
+        return (env_state, actor_dc_params, desc, key), transitions
 
     (state, _, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
-        (init_state, actor_dc_params, desc, random_key),
+        (init_state, actor_dc_params, desc, key),
         (),
         length=episode_length,
     )
@@ -141,8 +141,8 @@ def init_population_controllers(
     policy_network: nn.Module,
     env: brax.envs.Env,
     batch_size: int,
-    random_key: RNGKey,
-) -> Tuple[Genotype, RNGKey]:
+    key: RNGKey,
+) -> Genotype:
     """
     Initializes the population of controllers using a policy_network.
 
@@ -151,15 +151,13 @@ def init_population_controllers(
             controllers.
         env: the BRAX environment.
         batch_size: the number of environments we play simultaneously.
-        random_key: a JAX random key.
+        key: a JAX random key.
 
     Returns:
         A tuple of the initial population and the new random key.
     """
-    random_key, subkey = jax.random.split(random_key)
-
-    keys = jax.random.split(subkey, num=batch_size)
+    keys = jax.random.split(key, num=batch_size)
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
-    return init_variables, random_key
+    return init_variables

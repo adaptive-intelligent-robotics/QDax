@@ -54,7 +54,7 @@ class QualityDCGEmitterState(EmitterState):
     target_critic_params: Params
     target_actor_params: Params
     replay_buffer: ReplayBuffer
-    random_key: RNGKey
+    key: RNGKey
     steps: jnp.ndarray
 
 
@@ -127,21 +127,21 @@ class QualityDCGEmitter(Emitter):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[QualityDCGEmitterState, RNGKey]:
+    ) -> QualityDCGEmitterState:
         """Initializes the emitter state.
 
         Args:
             genotypes: The initial population.
-            random_key: A random key.
+            key: A random key.
 
         Returns:
-            The initial state of the PGAMEEmitter, a new random key.
+            The initial state of the PGAMEEmitter.
         """
 
         observation_size = jax.tree_util.tree_leaves(genotypes)[1].shape[1]
@@ -149,7 +149,7 @@ class QualityDCGEmitter(Emitter):
         action_size = self._env.action_size
 
         # Initialise critic, greedy actor and population
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         fake_obs = jnp.zeros(shape=(observation_size,))
         fake_desc = jnp.zeros(shape=(descriptor_size,))
         fake_action = jnp.zeros(shape=(action_size,))
@@ -159,7 +159,7 @@ class QualityDCGEmitter(Emitter):
         )
         target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         actor_params = self._actor_network.init(subkey, obs=fake_obs, desc=fake_desc)
         target_actor_params = jax.tree_util.tree_map(lambda x: x, actor_params)
 
@@ -191,7 +191,6 @@ class QualityDCGEmitter(Emitter):
         replay_buffer = replay_buffer.insert(transitions)
 
         # Initial training state
-        random_key, subkey = jax.random.split(random_key)
         emitter_state = QualityDCGEmitterState(
             critic_params=critic_params,
             critic_opt_state=critic_opt_state,
@@ -200,11 +199,11 @@ class QualityDCGEmitter(Emitter):
             target_critic_params=target_critic_params,
             target_actor_params=target_actor_params,
             replay_buffer=replay_buffer,
-            random_key=subkey,
+            key=key,
             steps=jnp.array(0),
         )
 
-        return emitter_state, random_key
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def _similarity(self, descs_1: Descriptor, descs_2: Descriptor) -> jnp.array:
@@ -224,21 +223,16 @@ class QualityDCGEmitter(Emitter):
         return (
             2
             * (desc - self._env.descriptor_limits[0])
-            / (
-                self._env.descriptor_limits[1]
-                - self._env.descriptor_limits[0]
-            )
+            / (self._env.descriptor_limits[1] - self._env.descriptor_limits[0])
             - 1
         )
 
     @partial(jax.jit, static_argnames=("self",))
     def _unnormalize_desc(self, desc_normalized: Descriptor) -> Descriptor:
         return 0.5 * (
-            self._env.descriptor_limits[1]
-            - self._env.descriptor_limits[0]
+            self._env.descriptor_limits[1] - self._env.descriptor_limits[0]
         ) * desc_normalized + 0.5 * (
-            self._env.descriptor_limits[1]
-            + self._env.descriptor_limits[0]
+            self._env.descriptor_limits[1] + self._env.descriptor_limits[0]
         )
 
     @partial(jax.jit, static_argnames=("self",))
@@ -274,39 +268,32 @@ class QualityDCGEmitter(Emitter):
         actor_dc_params["params"]["Dense_0"]["bias"] = equivalent_bias
         return actor_dc_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Repertoire,
         emitter_state: QualityDCGEmitterState,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Do a step of PG emission.
 
         Args:
             repertoire: the current repertoire of genotypes
             emitter_state: the state of the emitter used
-            random_key: a random key
+            key: a random key
 
         Returns:
             A batch of offspring, the new emitter state and a new key.
         """
         # PG emitter
-        parents_pg, descs_pg, random_key = repertoire.sample_with_descs(
-            random_key, self._config.qpg_batch_size
+        parents_pg, descs_pg, key = repertoire.sample_with_descs(
+            key, self._config.qpg_batch_size
         )
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
         # Actor injection emitter
-        _, descs_ai, random_key = repertoire.sample_with_descs(
-            random_key, self._config.ai_batch_size
-        )
-        descs_ai = descs_ai.reshape(
-            descs_ai.shape[0], self._env.descriptor_length
-        )
+        _, descs_ai, key = repertoire.sample_with_descs(key, self._config.ai_batch_size)
+        descs_ai = descs_ai.reshape(descs_ai.shape[0], self._env.descriptor_length)
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 
         # Concatenate PG and AI genotypes
@@ -317,13 +304,10 @@ class QualityDCGEmitter(Emitter):
         return (
             genotypes,
             {"desc_prime": jnp.concatenate([descs_pg, descs_ai], axis=0)},
-            random_key,
+            key,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit_pg(
         self,
         emitter_state: QualityDCGEmitterState,
@@ -350,10 +334,7 @@ class QualityDCGEmitter(Emitter):
 
         return offsprings
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit_ai(
         self, emitter_state: QualityDCGEmitterState, descs: Descriptor
     ) -> Genotype:
@@ -390,10 +371,7 @@ class QualityDCGEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: QualityDCGEmitterState,
@@ -449,8 +427,8 @@ class QualityDCGEmitter(Emitter):
         emitter_state = emitter_state.replace(replay_buffer=replay_buffer)
 
         # sample transitions from the replay buffer
-        random_key, subkey = jax.random.split(emitter_state.random_key)
-        transitions, random_key = replay_buffer.sample(
+        key, subkey = jax.random.split(emitter_state.key)
+        transitions, key = replay_buffer.sample(
             subkey, self._config.num_critic_training_steps * self._config.batch_size
         )
         transitions = jax.tree_util.tree_map(
@@ -468,7 +446,7 @@ class QualityDCGEmitter(Emitter):
             rewards=self._similarity(transitions.desc, transitions.desc_prime)
             * transitions.rewards
         )
-        emitter_state = emitter_state.replace(random_key=random_key)
+        emitter_state = emitter_state.replace(key=key)
 
         def scan_train_critics(
             carry: QualityDCGEmitterState,
@@ -510,14 +488,14 @@ class QualityDCGEmitter(Emitter):
             critic_opt_state,
             critic_params,
             target_critic_params,
-            random_key,
+            key,
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
             target_actor_params=emitter_state.target_actor_params,
             critic_opt_state=emitter_state.critic_opt_state,
             transitions=transitions,
-            random_key=emitter_state.random_key,
+            key=emitter_state.key,
         )
 
         # Update greedy actor
@@ -550,7 +528,7 @@ class QualityDCGEmitter(Emitter):
             actor_opt_state=actor_opt_state,
             target_critic_params=target_critic_params,
             target_actor_params=target_actor_params,
-            random_key=random_key,
+            key=key,
             steps=emitter_state.steps + 1,
         )
 
@@ -564,17 +542,16 @@ class QualityDCGEmitter(Emitter):
         target_actor_params: Params,
         critic_opt_state: Params,
         transitions: DCGTransition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, Params, Params, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Params, Params, Params]:
 
         # compute loss and gradients
-        random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
             critic_params,
             target_actor_params,
             target_critic_params,
             transitions,
-            subkey,
+            key,
         )
         critic_updates, critic_opt_state = self._critic_optimizer.update(
             critic_gradient, critic_opt_state
@@ -591,7 +568,7 @@ class QualityDCGEmitter(Emitter):
             critic_params,
         )
 
-        return critic_opt_state, critic_params, target_critic_params, random_key
+        return critic_opt_state, critic_params, target_critic_params
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
@@ -629,10 +606,7 @@ class QualityDCGEmitter(Emitter):
             target_actor_params,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def _mutation_function_pg(
         self,
         policy_params: Genotype,
@@ -653,8 +627,8 @@ class QualityDCGEmitter(Emitter):
             The updated params of the neural network.
         """
         # Get transitions
-        transitions, random_key = emitter_state.replay_buffer.sample(
-            emitter_state.random_key,
+        transitions, key = emitter_state.replay_buffer.sample(
+            emitter_state.key,
             sample_size=self._config.num_pg_training_steps * self._config.batch_size,
         )
         descs_prime = jnp.tile(
@@ -678,8 +652,8 @@ class QualityDCGEmitter(Emitter):
             transitions,
         )
 
-        # Replace random_key
-        emitter_state = emitter_state.replace(random_key=random_key)
+        # Replace key
+        emitter_state = emitter_state.replace(key=key)
 
         # Define new policy optimizer state
         policy_opt_state = self._policies_optimizer.init(policy_params)

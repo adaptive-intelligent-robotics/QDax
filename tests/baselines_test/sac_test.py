@@ -53,7 +53,7 @@ def test_sac() -> None:
         eval_metrics=True,
     )
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     env_state = jax.jit(env.reset)(rng=key)
     eval_env_first_state = jax.jit(eval_env.reset)(rng=key)
 
@@ -82,7 +82,7 @@ def test_sac() -> None:
     sac = SAC(config=sac_config, action_size=env.action_size)
     key, subkey = jax.random.split(key)
     training_state = sac.init(
-        random_key=subkey,
+        key=subkey,
         action_size=env.action_size,
         observation_size=env.observation_size,
     )

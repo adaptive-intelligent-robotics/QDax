@@ -75,16 +75,17 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     log_freq = 5
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init environment
-    env, policy_network, scoring_fn, random_key = create_default_brax_task_components(
+    key, subkey = jax.random.split(key)
+    env, policy_network, scoring_fn = create_default_brax_task_components(
         env_name=env_name,
-        random_key=random_key,
+        key=subkey,
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jax.random.split(subkey, num=batch_size)
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
@@ -165,7 +166,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     )
 
     # init the model params
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     model_params = train_seq2seq.get_initial_params(
         model, subkey, (1, *observations_dims)
     )
@@ -182,18 +183,19 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     )
 
     # init step of the aurora algorithm
-    repertoire, emitter_state, aurora_extra_info, random_key = aurora.init(
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, aurora_extra_info = aurora.init(
         init_variables,
         aurora_extra_info,
         jnp.asarray(l_value_init),
         max_size,
-        random_key,
+        subkey,
     )
 
     # initializing means and stds and AURORA
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     repertoire, aurora_extra_info = aurora.train(
-        repertoire, model_params, iteration=0, random_key=subkey
+        repertoire, model_params, iteration=0, key=subkey
     )
 
     # design aurora's schedule
@@ -215,10 +217,10 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     while iteration < max_iterations:
         # standard MAP-Elites-like loop
         for _ in range(log_freq):
-            repertoire, emitter_state, _, random_key = aurora.update(
+            repertoire, emitter_state, _, key = aurora.update(
                 repertoire,
                 emitter_state,
-                random_key,
+                key,
                 aurora_extra_info=aurora_extra_info,
             )
 
@@ -228,7 +230,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
         # autoencoder steps and Container Size Control (CSC)
         if (iteration + 1) in schedules:
             # train the autoencoder (includes the CSC)
-            random_key, subkey = jax.random.split(random_key)
+            key, subkey = jax.random.split(key)
             repertoire, aurora_extra_info = aurora.train(
                 repertoire, model_params, iteration, subkey
             )

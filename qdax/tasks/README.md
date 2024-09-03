@@ -19,7 +19,7 @@ Notes:
 import jax
 from qdax.tasks.arm import arm_scoring_function
 
-random_key = jax.random.PRNGKey(0)
+key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = arm_scoring_function
@@ -31,7 +31,7 @@ min_desc, max_desc = 0., 1.
 # Get initial batch of parameters
 num_param_dimensions = ...
 init_batch_size = ...
-random_key, _subkey = jax.random.split(random_key)
+key, _subkey = jax.random.split(key)
 initial_params = jax.random.uniform(
     _subkey,
     shape=(init_batch_size, num_param_dimensions),
@@ -56,7 +56,7 @@ desc_size = 2
 import jax
 from qdax.tasks.standard_functions import sphere_scoring_function
 
-random_key = jax.random.PRNGKey(0)
+key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = sphere_scoring_function
@@ -68,7 +68,7 @@ min_desc, max_desc = 0., 1.
 # Get initial batch of parameters
 num_param_dimensions = ...
 init_batch_size = ...
-random_key, _subkey = jax.random.split(random_key)
+key, _subkey = jax.random.split(key)
 initial_params = jax.random.uniform(
     _subkey,
     shape=(init_batch_size, num_param_dimensions),
@@ -98,7 +98,7 @@ desc_size = 2
 import jax
 from qdax.tasks.hypervolume_functions import square_scoring_function
 
-random_key = jax.random.PRNGKey(0)
+key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = square_scoring_function
@@ -110,7 +110,7 @@ min_desc, max_desc = 0., 1.
 # Get initial batch of parameters
 num_param_dimensions = ...
 init_batch_size = ...
-random_key, _subkey = jax.random.split(random_key)
+key, _subkey = jax.random.split(key)
 initial_params = jax.random.uniform(
     _subkey,
     shape=(init_batch_size, num_param_dimensions),

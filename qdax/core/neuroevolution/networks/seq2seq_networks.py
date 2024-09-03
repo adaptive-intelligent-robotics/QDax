@@ -52,7 +52,7 @@ class EncoderLSTM(nn.Module):
     def initialize_carry(batch_size: int, hidden_size: int) -> Tuple[Array, Array]:
         # Use a dummy key since the default state init fn is just zeros.
         return nn.LSTMCell(hidden_size, parent=None).initialize_carry(  # type: ignore
-            jax.random.PRNGKey(0), (batch_size, hidden_size)
+            jax.random.key(0), (batch_size, hidden_size)
         )
 
 

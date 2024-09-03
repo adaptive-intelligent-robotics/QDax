@@ -47,7 +47,7 @@ def make_policy_network_play_step_fn_jumanji(
         env_state: JumanjiState,
         timestep: JumanjiTimeStep,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition]:
         """Play an environment step and return the updated state and the transition.
         Everything is deterministic in this simple example.
@@ -75,7 +75,7 @@ def make_policy_network_play_step_fn_jumanji(
             next_state_desc=next_state_desc,
         )
 
-        return next_state, next_timestep, policy_params, random_key, transition
+        return next_state, next_timestep, policy_params, key, transition
 
     return default_play_step_fn
 
@@ -85,7 +85,7 @@ def generate_jumanji_unroll(
     init_state: JumanjiState,
     init_timestep: JumanjiTimeStep,
     policy_params: Params,
-    random_key: RNGKey,
+    key: RNGKey,
     episode_length: int,
     play_step_fn: Callable[
         [JumanjiState, JumanjiTimeStep, Params, RNGKey],
@@ -104,7 +104,7 @@ def generate_jumanji_unroll(
     Args:
         init_state: first state of the rollout.
         policy_params: params of the individual.
-        random_key: random key for stochasiticity handling.
+        key: random key for stochasiticity handling.
         episode_length: length of the rollout.
         play_step_fn: function describing how a step need to be taken.
 
@@ -115,14 +115,12 @@ def generate_jumanji_unroll(
     def _scan_play_step_fn(
         carry: Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey], Transition]:
-        env_state, timestep, policy_params, random_key, transitions = play_step_fn(
-            *carry
-        )
-        return (env_state, timestep, policy_params, random_key), transitions
+        env_state, timestep, policy_params, key, transitions = play_step_fn(*carry)
+        return (env_state, timestep, policy_params, key), transitions
 
     (state, timestep, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
-        (init_state, init_timestep, policy_params, random_key),
+        (init_state, init_timestep, policy_params, key),
         (),
         length=episode_length,
     )
@@ -139,7 +137,7 @@ def generate_jumanji_unroll(
 )
 def jumanji_scoring_function(
     policies_params: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     init_states: JumanjiState,
     init_timesteps: JumanjiTimeStep,
     episode_length: int,
@@ -159,12 +157,12 @@ def jumanji_scoring_function(
     """
 
     # Perform rollouts with each policy
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     unroll_fn = partial(
         generate_jumanji_unroll,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        random_key=subkey,
+        key=subkey,
     )
 
     _final_state, _final_timestep, data = jax.vmap(unroll_fn)(
@@ -186,5 +184,5 @@ def jumanji_scoring_function(
         {
             "transitions": data,
         },
-        random_key,
+        key,
     )

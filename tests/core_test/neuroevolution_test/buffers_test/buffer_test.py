@@ -91,9 +91,9 @@ def test_sample() -> None:
     simple_transition = simple_transition.replace(rewards=jnp.arange(3))
 
     replay_buffer = replay_buffer.insert(simple_transition)
-    random_key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
 
-    samples, random_key = replay_buffer.sample(random_key, 3)
+    samples, key = replay_buffer.sample(key, 3)
 
     samples_shapes = jax.tree_util.tree_map(lambda x: x.shape, samples)
     transition_shapes = jax.tree_util.tree_map(lambda x: x.shape, simple_transition)

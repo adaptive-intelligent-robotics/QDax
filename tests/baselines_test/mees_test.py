@@ -47,7 +47,7 @@ def test_mees() -> None:
     env = environments.create(env_name, episode_length=episode_length)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init policy network
     policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)
@@ -58,7 +58,7 @@ def test_mees() -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
     fake_batch = jnp.zeros(shape=(1, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
@@ -67,7 +67,7 @@ def test_mees() -> None:
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
         """
         Play an environment step and return the updated state and the transition.
@@ -89,14 +89,14 @@ def test_mees() -> None:
             next_state_desc=next_state.info["state_descriptor"],
         )
 
-        return next_state, policy_params, random_key, transition
+        return next_state, policy_params, key, transition
 
     # Create the initial environment states for samples and final indivs
     reset_fn = jax.jit(jax.vmap(env.reset))
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=sample_number, axis=0)
     init_states_samples = reset_fn(keys)
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
     init_states = reset_fn(keys)
 
@@ -157,13 +157,13 @@ def test_mees() -> None:
     )
 
     # Compute the centroids
-    centroids, random_key = compute_cvt_centroids(
+    centroids, key = compute_cvt_centroids(
         num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,
         maxval=max_descriptor,
-        random_key=random_key,
+        key=key,
     )
 
     # Instantiate MAP Elites
@@ -173,25 +173,26 @@ def test_mees() -> None:
         metrics_function=metrics_function,
     )
 
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
-    )
+    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
 
     @jax.jit
     def update_scan_fn(carry: Any, unused: Any) -> Any:
         # iterate over grid
-        repertoire, emitter_state, metrics, random_key = map_elites.update(*carry)
-
-        return (repertoire, emitter_state, random_key), metrics
+        repertoire, emitter_state, key = carry
+        key, subkey = jax.random.split(key)
+        repertoire, emitter_state, metrics = map_elites.update(
+            repertoire, emitter_state, subkey
+        )
+        return (repertoire, emitter_state, key), metrics
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         update_scan_fn,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

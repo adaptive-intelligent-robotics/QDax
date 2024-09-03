@@ -26,10 +26,10 @@ def run_me() -> None:
     max_descriptor = 1.0
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     init_variables = jax.random.uniform(
         subkey,
         shape=(init_batch_size, num_param_dimensions),
@@ -73,9 +73,7 @@ def run_me() -> None:
     )
 
     # Initializes repertoire and emitter state
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
-    )
+    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
 
     # Run MAP-Elites loop
     for _ in range(num_iterations):
@@ -83,11 +81,11 @@ def run_me() -> None:
             repertoire,
             emitter_state,
             metrics,
-            random_key,
+            key,
         ) = map_elites.update(
             repertoire,
             emitter_state,
-            random_key,
+            key,
         )
 
     # plot archive

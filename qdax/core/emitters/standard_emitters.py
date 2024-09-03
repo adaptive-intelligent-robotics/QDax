@@ -22,16 +22,13 @@ class MixingEmitter(Emitter):
         self._variation_percentage = variation_percentage
         self._batch_size = batch_size
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Repertoire,
         emitter_state: Optional[EmitterState],
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         Emitter that performs both mutation and variation. Two batches of
         variation_percentage * batch_size genotypes are sampled in the repertoire,
@@ -45,24 +42,24 @@ class MixingEmitter(Emitter):
         Params:
             repertoire: the MAP-Elites repertoire to sample from
             emitter_state: void
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
 
         Returns:
             a batch of offsprings
-            a new jax PRNG key
         """
         n_variation = int(self._batch_size * self._variation_percentage)
         n_mutation = self._batch_size - n_variation
 
         if n_variation > 0:
-            x1, random_key = repertoire.sample(random_key, n_variation)
-            x2, random_key = repertoire.sample(random_key, n_variation)
-
-            x_variation, random_key = self._variation_fn(x1, x2, random_key)
+            sample_key_1, sample_key_2, variation_key = jax.random.split(key, 3)
+            x1 = repertoire.sample(sample_key_1, n_variation)
+            x2 = repertoire.sample(sample_key_2, n_variation)
+            x_variation = self._variation_fn(x1, x2, variation_key)
 
         if n_mutation > 0:
-            x1, random_key = repertoire.sample(random_key, n_mutation)
-            x_mutation, random_key = self._mutation_fn(x1, random_key)
+            sample_key, mutation_key = jax.random.split(key)
+            x1 = repertoire.sample(sample_key, n_mutation)
+            x_mutation, key = self._mutation_fn(x1, mutation_key)
 
         if n_variation == 0:
             genotypes = x_mutation
@@ -75,7 +72,7 @@ class MixingEmitter(Emitter):
                 x_mutation,
             )
 
-        return genotypes, {}, random_key
+        return genotypes, {}
 
     @property
     def batch_size(self) -> int:

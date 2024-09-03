@@ -68,7 +68,7 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
         grid_shape = tuple([resolution_per_axis for _ in range(descriptor_size)])
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init population of parameters
     init_variables = task.get_initial_parameters(init_batch_size)
@@ -112,18 +112,16 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
-    )
+    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

@@ -9,7 +9,7 @@ from qdax.custom_types import RNGKey
 def sac_pbt_variation_fn(
     training_state1: PBTSacTrainingState,
     training_state2: PBTSacTrainingState,
-    random_key: RNGKey,
+    key: RNGKey,
     iso_sigma: float,
     line_sigma: float,
 ) -> Tuple[PBTSacTrainingState, RNGKey]:
@@ -21,7 +21,7 @@ def sac_pbt_variation_fn(
     Args:
         training_state1: Training state of first SAC agent.
         training_state2: Training state of first SAC agent.
-        random_key: Random key.
+        key: Random key.
         iso_sigma: Spread parameter (noise).
         line_sigma: Line parameter (direction of the new genotype).
 
@@ -42,10 +42,10 @@ def sac_pbt_variation_fn(
         training_state1.alpha_params,
         training_state2.alpha_params,
     )
-    (policy_params, critic_params, alpha_params), random_key = isoline_variation(
+    (policy_params, critic_params, alpha_params), key = isoline_variation(
         x1=(policy_params1, critic_params1, alpha_params1),
         x2=(policy_params2, critic_params2, alpha_params2),
-        random_key=random_key,
+        key=key,
         iso_sigma=iso_sigma,
         line_sigma=line_sigma,
     )
@@ -58,14 +58,14 @@ def sac_pbt_variation_fn(
 
     return (
         new_training_state,
-        random_key,
+        key,
     )
 
 
 def td3_pbt_variation_fn(
     training_state1: PBTTD3TrainingState,
     training_state2: PBTTD3TrainingState,
-    random_key: RNGKey,
+    key: RNGKey,
     iso_sigma: float,
     line_sigma: float,
 ) -> Tuple[PBTTD3TrainingState, RNGKey]:
@@ -77,7 +77,7 @@ def td3_pbt_variation_fn(
     Args:
         training_state1: Training state of first TD3 agent.
         training_state2: Training state of first TD3 agent.
-        random_key: Random key.
+        key: Random key.
         iso_sigma: Spread parameter (noise).
         line_sigma: Line parameter (direction of the new genotype).
 
@@ -97,10 +97,10 @@ def td3_pbt_variation_fn(
     (
         policy_params,
         critic_params,
-    ), random_key = isoline_variation(
+    ), key = isoline_variation(
         x1=(policy_params1, critic_params1),
         x2=(policy_params2, critic_params2),
-        random_key=random_key,
+        key=key,
         iso_sigma=iso_sigma,
         line_sigma=line_sigma,
     )
@@ -111,5 +111,5 @@ def td3_pbt_variation_fn(
 
     return (
         new_training_state,
-        random_key,
+        key,
     )

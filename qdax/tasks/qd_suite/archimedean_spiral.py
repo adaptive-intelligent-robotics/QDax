@@ -34,8 +34,8 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         Args:
             parameterization: The parameterization of the genotype,
             can be either angle or arc length.
-            archimedean_descriptor: The Archimedean Descriptor, can be either euclidean or
-            geodesic.
+            archimedean_descriptor: The Archimedean descriptor, can be either euclidean
+                or geodesic.
             amplitude: The amplitude of the Archimedean spiral.
             precision: The precision of the approximation of the angle from the
             arc length.

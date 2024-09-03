@@ -34,11 +34,12 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     max_descriptor = 1.0
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
-    env, policy_network, scoring_fn, random_key = create_default_brax_task_components(
+    key, subkey = jax.random.split(key)
+    env, policy_network, scoring_fn = create_default_brax_task_components(
         env_name=env_name,
-        random_key=random_key,
+        key=subkey,
     )
 
     # Define emitter
@@ -64,33 +65,31 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     )
 
     # Compute the centroids
-    centroids, random_key = compute_cvt_centroids(
+    centroids, key = compute_cvt_centroids(
         num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,
         maxval=max_descriptor,
-        random_key=random_key,
+        key=key,
     )
 
     # Init population of controllers
-    init_variables, random_key = init_population_controllers(
-        policy_network, env, batch_size, random_key
+    init_variables, key = init_population_controllers(
+        policy_network, env, batch_size, key
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
-    )
+    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

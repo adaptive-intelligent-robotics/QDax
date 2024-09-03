@@ -30,7 +30,7 @@ class CMAMEGAState(EmitterState):
     Args:
         theta: current genotype from where candidates will be drawn.
         theta_grads: normalized fitness and descriptors gradients of theta.
-        random_key: a random key to handle stochastic operations. Used for
+        key: a random key to handle stochastic operations. Used for
             state update only, another key is used to emit. This might be
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
@@ -40,7 +40,7 @@ class CMAMEGAState(EmitterState):
 
     theta: Genotype
     theta_grads: Gradient
-    random_key: RNGKey
+    key: RNGKey
     cmaes_state: CMAESState
     previous_fitnesses: Fitness
 
@@ -49,7 +49,7 @@ class CMAMEGAEmitter(Emitter):
     def __init__(
         self,
         scoring_function: Callable[
-            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores]
         ],
         batch_size: int,
         learning_rate: float,
@@ -101,7 +101,7 @@ class CMAMEGAEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -114,7 +114,7 @@ class CMAMEGAEmitter(Emitter):
 
         Args:
             genotypes: initial genotypes to add to the grid.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The initial state of the emitter.
@@ -127,7 +127,7 @@ class CMAMEGAEmitter(Emitter):
         )
 
         # score it
-        _, _, extra_score, random_key = self._scoring_function(theta, random_key)
+        _, _, extra_score = self._scoring_function(theta, key)
         theta_grads = extra_score["normalized_grads"]
 
         # Initialize repertoire with default values
@@ -135,16 +135,16 @@ class CMAMEGAEmitter(Emitter):
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
 
         # return the initial state
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         return (
             CMAMEGAState(
                 theta=theta,
                 theta_grads=theta_grads,
-                random_key=subkey,
+                key=subkey,
                 cmaes_state=self._cma_initial_state,
                 previous_fitnesses=default_fitnesses,
             ),
-            random_key,
+            key,
         )
 
     @partial(jax.jit, static_argnames=("self",))
@@ -152,8 +152,8 @@ class CMAMEGAEmitter(Emitter):
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAMEGAState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         Emits new individuals. Interestingly, this method does not directly modifies
         individuals from the repertoire but sample from a distribution. Hence the
@@ -162,10 +162,10 @@ class CMAMEGAEmitter(Emitter):
         Args:
             repertoire: a repertoire of genotypes (unused).
             emitter_state: the state of the CMA-MEGA emitter.
-            random_key: a random key to handle random operations.
+            key: a random key to handle random operations.
 
         Returns:
-            New genotypes and a new random key.
+            New genotypes.
         """
 
         # retrieve elements from the emitter state
@@ -176,9 +176,7 @@ class CMAMEGAEmitter(Emitter):
         grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze(axis=0))
 
         # Draw random coefficients - use the emitter state key
-        coeffs, random_key = self._cmaes.sample(
-            cmaes_state=cmaes_state, random_key=emitter_state.random_key
-        )
+        coeffs, key = self._cmaes.sample(cmaes_state=cmaes_state, key=key)
 
         # make sure the fitness coefficient is positive
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
@@ -187,12 +185,9 @@ class CMAMEGAEmitter(Emitter):
         # Compute new candidates
         new_thetas = jax.tree_util.tree_map(lambda x, y: x + y, theta, update_grad)
 
-        return new_thetas, {}, random_key
+        return new_thetas, {}
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: CMAMEGAState,
@@ -251,9 +246,7 @@ class CMAMEGAEmitter(Emitter):
         sorted_indices = jnp.flip(jnp.argsort(ranking_criteria))
 
         # Draw the coeffs - reuse the emitter state key to get same coeffs
-        coeffs, random_key = self._cmaes.sample(
-            cmaes_state=cmaes_state, random_key=emitter_state.random_key
-        )
+        coeffs, key = self._cmaes.sample(cmaes_state=cmaes_state, key=emitter_state.key)
         # make sure the fitness coeff is positive
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
 
@@ -278,7 +271,7 @@ class CMAMEGAEmitter(Emitter):
         )
 
         # re-sample
-        random_theta, random_key = repertoire.sample(random_key, 1)
+        random_theta, key = repertoire.sample(key, 1)
 
         # update theta in case of reinit
         theta = jax.tree_util.tree_map(
@@ -293,13 +286,13 @@ class CMAMEGAEmitter(Emitter):
         )
 
         # score theta
-        _, _, extra_score, random_key = self._scoring_function(theta, random_key)
+        _, _, extra_score = self._scoring_function(theta, key)
 
         # create new emitter state
         emitter_state = CMAMEGAState(
             theta=theta,
             theta_grads=extra_score["normalized_grads"],
-            random_key=random_key,
+            key=key,
             cmaes_state=cmaes_state,
             previous_fitnesses=repertoire.fitnesses,
         )

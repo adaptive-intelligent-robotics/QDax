@@ -25,14 +25,14 @@ class QDSuiteTask(abc.ABC):
     def scoring_function(
         self,
         params: Genotype,
-        random_key: RNGKey,
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         """
         Evaluate params in parallel
         """
         fitnesses, descriptors = jax.vmap(self.evaluation)(params)
 
-        return fitnesses, descriptors, {}, random_key
+        return fitnesses, descriptors, {}
 
     @abc.abstractmethod
     def get_descriptor_size(self) -> int:

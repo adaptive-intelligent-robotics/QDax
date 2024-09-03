@@ -69,7 +69,7 @@ def test_me_pbt_sac() -> None:
     )
     min_descriptor, max_descriptor = env.descriptor_limits
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     key, subkey = jax.random.split(key)
     eval_env_first_states = jax.jit(eval_env.reset)(rng=subkey)
 
@@ -115,9 +115,11 @@ def test_me_pbt_sac() -> None:
 
     # get scoring function
     descriptor_extraction_fn = environments.descriptor_extractor[env_name]
-    eval_policy = agent.get_eval_qd_fn(eval_env, descriptor_extraction_fn=descriptor_extraction_fn)
+    eval_policy = agent.get_eval_qd_fn(
+        eval_env, descriptor_extraction_fn=descriptor_extraction_fn
+    )
 
-    def scoring_function(genotypes, random_key):  # type: ignore
+    def scoring_function(genotypes, key):  # type: ignore
         population_size = jax.tree_util.tree_leaves(genotypes)[0].shape[0]
         first_states = jax.tree_util.tree_map(
             lambda x: jnp.expand_dims(x, axis=0), eval_env_first_states
@@ -125,8 +127,10 @@ def test_me_pbt_sac() -> None:
         first_states = jax.tree_util.tree_map(
             lambda x: jnp.repeat(x, population_size, axis=0), first_states
         )
-        population_returns, population_descriptors, _, _ = eval_policy(genotypes, first_states)
-        return population_returns, population_descriptors, {}, random_key
+        population_returns, population_descriptors, _, _ = eval_policy(
+            genotypes, first_states
+        )
+        return population_returns, population_descriptors, {}
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
@@ -150,7 +154,7 @@ def test_me_pbt_sac() -> None:
         num_centroids=num_centroids,
         minval=min_descriptor,
         maxval=max_descriptor,
-        random_key=key,
+        key=key,
     )
 
     key, *keys = jax.random.split(key, num=1 + num_devices)
@@ -178,7 +182,7 @@ def test_me_pbt_sac() -> None:
     repertoire, emitter_state, keys = map_elites.get_distributed_init_fn(
         devices=devices, centroids=centroids
     )(
-        genotypes=training_states, random_key=keys
+        genotypes=training_states, key=keys
     )  # type: ignore
 
     update_fn = map_elites.get_distributed_update_fn(num_iterations=1, devices=devices)

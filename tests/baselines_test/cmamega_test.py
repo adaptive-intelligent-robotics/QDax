@@ -75,10 +75,10 @@ def test_cma_mega() -> None:
         return scores, descriptors, extra_scores
 
     def scoring_fn(
-        x: jnp.ndarray, random_key: RNGKey
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+        x: jnp.ndarray, key: RNGKey
+    ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors, extra_scores = jax.vmap(scoring_function)(x)
-        return fitnesses, descriptors, extra_scores, random_key
+        return fitnesses, descriptors, extra_scores
 
     worst_objective = rastrigin_scoring(-jnp.ones(num_dimensions) * 5.12)
     best_objective = rastrigin_scoring(jnp.ones(num_dimensions) * 5.12 * 0.4)
@@ -95,18 +95,16 @@ def test_cma_mega() -> None:
         max_fitness = jnp.max(adjusted_fitness)
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    random_key = jax.random.PRNGKey(0)
-    initial_population = jax.random.uniform(
-        random_key, shape=(batch_size, num_dimensions)
-    )
+    key = jax.random.key(0)
+    initial_population = jax.random.uniform(key, shape=(batch_size, num_dimensions))
 
-    centroids, random_key = compute_cvt_centroids(
+    centroids, key = compute_cvt_centroids(
         num_descriptors=2,
         num_init_cvt_samples=10000,
         num_centroids=num_centroids,
         minval=minval,
         maxval=maxval,
-        random_key=random_key,
+        key=key,
     )
 
     emitter = CMAMEGAEmitter(
@@ -121,17 +119,15 @@ def test_cma_mega() -> None:
     map_elites = MAPElites(
         scoring_function=scoring_fn, emitter=emitter, metrics_function=metrics_fn
     )
-    repertoire, emitter_state, random_key = map_elites.init(
-        initial_population, centroids, random_key
-    )
+    repertoire, emitter_state, key = map_elites.init(initial_population, centroids, key)
 
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

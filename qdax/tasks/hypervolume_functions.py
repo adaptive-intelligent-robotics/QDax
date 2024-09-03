@@ -73,17 +73,18 @@ def continous_islands(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def get_scoring_function(
     task_fn: Callable[[Genotype], Tuple[Fitness, Descriptor]]
-) -> Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]]:
+) -> Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores]]:
+
     def scoring_function(
         params: Genotype,
-        random_key: RNGKey,
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         """
         Evaluate params in parallel
         """
         fitnesses, descriptors = jax.vmap(task_fn)(params)
 
-        return (fitnesses, descriptors, {}, random_key)
+        return fitnesses, descriptors, {}
 
     return scoring_function
 

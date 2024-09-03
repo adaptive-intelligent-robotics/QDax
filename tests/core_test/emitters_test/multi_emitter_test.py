@@ -27,10 +27,10 @@ def test_multi_emitter() -> None:
     max_descriptor = max_param
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     init_variables = jax.random.uniform(
         subkey, shape=(init_batch_size, num_param_dimensions)
     )
@@ -91,18 +91,16 @@ def test_multi_emitter() -> None:
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
-    )
+    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

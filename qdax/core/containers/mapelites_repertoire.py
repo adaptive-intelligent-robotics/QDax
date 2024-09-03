@@ -31,8 +31,8 @@ def compute_cvt_centroids(
     num_centroids: int,
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
-    random_key: RNGKey,
-) -> Tuple[jnp.ndarray, RNGKey]:
+    key: RNGKey,
+) -> Centroid:
     """Compute centroids for CVT tessellation.
 
     Args:
@@ -44,31 +44,30 @@ def compute_cvt_centroids(
         num_centroids: number of centroids
         minval: minimum descriptors value
         maxval: maximum descriptors value
-        random_key: a jax PRNG random key
+        key: a jax PRNG random key
 
     Returns:
         the centroids with shape (num_centroids, num_descriptors)
-        random_key: an updated jax PRNG random key
+        key: an updated jax PRNG random key
     """
     minval = jnp.array(minval)
     maxval = jnp.array(maxval)
 
     # assume here all values are in [0, 1] and rescale later
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     x = jax.random.uniform(key=subkey, shape=(num_init_cvt_samples, num_descriptors))
 
     # compute k means
-    random_key, subkey = jax.random.split(random_key)
     k_means = KMeans(
         init="k-means++",
         n_clusters=num_centroids,
         n_init=1,
-        random_state=RandomState(subkey),
+        random_state=RandomState(jax.random.key_data(key)),
     )
     k_means.fit(x)
     centroids = k_means.cluster_centers_
     # rescale now
-    return jnp.asarray(centroids) * (maxval - minval) + minval, random_key
+    return jnp.asarray(centroids) * (maxval - minval) + minval
 
 
 def compute_euclidean_centroids(
@@ -212,60 +211,57 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
     @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
+    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
         """Sample elements in the repertoire.
 
         Args:
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
             num_samples: the number of elements to be sampled
 
         Returns:
             samples: a batch of genotypes sampled in the repertoire
-            random_key: an updated jax PRNG random key
+            key: an updated jax PRNG random key
         """
 
         repertoire_empty = self.fitnesses == -jnp.inf
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
-        random_key, subkey = jax.random.split(random_key)
         samples = jax.tree_util.tree_map(
-            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
 
-        return samples, random_key
+        return samples
 
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample_with_descs(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         num_samples: int,
-    ) -> Tuple[Genotype, Descriptor, RNGKey]:
+    ) -> Tuple[Genotype, Descriptor]:
         """Sample elements in the repertoire.
 
         Args:
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
             num_samples: the number of elements to be sampled
 
         Returns:
             samples: a batch of genotypes sampled in the repertoire
-            random_key: an updated jax PRNG random key
         """
 
         repertoire_empty = self.fitnesses == -jnp.inf
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
-        random_key, subkey = jax.random.split(random_key)
         samples = jax.tree_util.tree_map(
-            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
         descs = jax.tree_util.tree_map(
-            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.descriptors,
         )
 
-        return samples, descs, random_key
+        return samples, descs
 
     @jax.jit
     def add(

@@ -50,7 +50,7 @@ class CMAPoolEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -63,7 +63,7 @@ class CMAPoolEmitter(Emitter):
 
         Args:
             genotypes: initial genotypes to add to the grid.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The initial state of the emitter.
@@ -72,20 +72,21 @@ class CMAPoolEmitter(Emitter):
         def scan_emitter_init(
             carry: RNGKey, unused: Any
         ) -> Tuple[RNGKey, CMAEmitterState]:
-            random_key = carry
-            emitter_state, random_key = self._emitter.init(
-                random_key,
+            key = carry
+            key, subkey = jax.random.split(key)
+            emitter_state = self._emitter.init(
+                subkey,
                 repertoire,
                 genotypes,
                 fitnesses,
                 descriptors,
                 extra_scores,
             )
-            return random_key, emitter_state
+            return key, emitter_state
 
         # init all the emitter states
-        random_key, emitter_states = jax.lax.scan(
-            scan_emitter_init, random_key, (), length=self._num_states
+        key, emitter_states = jax.lax.scan(
+            scan_emitter_init, key, (), length=self._num_states
         )
 
         # define the emitter state of the pool
@@ -95,7 +96,7 @@ class CMAPoolEmitter(Emitter):
 
         return (
             emitter_state,
-            random_key,
+            key,
         )
 
     @partial(jax.jit, static_argnames=("self",))
@@ -103,18 +104,18 @@ class CMAPoolEmitter(Emitter):
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAPoolEmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         Emits new individuals.
 
         Args:
             repertoire: a repertoire of genotypes (unused).
             emitter_state: the state of the CMA-MEGA emitter.
-            random_key: a random key to handle random operations.
+            key: a random key to handle random operations.
 
         Returns:
-            New genotypes and a new random key.
+            New genotypes and extra infos.
         """
 
         # retrieve the relevant emitter state
@@ -124,16 +125,11 @@ class CMAPoolEmitter(Emitter):
         )
 
         # use it to emit offsprings
-        offsprings, extra_info, random_key = self._emitter.emit(
-            repertoire, used_emitter_state, random_key
-        )
+        offsprings, extra_info = self._emitter.emit(repertoire, used_emitter_state, key)
 
-        return offsprings, extra_info, random_key
+        return offsprings, extra_info
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: CMAPoolEmitterState,

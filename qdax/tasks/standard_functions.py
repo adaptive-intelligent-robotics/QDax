@@ -26,26 +26,26 @@ def sphere(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def rastrigin_scoring_function(
     params: Genotype,
-    random_key: RNGKey,
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    key: RNGKey,
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """
     Scoring function for the rastrigin function
     """
     fitnesses, descriptors = jax.vmap(rastrigin)(params)
 
-    return fitnesses, descriptors, {}, random_key
+    return fitnesses, descriptors, {}
 
 
 def sphere_scoring_function(
     params: Genotype,
-    random_key: RNGKey,
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    key: RNGKey,
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """
     Scoring function for the sphere function
     """
     fitnesses, descriptors = jax.vmap(sphere)(params)
 
-    return fitnesses, descriptors, {}, random_key
+    return fitnesses, descriptors, {}
 
 
 def _rastrigin_proj_scoring(
@@ -105,8 +105,8 @@ def _rastrigin_proj_scoring(
 
 
 def rastrigin_proj_scoring_function(
-    params: Genotype, random_key: RNGKey, minval: float = -5.12, maxval: float = 5.12
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    params: Genotype, key: RNGKey, minval: float = -5.12, maxval: float = 5.12
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """
     Scoring function for the rastrigin function with
     a folding of the behaviour space.
@@ -117,4 +117,4 @@ def rastrigin_proj_scoring_function(
         _rastrigin_proj_scoring, in_axes=(0, None, None)
     )(params, minval, maxval)
 
-    return fitnesses, descriptors, extra_scores, random_key
+    return fitnesses, descriptors, extra_scores

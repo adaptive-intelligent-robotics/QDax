@@ -54,7 +54,7 @@ class QualityPGEmitterState(EmitterState):
     target_critic_params: Params
     target_actor_params: Params
     replay_buffer: ReplayBuffer
-    random_key: RNGKey
+    key: RNGKey
     steps: jnp.ndarray
 
 
@@ -120,21 +120,21 @@ class QualityPGEmitter(Emitter):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[QualityPGEmitterState, RNGKey]:
+    ) -> QualityPGEmitterState:
         """Initializes the emitter state.
 
         Args:
             genotypes: The initial population.
-            random_key: A random key.
+            key: A random key.
 
         Returns:
-            The initial state of the PGAMEEmitter, a new random key.
+            The initial state of the PGAMEEmitter.
         """
 
         observation_size = self._env.observation_size
@@ -142,7 +142,7 @@ class QualityPGEmitter(Emitter):
         descriptor_size = self._env.state_descriptor_length
 
         # Initialise critic, greedy actor and population
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         fake_obs = jnp.zeros(shape=(observation_size,))
         fake_action = jnp.zeros(shape=(action_size,))
         critic_params = self._critic_network.init(
@@ -176,7 +176,6 @@ class QualityPGEmitter(Emitter):
         replay_buffer = replay_buffer.insert(transitions)
 
         # Initial training state
-        random_key, subkey = jax.random.split(random_key)
         emitter_state = QualityPGEmitterState(
             critic_params=critic_params,
             critic_optimizer_state=critic_optimizer_state,
@@ -185,28 +184,25 @@ class QualityPGEmitter(Emitter):
             target_critic_params=target_critic_params,
             target_actor_params=target_actor_params,
             replay_buffer=replay_buffer,
-            random_key=subkey,
+            key=key,
             steps=jnp.array(0),
         )
 
-        return emitter_state, random_key
+        return emitter_state
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Repertoire,
         emitter_state: QualityPGEmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """Do a step of PG emission.
 
         Args:
             repertoire: the current repertoire of genotypes
             emitter_state: the state of the emitter used
-            random_key: a random key
+            key: a random key
 
         Returns:
             A batch of offspring, the new emitter state and a new key.
@@ -216,7 +212,7 @@ class QualityPGEmitter(Emitter):
 
         # sample parents
         mutation_pg_batch_size = int(batch_size - 1)
-        parents, random_key = repertoire.sample(random_key, mutation_pg_batch_size)
+        parents = repertoire.sample(key, mutation_pg_batch_size)
 
         # apply the pg mutation
         offsprings_pg = self.emit_pg(emitter_state, parents)
@@ -236,12 +232,9 @@ class QualityPGEmitter(Emitter):
             offspring_actor,
         )
 
-        return genotypes, {}, random_key
+        return genotypes, {}
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit_pg(
         self, emitter_state: QualityPGEmitterState, parents: Genotype
     ) -> Genotype:
@@ -264,10 +257,7 @@ class QualityPGEmitter(Emitter):
 
         return offsprings
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit_actor(self, emitter_state: QualityPGEmitterState) -> Genotype:
         """Emit the greedy actor.
 
@@ -357,10 +347,10 @@ class QualityPGEmitter(Emitter):
         """
 
         # Sample a batch of transitions in the buffer
-        random_key = emitter_state.random_key
+        key = emitter_state.key
         replay_buffer = emitter_state.replay_buffer
-        transitions, random_key = replay_buffer.sample(
-            random_key, sample_size=self._config.batch_size
+        transitions, key = replay_buffer.sample(
+            key, sample_size=self._config.batch_size
         )
 
         # Update Critic
@@ -368,14 +358,14 @@ class QualityPGEmitter(Emitter):
             critic_optimizer_state,
             critic_params,
             target_critic_params,
-            random_key,
+            key,
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
             target_actor_params=emitter_state.target_actor_params,
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             transitions=transitions,
-            random_key=random_key,
+            key=key,
         )
 
         # Update greedy actor
@@ -408,7 +398,7 @@ class QualityPGEmitter(Emitter):
             actor_opt_state=actor_optimizer_state,
             target_critic_params=target_critic_params,
             target_actor_params=target_actor_params,
-            random_key=random_key,
+            key=key,
             steps=emitter_state.steps + 1,
             replay_buffer=replay_buffer,
         )
@@ -423,17 +413,16 @@ class QualityPGEmitter(Emitter):
         target_actor_params: Params,
         critic_optimizer_state: Params,
         transitions: QDTransition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, Params, Params, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Params, Params, Params]:
 
         # compute loss and gradients
-        random_key, subkey = jax.random.split(random_key)
         critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
             critic_params,
             target_actor_params,
             target_critic_params,
             transitions,
-            subkey,
+            key,
         )
         critic_updates, critic_optimizer_state = self._critic_optimizer.update(
             critic_gradient, critic_optimizer_state
@@ -450,7 +439,7 @@ class QualityPGEmitter(Emitter):
             critic_params,
         )
 
-        return critic_optimizer_state, critic_params, target_critic_params, random_key
+        return critic_optimizer_state, critic_params, target_critic_params
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
@@ -563,10 +552,10 @@ class QualityPGEmitter(Emitter):
         """
 
         # Sample a batch of transitions in the buffer
-        random_key = emitter_state.random_key
+        key = emitter_state.key
         replay_buffer = emitter_state.replay_buffer
-        transitions, random_key = replay_buffer.sample(
-            random_key, sample_size=self._config.batch_size
+        transitions, key = replay_buffer.sample(
+            key, sample_size=self._config.batch_size
         )
 
         # update policy
@@ -579,7 +568,7 @@ class QualityPGEmitter(Emitter):
 
         # Create new training state
         new_emitter_state = emitter_state.replace(
-            random_key=random_key,
+            key=key,
             replay_buffer=replay_buffer,
         )
 

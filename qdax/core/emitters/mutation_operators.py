@@ -1,7 +1,7 @@
 """File defining mutation and crossover functions."""
 
 from functools import partial
-from typing import Optional, Tuple
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -11,7 +11,7 @@ from qdax.custom_types import Genotype, RNGKey
 
 def _polynomial_mutation(
     x: jnp.ndarray,
-    random_key: RNGKey,
+    key: RNGKey,
     proportion_to_mutate: float,
     eta: float,
     minval: float,
@@ -24,7 +24,7 @@ def _polynomial_mutation(
 
     Args:
         x: parameters.
-        random_key: a random key
+        key: a random key
         proportion_to_mutate: the proportion of the given parameters
             that need to be mutated.
         eta: the inverse of the power of the mutation applied.
@@ -39,7 +39,7 @@ def _polynomial_mutation(
     num_positions = x.shape[0]
     positions = jnp.arange(start=0, stop=num_positions)
     num_positions_to_mutate = int(proportion_to_mutate * num_positions)
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     selected_positions = jax.random.choice(
         key=subkey, a=positions, shape=(num_positions_to_mutate,), replace=False
     )
@@ -51,7 +51,7 @@ def _polynomial_mutation(
     mutpow = 1.0 / (1.0 + eta)
 
     # Randomly select where to put delta_1 and delta_2
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     rand = jax.random.uniform(
         key=subkey,
         shape=delta_1.shape,
@@ -80,18 +80,18 @@ def _polynomial_mutation(
 
 def polynomial_mutation(
     x: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     proportion_to_mutate: float,
     eta: float,
     minval: float,
     maxval: float,
-) -> Tuple[Genotype, RNGKey]:
+) -> Genotype:
     """
     Polynomial mutation over several genotypes
 
     Parameters:
         x: array of genotypes to transform (real values only)
-        random_key: RNG key for reproducibility.
+        key: RNG key for reproducibility.
             Assumed to be of shape (batch_size, genotype_dim)
         proportion_to_mutate (float): proportion of variables to mutate in
             each genotype (must be in [0, 1]).
@@ -101,11 +101,10 @@ def polynomial_mutation(
         maxval: maximum value to clip the genotypes.
 
     Returns:
-        New genotypes - same shape as input and a new RNG key
+        New genotypes - same shape as input
     """
-    random_key, subkey = jax.random.split(random_key)
     batch_size = jax.tree_util.tree_leaves(x)[0].shape[0]
-    mutation_key = jax.random.split(subkey, num=batch_size)
+    mutation_keys = jax.random.split(key, num=batch_size)
     mutation_fn = partial(
         _polynomial_mutation,
         proportion_to_mutate=proportion_to_mutate,
@@ -114,14 +113,14 @@ def polynomial_mutation(
         maxval=maxval,
     )
     mutation_fn = jax.vmap(mutation_fn)
-    x = jax.tree_util.tree_map(lambda x_: mutation_fn(x_, mutation_key), x)
-    return x, random_key
+    x = jax.tree_util.tree_map(lambda x_: mutation_fn(x_, mutation_keys), x)
+    return x
 
 
 def _polynomial_crossover(
     x1: jnp.ndarray,
     x2: jnp.ndarray,
-    random_key: RNGKey,
+    key: RNGKey,
     proportion_var_to_change: float,
 ) -> jnp.ndarray:
     """
@@ -132,9 +131,7 @@ def _polynomial_crossover(
     """
     num_var_to_change = int(proportion_var_to_change * x1.shape[0])
     indices = jnp.arange(start=0, stop=x1.shape[0])
-    selected_indices = jax.random.choice(
-        random_key, indices, shape=(num_var_to_change,)
-    )
+    selected_indices = jax.random.choice(key, indices, shape=(num_var_to_change,))
     x = x1.at[selected_indices].set(x2[selected_indices])
     return x
 
@@ -142,9 +139,9 @@ def _polynomial_crossover(
 def polynomial_crossover(
     x1: Genotype,
     x2: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     proportion_var_to_change: float,
-) -> Tuple[Genotype, RNGKey]:
+) -> Genotype:
     """
     Crossover over a set of pairs of genotypes.
 
@@ -156,17 +153,15 @@ def polynomial_crossover(
     Parameters:
         x1: first batch of genotypes
         x2: second batch of genotypes
-        random_key: RNG key for reproducibility
+        key: RNG key for reproducibility
         proportion_var_to_change: proportion of variables to exchange
             between genotypes (must be [0, 1])
 
     Returns:
-        New genotypes and a new RNG key
+        New genotypes
     """
-
-    random_key, subkey = jax.random.split(random_key)
     batch_size = jax.tree_util.tree_leaves(x2)[0].shape[0]
-    crossover_keys = jax.random.split(subkey, num=batch_size)
+    crossover_keys = jax.random.split(key, num=batch_size)
     crossover_fn = partial(
         _polynomial_crossover,
         proportion_var_to_change=proportion_var_to_change,
@@ -176,25 +171,25 @@ def polynomial_crossover(
     x = jax.tree_util.tree_map(
         lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2
     )
-    return x, random_key
+    return x
 
 
 def isoline_variation(
     x1: Genotype,
     x2: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     iso_sigma: float,
     line_sigma: float,
     minval: Optional[float] = None,
     maxval: Optional[float] = None,
-) -> Tuple[Genotype, RNGKey]:
+) -> Genotype:
     """
     Iso+Line-DD Variation Operator [1] over a set of pairs of genotypes
 
     Parameters:
         x1 (Genotypes): first batch of genotypes
         x2 (Genotypes): second batch of genotypes
-        random_key (RNGKey): RNG key for reproducibility
+        key (RNGKey): RNG key for reproducibility
         iso_sigma (float): spread parameter (noise)
         line_sigma (float): line parameter (direction of the new genotype)
         minval (float, Optional): minimum value to clip the genotypes
@@ -202,7 +197,6 @@ def isoline_variation(
 
     Returns:
         x (Genotypes): new genotypes
-        random_key (RNGKey): new RNG key
 
     [1] Vassiliades, Vassilis, and Jean-Baptiste Mouret. "Discovering the elite
     hypervolume by leveraging interspecies correlation." Proceedings of the Genetic and
@@ -210,14 +204,12 @@ def isoline_variation(
     """
 
     # Computing line_noise
-    random_key, key_line_noise = jax.random.split(random_key)
+    key, key_line_noise = jax.random.split(key)
     batch_size = jax.tree_util.tree_leaves(x1)[0].shape[0]
     line_noise = jax.random.normal(key_line_noise, shape=(batch_size,)) * line_sigma
 
-    def _variation_fn(
-        x1: jnp.ndarray, x2: jnp.ndarray, random_key: RNGKey
-    ) -> jnp.ndarray:
-        iso_noise = jax.random.normal(random_key, shape=x1.shape) * iso_sigma
+    def _variation_fn(x1: jnp.ndarray, x2: jnp.ndarray, key: RNGKey) -> jnp.ndarray:
+        iso_noise = jax.random.normal(key, shape=x1.shape) * iso_sigma
         x = (x1 + iso_noise) + jax.vmap(jnp.multiply)((x2 - x1), line_noise)
 
         # Back in bounds if necessary (floating point issues)
@@ -227,13 +219,12 @@ def isoline_variation(
 
     # create a tree with random keys
     nb_leaves = len(jax.tree_util.tree_leaves(x1))
-    random_key, subkey = jax.random.split(random_key)
-    subkeys = jax.random.split(subkey, num=nb_leaves)
-    keys_tree = jax.tree_util.tree_unflatten(jax.tree_util.tree_structure(x1), subkeys)
+    keys = jax.random.split(key, num=nb_leaves)
+    keys_tree = jax.tree_util.tree_unflatten(jax.tree_util.tree_structure(x1), keys)
 
     # apply isolinedd to each branch of the tree
     x = jax.tree_util.tree_map(
         lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree
     )
 
-    return x, random_key
+    return x

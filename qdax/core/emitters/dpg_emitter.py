@@ -79,26 +79,30 @@ class DiversityPGEmitter(QualityPGEmitter):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[DiversityPGEmitterState, RNGKey]:
+    ) -> DiversityPGEmitterState:
         """Initializes the emitter state.
 
         Args:
+            key: A random key.
+            repertoire: The initial repertoire.
             genotypes: The initial population.
-            random_key: A random key.
+            fitnesses: The initial fitnesses of the population.
+            descriptors: The initial descriptors of the population.
+            extra_scores: Extra scores coming from the scoring function.
 
         Returns:
-            The initial state of the PGAMEEmitter, a new random key.
+            The initial state of the PGAMEEmitter.
         """
 
         # init elements of diversity emitter state with QualityEmitterState.init()
-        diversity_emitter_state, random_key = super().init(
-            random_key,
+        diversity_emitter_state = super().init(
+            key,
             repertoire,
             genotypes,
             fitnesses,
@@ -130,7 +134,7 @@ class DiversityPGEmitter(QualityPGEmitter):
             archive=archive,
         )
 
-        return emitter_state, random_key
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
@@ -183,9 +187,9 @@ class DiversityPGEmitter(QualityPGEmitter):
         # sample transitions
         (
             transitions,
-            random_key,
+            key,
         ) = emitter_state.replay_buffer.sample(
-            random_key=emitter_state.random_key,
+            key=emitter_state.key,
             sample_size=self._config.num_critic_training_steps
             * self._config.batch_size,
         )
@@ -242,14 +246,14 @@ class DiversityPGEmitter(QualityPGEmitter):
             critic_optimizer_state,
             critic_params,
             target_critic_params,
-            random_key,
+            key,
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
             target_actor_params=emitter_state.target_actor_params,
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             transitions=transitions,
-            random_key=emitter_state.random_key,
+            key=emitter_state.key,
         )
 
         # Update greedy policy
@@ -282,7 +286,7 @@ class DiversityPGEmitter(QualityPGEmitter):
             actor_opt_state=policy_optimizer_state,
             target_critic_params=target_critic_params,
             target_actor_params=target_actor_params,
-            random_key=random_key,
+            key=key,
             steps=emitter_state.steps + 1,
             replay_buffer=emitter_state.replay_buffer,
         )
@@ -332,8 +336,8 @@ class DiversityPGEmitter(QualityPGEmitter):
             ), ()
 
         # sample transitions
-        transitions, _random_key = emitter_state.replay_buffer.sample(
-            random_key=emitter_state.random_key,
+        transitions, _ = emitter_state.replay_buffer.sample(
+            key=emitter_state.key,
             sample_size=self._config.num_pg_training_steps * self._config.batch_size,
         )
 

@@ -52,9 +52,9 @@ def test_pbt_td3() -> None:
     )
 
     @jax.jit
-    def init_environments(random_key):  # type: ignore
-        env_states = jax.jit(env.reset)(rng=random_key)
-        eval_env_first_states = jax.jit(eval_env.reset)(rng=random_key)
+    def init_environments(key):  # type: ignore
+        env_states = jax.jit(env.reset)(rng=key)
+        eval_env_first_states = jax.jit(eval_env.reset)(rng=key)
 
         reshape_fn = jax.jit(
             lambda tree: jax.tree_util.tree_map(
@@ -74,7 +74,7 @@ def test_pbt_td3() -> None:
 
         return env_states, eval_env_first_states
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     key, *keys = jax.random.split(key, num=1 + num_devices)
     keys = jnp.stack(keys)
     env_states, eval_env_first_states = jax.pmap(

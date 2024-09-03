@@ -18,7 +18,7 @@ class CMARndEmitterState(CMAEmitterState):
 
 
     Args:
-        random_key: a random key to handle stochastic operations. Used for
+        key: a random key to handle stochastic operations. Used for
             state update only, another key is used to emit. This might be
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
@@ -36,7 +36,7 @@ class CMARndEmitter(CMAEmitter):
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -49,7 +49,7 @@ class CMARndEmitter(CMAEmitter):
 
         Args:
             genotypes: initial genotypes to add to the grid.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The initial state of the emitter.
@@ -60,24 +60,24 @@ class CMARndEmitter(CMAEmitter):
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
 
         # take a random direction
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         random_direction = jax.random.uniform(
             subkey,
             shape=(self._centroids.shape[-1],),
         )
 
         # return the initial state
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
 
         return (
             CMARndEmitterState(
-                random_key=subkey,
+                key=subkey,
                 cmaes_state=self._cma_initial_state,
                 previous_fitnesses=default_fitnesses,
                 emit_count=0,
                 random_direction=random_direction,
             ),
-            random_key,
+            key,
         )
 
     def _update_and_init_emitter_state(
@@ -86,8 +86,8 @@ class CMARndEmitter(CMAEmitter):
         emitter_state: CMAEmitterState,
         repertoire: MapElitesRepertoire,
         emit_count: int,
-        random_key: RNGKey,
-    ) -> Tuple[CMAEmitterState, RNGKey]:
+        key: RNGKey,
+    ) -> CMAEmitterState:
         """Update the emitter state in the case of a reinit event.
         Reinit the cmaes state and use an individual from the repertoire
         as the starting mean.
@@ -97,14 +97,15 @@ class CMARndEmitter(CMAEmitter):
             emitter_state: current cmame state
             repertoire: most recent repertoire
             emit_count: counter of the emitter
-            random_key: key to handle stochastic events
+            key: key to handle stochastic events
 
         Returns:
             The updated emitter state.
         """
 
         # re-sample
-        random_genotype, random_key = repertoire.sample(random_key, 1)
+        key, subkey = jax.random.split(key)
+        random_genotype = repertoire.sample(subkey, 1)
 
         # get new mean - remove the batch dim
         new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
@@ -113,9 +114,8 @@ class CMARndEmitter(CMAEmitter):
         cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=0)
 
         # take a new random direction
-        random_key, subkey = jax.random.split(random_key)
         random_direction = jax.random.uniform(
-            subkey,
+            key,
             shape=(self._centroids.shape[-1],),
         )
 
@@ -125,7 +125,7 @@ class CMARndEmitter(CMAEmitter):
             random_direction=random_direction,
         )
 
-        return emitter_state, random_key
+        return emitter_state  # type: ignore
 
     def _ranking_criteria(
         self,

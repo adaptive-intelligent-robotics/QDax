@@ -160,7 +160,7 @@ class MEESEmitterState(EmitterState):
         last_updated_genotypes: used to choose parents from repertoire
         last_updated_fitnesses: used to choose parents from repertoire
         last_updated_position: used to choose parents from repertoire
-        random_key: key to handle stochastic operations
+        key: key to handle stochastic operations
     """
 
     initial_optimizer_state: optax.OptState
@@ -171,7 +171,7 @@ class MEESEmitterState(EmitterState):
     last_updated_genotypes: Genotype
     last_updated_fitnesses: Fitness
     last_updated_position: jnp.ndarray
-    random_key: RNGKey
+    key: RNGKey
 
 
 class MEESEmitter(Emitter):
@@ -198,7 +198,7 @@ class MEESEmitter(Emitter):
         config: MEESConfig,
         total_generations: int,
         scoring_fn: Callable[
-            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores]
         ],
         num_descriptors: int,
     ) -> None:
@@ -232,13 +232,10 @@ class MEESEmitter(Emitter):
         """
         return 1
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -249,7 +246,7 @@ class MEESEmitter(Emitter):
 
         Args:
             genotypes: The initial population.
-            random_key: A random key.
+            key: A random key.
 
         Returns:
             The initial state of the MEESEmitter, a new random key.
@@ -293,45 +290,38 @@ class MEESEmitter(Emitter):
                 last_updated_genotypes=last_updated_genotypes,
                 last_updated_fitnesses=last_updated_fitnesses,
                 last_updated_position=0,
-                random_key=random_key,
+                key=key,
             ),
-            random_key,
+            key,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: MEESEmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """Return the offspring generated through gradient update.
 
         Params:
             repertoire: the MAP-Elites repertoire to sample from
             emitter_state
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
 
         Returns:
             a new gradient offspring
-            a new jax PRNG key
         """
 
-        return emitter_state.offspring, {}, random_key
+        return emitter_state.offspring, {}
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def _sample_exploit(
         self,
         emitter_state: MEESEmitterState,
         repertoire: MapElitesRepertoire,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+        key: RNGKey,
+    ) -> Genotype:
         """Sample half of the time uniformly from the exploit_num_cell_sample
         highest-performing cells of the repertoire and half of the time uniformly
         from the exploit_num_cell_sample highest-performing cells among the
@@ -340,18 +330,17 @@ class MEESEmitter(Emitter):
         Args:
             emitter_state: current emitter_state
             repertoire: the current repertoire
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
 
         Returns:
             samples: a genotype sampled in the repertoire
-            random_key: an updated jax PRNG random key
         """
 
         def _sample(
-            random_key: RNGKey,
+            key: RNGKey,
             genotypes: Genotype,
             fitnesses: Fitness,
-        ) -> Tuple[Genotype, RNGKey]:
+        ) -> Genotype:
             """Sample uniformly from the 2 highest fitness cells."""
 
             max_fitnesses, _ = jax.lax.top_k(
@@ -362,14 +351,13 @@ class MEESEmitter(Emitter):
             )
             genotypes_empty = fitnesses < min_fitness
             p = (1.0 - genotypes_empty) / jnp.sum(1.0 - genotypes_empty)
-            random_key, subkey = jax.random.split(random_key)
             samples = jax.tree_util.tree_map(
-                lambda x: jax.random.choice(subkey, x, shape=(1,), p=p),
+                lambda x: jax.random.choice(key, x, shape=(1,), p=p),
                 genotypes,
             )
-            return samples, random_key
+            return samples
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
 
         # Sample p uniformly
         p = jax.random.uniform(subkey)
@@ -383,35 +371,31 @@ class MEESEmitter(Emitter):
             genotypes=emitter_state.last_updated_genotypes,
             fitnesses=emitter_state.last_updated_fitnesses,
         )
-        samples, random_key = jax.lax.cond(
+        samples = jax.lax.cond(
             p < 0.5,
             repertoire_sample,
             last_updated_sample,
-            random_key,
+            key,
         )
 
-        return samples, random_key
+        return samples
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def _sample_explore(
         self,
         emitter_state: MEESEmitterState,
         repertoire: MapElitesRepertoire,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+        key: RNGKey,
+    ) -> Genotype:
         """Sample uniformly from the explore_num_cell_sample most-novel genotypes.
 
         Args:
             emitter_state: current emitter state
             repertoire: the current genotypes repertoire
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
 
         Returns:
             samples: a genotype sampled in the repertoire
-            random_key: an updated jax PRNG random key
         """
 
         # Compute the novelty of all indivs in the archive
@@ -429,25 +413,21 @@ class MEESEmitter(Emitter):
         )
         repertoire_empty = novelties < min_novelty
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
-        random_key, subkey = jax.random.split(random_key)
         samples = jax.tree_util.tree_map(
-            lambda x: jax.random.choice(subkey, x, shape=(1,), p=p),
+            lambda x: jax.random.choice(key, x, shape=(1,), p=p),
             repertoire.genotypes,
         )
 
-        return samples, random_key
+        return samples
 
-    @partial(
-        jax.jit,
-        static_argnames=("self", "scores_fn"),
-    )
+    @partial(jax.jit, static_argnames=("self", "scores_fn"))
     def _es_emitter(
         self,
         parent: Genotype,
         optimizer_state: optax.OptState,
-        random_key: RNGKey,
+        key: RNGKey,
         scores_fn: Callable[[Fitness, Descriptor], jnp.ndarray],
-    ) -> Tuple[Genotype, optax.OptState, RNGKey]:
+    ) -> Tuple[Genotype, optax.OptState]:
         """Main es component, given a parent and a way to infer the score from
         the fitnesses and descriptors fo its es-samples, return its
         approximated-gradient-generated offspring.
@@ -456,13 +436,13 @@ class MEESEmitter(Emitter):
             parent: the considered parent.
             scores_fn: a function to infer the score of its es-samples from
                 their fitness and descriptors.
-            random_key
+            key
 
         Returns:
-            The approximated-gradients-generated offspring and a new random_key.
+            The approximated-gradients-generated offspring and a new key.
         """
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
 
         # Sampling mirror noise
         total_sample_number = self._config.sample_number
@@ -508,9 +488,7 @@ class MEESEmitter(Emitter):
         )
 
         # Evaluating samples
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_fn(
-            samples, random_key
-        )
+        fitnesses, descriptors, extra_scores = self._scoring_fn(samples, key)
 
         # Computing rank, with or without normalisation
         scores = scores_fn(fitnesses, descriptors)
@@ -566,12 +544,9 @@ class MEESEmitter(Emitter):
         )
         offspring = optax.apply_updates(parent, offspring_update)
 
-        return offspring, optimizer_state, random_key
+        return offspring, optimizer_state
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def _buffers_update(
         self,
         emitter_state: MEESEmitterState,
@@ -646,10 +621,7 @@ class MEESEmitter(Emitter):
             last_updated_position=last_updated_position,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: MEESEmitterState,
@@ -698,23 +670,23 @@ class MEESEmitter(Emitter):
         )
 
         # Select parent and optimizer_state
-        parent, random_key = jax.lax.cond(
+        parent, key = jax.lax.cond(
             sample_new_parent,
-            lambda emitter_state, repertoire, random_key: jax.lax.cond(
+            lambda emitter_state, repertoire, key: jax.lax.cond(
                 use_exploration,
                 self._sample_explore,
                 self._sample_exploit,
                 emitter_state,
                 repertoire,
-                random_key,
+                key,
             ),
-            lambda emitter_state, repertoire, random_key: (
+            lambda emitter_state, repertoire, key: (
                 emitter_state.offspring,
-                random_key,
+                key,
             ),
             emitter_state,
             repertoire,
-            emitter_state.random_key,
+            emitter_state.key,
         )
         optimizer_state = jax.lax.cond(
             sample_new_parent,
@@ -739,10 +711,10 @@ class MEESEmitter(Emitter):
             return scores
 
         # Run es process
-        offspring, optimizer_state, random_key = self._es_emitter(
+        offspring, optimizer_state, key = self._es_emitter(
             parent=parent,
             optimizer_state=optimizer_state,
-            random_key=random_key,
+            key=key,
             scores_fn=exploration_exploitation_scores,
         )
 
@@ -750,5 +722,5 @@ class MEESEmitter(Emitter):
             optimizer_state=optimizer_state,
             offspring=offspring,
             generation_count=generation_count + 1,
-            random_key=random_key,
+            key=key,
         )

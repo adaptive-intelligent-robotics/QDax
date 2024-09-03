@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -78,11 +78,11 @@ class GARepertoire(Repertoire):
         )
 
     @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
+    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
         """Sample genotypes from the repertoire.
 
         Args:
-            random_key: a random key to handle stochasticity.
+            key: a random key to handle stochasticity.
             num_samples: the number of genotypes to sample.
 
         Returns:
@@ -94,15 +94,14 @@ class GARepertoire(Repertoire):
         p = jnp.any(mask, axis=-1) / jnp.sum(jnp.any(mask, axis=-1))
 
         # sample
-        random_key, subkey = jax.random.split(random_key)
         samples = jax.tree_util.tree_map(
             lambda x: jax.random.choice(
-                subkey, x, shape=(num_samples,), p=p, replace=False
+                key, x, shape=(num_samples,), p=p, replace=False
             ),
             self.genotypes,
         )
 
-        return samples, random_key
+        return samples
 
     @jax.jit
     def add(

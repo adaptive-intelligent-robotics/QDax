@@ -30,7 +30,7 @@ def test_jumanji_utils() -> None:
     env = jumanji.make("Snake-v1")
 
     # Reset your (jit-able) environment
-    key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
     state, _timestep = jax.jit(env.reset)(key)
 
     # Interact with the (jit-able) environment
@@ -38,7 +38,7 @@ def test_jumanji_utils() -> None:
     state, _timestep = jax.jit(env.step)(state, action)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # get number of actions
     num_actions = env.action_spec().maximum + 1
@@ -69,7 +69,7 @@ def test_jumanji_utils() -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jax.random.split(subkey, num=batch_size)
 
     # compute observation size from observation spec
@@ -84,7 +84,7 @@ def test_jumanji_utils() -> None:
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
     # Create the initial environment states
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
     reset_fn = jax.jit(jax.vmap(env.reset))
 
@@ -120,7 +120,7 @@ def test_jumanji_utils() -> None:
         return descriptors
 
     # create a random projection to a two dim space
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     linear_projection = jax.random.uniform(
         subkey, (2, observation_size), minval=-1, maxval=1, dtype=jnp.float32
     )
@@ -139,9 +139,7 @@ def test_jumanji_utils() -> None:
         descriptor_extractor=descriptor_extraction_fn,
     )
 
-    fitnesses, descriptors, extra_scores, random_key = scoring_fn(
-        init_variables, random_key
-    )
+    fitnesses, descriptors, extra_scores, key = scoring_fn(init_variables, key)
 
     pytest.assume(fitnesses.shape == (population_size,))
     pytest.assume(jnp.sum(jnp.isnan(fitnesses)) == 0.0)
