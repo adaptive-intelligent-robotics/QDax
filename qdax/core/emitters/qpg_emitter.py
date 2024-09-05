@@ -428,7 +428,7 @@ class QualityPGEmitter(Emitter):
 
         # compute loss and gradients
         random_key, subkey = jax.random.split(random_key)
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
+        critic_gradient = jax.grad(self._critic_loss_fn)(
             critic_params,
             target_actor_params,
             target_critic_params,
@@ -463,7 +463,7 @@ class QualityPGEmitter(Emitter):
     ) -> Tuple[optax.OptState, Params, Params]:
 
         # Update greedy actor
-        policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+        policy_gradient = jax.grad(self._policy_loss_fn)(
             actor_params,
             critic_params,
             transitions,
@@ -595,7 +595,7 @@ class QualityPGEmitter(Emitter):
     ) -> Tuple[optax.OptState, Params]:
 
         # compute loss
-        _policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+        policy_gradient = jax.grad(self._policy_loss_fn)(
             policy_params,
             critic_params,
             transitions,
