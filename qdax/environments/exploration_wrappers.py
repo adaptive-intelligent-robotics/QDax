@@ -1,9 +1,9 @@
 import warnings
 
-import brax
+import brax.v1 as brax
 import jax.numpy as jnp
-from brax import jumpy as jp
-from brax.envs import State, env
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env, State, Wrapper
 from google.protobuf import text_format  # type: ignore
 
 from qdax.environments.locomotion_wrappers import COG_NAMES
@@ -85,11 +85,16 @@ collide_include {
 }
 """
 
+try:
+    HALFCHEETAH_SYSTEM_CONFIG = brax.envs.halfcheetah._SYSTEM_CONFIG
+except AttributeError:
+    HALFCHEETAH_SYSTEM_CONFIG = brax.envs.half_cheetah._SYSTEM_CONFIG
+
 # storing the classic env configurations
 # those are the configs from the official brax repo
 ENV_SYSTEM_CONFIG = {
     "ant": brax.envs.ant._SYSTEM_CONFIG,
-    "halfcheetah": brax.envs.halfcheetah._SYSTEM_CONFIG,
+    "halfcheetah": HALFCHEETAH_SYSTEM_CONFIG,
     "walker2d": brax.envs.walker2d._SYSTEM_CONFIG,
     "hopper": brax.envs.hopper._SYSTEM_CONFIG,
     # "humanoid": brax.envs.humanoid._SYSTEM_CONFIG,
@@ -103,7 +108,7 @@ ENV_TRAP_COLLISION = {
 }
 
 
-class TrapWrapper(env.Wrapper):
+class TrapWrapper(Wrapper):
     """Wraps gym environments to add a Trap in the environment.
 
     Utilisation is simple: create an environment with Brax, pass
@@ -143,7 +148,7 @@ class TrapWrapper(env.Wrapper):
 
     """
 
-    def __init__(self, env: env.Env, env_name: str) -> None:
+    def __init__(self, env: Env, env_name: str) -> None:
         if (
             env_name not in ENV_SYSTEM_CONFIG.keys()
             or env_name not in COG_NAMES.keys()
@@ -151,7 +156,10 @@ class TrapWrapper(env.Wrapper):
         ):
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
         if env_name not in ["ant", "humanoid"]:
-            warnings.warn("Make sure your agent can move in two dimensions!")
+            warnings.warn(
+                "Make sure your agent can move in two dimensions!",
+                stacklevel=2,
+            )
         super().__init__(env)
         self._env_name = env_name
         # update the env config to add the trap
@@ -320,7 +328,7 @@ ENV_MAZE_COLLISION = {
 }
 
 
-class MazeWrapper(env.Wrapper):
+class MazeWrapper(Wrapper):
     """Wraps gym environments to add a maze in the environment
     and a new reward (distance to the goal).
 
@@ -361,15 +369,20 @@ class MazeWrapper(env.Wrapper):
 
     """
 
-    def __init__(self, env: env.Env, env_name: str) -> None:
+    def __init__(self, env: Env, env_name: str) -> None:
         if (
             env_name not in ENV_SYSTEM_CONFIG.keys()
             or env_name not in COG_NAMES.keys()
             or env_name not in ENV_MAZE_COLLISION.keys()
         ):
-            raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
+            raise NotImplementedError(
+                f"This wrapper does not support {env_name} yet.",
+            )
         if env_name not in ["ant", "humanoid"]:
-            warnings.warn("Make sure your agent can move in two dimensions!")
+            warnings.warn(
+                "Make sure your agent can move in two dimensions!",
+                stacklevel=2,
+            )
         super().__init__(env)
         self._env_name = env_name
         self._config = (
@@ -423,10 +436,8 @@ class MazeWrapper(env.Wrapper):
         # this line avoid this by increasing the threshold
         done = jp.where(
             state.qp.pos[0, 2] < 0.2,
-            x=jp.array(1, dtype=jp.float32),
-            y=jp.array(0, dtype=jp.float32),
+            jp.array(1, dtype=jp.float32),
+            jp.array(0, dtype=jp.float32),
         )
-        done = jp.where(
-            state.qp.pos[0, 2] > 5.0, x=jp.array(1, dtype=jp.float32), y=done
-        )
+        done = jp.where(state.qp.pos[0, 2] > 5.0, jp.array(1, dtype=jp.float32), done)
         return state.replace(obs=new_obs, reward=new_reward, done=done)  # type: ignore

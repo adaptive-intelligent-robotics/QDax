@@ -1,7 +1,13 @@
 import functools
 from typing import Any, Callable, List, Optional, Union
 
-import brax
+from brax.v1.envs import Env, _envs
+from brax.v1.envs.wrappers import (
+    AutoResetWrapper,
+    EpisodeWrapper,
+    EvalWrapper,
+    VectorWrapper,
+)
 
 from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
 from qdax.environments.bd_extractors import (
@@ -9,18 +15,22 @@ from qdax.environments.bd_extractors import (
     get_final_xy_position,
 )
 from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.environments.humanoidtrap import HumanoidTrap
+from qdax.environments.init_state_wrapper import FixedInitialStateWrapper
 from qdax.environments.locomotion_wrappers import (
     FeetContactWrapper,
     NoForwardRewardWrapper,
     XYPositionWrapper,
 )
 from qdax.environments.pointmaze import PointMaze
+from qdax.environments.wrappers import CompletedEvalWrapper
 
 # experimentally determinated offset (except for antmaze)
 # should be sufficient to have only positive rewards but no guarantee
 reward_offset = {
     "pointmaze": 2.3431,
     "anttrap": 3.38,
+    "humanoidtrap": 0.0,
     "antnotrap": 3.38,
     "antmaze": 40.32,
     "ant_omni": 3.0,
@@ -35,6 +45,7 @@ reward_offset = {
 behavior_descriptor_extractor = {
     "pointmaze": get_final_xy_position,
     "anttrap": get_final_xy_position,
+    "humanoidtrap": get_final_xy_position,
     "antnotrap": get_final_xy_position,
     "antmaze": get_final_xy_position,
     "ant_omni": get_final_xy_position,
@@ -48,6 +59,7 @@ behavior_descriptor_extractor = {
 
 _qdax_envs = {
     "pointmaze": PointMaze,
+    "humanoid_w_trap": HumanoidTrap,
 }
 
 _qdax_custom_envs = {
@@ -55,6 +67,11 @@ _qdax_custom_envs = {
         "env": "ant",
         "wrappers": [XYPositionWrapper, TrapWrapper],
         "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}, {}],
+    },
+    "humanoidtrap": {
+        "env": "humanoid_w_trap",
+        "wrappers": [XYPositionWrapper],
+        "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}],
     },
     "antnotrap": {
         "env": "ant",
@@ -107,48 +124,60 @@ def create(
     auto_reset: bool = True,
     batch_size: Optional[int] = None,
     eval_metrics: bool = False,
+    fixed_init_state: bool = False,
     qdax_wrappers_kwargs: Optional[List] = None,
     **kwargs: Any,
-) -> Union[brax.envs.Env, QDEnv]:
+) -> Union[Env, QDEnv]:
     """Creates an Env with a specified brax system.
     Please use namespace to avoid confusion between this function and
     brax.envs.create.
     """
 
-    if env_name in brax.envs._envs.keys():
-        env = brax.envs._envs[env_name](legacy_spring=True, **kwargs)
+    if env_name in _envs.keys():
+        env = _envs[env_name](legacy_spring=True, **kwargs)
     elif env_name in _qdax_envs.keys():
         env = _qdax_envs[env_name](**kwargs)
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
-        env = brax.envs._envs[base_env_name](legacy_spring=True, **kwargs)
+        if base_env_name in _envs.keys():
+            env = _envs[base_env_name](legacy_spring=True, **kwargs)
+        elif base_env_name in _qdax_envs.keys():
+            env = _qdax_envs[base_env_name](**kwargs)  # type: ignore
+    else:
+        raise NotImplementedError("This environment name does not exist!")
 
+    if env_name in _qdax_custom_envs.keys():
         # roll with qdax wrappers
         wrappers = _qdax_custom_envs[env_name]["wrappers"]
         if qdax_wrappers_kwargs is None:
             kwargs_list = _qdax_custom_envs[env_name]["kwargs"]
         else:
             kwargs_list = qdax_wrappers_kwargs
-
         for wrapper, kwargs in zip(wrappers, kwargs_list):  # type: ignore
             env = wrapper(env, base_env_name, **kwargs)  # type: ignore
-    else:
-        raise NotImplementedError("This environment name does not exist!")
 
     if episode_length is not None:
-        env = brax.envs.wrappers.EpisodeWrapper(env, episode_length, action_repeat)
+        env = EpisodeWrapper(env, episode_length, action_repeat)
     if batch_size:
-        env = brax.envs.wrappers.VectorWrapper(env, batch_size)
+        env = VectorWrapper(env, batch_size)
+    if fixed_init_state:
+        # retrieve the base env
+        if env_name not in _qdax_custom_envs.keys():
+            base_env_name = env_name
+        # wrap the env
+        env = FixedInitialStateWrapper(env, base_env_name=base_env_name)  # type: ignore
     if auto_reset:
-        env = brax.envs.wrappers.AutoResetWrapper(env)
+        env = AutoResetWrapper(env)
         if env_name in _qdax_custom_envs.keys():
             env = StateDescriptorResetWrapper(env)
     if eval_metrics:
-        env = brax.envs.wrappers.EvalWrapper(env)
+        env = EvalWrapper(env)
+        env = CompletedEvalWrapper(env)
+
     return env
 
 
-def create_fn(env_name: str, **kwargs: Any) -> Callable[..., brax.envs.Env]:
+def create_fn(env_name: str, **kwargs: Any) -> Callable[..., Env]:
     """Returns a function that when called, creates an Env.
     Please use namespace to avoid confusion between this function and
     brax.envs.create_fn.

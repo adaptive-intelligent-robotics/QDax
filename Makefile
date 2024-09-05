@@ -2,10 +2,15 @@ SHELL := /bin/bash
 
 # variables
 WORK_DIR = $(PWD)
-DOCKER_RUN_FLAGS = --rm --shm-size=1024m --gpus all
+PORT = 8891
+DOCKER_RUN_FLAGS = --rm --shm-size=1024m
 DOCKER_IMAGE_NAME = instadeep/qdax:$(USER)
+TTACH_FOLDERS_FLAGS = -v $(WORK_DIR)/examples:/app/examples -v $(WORK_DIR)/playground:/app/playground
+
 USER_ID = $$(id -u)
 GROUP_ID = $$(id -g)
+
+PORT = 8888
 
 # Makefile
 .PHONY: clean
@@ -22,11 +27,20 @@ build:
 dev_container: clean build
 	sudo docker run -it $(DOCKER_RUN_FLAGS) -v $(WORK_DIR):/app $(DOCKER_IMAGE_NAME) /bin/bash
 
-.PHONY: ipynb_container
-ipynb_container: clean build
-	echo "Make sure you have properly exposed your VM before, with the gcloud ssh command followed by -- -N -f -L 8888:localhost:8888"
-	sudo docker run -p 8888:8888 -it $(DOCKER_RUN_FLAGS) -v $(WORK_DIR):/app $(DOCKER_IMAGE_NAME) jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root
-
 .PHONY: style
 style: clean
 	sudo docker run $(DOCKER_RUN_FLAGS) -v $(WORK_DIR):/app $(DOCKER_IMAGE_NAME) pre-commit run --all-files
+
+.PHONY: notebook
+notebook: build
+	echo "Make sure you have properly exposed your VM before, with the gcloud ssh command followed by -- -N -f -L $(PORT):localhost:$(PORT)"
+	sudo docker run -p $(PORT):$(PORT) -it $(DOCKER_RUN_FLAGS) \
+		$(DOCKER_VARS_TO_PASS) -v $(WORK_DIR):/app $(ATTACH_FOLDERS_FLAGS) $(DOCKER_IMAGE_NAME) \
+		jupyter notebook --port=$(PORT) --no-browser --ip=0.0.0.0 --allow-root
+
+.PHONY: jupyter_lab
+jupyter_lab: build
+	echo "Make sure you have properly exposed your VM before, with the gcloud ssh command followed by -- -N -f -L $(PORT):localhost:$(PORT)"
+	sudo docker run -p $(PORT):$(PORT) -it $(DOCKER_RUN_FLAGS) \
+		$(DOCKER_VARS_TO_PASS) -v $(WORK_DIR):/app $(ATTACH_FOLDERS_FLAGS) $(DOCKER_IMAGE_NAME) \
+		jupyter lab --port=$(PORT) --no-browser --ip=0.0.0.0 --allow-root

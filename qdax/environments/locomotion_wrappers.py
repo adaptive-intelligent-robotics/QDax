@@ -1,11 +1,11 @@
 from typing import Any, List, Optional, Sequence, Tuple
 
 import jax.numpy as jnp
-from brax import jumpy as jp
-from brax.envs import Env, State, Wrapper
-from brax.physics import config_pb2
-from brax.physics.base import QP, Info
-from brax.physics.system import System
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env, State, Wrapper
+from brax.v1.physics import config_pb2
+from brax.v1.physics.base import QP, Info
+from brax.v1.physics.system import System
 
 from qdax.environments.base_wrappers import QDEnv
 
@@ -152,6 +152,7 @@ COG_NAMES = {
     "walker2d": "torso",
     "hopper": "torso",
     "humanoid": "torso",
+    "humanoid_w_trap": "torso",
 }
 
 
@@ -259,7 +260,7 @@ class XYPositionWrapper(QDEnv):
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
         state.info["state_descriptor"] = jnp.clip(
-            state.qp.pos[self._cog_idx][:2], a_min=self._minval, a_max=self._maxval
+            state.qp.pos[self._cog_idx][:2], min=self._minval, max=self._maxval
         )
         return state
 
@@ -267,7 +268,7 @@ class XYPositionWrapper(QDEnv):
         state = self.env.step(state, action)
         # get xy position of the center of gravity
         state.info["state_descriptor"] = jnp.clip(
-            state.qp.pos[self._cog_idx][:2], a_min=self._minval, a_max=self._maxval
+            state.qp.pos[self._cog_idx][:2], min=self._minval, max=self._maxval
         )
         return state
 

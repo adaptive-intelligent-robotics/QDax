@@ -6,7 +6,7 @@ import jax
 from flax.struct import PyTreeNode
 
 from qdax.core.containers.repertoire import Repertoire
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class EmitterState(PyTreeNode):
@@ -30,14 +30,20 @@ class EmitterState(PyTreeNode):
 
 class Emitter(ABC):
     def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: Repertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[Optional[EmitterState], RNGKey]:
         """Initialises the state of the emitter. Some emitters do
         not need a state, in which case, the value None can be
         outputted.
 
         Args:
-            init_genotypes: The genotypes of the initial population.
+            genotypes: The genotypes of the initial population.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -51,7 +57,7 @@ class Emitter(ABC):
         repertoire: Optional[Repertoire],
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Function used to emit a population of offspring by any possible
         mean. New population can be sampled from a distribution or obtained
         through mutations of individuals sampled from the repertoire.
@@ -105,3 +111,33 @@ class Emitter(ABC):
             The modified emitter state.
         """
         return emitter_state
+
+    @property
+    @abstractmethod
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        pass
+
+    @property
+    def use_all_data(self) -> bool:
+        """Whether to use all data or not when used along other emitters.
+
+        Used when an emitter is used in a multi emitter setting.
+
+        Some emitter only the information from the genotypes they emitted when
+        they update their state (for instance, the CMA emitters); but other use data
+        from genotypes emitted by others (for instance, QualityPGEmitter and
+        DiversityPGEmitter). The meta emitters like MultiEmitter need to know which
+        data to give the sub emitter when udapting them. This property is used at
+        this moment.
+
+        Default behavior is to used only the data related to what was emitted.
+
+        Returns:
+            Whether to pass only the genotypes (and their evaluations) that the emitter
+            emitted when updating it or all the genotypes emitted by all the emitters.
+        """
+        return False

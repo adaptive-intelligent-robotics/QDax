@@ -1,11 +1,10 @@
 """Utilities functions to perform normalization (generally on observations in RL)."""
 
-
 from typing import NamedTuple
 
 import jax.numpy as jnp
 
-from qdax.types import Observation
+from qdax.custom_types import Observation
 
 
 class RunningMeanStdState(NamedTuple):

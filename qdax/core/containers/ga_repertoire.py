@@ -10,7 +10,7 @@ import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.repertoire import Repertoire
-from qdax.types import Fitness, Genotype, RNGKey
+from qdax.custom_types import Fitness, Genotype, RNGKey
 
 
 class GARepertoire(Repertoire):
@@ -34,7 +34,7 @@ class GARepertoire(Repertoire):
     @property
     def size(self) -> int:
         """Gives the size of the population."""
-        first_leaf = jax.tree_leaves(self.genotypes)[0]
+        first_leaf = jax.tree_util.tree_leaves(self.genotypes)[0]
         return int(first_leaf.shape[0])
 
     def save(self, path: str = "./") -> None:
@@ -95,7 +95,7 @@ class GARepertoire(Repertoire):
 
         # sample
         random_key, subkey = jax.random.split(random_key)
-        samples = jax.tree_map(
+        samples = jax.tree_util.tree_map(
             lambda x: jax.random.choice(
                 subkey, x, shape=(num_samples,), p=p, replace=False
             ),
@@ -122,7 +122,7 @@ class GARepertoire(Repertoire):
         """
 
         # gather individuals and fitnesses
-        candidates = jax.tree_map(
+        candidates = jax.tree_util.tree_map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
             self.genotypes,
             batch_of_genotypes,
@@ -138,7 +138,9 @@ class GARepertoire(Repertoire):
         survivor_indices = indices[: self.size]
 
         # keep only the best ones
-        new_candidates = jax.tree_map(lambda x: x[survivor_indices], candidates)
+        new_candidates = jax.tree_util.tree_map(
+            lambda x: x[survivor_indices], candidates
+        )
 
         new_repertoire = self.replace(
             genotypes=new_candidates, fitnesses=candidates_fitnesses[survivor_indices]
@@ -172,7 +174,7 @@ class GARepertoire(Repertoire):
         )
 
         # create default genotypes
-        default_genotypes = jax.tree_map(
+        default_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
         )
 

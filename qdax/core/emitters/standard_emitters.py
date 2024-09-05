@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import ExtraScores, Genotype, RNGKey
 
 
 class MixingEmitter(Emitter):
@@ -31,7 +31,7 @@ class MixingEmitter(Emitter):
         repertoire: Repertoire,
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         Emitter that performs both mutation and variation. Two batches of
         variation_percentage * batch_size genotypes are sampled in the repertoire,
@@ -69,10 +69,18 @@ class MixingEmitter(Emitter):
         elif n_mutation == 0:
             genotypes = x_variation
         else:
-            genotypes = jax.tree_map(
+            genotypes = jax.tree_util.tree_map(
                 lambda x_1, x_2: jnp.concatenate([x_1, x_2], axis=0),
                 x_variation,
                 x_mutation,
             )
 
-        return genotypes, random_key
+        return genotypes, {}, random_key
+
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._batch_size

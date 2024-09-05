@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.types import Fitness, Genotype
+from qdax.custom_types import Fitness, Genotype
 from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
@@ -56,9 +56,9 @@ class NSGA2Repertoire(GARepertoire):
             norm = jnp.max(srt_fitnesses, axis=0) - jnp.min(srt_fitnesses, axis=0)
 
             # get the distances
-            dists = jnp.row_stack(
+            dists = jnp.vstack(
                 [srt_fitnesses, jnp.full(num_objective, jnp.inf)]
-            ) - jnp.row_stack([jnp.full(num_objective, -jnp.inf), srt_fitnesses])
+            ) - jnp.vstack([jnp.full(num_objective, -jnp.inf), srt_fitnesses])
 
             # Prepare the distance to last and next vectors
             dist_to_last, dist_to_next = dists, dists
@@ -106,7 +106,7 @@ class NSGA2Repertoire(GARepertoire):
             The updated repertoire.
         """
         # All the candidates
-        candidates = jax.tree_map(
+        candidates = jax.tree_util.tree_map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
             self.genotypes,
             batch_of_genotypes,
@@ -114,7 +114,7 @@ class NSGA2Repertoire(GARepertoire):
 
         candidate_fitnesses = jnp.concatenate((self.fitnesses, batch_of_fitnesses))
 
-        first_leaf = jax.tree_leaves(candidates)[0]
+        first_leaf = jax.tree_util.tree_leaves(candidates)[0]
         num_candidates = first_leaf.shape[0]
 
         def compute_current_front(
@@ -228,7 +228,7 @@ class NSGA2Repertoire(GARepertoire):
 
         # get rid of the zeros (that correspond to the False from the mask)
         fake_indice = num_candidates + 1  # bigger than all the other indices
-        indices = jnp.where(indices == 0, x=fake_indice, y=indices)
+        indices = jnp.where(indices == 0, fake_indice, indices)
 
         # sort the indices to remove the fake indices
         indices = jnp.sort(indices)[: self.size]
@@ -237,7 +237,7 @@ class NSGA2Repertoire(GARepertoire):
         indices = indices - 1
 
         # keep only the survivors
-        new_candidates = jax.tree_map(lambda x: x[indices], candidates)
+        new_candidates = jax.tree_util.tree_map(lambda x: x[indices], candidates)
         new_scores = candidate_fitnesses[indices]
 
         new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_scores)

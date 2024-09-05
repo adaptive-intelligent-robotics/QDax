@@ -1,18 +1,18 @@
 from typing import Any, Dict, List, Tuple, Union
 
-import brax
-from brax import jumpy as jp
-from brax.envs import env
+import brax.v1 as brax
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env, State
 
 
-class PointMaze(env.Env):
+class PointMaze(Env):
     """Jax/Brax implementation of the PointMaze.
     Highly inspired from the old python implementation of
     the PointMaze.
 
     In order to stay in the Brax API, I will use a fake QP
     at several moment of the implementation. This enable to
-    use the brax.envs.env.State from Brax. To avoid this,
+    use the brax.envs.State from Brax. To avoid this,
     it would be good to ask Brax to enlarge a bit their API
     for environments that are not physically simulated.
     """
@@ -103,7 +103,7 @@ class PointMaze(env.Env):
         """The size of the observation vector returned in step and reset."""
         return 2
 
-    def reset(self, rng: jp.ndarray) -> env.State:
+    def reset(self, rng: jp.ndarray) -> State:
         """Resets the environment to an initial state."""
         rng, rng1, rng2 = jp.random_split(rng, 3)
         # get initial position - reproduce the old implementation
@@ -117,15 +117,15 @@ class PointMaze(env.Env):
         metrics: Dict = {}
         # managing state descriptor by our own
         info_init = {"state_descriptor": obs_init}
-        return env.State(fake_qp, obs_init, reward, done, metrics, info_init)
+        return State(fake_qp, obs_init, reward, done, metrics, info_init)
 
-    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+    def step(self, state: State, action: jp.ndarray) -> State:
         """Run one timestep of the environment's dynamics."""
 
         # clip action taken
-        min_action = self._low / self._scale_action_space
-        max_action = self._high / self._scale_action_space
-        action = jp.clip(action, min_action, max_action)
+        min_action = self._low
+        max_action = self._high
+        action = jp.clip(action, min_action, max_action) / self._scale_action_space
 
         # get the current position
         x_pos_old, y_pos_old = state.obs
@@ -150,8 +150,8 @@ class PointMaze(env.Env):
 
         done = jp.where(
             jp.array(in_zone),
-            x=jp.array(1.0),
-            y=jp.array(0.0),
+            jp.array(1.0),
+            jp.array(0.0),
         )
 
         new_obs = jp.array([x_pos, y_pos])
@@ -199,8 +199,8 @@ class PointMaze(env.Env):
             y_axis_down_contact_condition_1
             & y_axis_down_contact_condition_2
             & x_axis_contact_condition,
-            x=jp.array(self.lower_wall_height_offset),
-            y=y_pos,
+            jp.array(self.lower_wall_height_offset),
+            y_pos,
         )
 
         # From up - boolean style
@@ -217,8 +217,8 @@ class PointMaze(env.Env):
             & y_axis_up_contact_condition_2
             & y_axis_up_contact_condition_3
             & x_axis_contact_condition,
-            x=jp.array(self.lower_wall_height_offset + self.wallheight),
-            y=new_y_pos,
+            jp.array(self.lower_wall_height_offset + self.wallheight),
+            new_y_pos,
         )
 
         return new_y_pos
@@ -250,8 +250,8 @@ class PointMaze(env.Env):
             y_axis_up_contact_condition_1
             & y_axis_up_contact_condition_2
             & x_axis_contact_condition,
-            x=jp.array(self.upper_wall_height_offset + self.wallheight),
-            y=y_pos,
+            jp.array(self.upper_wall_height_offset + self.wallheight),
+            y_pos,
         )
 
         # From down - boolean style
@@ -264,8 +264,8 @@ class PointMaze(env.Env):
             & y_axis_down_contact_condition_2
             & y_axis_down_contact_condition_3
             & x_axis_contact_condition,
-            x=jp.array(self.upper_wall_height_offset),
-            y=new_y_pos,
+            jp.array(self.upper_wall_height_offset),
+            new_y_pos,
         )
 
         return new_y_pos

@@ -1,11 +1,12 @@
 from typing import Any, Tuple
 
-import brax
 import jax
 import pytest
-from brax import jumpy as jp
+from brax.v1 import jumpy as jp
+from brax.v1.envs import Env
 
 import qdax
+from qdax.custom_types import EnvState
 from qdax.environments.pointmaze import PointMaze
 
 
@@ -13,7 +14,7 @@ def test_pointmaze() -> None:
     # create env with class
     qd_env = PointMaze()
     # verify class
-    pytest.assume(isinstance(qd_env, brax.envs.Env))
+    pytest.assume(isinstance(qd_env, Env))
 
     # check state_descriptor_length
     pytest.assume(qd_env.state_descriptor_length == 2)
@@ -23,7 +24,7 @@ def test_pointmaze() -> None:
     qd_env = qdax.environments.create(env_name="pointmaze")  # type: ignore
 
     # verify class
-    pytest.assume(isinstance(qd_env, brax.envs.Env))
+    pytest.assume(isinstance(qd_env, Env))
 
     # check state_descriptor_length
     pytest.assume(qd_env.state_descriptor_length == 2)
@@ -61,8 +62,8 @@ def test_pointmaze() -> None:
     state = qd_env.reset(rng=jp.random_prngkey(seed=0))
 
     @jax.jit
-    def run_n_steps(state: brax.envs.State) -> brax.envs.State:
-        def run_step(carry: brax.envs.State, _: Any) -> Tuple[brax.envs.State, Any]:
+    def run_n_steps(state: EnvState) -> EnvState:
+        def run_step(carry: Tuple[EnvState], _: Any) -> Tuple[Tuple[EnvState], Any]:
             (state,) = carry
             action = jp.zeros((qd_env.action_size,))
             state = qd_env.step(state, action)

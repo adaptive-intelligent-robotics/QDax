@@ -3,7 +3,8 @@ name: ci
 on:
   push:
     branches: [main, develop]
-  pull_request:
+  pull_request_target:
+    types: [assigned, opened, synchronize, reopened]
 
 env:
   REGISTRY: ghcr.io
@@ -25,9 +26,21 @@ jobs:
   build:
     needs: [setup]
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        if: ${{ github.event_name == 'push' }}
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Docker Buildx
         id: buildx
@@ -60,7 +73,7 @@ jobs:
 #          cache-to: type=gha,mode=max
 
       - name: Build and push test Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: dev.Dockerfile
@@ -72,7 +85,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push tool Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: tool.Dockerfile
@@ -93,10 +106,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        if: ${{ github.event_name == 'push' }}
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run pre-commits
         run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           pre-commit run --all-files
 
   tests:
@@ -110,7 +131,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        if: ${{ github.event_name == 'push' }}
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run pytests
         run: |

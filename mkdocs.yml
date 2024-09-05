@@ -27,7 +27,6 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-
   features:
     - navigation.tracking
     - navigation.tabs
@@ -109,25 +108,44 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Overview: overview.md
+  - Caveats: caveats.md
   - Guides:
     - Contributing: guides/CONTRIBUTING.md
   - Examples:
-    - MAPElites: notebooks/mapelites_example.ipynb
-    - PGAME: notebooks/pgame_example.ipynb
-    - OMG MEGA: notebooks/omgmega_example.ipynb
-    - CMA MEGA: notebooks/cmamega_example.ipynb
-    - MOME: notebooks/mome_example.ipynb
-    - DIAYN: notebooks/diayn_example.ipynb
-    - DADS: notebooks/dads_example.ipynb
-    - SMERL: notebooks/smerl_example.ipynb
+    - MAPElites: examples/mapelites.ipynb
+    - PGAME: examples/pgame.ipynb
+    - CMA ME: examples/cmame.ipynb
+    - QDPG: examples/qdpg.ipynb
+    - OMG MEGA: examples/omgmega.ipynb
+    - CMA MEGA: examples/cmamega.ipynb
+    - MOME: examples/mome.ipynb
+    - MEES: examples/mees.ipynb
+    - DIAYN: examples/diayn.ipynb
+    - DADS: examples/dads.ipynb
+    - SMERL: examples/smerl.ipynb
+    - CMA ES: examples/cmaes.ipynb
+    - NSGA2/SPEA2: examples/nsga2_spea2.ipynb
+    - AURORA: examples/aurora.ipynb
+    - PGA AURORA: examples/pga_aurora.ipynb
+    - PBT: examples/sac_pbt.ipynb
+    - MAPElites PBT: examples/me_sac_pbt.ipynb
+    - MAPElites Low Spread: examples/mels.ipynb
+    - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
       - Core algorithms:
         - MAP Elites: api_documentation/core/map_elites.md
         - PGAME: api_documentation/core/pgame.md
+        - QDPG: api_documentation/core/qdpg.md
+        - CMA ME: api_documentation/core/cmame.md
         - OMG MEGA: api_documentation/core/omg_mega.md
         - CMA MEGA: api_documentation/core/cma_mega.md
         - MOME: api_documentation/core/mome.md
+        - ME ES: api_documentation/core/mees.md
+        - AURORA: api_documentation/core/aurora.md
+        - PGA AURORA: api_documentation/core/pga_aurora.md
+        - ME PBT: api_documentation/core/me_pbt.md
+        - ME LS: api_documentation/core/mels.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
@@ -138,8 +156,10 @@ nav:
         - Genetic Algorithm: api_documentation/core/genetic_algorithm.md
         - NSGA2: api_documentation/core/nsga2.md
         - SPEA2: api_documentation/core/spea2.md
+        - PBT: api_documentation/core/pbt.md
       - Containers: api_documentation/core/containers.md
       - Emitters: api_documentation/core/emitters.md
       - Neuroevolution: api_documentation/core/neuroevolution.md
     - Environments: api_documentation/environments.md
+    - Tasks: api_documentation/tasks.md
     - Utils: api_documentation/utils.md

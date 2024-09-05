@@ -1,13 +1,12 @@
-name: qdaxpy38
+name: qdaxpy310
 channels:
 - defaults
 - conda-forge
 dependencies:
-- python=3.8
+- python=3.10
 - pip>=20.3.3
 - conda>=4.9.2
 - pip:
     - --find-links https://storage.googleapis.com/jax-releases/jax_releases.html
-    - jaxlib==0.3.10
     - -r requirements.txt
     - -r requirements-dev.txt

@@ -1,4 +1,5 @@
 """File defining mutation and crossover functions."""
+
 from typing import Optional, Tuple
 
 from qdax.core.containers.repertoire import Repertoire
@@ -6,7 +7,7 @@ from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.emitters.selectors.abstract_selector import Selector
 from qdax.core.emitters.selectors.uniform import UniformSelector
 from qdax.core.emitters.variation_operators.abstract_variation import VariationOperator
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class SelectionVariationEmitter(Emitter):
