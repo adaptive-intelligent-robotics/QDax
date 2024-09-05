@@ -136,6 +136,7 @@ nav:
       - Core algorithms:
         - MAP Elites: api_documentation/core/map_elites.md
         - PGAME: api_documentation/core/pgame.md
+        - DCRLME: api_documentation/core/dcrlme.md
         - QDPG: api_documentation/core/qdpg.md
         - CMA ME: api_documentation/core/cmame.md
         - OMG MEGA: api_documentation/core/omg_mega.md
