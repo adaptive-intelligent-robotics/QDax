@@ -24,7 +24,7 @@ from qdax.environments.base_wrappers import QDEnv
 class DCRLConfig:
     """Configuration for DCRL Emitter"""
 
-    dcg_batch_size: int = 64
+    dcrl_batch_size: int = 64
     ai_batch_size: int = 64
     lengthscale: float = 0.1
 
@@ -114,7 +114,7 @@ class DCRLEmitter(Emitter):
         Returns:
             the batch size emitted by the emitter.
         """
-        return self._config.dcg_batch_size + self._config.ai_batch_size
+        return self._config.dcrl_batch_size + self._config.ai_batch_size
 
     @property
     def use_all_data(self) -> bool:
@@ -296,7 +296,7 @@ class DCRLEmitter(Emitter):
         """
         # PG emitter
         parents_pg, descs_pg, key = repertoire.sample_with_descs(
-            key, self._config.dcg_batch_size
+            key, self._config.dcrl_batch_size
         )
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
@@ -427,7 +427,9 @@ class DCRLEmitter(Emitter):
         desc_prime = jnp.concatenate(
             [
                 extra_scores["desc_prime"],
-                descriptors[self._config.dcg_batch_size + self._config.ai_batch_size :],
+                descriptors[
+                    self._config.dcrl_batch_size + self._config.ai_batch_size :
+                ],
             ],
             axis=0,
         )

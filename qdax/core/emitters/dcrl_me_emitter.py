@@ -15,7 +15,7 @@ class DCRLMEConfig:
     """Configuration for DCRL-MAP-Elites Algorithm"""
 
     ga_batch_size: int = 128
-    dcg_batch_size: int = 64
+    dcrl_batch_size: int = 64
     ai_batch_size: int = 64
     lengthscale: float = 0.1
 
@@ -50,7 +50,7 @@ class DCRLMEEmitter(MultiEmitter):
         self._variation_fn = variation_fn
 
         dcrl_config = DCRLConfig(
-            dcg_batch_size=config.dcg_batch_size,
+            dcrl_batch_size=config.dcrl_batch_size,
             ai_batch_size=config.ai_batch_size,
             lengthscale=config.lengthscale,
             critic_hidden_layer_size=config.critic_hidden_layer_size,

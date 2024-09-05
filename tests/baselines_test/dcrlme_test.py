@@ -58,7 +58,7 @@ def test_dcrlme() -> None:
 
     # DCRL-ME
     ga_batch_size = 128
-    dcg_batch_size = 64
+    dcrl_batch_size = 64
     ai_batch_size = 64
     lengthscale = 0.1
 
@@ -172,7 +172,7 @@ def test_dcrlme() -> None:
     # Define the DCRL-emitter config
     dcrl_emitter_config = DCRLMEConfig(
         ga_batch_size=ga_batch_size,
-        dcg_batch_size=dcg_batch_size,
+        dcrl_batch_size=dcrl_batch_size,
         ai_batch_size=ai_batch_size,
         lengthscale=lengthscale,
         critic_hidden_layer_size=critic_hidden_layer_size,
