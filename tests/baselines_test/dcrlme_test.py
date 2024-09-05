@@ -4,6 +4,7 @@ from typing import Any, Tuple
 import jax
 import jax.numpy as jnp
 import pytest
+from brax.envs import Env, State, Wrapper
 
 from qdax import environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
@@ -16,6 +17,27 @@ from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.environments import behavior_descriptor_extractor
 from qdax.tasks.brax_envs import reset_based_scoring_function_brax_envs
 from qdax.utils.metrics import default_qd_metrics
+
+
+class RewardOffsetEnvWrapper(Wrapper):
+    """Wraps ant_omni environment to add and scale position."""
+
+    def __init__(self, env: Env, env_name: str) -> None:
+        super().__init__(env)
+        self._env_name = env_name
+
+    @property
+    def name(self) -> str:
+        return self._env_name
+
+    def reset(self, rng: jnp.ndarray) -> State:
+        state = self.env.reset(rng)
+        return state
+
+    def step(self, state: State, action: jnp.ndarray) -> State:
+        state = self.env.step(state, action)
+        new_reward = state.reward + environments.reward_offset[self._env_name]
+        return state.replace(reward=new_reward)
 
 
 def test_dcrlme() -> None:
@@ -64,6 +86,10 @@ def test_dcrlme() -> None:
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
+    env = RewardOffsetEnvWrapper(
+        env, env_name
+    )  # apply reward offset as DCG needs positive rewards
+
     reset_fn = jax.jit(env.reset)
 
     # Compute the centroids
