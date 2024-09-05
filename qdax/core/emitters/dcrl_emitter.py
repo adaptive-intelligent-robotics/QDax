@@ -301,9 +301,7 @@ class DCRLEmitter(Emitter):
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
         # Actor injection emitter
-        _, descs_ai, key = repertoire.sample_with_descs(
-            key, self._config.ai_batch_size
-        )
+        _, descs_ai, key = repertoire.sample_with_descs(key, self._config.ai_batch_size)
         descs_ai = descs_ai.reshape(
             descs_ai.shape[0], self._env.behavior_descriptor_length
         )
@@ -354,9 +352,7 @@ class DCRLEmitter(Emitter):
         jax.jit,
         static_argnames=("self",),
     )
-    def emit_ai(
-        self, emitter_state: DCRLEmitterState, descs: Descriptor
-    ) -> Genotype:
+    def emit_ai(self, emitter_state: DCRLEmitterState, descs: Descriptor) -> Genotype:
         """Emit the offsprings generated through pg mutation.
 
         Args:
