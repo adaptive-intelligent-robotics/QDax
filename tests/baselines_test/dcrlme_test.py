@@ -161,7 +161,7 @@ def test_dcrlme() -> None:
     )
 
     # Get minimum reward value to make sure qd_score are positive
-    reward_offset = 0
+    reward_offset = environments.reward_offset[env_name]
 
     # Define a metrics function
     metrics_function = functools.partial(
@@ -169,8 +169,8 @@ def test_dcrlme() -> None:
         qd_offset=reward_offset * episode_length,
     )
 
-    # Define the DCG-emitter config
-    dcg_emitter_config = DCRLMEConfig(
+    # Define the DCRL-emitter config
+    dcrl_emitter_config = DCRLMEConfig(
         ga_batch_size=ga_batch_size,
         dcg_batch_size=dcg_batch_size,
         ai_batch_size=ai_batch_size,
@@ -196,8 +196,8 @@ def test_dcrlme() -> None:
         isoline_variation, iso_sigma=iso_sigma, line_sigma=line_sigma
     )
 
-    dcg_emitter = DCRLMEEmitter(
-        config=dcg_emitter_config,
+    dcrl_emitter = DCRLMEEmitter(
+        config=dcrl_emitter_config,
         policy_network=policy_network,
         actor_network=actor_dc_network,
         env=env,
@@ -207,7 +207,7 @@ def test_dcrlme() -> None:
     # Instantiate MAP Elites
     map_elites = MAPElites(
         scoring_function=scoring_fn,
-        emitter=dcg_emitter,
+        emitter=dcrl_emitter,
         metrics_function=metrics_function,
     )
 
