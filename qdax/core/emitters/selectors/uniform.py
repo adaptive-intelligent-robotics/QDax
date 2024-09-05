@@ -3,7 +3,7 @@ from typing import Tuple
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.emitters.selectors.abstract_selector import Selector
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class UniformSelector(Selector):

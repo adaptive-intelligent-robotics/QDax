@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.emitters.variation_operators.abstract_variation import VariationOperator
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class Mutation(VariationOperator, abc.ABC):
@@ -43,5 +43,4 @@ class Mutation(VariationOperator, abc.ABC):
         return new_genotypes, random_key
 
     @abc.abstractmethod
-    def _mutate(self, gen: Genotype, random_key: RNGKey) -> Tuple[Genotype, RNGKey]:
-        ...
+    def _mutate(self, gen: Genotype, random_key: RNGKey) -> Tuple[Genotype, RNGKey]: ...

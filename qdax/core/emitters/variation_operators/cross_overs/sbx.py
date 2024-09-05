@@ -6,7 +6,7 @@ from jax import numpy as jnp
 from qdax.core.emitters.variation_operators.cross_overs.abstract_cross_over import (
     CrossOver,
 )
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class SBXCrossOver(CrossOver):

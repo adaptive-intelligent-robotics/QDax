@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import jax
 
 from qdax.core.emitters.variation_operators.mutations.abstract_mutation import Mutation
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class NormalMutation(Mutation):

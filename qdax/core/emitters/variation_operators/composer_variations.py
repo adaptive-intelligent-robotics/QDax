@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.emitters.variation_operators.abstract_variation import VariationOperator
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class ComposerVariations(VariationOperator):
@@ -18,16 +18,12 @@ class ComposerVariations(VariationOperator):
 
     @property
     def number_parents_to_select(self) -> int:
-        numbers_to_select = map(
-            lambda x: x.number_parents_to_select, self.variations_list
-        )
+        numbers_to_select = [x.number_parents_to_select for x in self.variations_list]
         return math.prod(numbers_to_select)
 
     @property
     def number_genotypes_returned(self) -> int:
-        numbers_to_return = map(
-            lambda x: x.number_genotypes_returned, self.variations_list
-        )
+        numbers_to_return = [x.number_genotypes_returned for x in self.variations_list]
         return math.prod(numbers_to_return)
 
     def apply_without_clip(

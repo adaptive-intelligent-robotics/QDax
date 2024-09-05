@@ -6,7 +6,7 @@ from chex import ArrayTree
 from jax import numpy as jnp
 
 from qdax.core.emitters.emitter import EmitterState
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class VariationOperator(metaclass=abc.ABCMeta):
@@ -18,13 +18,11 @@ class VariationOperator(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def number_parents_to_select(self) -> int:
-        ...
+    def number_parents_to_select(self) -> int: ...
 
     @property
     @abc.abstractmethod
-    def number_genotypes_returned(self) -> int:
-        ...
+    def number_genotypes_returned(self) -> int: ...
 
     def calculate_number_parents_to_select(self, batch_size: int) -> int:
         assert batch_size % self.number_genotypes_returned == 0, (
@@ -38,8 +36,7 @@ class VariationOperator(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def apply_without_clip(
         self, genotypes: Genotype, emitter_state: EmitterState, random_key: RNGKey
-    ) -> Tuple[Genotype, RNGKey]:
-        ...
+    ) -> Tuple[Genotype, RNGKey]: ...
 
     def _clip(self, gen: Genotype) -> Genotype:
         if (self._minval is not None) or (self._maxval is not None):
@@ -65,10 +62,15 @@ class VariationOperator(metaclass=abc.ABCMeta):
         genotypes: Genotype,
     ) -> Tuple[Genotype, ...]:
         tuple_genotypes = tuple(
-            jax.tree_map(
-                lambda x: x[index_start :: self.number_parents_to_select], genotypes
-            )
-            for index_start in range(self.number_parents_to_select)
+            [
+                jax.tree_map(
+                    lambda x, _index_start=index_start: x[
+                        _index_start :: self.number_parents_to_select
+                    ],
+                    genotypes,
+                )
+                for index_start in range(self.number_parents_to_select)
+            ]
         )
         return tuple_genotypes
 

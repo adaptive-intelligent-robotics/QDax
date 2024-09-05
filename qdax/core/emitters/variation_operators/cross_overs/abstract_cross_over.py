@@ -6,7 +6,7 @@ from jax import numpy as jnp
 
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.emitters.variation_operators.abstract_variation import VariationOperator
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class CrossOver(VariationOperator, abc.ABC):
@@ -69,5 +69,4 @@ class CrossOver(VariationOperator, abc.ABC):
     @abc.abstractmethod
     def _cross_over(
         self, gen_1: Genotype, gen_2: Genotype, random_key: RNGKey
-    ) -> Tuple[Genotype, RNGKey]:
-        ...
+    ) -> Tuple[Genotype, RNGKey]: ...

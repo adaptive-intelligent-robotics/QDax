@@ -15,8 +15,18 @@ class SelectionVariationEmitter(Emitter):
         self,
         batch_size: int,
         variation_operator: VariationOperator,
-        selector: Selector = None,
+        selector: Optional[Selector] = None,
     ):
+        """
+        Emitter that selects a batch of genotypes from the repertoire and applies
+        a variation operator to them.
+
+        Args:
+            batch_size: number of genotypes to select from the repertoire
+            variation_operator: operator to apply to the selected genotypes
+            selector: selector to use to select the genotypes. Defaults to
+                UniformSelector.
+        """
         self._batch_size = batch_size
         self._variation_operator = variation_operator
 
@@ -31,6 +41,19 @@ class SelectionVariationEmitter(Emitter):
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
+        """
+        Select a batch of genotypes from the repertoire and apply a variation
+        operator to them.
+
+        Args:
+            repertoire: repertoire to select genotypes from
+            emitter_state: state of the emitter
+            random_key: random key to handle stochasticity
+
+        Returns:
+            The new genotypes and the updated random key
+        """
+
         number_parents_to_select = (
             self._variation_operator.calculate_number_parents_to_select(
                 self._batch_size
