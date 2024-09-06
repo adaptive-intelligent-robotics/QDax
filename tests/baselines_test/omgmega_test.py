@@ -11,7 +11,7 @@ from qdax.core.containers.mapelites_repertoire import (
 )
 from qdax.core.emitters.omg_mega_emitter import OMGMEGAEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 def test_omg_mega() -> None:
@@ -113,7 +113,11 @@ def test_omg_mega() -> None:
         initial_population, centroids, random_key
     )
 
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         map_elites.scan_update,
         (repertoire, emitter_state, random_key),
         (),

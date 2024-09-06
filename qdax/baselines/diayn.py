@@ -20,7 +20,7 @@ from qdax.core.neuroevolution.losses.diayn_loss import make_diayn_loss_fn
 from qdax.core.neuroevolution.mdp_utils import TrainingState, get_first_episode
 from qdax.core.neuroevolution.networks.diayn_networks import make_diayn_networks
 from qdax.core.neuroevolution.sac_td3_utils import generate_unroll
-from qdax.types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
+from qdax.custom_types import Metrics, Params, Reward, RNGKey, Skill, StateDescriptor
 
 
 class DiaynTrainingState(TrainingState):

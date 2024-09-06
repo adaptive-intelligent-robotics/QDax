@@ -24,6 +24,12 @@ QDax is available on PyPI and can be installed with:
 ```bash
 pip install qdax
 ```
+
+To install QDax with CUDA 12 support, use:
+```bash
+pip install qdax[cuda12]
+```
+
 Alternatively, the latest commit of QDax can be installed directly from source with:
 ```bash
 pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
@@ -129,6 +135,7 @@ QDax currently supports the following algorithms:
 | [MAP-Elites](https://arxiv.org/abs/1504.04909)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)  |
 | [CVT MAP-Elites](https://arxiv.org/abs/1610.05729)                                                                            | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)  |
 | [Policy Gradient Assisted MAP-Elites (PGA-ME)](https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/pgame.ipynb)      |
+| [DCRL-ME](https://arxiv.org/abs/2401.08632)                                                                                   | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/dcrlme.ipynb)     |
 | [QDPG](https://arxiv.org/abs/2006.08505)                                                                                      | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/qdpg.ipynb)       |
 | [CMA-ME](https://arxiv.org/pdf/1912.02400.pdf)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/cmame.ipynb)      |
 | [OMG-MEGA](https://arxiv.org/abs/2106.03894)                                                                                  | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/omgmega.ipynb)    |
@@ -166,13 +173,14 @@ Issues and contributions are welcome. Please refer to the [contribution guide](h
 ## Citing QDax
 If you use QDax in your research and want to cite it in your work, please use:
 ```
-@misc{chalumeau2023qdax,
-    title={QDax: A Library for Quality-Diversity and Population-based Algorithms with Hardware Acceleration},
-    author={Felix Chalumeau and Bryan Lim and Raphael Boige and Maxime Allard and Luca Grillotti and Manon Flageat and Valentin Macé and Arthur Flajolet and Thomas Pierrot and Antoine Cully},
-    year={2023},
-    eprint={2308.03665},
-    archivePrefix={arXiv},
-    primaryClass={cs.AI}
+@article{chalumeau2024qdax,
+  title={Qdax: A library for quality-diversity and population-based algorithms with hardware acceleration},
+  author={Chalumeau, Felix and Lim, Bryan and Boige, Raphael and Allard, Maxime and Grillotti, Luca and Flageat, Manon and Mac{\'e}, Valentin and Richard, Guillaume and Flajolet, Arthur and Pierrot, Thomas and others},
+  journal={Journal of Machine Learning Research},
+  volume={25},
+  number={108},
+  pages={1--16},
+  year={2024}
 }
 ```
 

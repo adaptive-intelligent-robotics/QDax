@@ -6,8 +6,8 @@ from brax.v1 import jumpy as jp
 from brax.v1.envs import Env
 
 import qdax
+from qdax.custom_types import EnvState
 from qdax.environments.pointmaze import PointMaze
-from qdax.types import EnvState
 
 
 def test_pointmaze() -> None:

@@ -202,8 +202,8 @@ def test_trajectory_buffer_insert() -> None:
             multy_step_episodic_data,
             equal_nan=True,
         ),
-        "Episodic data when transitions are added sequentially is not consistent to when\
-        theya are added as batch.",
+        "Episodic data when transitions are added sequentially is not consistent to \
+        when they are added as batch.",
     )
 
     pytest.assume(

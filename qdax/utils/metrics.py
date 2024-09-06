@@ -12,7 +12,7 @@ from jax import numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.mome_repertoire import MOMERepertoire
-from qdax.types import Metrics
+from qdax.custom_types import Metrics
 from qdax.utils.pareto_front import compute_hypervolume
 
 
