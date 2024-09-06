@@ -114,6 +114,7 @@ nav:
   - Examples:
     - MAPElites: examples/mapelites.ipynb
     - PGAME: examples/pgame.ipynb
+    - DCRL-ME: examples/dcrlme.ipynb
     - CMA ME: examples/cmame.ipynb
     - QDPG: examples/qdpg.ipynb
     - OMG MEGA: examples/omgmega.ipynb
