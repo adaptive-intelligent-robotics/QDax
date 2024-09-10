@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 from qdax.utils.sampling import (
     dummy_extra_scores_extractor,
     median,
