@@ -15,7 +15,7 @@ from brax.envs import State as EnvState
 
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.mdp_utils import TrainingState
-from qdax.types import Metrics
+from qdax.custom_types import Metrics
 
 
 @partial(
@@ -76,8 +76,9 @@ def generate_unroll(
         ],
     ],
 ) -> Tuple[EnvState, TrainingState, Transition]:
-    """Generates an episode according to the agent's policy, returns the final state of
-    the episode and the transitions of the episode.
+    """
+    Generates an episode according to the agent's policy, returns the final state of the
+    episode and the transitions of the episode.
     """
 
     def _scan_play_step_fn(

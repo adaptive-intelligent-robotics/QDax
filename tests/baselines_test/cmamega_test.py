@@ -12,7 +12,7 @@ from qdax.core.containers.mapelites_repertoire import (
 )
 from qdax.core.emitters.cma_mega_emitter import CMAMEGAEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.types import Descriptor, ExtraScores, Fitness, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
 
 
 def test_cma_mega() -> None:

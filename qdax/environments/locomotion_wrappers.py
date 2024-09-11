@@ -260,7 +260,7 @@ class XYPositionWrapper(QDEnv):
     def reset(self, rng: jp.ndarray) -> State:
         state = self.env.reset(rng)
         state.info["state_descriptor"] = jnp.clip(
-            state.qp.pos[self._cog_idx][:2], a_min=self._minval, a_max=self._maxval
+            state.qp.pos[self._cog_idx][:2], min=self._minval, max=self._maxval
         )
         return state
 
@@ -268,7 +268,7 @@ class XYPositionWrapper(QDEnv):
         state = self.env.step(state, action)
         # get xy position of the center of gravity
         state.info["state_descriptor"] = jnp.clip(
-            state.qp.pos[self._cog_idx][:2], a_min=self._minval, a_max=self._maxval
+            state.qp.pos[self._cog_idx][:2], min=self._minval, max=self._maxval
         )
         return state
 

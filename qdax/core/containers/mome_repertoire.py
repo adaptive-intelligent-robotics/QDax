@@ -15,7 +15,7 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
-from qdax.types import (
+from qdax.custom_types import (
     Centroid,
     Descriptor,
     ExtraScores,

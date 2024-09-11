@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.types import Fitness, Genotype
+from qdax.custom_types import Fitness, Genotype
 
 
 class SPEA2Repertoire(GARepertoire):

@@ -20,7 +20,7 @@ from qdax.core.containers.mapelites_repertoire import (
     get_cells_indices,
 )
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class NoveltyArchive(flax.struct.PyTreeNode):
@@ -237,26 +237,32 @@ class MEESEmitter(Emitter):
         static_argnames=("self",),
     )
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[MEESEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
-            init_genotypes: The initial population.
+            genotypes: The initial population.
             random_key: A random key.
 
         Returns:
             The initial state of the MEESEmitter, a new random key.
         """
         # Initialisation requires one initial genotype
-        if jax.tree_util.tree_leaves(init_genotypes)[0].shape[0] > 1:
-            init_genotypes = jax.tree_util.tree_map(
+        if jax.tree_util.tree_leaves(genotypes)[0].shape[0] > 1:
+            genotypes = jax.tree_util.tree_map(
                 lambda x: x[0],
-                init_genotypes,
+                genotypes,
             )
 
         # Initialise optimizer
-        initial_optimizer_state = self._optimizer.init(init_genotypes)
+        initial_optimizer_state = self._optimizer.init(genotypes)
 
         # Create empty Novelty archive
         if self._config.use_explore:
@@ -271,7 +277,7 @@ class MEESEmitter(Emitter):
         # Create empty updated genotypes and fitness
         last_updated_genotypes = jax.tree_util.tree_map(
             lambda x: jnp.zeros(shape=(self._config.last_updated_size,) + x.shape[1:]),
-            init_genotypes,
+            genotypes,
         )
         last_updated_fitnesses = -jnp.inf * jnp.ones(
             shape=self._config.last_updated_size
@@ -281,7 +287,7 @@ class MEESEmitter(Emitter):
             MEESEmitterState(
                 initial_optimizer_state=initial_optimizer_state,
                 optimizer_state=initial_optimizer_state,
-                offspring=init_genotypes,
+                offspring=genotypes,
                 generation_count=0,
                 novelty_archive=novelty_archive,
                 last_updated_genotypes=last_updated_genotypes,
@@ -301,7 +307,7 @@ class MEESEmitter(Emitter):
         repertoire: MapElitesRepertoire,
         emitter_state: MEESEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Return the offspring generated through gradient update.
 
         Params:
@@ -314,7 +320,7 @@ class MEESEmitter(Emitter):
             a new jax PRNG key
         """
 
-        return emitter_state.offspring, random_key
+        return emitter_state.offspring, {}, random_key
 
     @partial(
         jax.jit,
@@ -357,7 +363,7 @@ class MEESEmitter(Emitter):
             genotypes_empty = fitnesses < min_fitness
             p = (1.0 - genotypes_empty) / jnp.sum(1.0 - genotypes_empty)
             random_key, subkey = jax.random.split(random_key)
-            samples = jax.tree_map(
+            samples = jax.tree_util.tree_map(
                 lambda x: jax.random.choice(subkey, x, shape=(1,), p=p),
                 genotypes,
             )
@@ -424,7 +430,7 @@ class MEESEmitter(Emitter):
         repertoire_empty = novelties < min_novelty
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
         random_key, subkey = jax.random.split(random_key)
-        samples = jax.tree_map(
+        samples = jax.tree_util.tree_map(
             lambda x: jax.random.choice(subkey, x, shape=(1,), p=p),
             repertoire.genotypes,
         )
@@ -481,7 +487,7 @@ class MEESEmitter(Emitter):
         # Sampling non-mirror noise
         else:
             sample_number = total_sample_number
-            sample_noise = jax.tree_map(
+            sample_noise = jax.tree_util.tree_map(
                 lambda x: jax.random.normal(
                     key=subkey,
                     shape=jnp.repeat(x, sample_number, axis=0).shape,
@@ -491,11 +497,11 @@ class MEESEmitter(Emitter):
             gradient_noise = sample_noise
 
         # Applying noise
-        samples = jax.tree_map(
+        samples = jax.tree_util.tree_map(
             lambda x: jnp.repeat(x, total_sample_number, axis=0),
             parent,
         )
-        samples = jax.tree_map(
+        samples = jax.tree_util.tree_map(
             lambda mean, noise: mean + self._config.sample_sigma * noise,
             samples,
             sample_noise,
@@ -521,7 +527,7 @@ class MEESEmitter(Emitter):
         if self._config.sample_mirror:
             ranks = jnp.reshape(ranks, (sample_number, 2))
             ranks = jnp.apply_along_axis(lambda rank: rank[0] - rank[1], 1, ranks)
-        ranks = jax.tree_map(
+        ranks = jax.tree_util.tree_map(
             lambda x: jnp.reshape(
                 jnp.repeat(ranks.ravel(), x[0].ravel().shape[0], axis=0), x.shape
             ),
@@ -529,16 +535,16 @@ class MEESEmitter(Emitter):
         )
 
         # Computing the gradients
-        gradient = jax.tree_map(
+        gradient = jax.tree_util.tree_map(
             lambda noise, rank: jnp.multiply(noise, rank),
             gradient_noise,
             ranks,
         )
-        gradient = jax.tree_map(
+        gradient = jax.tree_util.tree_map(
             lambda x: jnp.reshape(x, (sample_number, -1)),
             gradient,
         )
-        gradient = jax.tree_map(
+        gradient = jax.tree_util.tree_map(
             lambda g, p: jnp.reshape(
                 -jnp.sum(g, axis=0) / (total_sample_number * self._config.sample_sigma),
                 p.shape,
@@ -548,7 +554,7 @@ class MEESEmitter(Emitter):
         )
 
         # Adding regularisation
-        gradient = jax.tree_map(
+        gradient = jax.tree_util.tree_map(
             lambda g, p: g + self._config.l2_coefficient * p,
             gradient,
             parent,
@@ -621,7 +627,7 @@ class MEESEmitter(Emitter):
         last_updated_fitnesses = last_updated_fitnesses.at[last_updated_position].set(
             fitnesses[0]
         )
-        last_updated_genotypes = jax.tree_map(
+        last_updated_genotypes = jax.tree_util.tree_map(
             lambda last_gen, gen: last_gen.at[
                 jnp.expand_dims(last_updated_position, axis=0)
             ].set(gen),

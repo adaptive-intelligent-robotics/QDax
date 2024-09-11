@@ -15,7 +15,7 @@ from qdax.core.emitters.mutation_operators import (
     polynomial_mutation,
 )
 from qdax.core.emitters.standard_emitters import MixingEmitter
-from qdax.types import ExtraScores, Fitness, RNGKey
+from qdax.custom_types import ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_ga_metrics
 
 
@@ -32,11 +32,11 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
     batch_size = 100
     genotype_dim = 6
     lag = 2.2
-    base_lag = 0
+    base_lag = 0.0
     num_neighbours = 1
 
     def rastrigin_scorer(
-        genotypes: jnp.ndarray, base_lag: int, lag: int
+        genotypes: jnp.ndarray, base_lag: float, lag: float
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """
         Rastrigin Scorer with first two dimensions as descriptors
@@ -73,7 +73,7 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
     # initial population
     random_key = jax.random.PRNGKey(42)
     random_key, subkey = jax.random.split(random_key)
-    init_genotypes = jax.random.uniform(
+    genotypes = jax.random.uniform(
         subkey,
         (batch_size, genotype_dim),
         minval=minval,
@@ -111,11 +111,11 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
 
     if isinstance(algo_instance, SPEA2):
         repertoire, emitter_state, random_key = algo_instance.init(
-            init_genotypes, population_size, num_neighbours, random_key
+            genotypes, population_size, num_neighbours, random_key
         )
     else:
         repertoire, emitter_state, random_key = algo_instance.init(
-            init_genotypes, population_size, random_key
+            genotypes, population_size, random_key
         )
 
     # Run the algorithm

@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 class CMAPoolEmitterState(EmitterState):
@@ -49,14 +49,20 @@ class CMAPoolEmitter(Emitter):
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[CMAPoolEmitterState, RNGKey]:
         """
         Initializes the CMA-MEGA emitter
 
 
         Args:
-            init_genotypes: initial genotypes to add to the grid.
+            genotypes: initial genotypes to add to the grid.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -67,7 +73,14 @@ class CMAPoolEmitter(Emitter):
             carry: RNGKey, unused: Any
         ) -> Tuple[RNGKey, CMAEmitterState]:
             random_key = carry
-            emitter_state, random_key = self._emitter.init(init_genotypes, random_key)
+            emitter_state, random_key = self._emitter.init(
+                random_key,
+                repertoire,
+                genotypes,
+                fitnesses,
+                descriptors,
+                extra_scores,
+            )
             return random_key, emitter_state
 
         # init all the emitter states
@@ -91,7 +104,7 @@ class CMAPoolEmitter(Emitter):
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAPoolEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         Emits new individuals.
 
@@ -111,11 +124,11 @@ class CMAPoolEmitter(Emitter):
         )
 
         # use it to emit offsprings
-        offsprings, random_key = self._emitter.emit(
+        offsprings, extra_info, random_key = self._emitter.emit(
             repertoire, used_emitter_state, random_key
         )
 
-        return offsprings, random_key
+        return offsprings, extra_info, random_key
 
     @partial(
         jax.jit,

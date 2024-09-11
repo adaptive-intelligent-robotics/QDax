@@ -12,8 +12,8 @@ from qdax.baselines.td3_pbt import PBTTD3
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 from qdax.environments.base_wrappers import QDEnv
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 
 
 class PBTEmitterState(EmitterState):
@@ -91,12 +91,18 @@ class PBTEmitter(Emitter):
         )
 
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: Repertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[PBTEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
-            init_genotypes: The initial population.
+            genotypes: The initial population.
             random_key: A random key.
 
         Returns:
@@ -145,13 +151,13 @@ class PBTEmitter(Emitter):
 
         # Create emitter state
         # keep only pg population size training states if more are provided
-        init_genotypes = jax.tree_util.tree_map(
-            lambda x: x[: self._config.pg_population_size_per_device], init_genotypes
+        genotypes = jax.tree_util.tree_map(
+            lambda x: x[: self._config.pg_population_size_per_device], genotypes
         )
         emitter_state = PBTEmitterState(
             replay_buffers=replay_buffers,
             env_states=env_states,
-            training_states=init_genotypes,
+            training_states=genotypes,
             random_key=subkey2,
         )
 
@@ -166,7 +172,7 @@ class PBTEmitter(Emitter):
         repertoire: Repertoire,
         emitter_state: PBTEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Do a single PGA-ME iteration: train critics and greedy policy,
         make mutations (evo and pg), score solution, fill replay buffer and insert back
         in the MAP-Elites grid.
@@ -199,7 +205,7 @@ class PBTEmitter(Emitter):
         else:
             genotypes = x_mutation_pg
 
-        return genotypes, random_key
+        return genotypes, {}, random_key
 
     @property
     def batch_size(self) -> int:

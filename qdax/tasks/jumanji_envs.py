@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jumanji
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
-from qdax.types import (
+from qdax.custom_types import (
     Descriptor,
     ExtraScores,
     Fitness,
@@ -68,7 +68,7 @@ def make_policy_network_play_step_fn_jumanji(
             obs=timestep.observation,
             next_obs=next_timestep.observation,
             rewards=next_timestep.reward,
-            dones=jnp.where(next_timestep.last(), x=jnp.array(1), y=jnp.array(0)),
+            dones=jnp.where(next_timestep.last(), jnp.array(1), jnp.array(0)),
             actions=action,
             truncations=jnp.array(0),
             state_desc=state_desc,

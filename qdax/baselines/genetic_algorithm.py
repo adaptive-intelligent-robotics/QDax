@@ -7,7 +7,7 @@ import jax
 
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import ExtraScores, Fitness, Genotype, Metrics, RNGKey
+from qdax.custom_types import ExtraScores, Fitness, Genotype, Metrics, RNGKey
 
 
 class GeneticAlgorithm:
@@ -40,12 +40,12 @@ class GeneticAlgorithm:
 
     @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
-        self, init_genotypes: Genotype, population_size: int, random_key: RNGKey
+        self, genotypes: Genotype, population_size: int, random_key: RNGKey
     ) -> Tuple[GARepertoire, Optional[EmitterState], RNGKey]:
         """Initialize a GARepertoire with an initial population of genotypes.
 
         Args:
-            init_genotypes: the initial population of genotypes
+            genotypes: the initial population of genotypes
             population_size: the maximal size of the repertoire
             random_key: a random key to handle stochastic operations
 
@@ -55,26 +55,21 @@ class GeneticAlgorithm:
 
         # score initial genotypes
         fitnesses, extra_scores, random_key = self._scoring_function(
-            init_genotypes, random_key
+            genotypes, random_key
         )
 
         # init the repertoire
         repertoire = GARepertoire.init(
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             population_size=population_size,
         )
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            init_genotypes=init_genotypes, random_key=random_key
-        )
-
-        # update emitter state
-        emitter_state = self._emitter.state_update(
-            emitter_state=emitter_state,
+            random_key=random_key,
             repertoire=repertoire,
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=None,
             extra_scores=extra_scores,
@@ -109,7 +104,7 @@ class GeneticAlgorithm:
         """
 
         # generate offsprings
-        genotypes, random_key = self._emitter.emit(
+        genotypes, extra_info, random_key = self._emitter.emit(
             repertoire, emitter_state, random_key
         )
 
@@ -128,7 +123,7 @@ class GeneticAlgorithm:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=None,
-            extra_scores=extra_scores,
+            extra_scores={**extra_scores, **extra_info},
         )
 
         # update the metrics

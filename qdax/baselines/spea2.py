@@ -15,7 +15,7 @@ import jax
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 from qdax.core.containers.spea2_repertoire import SPEA2Repertoire
 from qdax.core.emitters.emitter import EmitterState
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class SPEA2(GeneticAlgorithm):
@@ -40,7 +40,7 @@ class SPEA2(GeneticAlgorithm):
     )
     def init(
         self,
-        init_genotypes: Genotype,
+        genotypes: Genotype,
         population_size: int,
         num_neighbours: int,
         random_key: RNGKey,
@@ -48,12 +48,12 @@ class SPEA2(GeneticAlgorithm):
 
         # score initial genotypes
         fitnesses, extra_scores, random_key = self._scoring_function(
-            init_genotypes, random_key
+            genotypes, random_key
         )
 
         # init the repertoire
         repertoire = SPEA2Repertoire.init(
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             population_size=population_size,
             num_neighbours=num_neighbours,
@@ -61,14 +61,19 @@ class SPEA2(GeneticAlgorithm):
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            init_genotypes=init_genotypes, random_key=random_key
+            random_key=random_key,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=None,
+            extra_scores=extra_scores,
         )
 
         # update emitter state
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
             repertoire=repertoire,
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             extra_scores=extra_scores,
         )

@@ -11,7 +11,7 @@ from qdax.core.containers.mapelites_repertoire import (
 )
 from qdax.core.emitters.omg_mega_emitter import OMGMEGAEmitter
 from qdax.core.map_elites import MAPElites
-from qdax.types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
 def test_omg_mega() -> None:

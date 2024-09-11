@@ -544,7 +544,7 @@ def _get_projection_in_1d(
     for all index i: x[i] < bases_tuple[i].
     The vector and tuple of bases must have the same length.
 
-    For example if x=jnp.array([3, 1, 2]) and the bases are (5, 7, 3).
+    For example if jnp.array([3, 1, 2]) and the bases are (5, 7, 3).
     then the projection is 3*(7*3) + 1*(3) + 2 = 47.
 
     Args:
@@ -574,7 +574,7 @@ def _get_projection_in_2d(
     """Projects an integer vector into a pair of integers,
     (given tuple of bases to consider for conversion).
 
-    For example if x=jnp.array([3, 1, 2, 5]) and the bases are (5, 2, 3, 7).
+    For example if jnp.array([3, 1, 2, 5]) and the bases are (5, 2, 3, 7).
     then the projection is obtained by:
     - projecting in 1D the point jnp.array([3, 2]) with the bases (5, 3)
     - projecting in 1D the point jnp.array([1, 5]) with the bases (2, 7)
