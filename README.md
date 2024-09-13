@@ -64,7 +64,7 @@ min_bd = 0.0
 max_bd = 1.0
 
 # Init a random key
-random_key = jax.random.PRNGKey(seed)
+random_key = jax.random.key(seed)
 
 # Init population of controllers
 random_key, subkey = jax.random.split(random_key)
