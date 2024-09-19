@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.cmaes import CMAES
+from qdax.baselines.cmaes import CMAES
 
 
 def test_cmaes() -> None:
