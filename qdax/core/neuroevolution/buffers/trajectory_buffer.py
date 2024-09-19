@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from flax import struct
 
 from qdax.core.neuroevolution.buffers.buffer import Transition
-from qdax.types import Reward, RNGKey
+from qdax.custom_types import Reward, RNGKey
 
 
 class TrajectoryBuffer(struct.PyTreeNode):

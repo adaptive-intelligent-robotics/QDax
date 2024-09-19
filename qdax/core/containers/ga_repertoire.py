@@ -10,7 +10,7 @@ import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.repertoire import Repertoire
-from qdax.types import Fitness, Genotype, RNGKey
+from qdax.custom_types import Fitness, Genotype, RNGKey
 
 
 class GARepertoire(Repertoire):

@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 def _polynomial_mutation(

@@ -15,7 +15,14 @@ from jax.flatten_util import ravel_pytree
 from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    RNGKey,
+)
 
 
 def compute_cvt_centroids(
@@ -228,6 +235,38 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         return samples, random_key
 
+    @partial(jax.jit, static_argnames=("num_samples",))
+    def sample_with_descs(
+        self,
+        random_key: RNGKey,
+        num_samples: int,
+    ) -> Tuple[Genotype, Descriptor, RNGKey]:
+        """Sample elements in the repertoire.
+
+        Args:
+            random_key: a jax PRNG random key
+            num_samples: the number of elements to be sampled
+
+        Returns:
+            samples: a batch of genotypes sampled in the repertoire
+            random_key: an updated jax PRNG random key
+        """
+
+        repertoire_empty = self.fitnesses == -jnp.inf
+        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
+
+        random_key, subkey = jax.random.split(random_key)
+        samples = jax.tree_util.tree_map(
+            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+            self.genotypes,
+        )
+        descs = jax.tree_util.tree_map(
+            lambda x: jax.random.choice(subkey, x, shape=(num_samples,), p=p),
+            self.descriptors,
+        )
+
+        return samples, descs, random_key
+
     @jax.jit
     def add(
         self,
@@ -271,7 +310,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         # put dominated fitness to -jnp.inf
         batch_of_fitnesses = jnp.where(
-            batch_of_fitnesses == cond_values, x=batch_of_fitnesses, y=-jnp.inf
+            batch_of_fitnesses == cond_values, batch_of_fitnesses, -jnp.inf
         )
 
         # get addition condition
@@ -283,7 +322,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         # assign fake position when relevant : num_centroids is out of bound
         batch_of_indices = jnp.where(
-            addition_condition, x=batch_of_indices, y=num_centroids
+            addition_condition, batch_of_indices, num_centroids
         )
 
         # create new repertoire

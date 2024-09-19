@@ -4,11 +4,11 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractclassmethod, abstractmethod
+from abc import ABC, abstractmethod
 
 import flax
 
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class Repertoire(flax.struct.PyTreeNode, ABC):
@@ -19,7 +19,8 @@ class Repertoire(flax.struct.PyTreeNode, ABC):
     to keep the parent classes explicit and transparent.
     """
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def init(cls) -> Repertoire:  # noqa: N805
         """Create a repertoire."""
         pass

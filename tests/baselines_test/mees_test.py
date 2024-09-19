@@ -14,8 +14,8 @@ from qdax.core.emitters.mees_emitter import MEESConfig, MEESEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
+from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.tasks.brax_envs import scoring_function_brax_envs
-from qdax.types import EnvState, Params, RNGKey
 
 
 def test_mees() -> None:
@@ -185,7 +185,11 @@ def test_mees() -> None:
         return (repertoire, emitter_state, random_key), metrics
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         update_scan_fn,
         (repertoire, emitter_state, random_key),
         (),
