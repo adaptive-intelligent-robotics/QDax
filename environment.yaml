@@ -1,9 +1,9 @@
-name: qdaxpy39
+name: qdaxpy310
 channels:
 - defaults
 - conda-forge
 dependencies:
-- python=3.9
+- python=3.10
 - pip>=20.3.3
 - conda>=4.9.2
 - pip:

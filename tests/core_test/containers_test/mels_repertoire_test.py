@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import pytest
 
 from qdax.core.containers.mels_repertoire import MELSRepertoire
-from qdax.types import ExtraScores
+from qdax.custom_types import ExtraScores
 
 
 def test_add_to_mels_repertoire() -> None:

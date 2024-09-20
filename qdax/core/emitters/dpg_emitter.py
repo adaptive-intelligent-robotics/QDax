@@ -1,6 +1,7 @@
 """ Implements the Diversity PG inspired by QDPG algorithm in jax for brax environments,
 based on: https://arxiv.org/abs/2006.08505
 """
+
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Optional, Tuple
@@ -17,8 +18,7 @@ from qdax.core.emitters.qpg_emitter import (
     QualityPGEmitterState,
 )
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.environments.base_wrappers import QDEnv
-from qdax.types import (
+from qdax.custom_types import (
     Descriptor,
     ExtraScores,
     Fitness,
@@ -28,6 +28,7 @@ from qdax.types import (
     RNGKey,
     StateDescriptor,
 )
+from qdax.environments.base_wrappers import QDEnv
 
 
 @dataclass
@@ -77,12 +78,18 @@ class DiversityPGEmitter(QualityPGEmitter):
         self._score_novelty = score_novelty
 
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: Repertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[DiversityPGEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
-            init_genotypes: The initial population.
+            genotypes: The initial population.
             random_key: A random key.
 
         Returns:
@@ -90,7 +97,14 @@ class DiversityPGEmitter(QualityPGEmitter):
         """
 
         # init elements of diversity emitter state with QualityEmitterState.init()
-        diversity_emitter_state, random_key = super().init(init_genotypes, random_key)
+        diversity_emitter_state, random_key = super().init(
+            random_key,
+            repertoire,
+            genotypes,
+            fitnesses,
+            descriptors,
+            extra_scores,
+        )
 
         # store elements in a dictionary
         attributes_dict = vars(diversity_emitter_state)
@@ -101,6 +115,12 @@ class DiversityPGEmitter(QualityPGEmitter):
             state_descriptor_size=self._env.state_descriptor_length,
             max_size=self._config.archive_max_size,
         )
+
+        # get the transitions out of the dictionary
+        assert "transitions" in extra_scores.keys(), "Missing transitions or wrong key"
+        transitions = extra_scores["transitions"]
+
+        archive = archive.insert(transitions.state_desc)
 
         # init emitter state
         emitter_state = DiversityPGEmitterState(
@@ -161,7 +181,10 @@ class DiversityPGEmitter(QualityPGEmitter):
             return new_emitter_state, ()
 
         # sample transitions
-        (transitions, random_key,) = emitter_state.replay_buffer.sample(
+        (
+            transitions,
+            random_key,
+        ) = emitter_state.replay_buffer.sample(
             random_key=emitter_state.random_key,
             sample_size=self._config.num_critic_training_steps
             * self._config.batch_size,
@@ -230,7 +253,11 @@ class DiversityPGEmitter(QualityPGEmitter):
         )
 
         # Update greedy policy
-        (policy_optimizer_state, actor_params, target_actor_params,) = jax.lax.cond(
+        (
+            policy_optimizer_state,
+            actor_params,
+            target_actor_params,
+        ) = jax.lax.cond(
             emitter_state.steps % self._config.policy_delay == 0,
             lambda x: self._update_actor(*x),
             lambda _: (
@@ -329,7 +356,11 @@ class DiversityPGEmitter(QualityPGEmitter):
             transitions,
         )
 
-        (emitter_state, policy_params, policy_optimizer_state,), _ = jax.lax.scan(
+        (
+            emitter_state,
+            policy_params,
+            policy_optimizer_state,
+        ), _ = jax.lax.scan(
             scan_train_policy,
             (emitter_state, policy_params, policy_optimizer_state),
             (transitions),

@@ -25,7 +25,7 @@ from qdax.core.neuroevolution.losses.td3_loss import (
     td3_policy_loss_fn,
 )
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn
-from qdax.types import Descriptor, Mask, Metrics, Params, RNGKey
+from qdax.custom_types import Descriptor, Mask, Metrics, Params, RNGKey
 
 
 class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
@@ -291,7 +291,10 @@ class PBTTD3(TD3):
 
         def update_policy_step() -> Tuple[Params, Params, optax.OptState]:
             policy_optimizer = optax.adam(learning_rate=training_state.policy_lr)
-            (policy_updates, policy_optimizer_state,) = policy_optimizer.update(
+            (
+                policy_updates,
+                policy_optimizer_state,
+            ) = policy_optimizer.update(
                 policy_gradient, training_state.policy_optimizer_state
             )
             policy_params = optax.apply_updates(

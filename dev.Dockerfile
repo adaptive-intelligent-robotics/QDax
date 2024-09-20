@@ -16,7 +16,7 @@ RUN micromamba create -y --file /tmp/environment.yaml \
 
 
 FROM python as test-image
-ENV PATH=/opt/conda/envs/qdaxpy39/bin/:$PATH APP_FOLDER=/app
+ENV PATH=/opt/conda/envs/qdaxpy310/bin/:$PATH APP_FOLDER=/app
 ENV PYTHONPATH=$APP_FOLDER:$PYTHONPATH
 
 COPY --from=conda /opt/conda/envs/. /opt/conda/envs/
@@ -26,7 +26,7 @@ RUN pip install -r requirements-dev.txt
 
 
 FROM nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04 as cuda-image
-ENV PATH=/opt/conda/envs/qdaxpy39/bin/:$PATH APP_FOLDER=/app
+ENV PATH=/opt/conda/envs/qdaxpy310/bin/:$PATH APP_FOLDER=/app
 ENV PYTHONPATH=$APP_FOLDER:$PYTHONPATH
 
 
@@ -70,7 +70,7 @@ RUN apt-get update && \
     libosmesa6-dev \
     patchelf \
     python3-opengl \
-    python3-dev=3.9* \
+    python3-dev=3.10* \
     python3-pip \
     screen \
     sudo \

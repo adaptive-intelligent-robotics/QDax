@@ -86,7 +86,7 @@ git clone git@github.com:adaptive-intelligent-robotics/QDax.git
 
 2. Activate the environment and manually install the package qdax
     ```zsh
-    conda activate qdaxpy39
+    conda activate qdaxpy310
     pip install -e .
     ```
 

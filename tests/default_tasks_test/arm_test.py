@@ -96,7 +96,11 @@ def test_arm(task_name: str, batch_size: int) -> None:
     )
 
     # Run the algorithm
-    (repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
+    (
+        repertoire,
+        emitter_state,
+        random_key,
+    ), metrics = jax.lax.scan(
         map_elites.scan_update,
         (repertoire, emitter_state, random_key),
         (),

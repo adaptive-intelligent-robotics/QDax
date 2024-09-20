@@ -1,4 +1,5 @@
 """Testing script for the algorithm DADS"""
+
 from functools import partial
 from typing import Any, Tuple
 

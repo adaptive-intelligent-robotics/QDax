@@ -6,7 +6,14 @@ import jax.numpy as jnp
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    RNGKey,
+)
 
 
 class OMGMEGAEmitterState(EmitterState):
@@ -84,20 +91,26 @@ class OMGMEGAEmitter(Emitter):
         self._num_descriptors = num_descriptors
 
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[OMGMEGAEmitterState, RNGKey]:
         """Initialises the state of the emitter. Creates an empty repertoire
         that will later contain the gradients of the individuals.
 
         Args:
-            init_genotypes: The genotypes of the initial population.
+            genotypes: The genotypes of the initial population.
             random_key: a random key to handle stochastic operations.
 
         Returns:
             The initial emitter state.
         """
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], init_genotypes)
+        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
 
         # add a dimension of size num descriptors + 1
         gradient_genotype = jax.tree_util.tree_map(
@@ -110,6 +123,18 @@ class OMGMEGAEmitter(Emitter):
         # create the gradients repertoire
         gradients_repertoire = MapElitesRepertoire.init_default(
             genotype=gradient_genotype, centroids=self._centroids
+        )
+
+        # get gradients out of the extra scores
+        assert "gradients" in extra_scores.keys(), "Missing gradients or wrong key"
+        gradients = extra_scores["gradients"]
+
+        # update the gradients repertoire
+        gradients_repertoire = gradients_repertoire.add(
+            gradients,
+            descriptors,
+            fitnesses,
+            extra_scores,
         )
 
         return (
@@ -126,7 +151,7 @@ class OMGMEGAEmitter(Emitter):
         repertoire: MapElitesRepertoire,
         emitter_state: OMGMEGAEmitterState,
         random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """
         OMG emitter function that samples elements in the repertoire and does a gradient
         update with random coefficients to create new candidates.
@@ -190,7 +215,7 @@ class OMGMEGAEmitter(Emitter):
             lambda x, y: x + y, genotypes, update_grad
         )
 
-        return new_genotypes, random_key
+        return new_genotypes, {}, random_key
 
     @partial(
         jax.jit,

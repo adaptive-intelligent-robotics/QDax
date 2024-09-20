@@ -5,6 +5,7 @@ training state we can update running statistics for normalization for instance.
 We are currently thinking about elegant ways to unify both in order to avoid code
 repetition.
 """
+
 # TODO: Uniformize with the functions in mdp_utils
 from functools import partial
 from typing import Any, Callable, Tuple
@@ -14,7 +15,7 @@ from brax.envs import State as EnvState
 
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.mdp_utils import TrainingState
-from qdax.types import Metrics
+from qdax.custom_types import Metrics
 
 
 @partial(
@@ -75,7 +76,8 @@ def generate_unroll(
         ],
     ],
 ) -> Tuple[EnvState, TrainingState, Transition]:
-    """Generates an episode according to the agent's policy, returns the final state of the
+    """
+    Generates an episode according to the agent's policy, returns the final state of the
     episode and the transitions of the episode.
     """
 

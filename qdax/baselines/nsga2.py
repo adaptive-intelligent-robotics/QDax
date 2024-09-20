@@ -13,7 +13,7 @@ import jax
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 from qdax.core.containers.nsga2_repertoire import NSGA2Repertoire
 from qdax.core.emitters.emitter import EmitterState
-from qdax.types import Genotype, RNGKey
+from qdax.custom_types import Genotype, RNGKey
 
 
 class NSGA2(GeneticAlgorithm):
@@ -28,31 +28,36 @@ class NSGA2(GeneticAlgorithm):
 
     @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
-        self, init_genotypes: Genotype, population_size: int, random_key: RNGKey
+        self, genotypes: Genotype, population_size: int, random_key: RNGKey
     ) -> Tuple[NSGA2Repertoire, Optional[EmitterState], RNGKey]:
 
         # score initial genotypes
         fitnesses, extra_scores, random_key = self._scoring_function(
-            init_genotypes, random_key
+            genotypes, random_key
         )
 
         # init the repertoire
         repertoire = NSGA2Repertoire.init(
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             population_size=population_size,
         )
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            init_genotypes=init_genotypes, random_key=random_key
+            random_key=random_key,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=None,
+            extra_scores=extra_scores,
         )
 
         # update emitter state
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
             repertoire=repertoire,
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             extra_scores=extra_scores,
         )
