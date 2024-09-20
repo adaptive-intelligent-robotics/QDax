@@ -100,6 +100,9 @@ def test_pbt_td3() -> None:
         observation_size=env.observation_size,
         buffer_size=buffer_size,
     )
+
+    # Need to convert to PRNGKey because of github.com/jax-ml/jax/issues/23647
+    keys = jax.random.key_data(keys)
     keys, training_states, replay_buffers = jax.pmap(
         agent_init_fn, axis_name="p", devices=devices
     )(keys)
