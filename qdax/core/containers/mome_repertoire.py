@@ -178,8 +178,6 @@ class MOMERepertoire(MapElitesRepertoire):
 
         pareto_front_len = pareto_front_fitnesses.shape[0]  # type: ignore
 
-        first_leaf = jax.tree_util.tree_leaves(new_batch_of_genotypes)[0]
-
         descriptors_dim = new_batch_of_descriptors.shape[1]
 
         # gather all data
@@ -294,17 +292,21 @@ class MOMERepertoire(MapElitesRepertoire):
             index = index.astype(jnp.int32)
 
             # get current repertoire cell data
-            cell_genotype = jax.tree_util.tree_map(lambda x: x[index][0], carry.genotypes)
+            cell_genotype = jax.tree_util.tree_map(
+                lambda x: x[index][0], carry.genotypes
+            )
             cell_fitness = carry.fitnesses[index][0]
             cell_descriptor = carry.descriptors[index][0]
             cell_mask = jnp.any(cell_fitness == -jnp.inf, axis=-1)
 
-            new_genotypes = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), genotype)
+            new_genotypes = jax.tree_util.tree_map(
+                lambda x: jnp.expand_dims(x, axis=0), genotype
+            )
 
             # update pareto front
             (
                 cell_fitness,
-                cell_genotype, # new pf for cell 
+                cell_genotype,  # new pf for cell
                 cell_descriptor,
                 cell_mask,
             ) = self._update_masked_pareto_front(
