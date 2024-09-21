@@ -61,7 +61,7 @@ def test_dcrlme() -> None:
     policy_delay = 2
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)

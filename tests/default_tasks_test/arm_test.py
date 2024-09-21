@@ -41,7 +41,7 @@ def test_arm(task_name: str, batch_size: int) -> None:
     max_bd = 1.0
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # Init population of controllers
     random_key, subkey = jax.random.split(random_key)
@@ -114,7 +114,7 @@ def test_arm_scoring_function() -> None:
 
     # Init a random key
     seed = 42
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # arm has xy BD centered at 0.5 0.5 and min max range is [0,1]
     # 0 params of first genotype is horizontal and points towards negative x axis

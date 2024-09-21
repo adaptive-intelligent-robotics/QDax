@@ -79,7 +79,7 @@ def test_mome(num_descriptors: int) -> None:
     metrics_function = partial(default_moqd_metrics, reference_point=reference_point)
 
     # initial population
-    random_key = jax.random.PRNGKey(42)
+    random_key = jax.random.key(42)
     random_key, subkey = jax.random.split(random_key)
     genotypes = jax.random.uniform(
         subkey,

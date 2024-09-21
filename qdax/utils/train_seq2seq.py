@@ -19,9 +19,6 @@ from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
 from qdax.custom_types import Params, RNGKey
 from qdax.environments.bd_extractors import AuroraExtraInfoNormalization
 
-Array = Any
-PRNGKey = Any
-
 
 def get_model(
     obs_size: int, teacher_force: bool = False, hidden_size: int = 10
@@ -40,7 +37,7 @@ def get_model(
 
 
 def get_initial_params(
-    model: Seq2seq, random_key: PRNGKey, encoder_input_shape: Tuple[int, ...]
+    model: Seq2seq, random_key: RNGKey, encoder_input_shape: Tuple[int, ...]
 ) -> Dict[str, Any]:
     """
     Returns the initial parameters of a seq2seq model.
@@ -62,8 +59,8 @@ def get_initial_params(
 @jax.jit
 def train_step(
     state: train_state.TrainState,
-    batch: Array,
-    lstm_random_key: PRNGKey,
+    batch: jax.Array,
+    lstm_random_key: RNGKey,
 ) -> Tuple[train_state.TrainState, Dict[str, float]]:
     """
     Trains for one step.

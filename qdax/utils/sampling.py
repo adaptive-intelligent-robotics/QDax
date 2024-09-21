@@ -159,8 +159,8 @@ def multi_sample_scoring_function(
         # vectorizing over axis 0 vectorizes over the num_samples random keys
         in_axes=(None, 0),
         # indicates that the vectorized axis will become axis 1, i.e., the final
-        # output is shape (batch_size, num_samples, ...)
-        out_axes=1,
+        # output is shape (batch_size, num_samples, ...) except for the random key
+        out_axes=(1, 1, 1, 0),
     )
     all_fitnesses, all_descriptors, all_extra_scores, _ = sample_scoring_fn(
         policies_params, keys

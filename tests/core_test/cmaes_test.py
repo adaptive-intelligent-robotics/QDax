@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.cmaes import CMAES
+from qdax.baselines.cmaes import CMAES
 
 
 def test_cmaes() -> None:
@@ -32,7 +32,7 @@ def test_cmaes() -> None:
     )
 
     state = cmaes.init()
-    random_key = jax.random.PRNGKey(0)
+    random_key = jax.random.key(0)
 
     iteration_count = 0
     for _ in range(num_iterations):

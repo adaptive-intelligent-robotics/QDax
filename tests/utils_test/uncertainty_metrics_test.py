@@ -25,7 +25,7 @@ def test_uncertainty_metrics() -> None:
     genotype_dim = 8
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    random_key = jax.random.key(seed)
 
     # First, init a deterministic environment
     init_policies = jax.random.uniform(
