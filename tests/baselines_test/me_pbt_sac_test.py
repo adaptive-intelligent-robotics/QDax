@@ -69,7 +69,7 @@ def test_me_pbt_sac() -> None:
     )
     min_bd, max_bd = env.behavior_descriptor_limits
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     key, subkey = jax.random.split(key)
     eval_env_first_states = jax.jit(eval_env.reset)(rng=subkey)
 
@@ -163,6 +163,9 @@ def test_me_pbt_sac() -> None:
         observation_size=env.observation_size,
         buffer_size=buffer_size,
     )
+
+    # Need to convert to PRNGKey because of github.com/jax-ml/jax/issues/23647
+    keys = jax.random.key_data(keys)
     keys, training_states, _ = jax.pmap(agent_init_fn, axis_name="p", devices=devices)(
         keys
     )

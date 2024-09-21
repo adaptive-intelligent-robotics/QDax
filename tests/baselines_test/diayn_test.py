@@ -62,7 +62,7 @@ def test_diayn() -> None:
         eval_metrics=True,
     )
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     env_state = jax.jit(env.reset)(rng=key)
     eval_env_first_state = jax.jit(eval_env.reset)(rng=key)
 

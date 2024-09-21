@@ -19,7 +19,7 @@ Notes:
 import jax
 from qdax.tasks.arm import arm_scoring_function
 
-random_key = jax.random.PRNGKey(0)
+random_key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = arm_scoring_function
@@ -56,7 +56,7 @@ desc_size = 2
 import jax
 from qdax.tasks.standard_functions import sphere_scoring_function
 
-random_key = jax.random.PRNGKey(0)
+random_key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = sphere_scoring_function
@@ -98,7 +98,7 @@ desc_size = 2
 import jax
 from qdax.tasks.hypervolume_functions import square_scoring_function
 
-random_key = jax.random.PRNGKey(0)
+random_key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = square_scoring_function
