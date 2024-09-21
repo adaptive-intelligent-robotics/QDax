@@ -96,7 +96,9 @@ def test_cma_mega() -> None:
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
     key = jax.random.key(0)
-    initial_population = jax.random.uniform(key, shape=(batch_size, num_dimensions))
+
+    key, subkey = jax.random.split(key)
+    initial_population = jax.random.uniform(subkey, shape=(batch_size, num_dimensions))
 
     centroids, key = compute_cvt_centroids(
         num_descriptors=2,

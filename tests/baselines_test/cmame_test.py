@@ -82,8 +82,10 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
     key = jax.random.key(0)
+
+    key, subkey = jax.random.split(key)
     initial_population = (
-        jax.random.uniform(key, shape=(batch_size, num_dimensions)) * 0.0
+        jax.random.uniform(subkey, shape=(batch_size, num_dimensions)) * 0.0
     )
 
     centroids = compute_euclidean_centroids(
@@ -109,7 +111,8 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         scoring_function=scoring_fn, emitter=emitter, metrics_function=metrics_fn
     )
 
-    repertoire, emitter_state, key = map_elites.init(initial_population, centroids, key)
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, key = map_elites.init(initial_population, centroids, subkey)
 
     (
         repertoire,

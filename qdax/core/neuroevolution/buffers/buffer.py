@@ -270,7 +270,7 @@ class QDTransition(Transition):
         return dummy_transition
 
 
-class DCGTransition(QDTransition):
+class DCRLTransition(QDTransition):
     """Stores data corresponding to a transition collected by a QD algorithm."""
 
     desc: Descriptor
@@ -325,8 +325,8 @@ class DCGTransition(QDTransition):
     def from_flatten(
         cls,
         flattened_transition: jnp.ndarray,
-        transition: QDTransition,
-    ) -> QDTransition:
+        transition: DCRLTransition,
+    ) -> DCRLTransition:
         """
         Creates a transition from a flattened transition in a jnp.ndarray.
         Args:
@@ -394,7 +394,7 @@ class DCGTransition(QDTransition):
     @classmethod
     def init_dummy(  # type: ignore
         cls, observation_dim: int, action_dim: int, descriptor_dim: int
-    ) -> QDTransition:
+    ) -> DCRLTransition:
         """
         Initialize a dummy transition that then can be passed to constructors to get
         all shapes right.
@@ -404,7 +404,7 @@ class DCGTransition(QDTransition):
         Returns:
             a dummy transition
         """
-        dummy_transition = DCGTransition(
+        dummy_transition = DCRLTransition(
             obs=jnp.zeros(shape=(1, observation_dim)),
             next_obs=jnp.zeros(shape=(1, observation_dim)),
             rewards=jnp.zeros(shape=(1,)),

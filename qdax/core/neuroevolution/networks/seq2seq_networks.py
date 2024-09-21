@@ -15,9 +15,6 @@ import jax.numpy as jnp
 import numpy as np
 from flax import linen as nn
 
-Array = Any
-PRNGKey = Any
-
 
 class EncoderLSTM(nn.Module):
     """EncoderLSTM Module wrapped in a lifted scan transform."""
@@ -31,14 +28,16 @@ class EncoderLSTM(nn.Module):
     )
     @nn.compact
     def __call__(
-        self, carry: Tuple[Array, Array], x: Array
-    ) -> Tuple[Tuple[Array, Array], Array]:
+        self, carry: Tuple[jax.Array, jax.Array], x: jax.Array
+    ) -> Tuple[Tuple[jax.Array, jax.Array], jax.Array]:
         """Applies the module."""
         lstm_state, is_eos = carry
         features = lstm_state[0].shape[-1]
         new_lstm_state, y = nn.LSTMCell(features)(lstm_state, x)
 
-        def select_carried_state(new_state: Array, old_state: Array) -> Array:
+        def select_carried_state(
+            new_state: jax.Array, old_state: jax.Array
+        ) -> jax.Array:
             return jnp.where(is_eos[:, np.newaxis], old_state, new_state)
 
         # LSTM state is a tuple (c, h).
@@ -49,7 +48,9 @@ class EncoderLSTM(nn.Module):
         return (carried_lstm_state, is_eos), y
 
     @staticmethod
-    def initialize_carry(batch_size: int, hidden_size: int) -> Tuple[Array, Array]:
+    def initialize_carry(
+        batch_size: int, hidden_size: int
+    ) -> Tuple[jax.Array, jax.Array]:
         # Use a dummy key since the default state init fn is just zeros.
         return nn.LSTMCell(hidden_size, parent=None).initialize_carry(  # type: ignore
             jax.random.key(0), (batch_size, hidden_size)
@@ -62,7 +63,7 @@ class Encoder(nn.Module):
     hidden_size: int
 
     @nn.compact
-    def __call__(self, inputs: Array) -> Array:
+    def __call__(self, inputs: jax.Array) -> jax.Array:
         batch_size = inputs.shape[0]
         lstm = EncoderLSTM(name="encoder_lstm")
         init_lstm_state = lstm.initialize_carry(batch_size, self.hidden_size)
@@ -95,7 +96,7 @@ class DecoderLSTM(nn.Module):
         split_rngs={"params": False, "lstm": True},
     )
     @nn.compact
-    def __call__(self, carry: Tuple[Array, Array], x: Array) -> Array:
+    def __call__(self, carry: Tuple[jax.Array, jax.Array], x: jax.Array) -> jax.Array:
         """Applies the DecoderLSTM model."""
 
         lstm_state, last_prediction = carry
@@ -124,7 +125,9 @@ class Decoder(nn.Module):
     obs_size: int
 
     @nn.compact
-    def __call__(self, inputs: Array, init_state: Any) -> Tuple[Array, Array]:
+    def __call__(
+        self, inputs: jax.Array, init_state: Any
+    ) -> Tuple[jax.Array, jax.Array]:
         """Applies the decoder model.
 
         Args:
@@ -166,8 +169,8 @@ class Seq2seq(nn.Module):
 
     @nn.compact
     def __call__(
-        self, encoder_inputs: Array, decoder_inputs: Array
-    ) -> Tuple[Array, Array]:
+        self, encoder_inputs: jax.Array, decoder_inputs: jax.Array
+    ) -> Tuple[jax.Array, jax.Array]:
         """Applies the seq2seq model.
 
         Args:
@@ -194,7 +197,7 @@ class Seq2seq(nn.Module):
 
         return logits, predictions
 
-    def encode(self, encoder_inputs: Array) -> Array:
+    def encode(self, encoder_inputs: jax.Array) -> jax.Array:
         # encode inputs
         init_decoder_state = self.encoder(encoder_inputs)
         final_output, _hidden_state = init_decoder_state

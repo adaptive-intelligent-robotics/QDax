@@ -3,19 +3,19 @@ from typing import Callable, Tuple
 
 import flax.linen as nn
 
+from qdax.core.emitters.dcrl_emitter import DCRLConfig, DCRLEmitter
 from qdax.core.emitters.multi_emitter import MultiEmitter
-from qdax.core.emitters.qdcg_emitter import QualityDCGConfig, QualityDCGEmitter
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.custom_types import Params, RNGKey
 from qdax.environments.base_wrappers import QDEnv
 
 
 @dataclass
-class DCGMEConfig:
-    """Configuration for DCGME Algorithm"""
+class DCRLMEConfig:
+    """Configuration for DCRL-MAP-Elites Algorithm"""
 
     ga_batch_size: int = 128
-    qpg_batch_size: int = 64
+    dcrl_batch_size: int = 64
     ai_batch_size: int = 64
     lengthscale: float = 0.1
 
@@ -36,10 +36,10 @@ class DCGMEConfig:
     policy_delay: int = 2
 
 
-class DCGMEEmitter(MultiEmitter):
+class DCRLMEEmitter(MultiEmitter):
     def __init__(
         self,
-        config: DCGMEConfig,
+        config: DCRLMEConfig,
         policy_network: nn.Module,
         actor_network: nn.Module,
         env: QDEnv,
@@ -49,8 +49,8 @@ class DCGMEEmitter(MultiEmitter):
         self._env = env
         self._variation_fn = variation_fn
 
-        qdcg_config = QualityDCGConfig(
-            qpg_batch_size=config.qpg_batch_size,
+        dcrl_config = DCRLConfig(
+            dcrl_batch_size=config.dcrl_batch_size,
             ai_batch_size=config.ai_batch_size,
             lengthscale=config.lengthscale,
             critic_hidden_layer_size=config.critic_hidden_layer_size,
@@ -70,8 +70,8 @@ class DCGMEEmitter(MultiEmitter):
         )
 
         # define the quality emitter
-        q_emitter = QualityDCGEmitter(
-            config=qdcg_config,
+        dcrl_emitter = DCRLEmitter(
+            config=dcrl_config,
             policy_network=policy_network,
             actor_network=actor_network,
             env=env,
@@ -85,4 +85,4 @@ class DCGMEEmitter(MultiEmitter):
             batch_size=config.ga_batch_size,
         )
 
-        super().__init__(emitters=(q_emitter, ga_emitter))
+        super().__init__(emitters=(dcrl_emitter, ga_emitter))

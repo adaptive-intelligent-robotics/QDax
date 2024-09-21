@@ -71,6 +71,7 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
     # initial population
     key = jax.random.key(42)
     key, subkey = jax.random.split(key)
+
     genotypes = jax.random.uniform(
         subkey,
         (batch_size, genotype_dim),

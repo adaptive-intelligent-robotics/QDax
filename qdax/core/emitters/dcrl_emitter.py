@@ -1,4 +1,4 @@
-"""Implements the PG Emitter and Actor Injection from DCG-ME algorithm
+"""Implements the DCRL Emitter from DCRL-MAP-Elites algorithm
 in JAX for Brax environments.
 """
 
@@ -13,7 +13,7 @@ from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.core.neuroevolution.buffers.buffer import DCGTransition, ReplayBuffer
+from qdax.core.neuroevolution.buffers.buffer import DCRLTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_dc_fn
 from qdax.core.neuroevolution.networks.networks import QModuleDC
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
@@ -21,10 +21,10 @@ from qdax.environments.base_wrappers import QDEnv
 
 
 @dataclass
-class QualityDCGConfig:
-    """Configuration for QualityDCG Emitter"""
+class DCRLConfig:
+    """Configuration for DCRL Emitter"""
 
-    qpg_batch_size: int = 64
+    dcrl_batch_size: int = 64
     ai_batch_size: int = 64
     lengthscale: float = 0.1
 
@@ -44,7 +44,7 @@ class QualityDCGConfig:
     policy_delay: int = 2
 
 
-class QualityDCGEmitterState(EmitterState):
+class DCRLEmitterState(EmitterState):
     """Contains training state for the learner."""
 
     critic_params: Params
@@ -58,15 +58,15 @@ class QualityDCGEmitterState(EmitterState):
     steps: jnp.ndarray
 
 
-class QualityDCGEmitter(Emitter):
+class DCRLEmitter(Emitter):
     """
-    A policy gradient emitter used to implement the Policy Gradient Assisted MAP-Elites
-    (PGA-Map-Elites) algorithm.
+    A descriptor-conditioned reinforcement learning emitter used to implement
+    DCRL-MAP-Elites algorithm.
     """
 
     def __init__(
         self,
-        config: QualityDCGConfig,
+        config: DCRLConfig,
         policy_network: nn.Module,
         actor_network: nn.Module,
         env: QDEnv,
@@ -114,7 +114,7 @@ class QualityDCGEmitter(Emitter):
         Returns:
             the batch size emitted by the emitter.
         """
-        return self._config.qpg_batch_size + self._config.ai_batch_size
+        return self._config.dcrl_batch_size + self._config.ai_batch_size
 
     @property
     def use_all_data(self) -> bool:
@@ -133,7 +133,7 @@ class QualityDCGEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> QualityDCGEmitterState:
+    ) -> DCRLEmitterState:
         """Initializes the emitter state.
 
         Args:
@@ -168,7 +168,7 @@ class QualityDCGEmitter(Emitter):
         actor_opt_state = self._actor_optimizer.init(actor_params)
 
         # Initialize replay buffer
-        dummy_transition = DCGTransition.init_dummy(
+        dummy_transition = DCRLTransition.init_dummy(
             observation_dim=self._env.observation_size,
             action_dim=action_size,
             descriptor_dim=descriptor_size,
@@ -191,7 +191,8 @@ class QualityDCGEmitter(Emitter):
         replay_buffer = replay_buffer.insert(transitions)
 
         # Initial training state
-        emitter_state = QualityDCGEmitterState(
+        key, subkey = jax.random.split(key)
+        emitter_state = DCRLEmitterState(
             critic_params=critic_params,
             critic_opt_state=critic_opt_state,
             actor_params=actor_params,
@@ -199,7 +200,7 @@ class QualityDCGEmitter(Emitter):
             target_critic_params=target_critic_params,
             target_actor_params=target_actor_params,
             replay_buffer=replay_buffer,
-            key=key,
+            key=subkey,
             steps=jnp.array(0),
         )
 
@@ -272,7 +273,7 @@ class QualityDCGEmitter(Emitter):
     def emit(
         self,
         repertoire: Repertoire,
-        emitter_state: QualityDCGEmitterState,
+        emitter_state: DCRLEmitterState,
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Do a step of PG emission.
@@ -287,7 +288,7 @@ class QualityDCGEmitter(Emitter):
         """
         # PG emitter
         parents_pg, descs_pg, key = repertoire.sample_with_descs(
-            key, self._config.qpg_batch_size
+            key, self._config.dcrl_batch_size
         )
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
@@ -310,7 +311,7 @@ class QualityDCGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def emit_pg(
         self,
-        emitter_state: QualityDCGEmitterState,
+        emitter_state: DCRLEmitterState,
         parents: Genotype,
         descs: Descriptor,
     ) -> Genotype:
@@ -335,9 +336,7 @@ class QualityDCGEmitter(Emitter):
         return offsprings
 
     @partial(jax.jit, static_argnames=("self",))
-    def emit_ai(
-        self, emitter_state: QualityDCGEmitterState, descs: Descriptor
-    ) -> Genotype:
+    def emit_ai(self, emitter_state: DCRLEmitterState, descs: Descriptor) -> Genotype:
         """Emit the offsprings generated through pg mutation.
 
         Args:
@@ -357,7 +356,7 @@ class QualityDCGEmitter(Emitter):
         return offsprings
 
     @partial(jax.jit, static_argnames=("self",))
-    def emit_actor(self, emitter_state: QualityDCGEmitterState) -> Genotype:
+    def emit_actor(self, emitter_state: DCRLEmitterState) -> Genotype:
         """Emit the greedy actor.
 
         Simply needs to be retrieved from the emitter state.
@@ -374,13 +373,13 @@ class QualityDCGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
-        emitter_state: QualityDCGEmitterState,
+        emitter_state: DCRLEmitterState,
         repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> QualityDCGEmitterState:
+    ) -> DCRLEmitterState:
         """This function gives an opportunity to update the emitter state
         after the genotypes have been scored.
 
@@ -409,7 +408,9 @@ class QualityDCGEmitter(Emitter):
         desc_prime = jnp.concatenate(
             [
                 extra_scores["desc_prime"],
-                descriptors[self._config.qpg_batch_size + self._config.ai_batch_size :],
+                descriptors[
+                    self._config.dcrl_batch_size + self._config.ai_batch_size :
+                ],
             ],
             axis=0,
         )
@@ -449,9 +450,9 @@ class QualityDCGEmitter(Emitter):
         emitter_state = emitter_state.replace(key=key)
 
         def scan_train_critics(
-            carry: QualityDCGEmitterState,
-            transitions: DCGTransition,
-        ) -> Tuple[QualityDCGEmitterState, Any]:
+            carry: DCRLEmitterState,
+            transitions: DCRLTransition,
+        ) -> Tuple[DCRLEmitterState, Any]:
             emitter_state = carry
             new_emitter_state = self._train_critics(emitter_state, transitions)
             return new_emitter_state, ()
@@ -468,8 +469,8 @@ class QualityDCGEmitter(Emitter):
 
     @partial(jax.jit, static_argnames=("self",))
     def _train_critics(
-        self, emitter_state: QualityDCGEmitterState, transitions: DCGTransition
-    ) -> QualityDCGEmitterState:
+        self, emitter_state: DCRLEmitterState, transitions: DCRLTransition
+    ) -> DCRLEmitterState:
         """Apply one gradient step to critics and to the greedy actor
         (contained in carry in training_state), then soft update target critics
         and target actor.
@@ -541,12 +542,13 @@ class QualityDCGEmitter(Emitter):
         target_critic_params: Params,
         target_actor_params: Params,
         critic_opt_state: Params,
-        transitions: DCGTransition,
+        transitions: DCRLTransition,
         key: RNGKey,
     ) -> Tuple[Params, Params, Params]:
 
         # compute loss and gradients
-        critic_loss, critic_gradient = jax.value_and_grad(self._critic_loss_fn)(
+        key, subkey = jax.random.split(key)
+        critic_gradient = jax.grad(self._critic_loss_fn)(
             critic_params,
             target_actor_params,
             target_critic_params,
@@ -577,11 +579,11 @@ class QualityDCGEmitter(Emitter):
         actor_opt_state: optax.OptState,
         target_actor_params: Params,
         critic_params: Params,
-        transitions: DCGTransition,
+        transitions: DCRLTransition,
     ) -> Tuple[optax.OptState, Params, Params]:
 
         # Update greedy actor
-        policy_loss, policy_gradient = jax.value_and_grad(self._actor_loss_fn)(
+        policy_gradient = jax.grad(self._actor_loss_fn)(
             actor_params,
             critic_params,
             transitions,
@@ -611,7 +613,7 @@ class QualityDCGEmitter(Emitter):
         self,
         policy_params: Genotype,
         descs: Descriptor,
-        emitter_state: QualityDCGEmitterState,
+        emitter_state: DCRLEmitterState,
     ) -> Genotype:
         """Apply pg mutation to a policy via multiple steps of gradient descent.
         First, update the rewards to be diversity rewards, then apply the gradient
@@ -659,9 +661,9 @@ class QualityDCGEmitter(Emitter):
         policy_opt_state = self._policies_optimizer.init(policy_params)
 
         def scan_train_policy(
-            carry: Tuple[QualityDCGEmitterState, Genotype, optax.OptState],
-            transitions: DCGTransition,
-        ) -> Tuple[Tuple[QualityDCGEmitterState, Genotype, optax.OptState], Any]:
+            carry: Tuple[DCRLEmitterState, Genotype, optax.OptState],
+            transitions: DCRLTransition,
+        ) -> Tuple[Tuple[DCRLEmitterState, Genotype, optax.OptState], Any]:
             emitter_state, policy_params, policy_opt_state = carry
             (
                 new_emitter_state,
@@ -695,11 +697,11 @@ class QualityDCGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def _train_policy(
         self,
-        emitter_state: QualityDCGEmitterState,
+        emitter_state: DCRLEmitterState,
         policy_params: Params,
         policy_opt_state: optax.OptState,
-        transitions: DCGTransition,
-    ) -> Tuple[QualityDCGEmitterState, Params, optax.OptState]:
+        transitions: DCRLTransition,
+    ) -> Tuple[DCRLEmitterState, Params, optax.OptState]:
         """Apply one gradient step to a policy (called policy_params).
 
         Args:
@@ -726,11 +728,11 @@ class QualityDCGEmitter(Emitter):
         critic_params: Params,
         policy_opt_state: optax.OptState,
         policy_params: Params,
-        transitions: DCGTransition,
+        transitions: DCRLTransition,
     ) -> Tuple[optax.OptState, Params]:
 
         # compute loss
-        _policy_loss, policy_gradient = jax.value_and_grad(self._policy_loss_fn)(
+        policy_gradient = jax.grad(self._policy_loss_fn)(
             policy_params,
             critic_params,
             transitions,

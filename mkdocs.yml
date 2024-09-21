@@ -114,6 +114,7 @@ nav:
   - Examples:
     - MAPElites: examples/mapelites.ipynb
     - PGAME: examples/pgame.ipynb
+    - DCRL-ME: examples/dcrlme.ipynb
     - CMA ME: examples/cmame.ipynb
     - QDPG: examples/qdpg.ipynb
     - OMG MEGA: examples/omgmega.ipynb
@@ -136,6 +137,7 @@ nav:
       - Core algorithms:
         - MAP Elites: api_documentation/core/map_elites.md
         - PGAME: api_documentation/core/pgame.md
+        - DCRLME: api_documentation/core/dcrlme.md
         - QDPG: api_documentation/core/qdpg.md
         - CMA ME: api_documentation/core/cmame.md
         - OMG MEGA: api_documentation/core/omg_mega.md
@@ -152,11 +154,11 @@ nav:
         - DADS: api_documentation/core/dads.md
         - SAC: api_documentation/core/sac.md
         - TD3: api_documentation/core/td3.md
-        - CMAES: api_documentation/core/cmaes.md
         - Genetic Algorithm: api_documentation/core/genetic_algorithm.md
         - NSGA2: api_documentation/core/nsga2.md
         - SPEA2: api_documentation/core/spea2.md
         - PBT: api_documentation/core/pbt.md
+        - CMAES: api_documentation/core/cmaes.md
       - Containers: api_documentation/core/containers.md
       - Emitters: api_documentation/core/emitters.md
       - Neuroevolution: api_documentation/core/neuroevolution.md

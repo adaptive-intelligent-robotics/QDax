@@ -110,9 +110,7 @@ def intra_batch_comp(
 
     # We want to eliminate the same individual (distance 0)
     fitness = jnp.where(knn_relevant_indices == current_index, False, fitness)
-    current_fitness = jnp.squeeze(
-        eval_scores.at[knn_relevant_indices.at[0].get()].get()
-    )
+    current_fitness = jnp.squeeze(eval_scores.at[current_index].get())
 
     # Is the fitness of the other individual higher?
     # If both are True then we discard the current individual since this individual
