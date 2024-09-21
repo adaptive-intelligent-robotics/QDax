@@ -64,7 +64,7 @@ class DIAYN(SAC):
     Since we are using categorical skills, the current loss function used
     to train the discriminator is the categorical cross entropy loss.
 
-    We plan to add continous skill as an option in the future. We also plan
+    We plan to add continuous skill as an option in the future. We also plan
     to release the current constraint on the number of batched environments
     by sampling from the skills rather than having this fixed setting.
     """
@@ -408,7 +408,7 @@ class DIAYN(SAC):
             training_state.discriminator_params, discriminator_updates
         )
 
-        # udpate alpha
+        # update alpha
         (
             alpha_params,
             alpha_optimizer_state,

@@ -48,6 +48,6 @@ class Repertoire(flax.struct.PyTreeNode, ABC):
         repertoire.
 
         Returns:
-            The udpated repertoire.
+            The updated repertoire.
         """
         pass

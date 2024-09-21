@@ -12,7 +12,7 @@ from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 class EmitterState(PyTreeNode):
     """The state of an emitter. Emitters are used to suggest offspring
     when evolving a population of genotypes. To emit new genotypes, some
-    emitters need to have a state, that carries useful informations, like
+    emitters need to have a state, that carries useful information, like
     running means, distribution parameters, critics, replay buffers etc...
 
     The object emitter state is used to store them and is updated along
@@ -89,7 +89,7 @@ class Emitter(ABC):
         """This function gives an opportunity to update the emitter state
         after the genotypes have been scored.
 
-        As a matter of fact, many emitter states needs informations from
+        As a matter of fact, many emitter states needs information from
         the evaluations of the genotypes in order to be updated, for instance:
         - CMA emitter: to update the rank of the covariance matrix
         - PGA emitter: to fill the replay buffer and update the critic/greedy

@@ -73,7 +73,7 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     reset_fn = jax.jit(jax.vmap(env.reset))
     init_states = reset_fn(keys)
 
-    # Define the fonction to play a step with the policy in the environment
+    # Define the function to play a step with the policy in the environment
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,

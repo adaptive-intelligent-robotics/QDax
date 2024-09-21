@@ -60,7 +60,7 @@ class SPEA2Repertoire(GARepertoire):
         """Updates the population with the new solutions.
 
         To decide which individuals to keep, we count, for each solution,
-        the number of solutions by which tey are dominated. We keep only
+        the number of solutions by which they are dominated. We keep only
         the solutions that are the less dominated ones.
 
         Args:
