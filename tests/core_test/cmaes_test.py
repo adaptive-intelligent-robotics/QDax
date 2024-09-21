@@ -39,7 +39,8 @@ def test_cmaes() -> None:
         iteration_count += 1
 
         # sample
-        samples, key = cmaes.sample(state, key)
+        key, subkey = jax.random.split(key)
+        samples = cmaes.sample(state, subkey)
 
         # udpate
         state = cmaes.update(state, samples)

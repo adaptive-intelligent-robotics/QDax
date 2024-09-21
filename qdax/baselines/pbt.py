@@ -131,7 +131,7 @@ class PBT:
     @partial(jax.jit, static_argnames=("self",))
     def update_states_and_buffer_pmap(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         population_returns: jnp.ndarray,
         training_state: PBTTrainingState,
         replay_buffer: ReplayBuffer,
@@ -143,7 +143,7 @@ class PBT:
         and implement a parallel update through communication between the devices.
 
         Args:
-            random_key: Random RNG key.
+            key: Random RNG key.
             population_returns: Returns of the agents in the populations.
             training_state: The training state of the PBT scheme.
             replay_buffer: Shared replay buffer by the agents.
@@ -170,9 +170,9 @@ class PBT:
         pop_indices_sorted = jax.numpy.argsort(-gathered_best_returns)
         best_pop_indices = pop_indices_sorted[: self._num_best_to_replace_from]
 
-        random_key, key = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         indices_used_to_replace = jax.random.choice(
-            key, best_pop_indices, shape=(self._num_worse_to_replace,), replace=True
+            subkey, best_pop_indices, shape=(self._num_worse_to_replace,), replace=True
         )
 
         training_state = jax.tree_util.tree_map(

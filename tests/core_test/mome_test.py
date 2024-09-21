@@ -38,6 +38,8 @@ def test_mome(num_descriptors: int) -> None:
     lag = 2.2
     base_lag = 0.0
 
+    key = jax.random.key(42)
+
     def rastrigin_scorer(
         genotypes: jnp.ndarray, base_lag: float, lag: float
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -79,7 +81,6 @@ def test_mome(num_descriptors: int) -> None:
     metrics_function = partial(default_moqd_metrics, reference_point=reference_point)
 
     # initial population
-    key = jax.random.key(42)
     key, subkey = jax.random.split(key)
     genotypes = jax.random.uniform(
         subkey,
@@ -111,13 +112,14 @@ def test_mome(num_descriptors: int) -> None:
         batch_size=batch_size,
     )
 
-    centroids, key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=num_descriptors,
         num_init_cvt_samples=20000,
         num_centroids=num_centroids,
         minval=minval,
         maxval=maxval,
-        key=key,
+        key=subkey,
     )
 
     mome = MOME(
@@ -126,8 +128,9 @@ def test_mome(num_descriptors: int) -> None:
         metrics_function=metrics_function,
     )
 
-    repertoire, emitter_state, key = mome.init(
-        genotypes, centroids, pareto_front_max_length, key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = mome.init(
+        genotypes, centroids, pareto_front_max_length, subkey
     )
 
     # Run the algorithm

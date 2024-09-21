@@ -112,7 +112,8 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = map_elites.init(init_variables, centroids, subkey)
 
     # Run the algorithm
     (

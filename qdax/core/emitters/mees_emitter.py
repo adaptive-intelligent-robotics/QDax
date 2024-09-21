@@ -280,20 +280,18 @@ class MEESEmitter(Emitter):
             shape=self._config.last_updated_size
         )
 
-        return (
-            MEESEmitterState(
-                initial_optimizer_state=initial_optimizer_state,
-                optimizer_state=initial_optimizer_state,
-                offspring=genotypes,
-                generation_count=0,
-                novelty_archive=novelty_archive,
-                last_updated_genotypes=last_updated_genotypes,
-                last_updated_fitnesses=last_updated_fitnesses,
-                last_updated_position=0,
-                key=key,
-            ),
-            key,
+        emitter_state = MEESEmitterState(
+            initial_optimizer_state=initial_optimizer_state,
+            optimizer_state=initial_optimizer_state,
+            offspring=genotypes,
+            generation_count=0,
+            novelty_archive=novelty_archive,
+            last_updated_genotypes=last_updated_genotypes,
+            last_updated_fitnesses=last_updated_fitnesses,
+            last_updated_position=0,
+            key=key,
         )
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(
@@ -670,7 +668,8 @@ class MEESEmitter(Emitter):
         )
 
         # Select parent and optimizer_state
-        parent, key = jax.lax.cond(
+        key, subkey = jax.random.split(emitter_state.key)
+        parent = jax.lax.cond(
             sample_new_parent,
             lambda emitter_state, repertoire, key: jax.lax.cond(
                 use_exploration,
@@ -680,13 +679,10 @@ class MEESEmitter(Emitter):
                 repertoire,
                 key,
             ),
-            lambda emitter_state, repertoire, key: (
-                emitter_state.offspring,
-                key,
-            ),
+            lambda emitter_state, repertoire, key: emitter_state.offspring,
             emitter_state,
             repertoire,
-            emitter_state.key,
+            subkey,
         )
         optimizer_state = jax.lax.cond(
             sample_new_parent,
@@ -711,10 +707,11 @@ class MEESEmitter(Emitter):
             return scores
 
         # Run es process
-        offspring, optimizer_state, key = self._es_emitter(
+        key, subkey = jax.random.split(key)
+        offspring, optimizer_state = self._es_emitter(
             parent=parent,
             optimizer_state=optimizer_state,
-            key=key,
+            key=subkey,
             scores_fn=exploration_exploitation_scores,
         )
 

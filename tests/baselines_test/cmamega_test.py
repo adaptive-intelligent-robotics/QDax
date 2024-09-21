@@ -100,13 +100,14 @@ def test_cma_mega() -> None:
     key, subkey = jax.random.split(key)
     initial_population = jax.random.uniform(subkey, shape=(batch_size, num_dimensions))
 
-    centroids, key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=2,
         num_init_cvt_samples=10000,
         num_centroids=num_centroids,
         minval=minval,
         maxval=maxval,
-        key=key,
+        key=subkey,
     )
 
     emitter = CMAMEGAEmitter(
@@ -121,7 +122,9 @@ def test_cma_mega() -> None:
     map_elites = MAPElites(
         scoring_function=scoring_fn, emitter=emitter, metrics_function=metrics_fn
     )
-    repertoire, emitter_state, key = map_elites.init(initial_population, centroids, key)
+
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = map_elites.init(initial_population, centroids, subkey)
 
     (
         repertoire,

@@ -321,10 +321,10 @@ class PBTEmitter(Emitter):
         all_fitnesses = jnp.ravel(all_fitnesses)
         all_fitnesses = -jnp.sort(-all_fitnesses)
         key = emitter_state.key
-        key, sub_key = jax.random.split(key)
+        key, subkey = jax.random.split(key)
         best_genotypes = jax.tree_util.tree_map(
             lambda x: jax.random.choice(
-                sub_key, x, shape=(len(fitnesses),), replace=True
+                subkey, x, shape=(len(fitnesses),), replace=True
             ),
             best_genotypes_local,
         )
@@ -364,8 +364,9 @@ class PBTEmitter(Emitter):
 
         # Replacing with samples from the ME repertoire
         if self._num_to_replace_from_samples > 0:
-            me_samples, key = repertoire.sample(
-                key, self._config.pg_population_size_per_device
+            key, subkey = jax.random.split(key)
+            me_samples = repertoire.sample(
+                subkey, self._config.pg_population_size_per_device
             )
             # Resample hyper-params
             me_samples = jax.vmap(me_samples.__class__.resample_hyperparams)(me_samples)

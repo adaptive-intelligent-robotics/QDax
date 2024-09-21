@@ -69,16 +69,15 @@ class CMARndEmitter(CMAEmitter):
         # return the initial state
         key, subkey = jax.random.split(key)
 
-        return (
-            CMARndEmitterState(
-                key=subkey,
-                cmaes_state=self._cma_initial_state,
-                previous_fitnesses=default_fitnesses,
-                emit_count=0,
-                random_direction=random_direction,
-            ),
-            key,
+        emitter_state = CMARndEmitterState(
+            key=subkey,
+            cmaes_state=self._cma_initial_state,
+            previous_fitnesses=default_fitnesses,
+            emit_count=0,
+            random_direction=random_direction,
         )
+
+        return emitter_state
 
     def _update_and_init_emitter_state(
         self,

@@ -21,7 +21,7 @@ class DistributedMAPElites(MAPElites):
         genotypes: Genotype,
         centroids: Centroid,
         key: RNGKey,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState]]:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
@@ -81,7 +81,7 @@ class DistributedMAPElites(MAPElites):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state, key
+        return repertoire, emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
@@ -152,7 +152,7 @@ class DistributedMAPElites(MAPElites):
     def get_distributed_init_fn(
         self, centroids: Centroid, devices: List[Any]
     ) -> Callable[
-        [Genotype, RNGKey], Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]
+        [Genotype, RNGKey], Tuple[MapElitesRepertoire, Optional[EmitterState]]
     ]:
         """Create a function that init MAP-Elites in a distributed way.
 
@@ -173,7 +173,7 @@ class DistributedMAPElites(MAPElites):
         self, num_iterations: int, devices: List[Any]
     ) -> Callable[
         [MapElitesRepertoire, Optional[EmitterState], RNGKey],
-        Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey, Metrics],
+        Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics],
     ]:
         """Create a function that can do a certain number of updates of
         MAP-Elites in a way that is distributed on several devices.
@@ -198,15 +198,15 @@ class DistributedMAPElites(MAPElites):
             repertoire, emitter_state, key = carry
 
             # apply one step of update
+            key, subkey = jax.random.split(key)
             (
                 repertoire,
                 emitter_state,
                 metrics,
-                key,
             ) = self.update(
                 repertoire,
                 emitter_state,
-                key,
+                subkey,
             )
 
             return (repertoire, emitter_state, key), metrics
@@ -215,7 +215,7 @@ class DistributedMAPElites(MAPElites):
             repertoire: MapElitesRepertoire,
             emitter_state: Optional[EmitterState],
             key: RNGKey,
-        ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey, Metrics]:
+        ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
             """Apply num_iterations of update."""
             (
                 repertoire,
@@ -227,6 +227,6 @@ class DistributedMAPElites(MAPElites):
                 (),
                 length=num_iterations,
             )
-            return repertoire, emitter_state, key, metrics
+            return repertoire, emitter_state, metrics
 
         return jax.pmap(update_fn, devices=devices, axis_name="p")  # type: ignore

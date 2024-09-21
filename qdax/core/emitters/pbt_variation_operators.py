@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from qdax.baselines.sac_pbt import PBTSacTrainingState
 from qdax.baselines.td3_pbt import PBTTD3TrainingState
 from qdax.core.emitters.mutation_operators import isoline_variation
@@ -12,7 +10,7 @@ def sac_pbt_variation_fn(
     key: RNGKey,
     iso_sigma: float,
     line_sigma: float,
-) -> Tuple[PBTSacTrainingState, RNGKey]:
+) -> PBTSacTrainingState:
     """
     This operator runs a cross-over between two SAC agents. It is used as variation
     operator in the SAC-PBT-Map-Elites algorithm. An isoline-dd variation is applied
@@ -26,7 +24,7 @@ def sac_pbt_variation_fn(
         line_sigma: Line parameter (direction of the new genotype).
 
     Returns:
-        A new SAC training state obtained from cross-over and an updated random key.
+        A new SAC training state obtained from cross-over.
 
     """
 
@@ -42,7 +40,7 @@ def sac_pbt_variation_fn(
         training_state1.alpha_params,
         training_state2.alpha_params,
     )
-    (policy_params, critic_params, alpha_params), key = isoline_variation(
+    policy_params, critic_params, alpha_params = isoline_variation(
         x1=(policy_params1, critic_params1, alpha_params1),
         x2=(policy_params2, critic_params2, alpha_params2),
         key=key,
@@ -56,10 +54,7 @@ def sac_pbt_variation_fn(
         alpha_params=alpha_params,
     )
 
-    return (
-        new_training_state,
-        key,
-    )
+    return new_training_state  # type: ignore
 
 
 def td3_pbt_variation_fn(
@@ -68,7 +63,7 @@ def td3_pbt_variation_fn(
     key: RNGKey,
     iso_sigma: float,
     line_sigma: float,
-) -> Tuple[PBTTD3TrainingState, RNGKey]:
+) -> PBTTD3TrainingState:
     """
     This operator runs a cross-over between two TD3 agents. It is used as variation
     operator in the TD3-PBT-Map-Elites algorithm. An isoline-dd variation is applied
@@ -82,7 +77,7 @@ def td3_pbt_variation_fn(
         line_sigma: Line parameter (direction of the new genotype).
 
     Returns:
-        A new TD3 training state obtained from cross-over and an updated random key.
+        A new TD3 training state obtained from cross-over.
 
     """
 
@@ -94,10 +89,7 @@ def td3_pbt_variation_fn(
         training_state1.critic_params,
         training_state2.critic_params,
     )
-    (
-        policy_params,
-        critic_params,
-    ), key = isoline_variation(
+    policy_params, critic_params = isoline_variation(
         x1=(policy_params1, critic_params1),
         x2=(policy_params2, critic_params2),
         key=key,
@@ -109,7 +101,4 @@ def td3_pbt_variation_fn(
         critic_params=critic_params,
     )
 
-    return (
-        new_training_state,
-        key,
-    )
+    return new_training_state  # type: ignore

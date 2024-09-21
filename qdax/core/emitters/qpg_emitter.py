@@ -205,7 +205,7 @@ class QualityPGEmitter(Emitter):
             key: a random key
 
         Returns:
-            A batch of offspring, the new emitter state and a new key.
+            A batch of offspring, the new emitter state.
         """
 
         batch_size = self._config.env_batch_size
@@ -345,27 +345,26 @@ class QualityPGEmitter(Emitter):
             New emitter state where the critic and the greedy actor have been
             updated. Optimizer states have also been updated in the process.
         """
+        key = emitter_state.key
 
         # Sample a batch of transitions in the buffer
-        key = emitter_state.key
+        key, subkey = jax.random.split(key)
         replay_buffer = emitter_state.replay_buffer
-        transitions, key = replay_buffer.sample(
-            key, sample_size=self._config.batch_size
-        )
+        transitions = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
 
         # Update Critic
+        key, subkey = jax.random.split(key)
         (
             critic_optimizer_state,
             critic_params,
             target_critic_params,
-            key,
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
             target_actor_params=emitter_state.target_actor_params,
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             transitions=transitions,
-            key=key,
+            key=subkey,
         )
 
         # Update greedy actor
@@ -550,13 +549,12 @@ class QualityPGEmitter(Emitter):
         Returns:
             The new emitter state and new params of the NN.
         """
+        key = emitter_state.key
 
         # Sample a batch of transitions in the buffer
-        key = emitter_state.key
+        key, subkey = jax.random.split(key)
         replay_buffer = emitter_state.replay_buffer
-        transitions, key = replay_buffer.sample(
-            key, sample_size=self._config.batch_size
-        )
+        transitions = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
 
         # update policy
         policy_optimizer_state, policy_params = self._update_policy(

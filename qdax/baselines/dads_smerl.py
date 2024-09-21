@@ -101,7 +101,7 @@ class DADSSMERL(DADS):
             sample_size=self._config.batch_size,
         )
 
-        training_state = training_state.update(key=key)
+        training_state = training_state.replace(key=key)
 
         # Optionally replace the state descriptor by the observation
         if self._config.descriptor_full_state:

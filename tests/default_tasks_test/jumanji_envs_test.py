@@ -139,7 +139,8 @@ def test_jumanji_utils() -> None:
         descriptor_extractor=descriptor_extraction_fn,
     )
 
-    fitnesses, descriptors, extra_scores, key = scoring_fn(init_variables, key)
+    key, subkey = jax.random.split(key)
+    fitnesses, descriptors, extra_scores = scoring_fn(init_variables, subkey)
 
     pytest.assume(fitnesses.shape == (population_size,))
     pytest.assume(jnp.sum(jnp.isnan(fitnesses)) == 0.0)

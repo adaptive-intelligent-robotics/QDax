@@ -284,10 +284,11 @@ class DADS(SAC):
         else:
             state_desc = jnp.zeros((env_state.obs.shape[0], 2))
 
-        actions, key = self.select_action(
+        key, subkey = jax.random.split(key)
+        actions = self.select_action(
             obs=obs,
             policy_params=policy_params,
-            key=key,
+            key=subkey,
             deterministic=deterministic,
         )
 
@@ -324,14 +325,16 @@ class DADS(SAC):
             actions=actions,
             truncations=truncations,
         )
+
+        key, subkey = jax.random.split(key)
         if not evaluation:
             training_state = training_state.replace(
-                key=key,
+                key=subkey,
                 normalization_running_stats=normalization_running_stats,
             )
         else:
             training_state = training_state.replace(
-                key=key,
+                key=subkey,
             )
 
         return next_env_state, training_state, transition
@@ -493,48 +496,49 @@ class DADS(SAC):
         )
 
         # udpate alpha
+        key, subkey = jax.random.split(key)
         (
             alpha_params,
             alpha_optimizer_state,
             alpha_loss,
-            key,
         ) = self._update_alpha(
             alpha_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            key=key,
+            key=subkey,
         )
 
         # update critic
+        key, subkey = jax.random.split(key)
         (
             critic_params,
             target_critic_params,
             critic_optimizer_state,
             critic_loss,
-            key,
         ) = self._update_critic(
             critic_lr=self._config.learning_rate,
             reward_scaling=self._config.reward_scaling,
             discount=self._config.discount,
             training_state=training_state,
             transitions=transitions,
-            key=key,
+            key=subkey,
         )
 
         # update actor
+        key, subkey = jax.random.split(key)
         (
             policy_params,
             policy_optimizer_state,
             policy_loss,
-            key,
         ) = self._update_actor(
             policy_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            key=key,
+            key=subkey,
         )
 
         # Create new training state
+        key, subkey = jax.random.split(key)
         new_training_state = DadsTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -545,7 +549,7 @@ class DADS(SAC):
             target_critic_params=target_critic_params,
             dynamics_optimizer_state=dynamics_optimizer_state,
             dynamics_params=dynamics_params,
-            key=key,
+            key=subkey,
             normalization_running_stats=training_state.normalization_running_stats,
             steps=training_state.steps + 1,
         )
@@ -583,8 +587,10 @@ class DADS(SAC):
 
         # Sample a batch of transitions in the buffer
         key = training_state.key
-        transitions, key = replay_buffer.sample(
-            key,
+
+        key, subkey = jax.random.split(key)
+        transitions = replay_buffer.sample(
+            subkey,
             sample_size=self._config.batch_size,
         )
 

@@ -136,16 +136,14 @@ class CMAMEGAEmitter(Emitter):
 
         # return the initial state
         key, subkey = jax.random.split(key)
-        return (
-            CMAMEGAState(
-                theta=theta,
-                theta_grads=theta_grads,
-                key=subkey,
-                cmaes_state=self._cma_initial_state,
-                previous_fitnesses=default_fitnesses,
-            ),
-            key,
+        emitter_state = CMAMEGAState(
+            theta=theta,
+            theta_grads=theta_grads,
+            key=subkey,
+            cmaes_state=self._cma_initial_state,
+            previous_fitnesses=default_fitnesses,
         )
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(
@@ -176,7 +174,7 @@ class CMAMEGAEmitter(Emitter):
         grads = jnp.nan_to_num(emitter_state.theta_grads.squeeze(axis=0))
 
         # Draw random coefficients - use the emitter state key
-        coeffs, key = self._cmaes.sample(cmaes_state=cmaes_state, key=key)
+        coeffs = self._cmaes.sample(cmaes_state=cmaes_state, key=key)
 
         # make sure the fitness coefficient is positive
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
@@ -219,6 +217,7 @@ class CMAMEGAEmitter(Emitter):
         Returns:
             The updated emitter state.
         """
+        key = emitter_state.key
 
         # retrieve elements from the emitter state
         cmaes_state = emitter_state.cmaes_state
@@ -246,7 +245,8 @@ class CMAMEGAEmitter(Emitter):
         sorted_indices = jnp.flip(jnp.argsort(ranking_criteria))
 
         # Draw the coeffs - reuse the emitter state key to get same coeffs
-        coeffs, key = self._cmaes.sample(cmaes_state=cmaes_state, key=emitter_state.key)
+        key, subkey = jax.random.split(key)
+        coeffs = self._cmaes.sample(cmaes_state=cmaes_state, key=subkey)
         # make sure the fitness coeff is positive
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
 
@@ -271,7 +271,8 @@ class CMAMEGAEmitter(Emitter):
         )
 
         # re-sample
-        random_theta, key = repertoire.sample(key, 1)
+        key, subkey = jax.random.split(key)
+        random_theta = repertoire.sample(subkey, 1)
 
         # update theta in case of reinit
         theta = jax.tree_util.tree_map(
@@ -286,7 +287,8 @@ class CMAMEGAEmitter(Emitter):
         )
 
         # score theta
-        _, _, extra_score = self._scoring_function(theta, key)
+        key, subkey = jax.random.split(key)
+        _, _, extra_score = self._scoring_function(theta, subkey)
 
         # create new emitter state
         emitter_state = CMAMEGAState(

@@ -127,17 +127,19 @@ def test_mels(env_name: str, batch_size: int) -> None:
     )
 
     # Compute the centroids
-    centroids, key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,
         maxval=max_descriptor,
-        key=key,
+        key=subkey,
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, key = mels.init(init_variables, centroids, key)
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = mels.init(init_variables, centroids, subkey)
 
     # Run the algorithm
     (

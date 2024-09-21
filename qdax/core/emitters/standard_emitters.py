@@ -59,7 +59,7 @@ class MixingEmitter(Emitter):
         if n_mutation > 0:
             sample_key, mutation_key = jax.random.split(key)
             x1 = repertoire.sample(sample_key, n_mutation)
-            x_mutation, key = self._mutation_fn(x1, mutation_key)
+            x_mutation = self._mutation_fn(x1, mutation_key)
 
         if n_variation == 0:
             genotypes = x_mutation

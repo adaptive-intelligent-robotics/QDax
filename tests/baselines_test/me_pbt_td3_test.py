@@ -70,6 +70,7 @@ def test_me_pbt_td3() -> None:
     min_descriptor, max_descriptor = env.descriptor_limits
 
     key = jax.random.key(seed)
+
     key, subkey = jax.random.split(key)
     eval_env_first_states = jax.jit(eval_env.reset)(rng=subkey)
 
@@ -146,13 +147,14 @@ def test_me_pbt_td3() -> None:
         metrics_function=metrics_function,
     )
 
-    centroids, key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,
         maxval=max_descriptor,
-        key=key,
+        key=subkey,
     )
 
     key, *keys = jax.random.split(key, num=1 + num_devices)
@@ -168,9 +170,7 @@ def test_me_pbt_td3() -> None:
 
     # Need to convert to PRNGKey because of github.com/jax-ml/jax/issues/23647
     keys = jax.random.key_data(keys)
-    keys, training_states, _ = jax.pmap(agent_init_fn, axis_name="p", devices=devices)(
-        keys
-    )
+    training_states, _ = jax.pmap(agent_init_fn, axis_name="p", devices=devices)(keys)
 
     # empty optimizers states to avoid too heavy repertories
     training_states = jax.pmap(
@@ -180,7 +180,7 @@ def test_me_pbt_td3() -> None:
     )(training_states)
 
     # initialize map-elites
-    repertoire, emitter_state, keys = map_elites.get_distributed_init_fn(
+    repertoire, emitter_state = map_elites.get_distributed_init_fn(
         devices=devices, centroids=centroids
     )(
         genotypes=training_states, key=keys
@@ -198,9 +198,7 @@ def test_me_pbt_td3() -> None:
 
     for _ in range(num_loops):
 
-        repertoire, emitter_state, keys, metrics = update_fn(
-            repertoire, emitter_state, keys
-        )
+        repertoire, emitter_state, metrics = update_fn(repertoire, emitter_state, keys)
         metrics_cpu = jax.tree_util.tree_map(
             lambda x: jax.device_put(x, jax.devices("cpu")[0])[0], metrics
         )

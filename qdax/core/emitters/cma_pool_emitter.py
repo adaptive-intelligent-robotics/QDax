@@ -94,10 +94,7 @@ class CMAPoolEmitter(Emitter):
             current_index=0, emitter_states=emitter_states
         )
 
-        return (
-            emitter_state,
-            key,
-        )
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(

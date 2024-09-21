@@ -146,7 +146,7 @@ def jumanji_scoring_function(
         Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition],
     ],
     descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.
 
@@ -178,11 +178,4 @@ def jumanji_scoring_function(
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
     descriptors = descriptor_extractor(data, mask)
 
-    return (
-        fitnesses,
-        descriptors,
-        {
-            "transitions": data,
-        },
-        key,
-    )
+    return fitnesses, descriptors, {"transitions": data}

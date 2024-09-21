@@ -151,9 +151,9 @@ def multi_sample_scoring_function(
         in_axes=(None, 0),
         # indicates that the vectorized axis will become axis 1, i.e., the final
         # output is shape (batch_size, num_samples, ...) except for the random key
-        out_axes=(1, 1, 1, 0),
+        out_axes=(1, 1, 1),
     )
-    all_fitnesses, all_descriptors, all_extra_scores, _ = sample_scoring_fn(
+    all_fitnesses, all_descriptors, all_extra_scores = sample_scoring_fn(
         policies_params, keys
     )
 
@@ -249,7 +249,7 @@ def sampling_reproducibility(
     descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
     fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
     descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
-) -> Tuple[Fitness, Descriptor, ExtraScores, Fitness, Descriptor, RNGKey]:
+) -> Tuple[Fitness, Descriptor, ExtraScores, Fitness, Descriptor]:
     """Wrap scoring_function to perform sampling and compute the
     expectation and reproduciblity.
 
@@ -275,8 +275,7 @@ def sampling_reproducibility(
 
     Returns:
         The expected fitnesses, descriptors and extra_scores of the individuals
-        The fitnesses and descriptors reproducibility of the individuals
-        A new random key
+        The fitnesses and descriptors reproducibility of the individuals.
     """
 
     # Perform sampling
@@ -284,7 +283,6 @@ def sampling_reproducibility(
         all_fitnesses,
         all_descriptors,
         all_extra_scores,
-        key,
     ) = multi_sample_scoring_function(policies_params, key, scoring_fn, num_samples)
 
     # Extract final scores
@@ -302,5 +300,4 @@ def sampling_reproducibility(
         extra_scores,
         fitnesses_reproducibility,
         descriptors_reproducibility,
-        key,
     )

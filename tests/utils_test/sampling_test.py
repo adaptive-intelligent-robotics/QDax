@@ -110,8 +110,8 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
-        fitnesses, descriptors, _, _ = scoring_fn(init_variables, key)
-        sample_fitnesses, sample_descriptors, _, _ = scoring_1_sample_fn(
+        fitnesses, descriptors, _ = scoring_fn(init_variables, key)
+        sample_fitnesses, sample_descriptors, _ = scoring_1_sample_fn(
             init_variables, key
         )
 
@@ -131,7 +131,7 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
-        sample_fitnesses, sample_descriptors, _, _ = scoring_multi_sample_fn(
+        sample_fitnesses, sample_descriptors, _ = scoring_multi_sample_fn(
             init_variables, key
         )
 
@@ -151,6 +151,7 @@ def test_sampling() -> None:
     def sampling_reproducibility_test(
         fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
         descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+        key: RNGKey,
     ) -> None:
 
         # Compare scoring against perforing a single sample
@@ -163,14 +164,14 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
+        key, subkey = jax.random.split(key)
         (
             _,
             _,
             _,
             fitnesses_reproducibility,
             descriptors_reproducibility,
-            _,
-        ) = scoring_1_sample_fn(init_variables, key)
+        ) = scoring_1_sample_fn(init_variables, subkey)
 
         # Compare - all reproducibility should be 0
         pytest.assume(
@@ -200,14 +201,14 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
+        key, subkey = jax.random.split(key)
         (
             _,
             _,
             _,
             fitnesses_reproducibility,
             descriptors_reproducibility,
-            _,
-        ) = scoring_multi_sample_fn(init_variables, key)
+        ) = scoring_multi_sample_fn(init_variables, subkey)
 
         # Compare - all reproducibility should be 0
         pytest.assume(
@@ -228,6 +229,7 @@ def test_sampling() -> None:
         )
 
     # Call the test for each type of extractor
-    sampling_reproducibility_test(std, std)
-    sampling_reproducibility_test(mad, mad)
-    sampling_reproducibility_test(iqr, iqr)
+    key_1, key_2, key_3 = jax.random.split(key, 3)
+    sampling_reproducibility_test(std, std, key_1)
+    sampling_reproducibility_test(mad, mad, key_2)
+    sampling_reproducibility_test(iqr, iqr, key_3)

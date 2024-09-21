@@ -202,11 +202,12 @@ class PBTTD3(TD3):
             the new PBT-TD3 training state
             the played transition
         """
+        key, subkey = jax.random.split(training_state.key)
 
-        actions, key = self.select_action(
+        actions = self.select_action(
             obs=env_state.obs,
             policy_params=training_state.policy_params,
-            key=training_state.key,
+            key=subkey,
             expl_noise=training_state.expl_noise,
             deterministic=deterministic,
         )
@@ -246,7 +247,9 @@ class PBTTD3(TD3):
 
         # Sample a batch of transitions in the buffer
         key = training_state.key
-        samples, key = replay_buffer.sample(key, sample_size=self._config.batch_size)
+
+        key, subkey = jax.random.split(key)
+        samples = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
 
         # Update Critic
         key, subkey = jax.random.split(key)

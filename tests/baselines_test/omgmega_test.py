@@ -107,7 +107,8 @@ def test_omg_mega() -> None:
         scoring_function=scoring_fn, emitter=emitter, metrics_function=metrics_fn
     )
 
-    repertoire, emitter_state, key = map_elites.init(initial_population, centroids, key)
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = map_elites.init(initial_population, centroids, subkey)
 
     (
         repertoire,

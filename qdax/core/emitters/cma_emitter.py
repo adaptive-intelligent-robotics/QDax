@@ -132,15 +132,13 @@ class CMAEmitter(Emitter, ABC):
 
         # return the initial state
         key, subkey = jax.random.split(key)
-        return (
-            CMAEmitterState(
-                key=subkey,
-                cmaes_state=self._cma_initial_state,
-                previous_fitnesses=default_fitnesses,
-                emit_count=0,
-            ),
-            key,
+        emitter_state = CMAEmitterState(
+            key=subkey,
+            cmaes_state=self._cma_initial_state,
+            previous_fitnesses=default_fitnesses,
+            emit_count=0,
         )
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(

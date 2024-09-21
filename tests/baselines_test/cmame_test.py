@@ -112,7 +112,7 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
     )
 
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state, key = map_elites.init(initial_population, centroids, subkey)
+    repertoire, emitter_state = map_elites.init(initial_population, centroids, subkey)
 
     (
         repertoire,

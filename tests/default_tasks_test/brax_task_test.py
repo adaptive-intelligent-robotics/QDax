@@ -65,22 +65,25 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     )
 
     # Compute the centroids
-    centroids, key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,
         maxval=max_descriptor,
-        key=key,
+        key=subkey,
     )
 
     # Init population of controllers
-    init_variables, key = init_population_controllers(
-        policy_network, env, batch_size, key
+    key, subkey = jax.random.split(key)
+    init_variables = init_population_controllers(
+        policy_network, env, batch_size, subkey
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = map_elites.init(init_variables, centroids, subkey)
 
     # Run the algorithm
     (

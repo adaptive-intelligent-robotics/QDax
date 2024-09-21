@@ -157,13 +157,14 @@ def test_mees() -> None:
     )
 
     # Compute the centroids
-    centroids, key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_descriptor,
         maxval=max_descriptor,
-        key=key,
+        key=subkey,
     )
 
     # Instantiate MAP Elites
@@ -173,7 +174,8 @@ def test_mees() -> None:
         metrics_function=metrics_function,
     )
 
-    repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = map_elites.init(init_variables, centroids, subkey)
 
     @jax.jit
     def update_scan_fn(carry: Any, unused: Any) -> Any:

@@ -167,6 +167,8 @@ class DiversityPGEmitter(QualityPGEmitter):
             New emitter state where the replay buffer has been filled with
             the new experienced transitions.
         """
+        key = emitter_state.key
+
         # get the transitions out of the dictionary
         assert "transitions" in extra_scores.keys(), "Missing transitions or wrong key"
         transitions = extra_scores["transitions"]
@@ -185,11 +187,9 @@ class DiversityPGEmitter(QualityPGEmitter):
             return new_emitter_state, ()
 
         # sample transitions
-        (
-            transitions,
-            key,
-        ) = emitter_state.replay_buffer.sample(
-            key=emitter_state.key,
+        key, subkey = jax.random.split(key)
+        transitions = emitter_state.replay_buffer.sample(
+            key=subkey,
             sample_size=self._config.num_critic_training_steps
             * self._config.batch_size,
         )
@@ -219,7 +219,7 @@ class DiversityPGEmitter(QualityPGEmitter):
             length=self._config.num_critic_training_steps,
         )
 
-        emitter_state = emitter_state.replace(archive=archive)
+        emitter_state = emitter_state.replace(archive=archive, key=key)
 
         return emitter_state  # type: ignore
 
@@ -240,20 +240,21 @@ class DiversityPGEmitter(QualityPGEmitter):
             New emitter state where the critic and the greedy actor have been
             updated. Optimizer states have also been updated in the process.
         """
+        key = emitter_state.key
 
         # Update Critic
+        key, subkey = jax.random.split(key)
         (
             critic_optimizer_state,
             critic_params,
             target_critic_params,
-            key,
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
             target_actor_params=emitter_state.target_actor_params,
             critic_optimizer_state=emitter_state.critic_optimizer_state,
             transitions=transitions,
-            key=emitter_state.key,
+            key=subkey,
         )
 
         # Update greedy policy
@@ -300,6 +301,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         emitter_state: DiversityPGEmitterState,
     ) -> Genotype:
         """Apply pg mutation to a policy via multiple steps of gradient descent.
+        TODO: random key not properly handled.
 
         Args:
             policy_params: a policy, supposed to be a differentiable neural
@@ -336,7 +338,7 @@ class DiversityPGEmitter(QualityPGEmitter):
             ), ()
 
         # sample transitions
-        transitions, _ = emitter_state.replay_buffer.sample(
+        transitions = emitter_state.replay_buffer.sample(
             key=emitter_state.key,
             sample_size=self._config.num_pg_training_steps * self._config.batch_size,
         )

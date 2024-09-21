@@ -193,8 +193,10 @@ class PBTSAC(SAC):
 
         # sample a batch of transitions in the buffer
         key = training_state.key
-        transitions, key = replay_buffer.sample(
-            key,
+
+        key, subkey = jax.random.split(key)
+        transitions = replay_buffer.sample(
+            subkey,
             sample_size=self._config.batch_size,
         )
 
@@ -212,48 +214,49 @@ class PBTSAC(SAC):
             )
 
         # update alpha
+        key, subkey = jax.random.split(key)
         (
             alpha_params,
             alpha_optimizer_state,
             alpha_loss,
-            key,
         ) = self._update_alpha(
             alpha_lr=training_state.alpha_lr,
             training_state=training_state,
             transitions=transitions,
-            key=key,
+            key=subkey,
         )
 
         # update critic
+        key, subkey = jax.random.split(key)
         (
             critic_params,
             target_critic_params,
             critic_optimizer_state,
             critic_loss,
-            key,
         ) = self._update_critic(
             critic_lr=training_state.critic_lr,
             reward_scaling=training_state.reward_scaling,
             discount=training_state.discount,
             training_state=training_state,
             transitions=transitions,
-            key=key,
+            key=subkey,
         )
 
         # update actor
+        key, subkey = jax.random.split(key)
         (
             policy_params,
             policy_optimizer_state,
             policy_loss,
-            key,
         ) = self._update_actor(
             policy_lr=training_state.policy_lr,
             training_state=training_state,
             transitions=transitions,
-            key=key,
+            key=subkey,
         )
 
         # create new training state
+        key, subkey = jax.random.split(key)
         new_training_state = PBTSacTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -263,7 +266,7 @@ class PBTSAC(SAC):
             alpha_params=alpha_params,
             normalization_running_stats=training_state.normalization_running_stats,
             target_critic_params=target_critic_params,
-            key=key,
+            key=subkey,
             steps=training_state.steps + 1,
             discount=training_state.discount,
             policy_lr=training_state.policy_lr,

@@ -217,10 +217,11 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     while iteration < max_iterations:
         # standard MAP-Elites-like loop
         for _ in range(log_freq):
-            repertoire, emitter_state, _, key = aurora.update(
+            key, subkey = jax.random.split(key)
+            repertoire, emitter_state, _ = aurora.update(
                 repertoire,
                 emitter_state,
-                key,
+                subkey,
                 aurora_extra_info=aurora_extra_info,
             )
 

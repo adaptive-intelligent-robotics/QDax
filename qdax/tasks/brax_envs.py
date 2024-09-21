@@ -275,7 +275,7 @@ def reset_based_scoring_function_brax_envs(
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)
 
-    fitnesses, descriptors, extra_scores, key = scoring_function_brax_envs(
+    fitnesses, descriptors, extra_scores = scoring_function_brax_envs(
         policies_params=policies_params,
         key=key,
         init_states=init_states,
