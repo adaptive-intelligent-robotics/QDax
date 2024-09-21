@@ -68,7 +68,7 @@ class DADS(SAC):
     of skills, is used to evaluate the skills in the environment and hence
     to generate transitions. The sampling is hence fixed and perfectly uniform.
 
-    We plan to add continous skill as an option in the future. We also plan
+    We plan to add continuous skill as an option in the future. We also plan
     to release the current constraint on the number of batched environments
     by sampling from the skills rather than having this fixed setting.
     """
@@ -499,7 +499,7 @@ class DADS(SAC):
             (training_state, transitions),
         )
 
-        # udpate alpha
+        # update alpha
         (
             alpha_params,
             alpha_optimizer_state,

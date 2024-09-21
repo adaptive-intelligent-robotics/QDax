@@ -33,7 +33,7 @@ class CMAEmitterState(EmitterState):
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
         previous_fitnesses: store last fitnesses of the repertoire. Used to
-            compute the improvment.
+            compute the improvement.
         emit_count: count the number of emission events.
     """
 
@@ -380,7 +380,7 @@ class CMAEmitter(Emitter, ABC):
             fitnesses: corresponding fitnesses.
             descriptors: corresponding fitnesses.
             extra_scores: corresponding extra scores.
-            improvements: improvments of the emitted genotypes. This corresponds
+            improvements: improvements of the emitted genotypes. This corresponds
                 to the difference between their fitness and the fitness of the
                 individual occupying the cell of corresponding fitness.
 

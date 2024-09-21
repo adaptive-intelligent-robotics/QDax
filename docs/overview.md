@@ -1,6 +1,6 @@
 # QDax Overview
 
-QDax has been designed to be modular yet flexible so it's easy for anyone to use and extend on the different state-of-the-art QD algortihms available.
+QDax has been designed to be modular yet flexible so it's easy for anyone to use and extend on the different state-of-the-art QD algorithms available.
 For instance, MAP-Elites is designed to work with a few modular and simple components: `container`, `emitter`, and `scoring_function`.
 
 ## Key concepts
@@ -17,7 +17,7 @@ The `scoring_function` defines the problem/task we want to solve and functions t
 With this modularity, a user can easily swap out any one of the components and pass it to the `MAPElites` class, avoiding having to re-implement all the steps of the algorithm.
 
 Under one layer of abstraction, users have a bit more flexibility. QDax has similarities to the simple and commonly found `ask`/`tell` interface. The `ask` function is similar to the `emit` function in QDax and the `tell` function is similar to the `update` function in QDax. Likewise, the `eval` of solutions is analogous to the `scoring function` in QDax.
-More importantly, QDax handles the archive management which is the key idea of QD algorihtms and not present or needed in standard optimization algorihtms or evolutionary strategies.
+More importantly, QDax handles the archive management which is the key idea of QD algorithms and not present or needed in standard optimization algorithms or evolutionary strategies.
 
 ## Code Example
 ```python

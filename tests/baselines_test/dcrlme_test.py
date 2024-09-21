@@ -104,7 +104,7 @@ def test_dcrlme() -> None:
     fake_batch_obs = jnp.zeros(shape=(batch_size, env.observation_size))
     init_params = jax.vmap(policy_network.init)(keys, fake_batch_obs)
 
-    # Define the fonction to play a step with the policy in the environment
+    # Define the function to play a step with the policy in the environment
     def play_step_fn(
         env_state: EnvState, policy_params: Params, random_key: RNGKey
     ) -> Tuple[EnvState, Params, RNGKey, DCRLTransition]:
