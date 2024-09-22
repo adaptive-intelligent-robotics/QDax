@@ -148,10 +148,10 @@ class QualityPGEmitter(Emitter):
         critic_params = self._critic_network.init(
             subkey, obs=fake_obs, actions=fake_action
         )
-        target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
+        target_critic_params = jax.tree.map(lambda x: x, critic_params)
 
-        actor_params = jax.tree_util.tree_map(lambda x: x[0], genotypes)
-        target_actor_params = jax.tree_util.tree_map(lambda x: x[0], genotypes)
+        actor_params = jax.tree.map(lambda x: x[0], genotypes)
+        target_actor_params = jax.tree.map(lambda x: x[0], genotypes)
 
         # Prepare init optimizer states
         critic_optimizer_state = self._critic_optimizer.init(critic_params)
@@ -221,12 +221,12 @@ class QualityPGEmitter(Emitter):
         offspring_actor = self.emit_actor(emitter_state)
 
         # add dimension for concatenation
-        offspring_actor = jax.tree_util.tree_map(
+        offspring_actor = jax.tree.map(
             lambda x: jnp.expand_dims(x, axis=0), offspring_actor
         )
 
         # gather offspring
-        genotypes = jax.tree_util.tree_map(
+        genotypes = jax.tree.map(
             lambda x, y: jnp.concatenate([x, y], axis=0),
             offsprings_pg,
             offspring_actor,
@@ -431,7 +431,7 @@ class QualityPGEmitter(Emitter):
         critic_params = optax.apply_updates(critic_params, critic_updates)
 
         # Soft update of target critic network
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_critic_params,
@@ -463,7 +463,7 @@ class QualityPGEmitter(Emitter):
         actor_params = optax.apply_updates(actor_params, policy_updates)
 
         # Soft update of target greedy actor
-        target_actor_params = jax.tree_util.tree_map(
+        target_actor_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_actor_params,

@@ -270,7 +270,7 @@ def reset_based_scoring_function_brax_envs(
 
     key, subkey = jax.random.split(key)
     keys = jax.random.split(
-        subkey, jax.tree_util.tree_leaves(policies_params)[0].shape[0]
+        subkey, jax.tree.leaves(policies_params)[0].shape[0]
     )
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)
@@ -341,7 +341,7 @@ def reset_based_scoring_actor_dc_function_brax_envs(
 
     key, subkey = jax.random.split(key)
     keys = jax.random.split(
-        subkey, jax.tree_util.tree_leaves(actors_dc_params)[0].shape[0]
+        subkey, jax.tree.leaves(actors_dc_params)[0].shape[0]
     )
     reset_fn = jax.vmap(play_reset_fn)
     init_states = reset_fn(keys)

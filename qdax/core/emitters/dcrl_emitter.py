@@ -144,7 +144,7 @@ class DCRLEmitter(Emitter):
             The initial state of the PGAMEEmitter.
         """
 
-        observation_size = jax.tree_util.tree_leaves(genotypes)[1].shape[1]
+        observation_size = jax.tree.leaves(genotypes)[1].shape[1]
         descriptor_size = self._env.descriptor_length
         action_size = self._env.action_size
 
@@ -157,11 +157,11 @@ class DCRLEmitter(Emitter):
         critic_params = self._critic_network.init(
             subkey, obs=fake_obs, actions=fake_action, desc=fake_desc
         )
-        target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
+        target_critic_params = jax.tree.map(lambda x: x, critic_params)
 
         key, subkey = jax.random.split(key)
         actor_params = self._actor_network.init(subkey, obs=fake_obs, desc=fake_desc)
-        target_actor_params = jax.tree_util.tree_map(lambda x: x, actor_params)
+        target_actor_params = jax.tree.map(lambda x: x, actor_params)
 
         # Prepare init optimizer states
         critic_opt_state = self._critic_optimizer.init(critic_params)
@@ -299,7 +299,7 @@ class DCRLEmitter(Emitter):
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 
         # Concatenate PG and AI genotypes
-        genotypes = jax.tree_util.tree_map(
+        genotypes = jax.tree.map(
             lambda x1, x2: jnp.concatenate((x1, x2), axis=0), genotypes_pg, genotypes_ai
         )
 
@@ -432,7 +432,7 @@ class DCRLEmitter(Emitter):
         transitions = replay_buffer.sample(
             subkey, self._config.num_critic_training_steps * self._config.batch_size
         )
-        transitions = jax.tree_util.tree_map(
+        transitions = jax.tree.map(
             lambda x: jnp.reshape(
                 x,
                 (
@@ -564,7 +564,7 @@ class DCRLEmitter(Emitter):
         critic_params = optax.apply_updates(critic_params, critic_updates)
 
         # Soft update of target critic network
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_critic_params,
@@ -596,7 +596,7 @@ class DCRLEmitter(Emitter):
         actor_params = optax.apply_updates(actor_params, policy_updates)
 
         # Soft update of target greedy actor
-        target_actor_params = jax.tree_util.tree_map(
+        target_actor_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_actor_params,
@@ -644,7 +644,7 @@ class DCRLEmitter(Emitter):
             * transitions.rewards,
             desc_prime=descs_prime_normalized,
         )
-        transitions = jax.tree_util.tree_map(
+        transitions = jax.tree.map(
             lambda x: jnp.reshape(
                 x,
                 (

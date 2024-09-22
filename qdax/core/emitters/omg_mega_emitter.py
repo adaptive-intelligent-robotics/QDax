@@ -110,10 +110,10 @@ class OMGMEGAEmitter(Emitter):
             The initial emitter state.
         """
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
+        first_genotype = jax.tree.map(lambda x: x[0], genotypes)
 
         # add a dimension of size num descriptors + 1
-        gradient_genotype = jax.tree_util.tree_map(
+        gradient_genotype = jax.tree.map(
             lambda x: jnp.repeat(
                 jnp.expand_dims(x, axis=-1), repeats=self._num_descriptors + 1, axis=-1
             ),
@@ -169,10 +169,10 @@ class OMGMEGAEmitter(Emitter):
             subkey, num_samples=self._batch_size
         )
 
-        fitness_gradients = jax.tree_util.tree_map(
+        fitness_gradients = jax.tree.map(
             lambda x: jnp.expand_dims(x[:, :, 0], axis=-1), gradients
         )
-        descriptors_gradients = jax.tree_util.tree_map(lambda x: x[:, :, 1:], gradients)
+        descriptors_gradients = jax.tree.map(lambda x: x[:, :, 1:], gradients)
 
         # Normalize the gradients
         norm_fitness_gradients = jnp.linalg.norm(
@@ -194,7 +194,7 @@ class OMGMEGAEmitter(Emitter):
             cov=self._sigma,
         )
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
-        grads = jax.tree_util.tree_map(
+        grads = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=-1),
             fitness_gradients,
             descriptors_gradients,
@@ -202,7 +202,7 @@ class OMGMEGAEmitter(Emitter):
         update_grad = jnp.sum(jax.vmap(lambda x, y: x * y)(coeffs, grads), axis=-1)
 
         # update the genotypes
-        new_genotypes = jax.tree_util.tree_map(
+        new_genotypes = jax.tree.map(
             lambda x, y: x + y, genotypes, update_grad
         )
 

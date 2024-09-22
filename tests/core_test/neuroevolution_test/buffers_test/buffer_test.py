@@ -42,7 +42,7 @@ def test_insert_batch() -> None:
         buffer_size=buffer_size, transition=dummy_transition
     )
 
-    simple_transition = jax.tree_util.tree_map(
+    simple_transition = jax.tree.map(
         lambda x: x.repeat(3, axis=0), dummy_transition
     )
     simple_transition = simple_transition.replace(rewards=jnp.arange(3))
@@ -85,7 +85,7 @@ def test_sample() -> None:
         buffer_size=buffer_size, transition=dummy_transition
     )
 
-    simple_transition = jax.tree_util.tree_map(
+    simple_transition = jax.tree.map(
         lambda x: x.repeat(3, axis=0), dummy_transition
     )
     simple_transition = simple_transition.replace(rewards=jnp.arange(3))
@@ -96,6 +96,6 @@ def test_sample() -> None:
     key, subkey = jax.random.split(key)
     samples = replay_buffer.sample(subkey, 3)
 
-    samples_shapes = jax.tree_util.tree_map(lambda x: x.shape, samples)
-    transition_shapes = jax.tree_util.tree_map(lambda x: x.shape, simple_transition)
+    samples_shapes = jax.tree.map(lambda x: x.shape, samples)
+    transition_shapes = jax.tree.map(lambda x: x.shape, simple_transition)
     pytest.assume((samples_shapes == transition_shapes))

@@ -59,7 +59,7 @@ def test_pbt_sac() -> None:
         eval_env_first_states = jax.jit(eval_env.reset)(rng=key)
 
         reshape_fn = jax.jit(
-            lambda tree: jax.tree_util.tree_map(
+            lambda tree: jax.tree.map(
                 lambda x: jnp.reshape(
                     x,
                     (

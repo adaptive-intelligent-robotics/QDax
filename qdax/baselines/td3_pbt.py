@@ -48,10 +48,10 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
         optimizer_init = optax.adam(learning_rate=1.0).init
         policy_params = training_state.policy_params
         critic_params = training_state.critic_params
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
-        target_policy_params = jax.tree_util.tree_map(
+        target_policy_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), policy_params
         )
         return training_state.replace(  # type: ignore
@@ -274,7 +274,7 @@ class PBTTD3(TD3):
             training_state.critic_params, critic_updates
         )
         # Soft update of target critic network
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             training_state.target_critic_params,
@@ -302,7 +302,7 @@ class PBTTD3(TD3):
                 training_state.policy_params, policy_updates
             )
             # Soft update of target policy
-            target_policy_params = jax.tree_util.tree_map(
+            target_policy_params = jax.tree.map(
                 lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
                 + self._config.soft_tau_update * x2,
                 training_state.target_policy_params,

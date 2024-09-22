@@ -243,7 +243,7 @@ class MELSRepertoire(MapElitesRepertoire):
         )
 
         # create new repertoire
-        new_repertoire_genotypes = jax.tree_util.tree_map(
+        new_repertoire_genotypes = jax.tree.map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
@@ -298,7 +298,7 @@ class MELSRepertoire(MapElitesRepertoire):
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
 
         # default genotypes is all 0
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
             genotype,
         )

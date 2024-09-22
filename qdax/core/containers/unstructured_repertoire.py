@@ -307,7 +307,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # ReIndexing of all the inputs to the correct sorted way
         batch_of_descriptors = batch_of_descriptors.at[sorted_descriptors].get()
-        batch_of_genotypes = jax.tree_util.tree_map(
+        batch_of_genotypes = jax.tree.map(
             lambda x: x.at[sorted_descriptors].get(), batch_of_genotypes
         )
         batch_of_fitnesses = batch_of_fitnesses.at[sorted_descriptors].get()
@@ -359,7 +359,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new grid
-        new_grid_genotypes = jax.tree_util.tree_map(
+        new_grid_genotypes = jax.tree.map(
             lambda grid_genotypes, new_genotypes: grid_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),
@@ -402,7 +402,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         grid_empty = self.fitnesses == -jnp.inf
         p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
-        samples = jax.tree_util.tree_map(
+        samples = jax.tree.map(
             lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
@@ -439,7 +439,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # Initialize grid with default values
         default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.full(shape=(max_size,) + x.shape[1:], fill_value=jnp.nan),
             genotypes,
         )

@@ -107,7 +107,7 @@ class CMARndEmitter(CMAEmitter):
         random_genotype = repertoire.sample(subkey, 1)
 
         # get new mean - remove the batch dim
-        new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
+        new_mean = jax.tree.map(lambda x: x.squeeze(0), random_genotype)
 
         # define the corresponding cmaes init state
         cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=0)

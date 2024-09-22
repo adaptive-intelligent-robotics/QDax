@@ -216,7 +216,7 @@ class CMAEmitter(Emitter, ABC):
         sorted_indices = jnp.flip(jnp.argsort(ranking_criteria))
 
         # sort the candidates
-        sorted_candidates = jax.tree_util.tree_map(
+        sorted_candidates = jax.tree.map(
             lambda x: x[sorted_indices], genotypes
         )
         sorted_improvements = improvements[sorted_indices]
@@ -344,7 +344,7 @@ class CMAEmitter(Emitter, ABC):
         random_genotype = repertoire.sample(key, 1)
 
         # remove the batch dim
-        new_mean = jax.tree_util.tree_map(lambda x: x.squeeze(0), random_genotype)
+        new_mean = jax.tree.map(lambda x: x.squeeze(0), random_genotype)
 
         cmaes_init_state = self._cma_initial_state.replace(mean=new_mean, num_updates=0)
 

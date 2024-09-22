@@ -48,7 +48,7 @@ class DistributedMAPElites(MAPElites):
             gathered_genotypes,
             gathered_fitnesses,
             gathered_descriptors,
-        ) = jax.tree_util.tree_map(
+        ) = jax.tree.map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes, fitnesses, descriptors),
         )
@@ -124,7 +124,7 @@ class DistributedMAPElites(MAPElites):
             gathered_genotypes,
             gathered_fitnesses,
             gathered_descriptors,
-        ) = jax.tree_util.tree_map(
+        ) = jax.tree.map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes, fitnesses, descriptors),
         )

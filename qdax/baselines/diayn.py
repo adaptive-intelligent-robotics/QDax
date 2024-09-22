@@ -145,7 +145,7 @@ class DIAYN(SAC):
         key, subkey = jax.random.split(key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
@@ -319,7 +319,7 @@ class DIAYN(SAC):
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        reshaped_transitions = jax.tree_util.tree_map(
+        reshaped_transitions = jax.tree.map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
             transitions,
         )

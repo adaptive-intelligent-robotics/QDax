@@ -117,7 +117,7 @@ class CMAPoolEmitter(Emitter):
 
         # retrieve the relevant emitter state
         current_index = emitter_state.current_index
-        used_emitter_state = jax.tree_util.tree_map(
+        used_emitter_state = jax.tree.map(
             lambda x: x[current_index], emitter_state.emitter_states
         )
 
@@ -155,7 +155,7 @@ class CMAPoolEmitter(Emitter):
         current_index = emitter_state.current_index
         emitter_states = emitter_state.emitter_states
 
-        used_emitter_state = jax.tree_util.tree_map(
+        used_emitter_state = jax.tree.map(
             lambda x: x[current_index], emitter_states
         )
 
@@ -170,7 +170,7 @@ class CMAPoolEmitter(Emitter):
         )
 
         # update the emitter state
-        emitter_states = jax.tree_util.tree_map(
+        emitter_states = jax.tree.map(
             lambda x, y: x.at[current_index].set(y), emitter_states, used_emitter_state
         )
 

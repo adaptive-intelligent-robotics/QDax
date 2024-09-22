@@ -121,7 +121,7 @@ class CMAMEGAEmitter(Emitter):
         """
 
         # define init theta as 0
-        theta = jax.tree_util.tree_map(
+        theta = jax.tree.map(
             lambda x: jnp.zeros_like(x[:1, ...]),
             genotypes,
         )
@@ -181,7 +181,7 @@ class CMAMEGAEmitter(Emitter):
         update_grad = coeffs @ grads.T
 
         # Compute new candidates
-        new_thetas = jax.tree_util.tree_map(lambda x, y: x + y, theta, update_grad)
+        new_thetas = jax.tree.map(lambda x, y: x + y, theta, update_grad)
 
         return new_thetas, {}
 
@@ -257,7 +257,7 @@ class CMAMEGAEmitter(Emitter):
         gradient_step = jnp.sum(self._weights[sorted_indices] * update_grad, axis=0)
 
         # update theta
-        theta = jax.tree_util.tree_map(
+        theta = jax.tree.map(
             lambda x, y: x + self._learning_rate * y, theta, gradient_step
         )
 
@@ -275,12 +275,12 @@ class CMAMEGAEmitter(Emitter):
         random_theta = repertoire.sample(subkey, 1)
 
         # update theta in case of reinit
-        theta = jax.tree_util.tree_map(
+        theta = jax.tree.map(
             lambda x, y: jnp.where(reinitialize, x, y), random_theta, theta
         )
 
         # update cmaes state in case of reinit
-        cmaes_state = jax.tree_util.tree_map(
+        cmaes_state = jax.tree.map(
             lambda x, y: jnp.where(reinitialize, x, y),
             self._cma_initial_state,
             cmaes_state,

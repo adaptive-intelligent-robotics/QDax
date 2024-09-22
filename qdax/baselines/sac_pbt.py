@@ -45,7 +45,7 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
         policy_params = training_state.policy_params
         critic_params = training_state.critic_params
         alpha_params = training_state.alpha_params
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
         return training_state.replace(  # type: ignore

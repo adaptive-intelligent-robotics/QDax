@@ -118,7 +118,7 @@ class SAC:
         key, subkey = jax.random.split(key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
@@ -402,7 +402,7 @@ class SAC:
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        transitions = jax.tree_util.tree_map(
+        transitions = jax.tree.map(
             lambda x: jnp.swapaxes(x, 0, 1), transitions
         )
         masks = jnp.isnan(transitions.rewards)
@@ -509,7 +509,7 @@ class SAC:
         critic_params = optax.apply_updates(
             training_state.critic_params, critic_updates
         )
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
             training_state.target_critic_params,
             critic_params,

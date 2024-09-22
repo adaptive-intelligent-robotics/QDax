@@ -226,7 +226,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         repertoire_empty = self.fitnesses == -jnp.inf
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
-        samples = jax.tree_util.tree_map(
+        samples = jax.tree.map(
             lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
@@ -252,11 +252,11 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         repertoire_empty = self.fitnesses == -jnp.inf
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
-        samples = jax.tree_util.tree_map(
+        samples = jax.tree.map(
             lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
-        descs = jax.tree_util.tree_map(
+        descs = jax.tree.map(
             lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.descriptors,
         )
@@ -322,7 +322,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new repertoire
-        new_repertoire_genotypes = jax.tree_util.tree_map(
+        new_repertoire_genotypes = jax.tree.map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
@@ -383,7 +383,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
+        first_genotype = jax.tree.map(lambda x: x[0], genotypes)
 
         # create a repertoire with default values
         repertoire = cls.init_default(genotype=first_genotype, centroids=centroids)
@@ -421,7 +421,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
 
         # default genotypes is all 0
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
             genotype,
         )

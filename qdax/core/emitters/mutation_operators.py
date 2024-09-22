@@ -103,7 +103,7 @@ def polynomial_mutation(
     Returns:
         New genotypes - same shape as input
     """
-    batch_size = jax.tree_util.tree_leaves(x)[0].shape[0]
+    batch_size = jax.tree.leaves(x)[0].shape[0]
     mutation_keys = jax.random.split(key, num=batch_size)
     mutation_fn = partial(
         _polynomial_mutation,
@@ -113,7 +113,7 @@ def polynomial_mutation(
         maxval=maxval,
     )
     mutation_fn = jax.vmap(mutation_fn)
-    x = jax.tree_util.tree_map(lambda x_: mutation_fn(x_, mutation_keys), x)
+    x = jax.tree.map(lambda x_: mutation_fn(x_, mutation_keys), x)
     return x
 
 
@@ -160,7 +160,7 @@ def polynomial_crossover(
     Returns:
         New genotypes
     """
-    batch_size = jax.tree_util.tree_leaves(x2)[0].shape[0]
+    batch_size = jax.tree.leaves(x2)[0].shape[0]
     crossover_keys = jax.random.split(key, num=batch_size)
     crossover_fn = partial(
         _polynomial_crossover,
@@ -168,7 +168,7 @@ def polynomial_crossover(
     )
     crossover_fn = jax.vmap(crossover_fn)
     # TODO: check that key usage is correct
-    x = jax.tree_util.tree_map(
+    x = jax.tree.map(
         lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2
     )
     return x
@@ -205,7 +205,7 @@ def isoline_variation(
 
     # Computing line_noise
     key, key_line_noise = jax.random.split(key)
-    batch_size = jax.tree_util.tree_leaves(x1)[0].shape[0]
+    batch_size = jax.tree.leaves(x1)[0].shape[0]
     line_noise = jax.random.normal(key_line_noise, shape=(batch_size,)) * line_sigma
 
     def _variation_fn(x1: jnp.ndarray, x2: jnp.ndarray, key: RNGKey) -> jnp.ndarray:
@@ -218,12 +218,12 @@ def isoline_variation(
         return x
 
     # create a tree with random keys
-    nb_leaves = len(jax.tree_util.tree_leaves(x1))
+    nb_leaves = len(jax.tree.leaves(x1))
     keys = jax.random.split(key, num=nb_leaves)
-    keys_tree = jax.tree_util.tree_unflatten(jax.tree_util.tree_structure(x1), keys)
+    keys_tree = jax.tree.unflatten(jax.tree.structure(x1), keys)
 
     # apply isolinedd to each branch of the tree
-    x = jax.tree_util.tree_map(
+    x = jax.tree.map(
         lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree
     )
 

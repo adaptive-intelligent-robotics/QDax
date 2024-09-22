@@ -134,7 +134,7 @@ def get_first_episode(transition: Transition) -> Transition:
         # the double transpose trick is here to allow easy broadcasting
         return jnp.where(mask.T, x.T, jnp.nan * jnp.ones_like(x).T).T
 
-    return jax.tree_util.tree_map(mask_episodes, transition)  # type: ignore
+    return jax.tree.map(mask_episodes, transition)  # type: ignore
 
 
 def init_population_controllers(

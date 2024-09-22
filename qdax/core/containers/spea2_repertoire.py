@@ -72,7 +72,7 @@ class SPEA2Repertoire(GARepertoire):
             Updated repertoire.
         """
         # All the candidates
-        candidates = jax.tree_util.tree_map(
+        candidates = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
             self.genotypes,
             batch_of_genotypes,
@@ -87,7 +87,7 @@ class SPEA2Repertoire(GARepertoire):
         indices = jnp.argsort(strength_scores)[: self.size]
 
         # keep the survivors
-        new_candidates = jax.tree_util.tree_map(lambda x: x[indices], candidates)
+        new_candidates = jax.tree.map(lambda x: x[indices], candidates)
         new_fitnesses = candidates_fitnesses[indices]
 
         new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_fitnesses)
@@ -121,7 +121,7 @@ class SPEA2Repertoire(GARepertoire):
         )
 
         # create default genotypes
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
         )
 

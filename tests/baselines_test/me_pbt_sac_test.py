@@ -121,11 +121,11 @@ def test_me_pbt_sac() -> None:
     )
 
     def scoring_function(genotypes, key):  # type: ignore
-        population_size = jax.tree_util.tree_leaves(genotypes)[0].shape[0]
-        first_states = jax.tree_util.tree_map(
+        population_size = jax.tree.leaves(genotypes)[0].shape[0]
+        first_states = jax.tree.map(
             lambda x: jnp.expand_dims(x, axis=0), eval_env_first_states
         )
-        first_states = jax.tree_util.tree_map(
+        first_states = jax.tree.map(
             lambda x: jnp.repeat(x, population_size, axis=0), first_states
         )
         population_returns, population_descriptors, _, _ = eval_policy(
@@ -193,7 +193,7 @@ def test_me_pbt_sac() -> None:
     initial_metrics = jax.pmap(metrics_function, axis_name="p", devices=devices)(
         repertoire
     )
-    initial_metrics_cpu = jax.tree_util.tree_map(
+    initial_metrics_cpu = jax.tree.map(
         lambda x: jax.device_put(x, jax.devices("cpu")[0])[0], initial_metrics
     )
     initial_qd_score = initial_metrics_cpu["qd_score"]
@@ -201,7 +201,7 @@ def test_me_pbt_sac() -> None:
     for _ in range(num_loops):
 
         repertoire, emitter_state, metrics = update_fn(repertoire, emitter_state, keys)
-        metrics_cpu = jax.tree_util.tree_map(
+        metrics_cpu = jax.tree.map(
             lambda x: jax.device_put(x, jax.devices("cpu")[0])[0], metrics
         )
 

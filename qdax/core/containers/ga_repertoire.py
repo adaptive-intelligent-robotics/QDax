@@ -34,7 +34,7 @@ class GARepertoire(Repertoire):
     @property
     def size(self) -> int:
         """Gives the size of the population."""
-        first_leaf = jax.tree_util.tree_leaves(self.genotypes)[0]
+        first_leaf = jax.tree.leaves(self.genotypes)[0]
         return int(first_leaf.shape[0])
 
     def save(self, path: str = "./") -> None:
@@ -94,7 +94,7 @@ class GARepertoire(Repertoire):
         p = jnp.any(mask, axis=-1) / jnp.sum(jnp.any(mask, axis=-1))
 
         # sample
-        samples = jax.tree_util.tree_map(
+        samples = jax.tree.map(
             lambda x: jax.random.choice(
                 key, x, shape=(num_samples,), p=p, replace=False
             ),
@@ -121,7 +121,7 @@ class GARepertoire(Repertoire):
         """
 
         # gather individuals and fitnesses
-        candidates = jax.tree_util.tree_map(
+        candidates = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
             self.genotypes,
             batch_of_genotypes,
@@ -137,7 +137,7 @@ class GARepertoire(Repertoire):
         survivor_indices = indices[: self.size]
 
         # keep only the best ones
-        new_candidates = jax.tree_util.tree_map(
+        new_candidates = jax.tree.map(
             lambda x: x[survivor_indices], candidates
         )
 
@@ -173,7 +173,7 @@ class GARepertoire(Repertoire):
         )
 
         # create default genotypes
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
         )
 

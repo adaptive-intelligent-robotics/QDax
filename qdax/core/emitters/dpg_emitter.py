@@ -200,7 +200,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         transitions = transitions.replace(rewards=diversity_rewards)
 
         # reshape the transitions
-        transitions = jax.tree_util.tree_map(
+        transitions = jax.tree.map(
             lambda x: x.reshape(
                 (
                     self._config.num_critic_training_steps,
@@ -351,7 +351,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         transitions = transitions.replace(rewards=diversity_rewards)
 
         # reshape the transitions
-        transitions = jax.tree_util.tree_map(
+        transitions = jax.tree.map(
             lambda x: x.reshape(
                 (
                     self._config.num_pg_training_steps,

@@ -128,13 +128,13 @@ class MultiEmitter(Emitter):
             genotype, extra_info = emitter.emit(
                 repertoire, sub_emitter_state, key_emitter
             )
-            batch_size = jax.tree_util.tree_leaves(genotype)[0].shape[0]
+            batch_size = jax.tree.leaves(genotype)[0].shape[0]
             assert batch_size == emitter.batch_size
             all_offsprings.append(genotype)
             all_extra_info = {**all_extra_info, **extra_info}
 
         # concatenate offsprings together
-        offsprings = jax.tree_util.tree_map(
+        offsprings = jax.tree.map(
             lambda *x: jnp.concatenate(x, axis=0), *all_offsprings
         )
         return offsprings, all_extra_info
@@ -169,7 +169,7 @@ class MultiEmitter(Emitter):
         emitter_states = []
 
         def _get_sub_pytree(pytree: ArrayTree, start: int, end: int) -> ArrayTree:
-            return jax.tree_util.tree_map(lambda x: x[start:end], pytree)
+            return jax.tree.map(lambda x: x[start:end], pytree)
 
         for emitter, sub_emitter_state, index_start, index_end in zip(
             self.emitters,
@@ -191,7 +191,7 @@ class MultiEmitter(Emitter):
             # update only with the data of the emitted genotypes
             else:
                 # extract relevant data
-                sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree_util.tree_map(
+                sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree.map(
                     partial(_get_sub_pytree, start=index_start, end=index_end),
                     (
                         genotypes,

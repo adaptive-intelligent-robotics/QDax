@@ -64,11 +64,11 @@ def test_cma_mega() -> None:
         gradients = jnp.nan_to_num(gradients)
 
         # Compute normalized gradients
-        norm_gradients = jax.tree_util.tree_map(
+        norm_gradients = jax.tree.map(
             lambda x: jnp.linalg.norm(x, axis=1, keepdims=True),
             gradients,
         )
-        grads = jax.tree_util.tree_map(lambda x, y: x / y, gradients, norm_gradients)
+        grads = jax.tree.map(lambda x, y: x / y, gradients, norm_gradients)
         grads = jnp.nan_to_num(grads)
         extra_scores = {"gradients": gradients, "normalized_grads": grads}
 
