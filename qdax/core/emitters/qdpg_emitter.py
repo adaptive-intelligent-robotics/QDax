@@ -2,7 +2,7 @@
 paper https://arxiv.org/abs/2006.08505.
 
 QDPG has been udpated to enter in the container+emitter framework of QD. Furthermore,
-it has been updated to work better with Jax in term of time cost. Those changes have
+it has been updated to work better with JAX in term of time cost. Those changes have
 been made in accordance with the authors of this algorithm.
 """
 

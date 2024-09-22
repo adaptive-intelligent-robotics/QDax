@@ -72,7 +72,7 @@ class MELSRepertoire(MapElitesRepertoire):
     Args:
         genotypes: a PyTree containing all the genotypes in the repertoire ordered
             by the centroids. Each leaf has a shape (num_centroids, num_features). The
-            PyTree can be a simple Jax array or a more complex nested structure such
+            PyTree can be a simple JAX array or a more complex nested structure such
             as to represent parameters of neural network in Flax.
         fitnesses: an array that contains the fitness of solutions in each cell of the
             repertoire, ordered by centroids. The array shape is (num_centroids,).

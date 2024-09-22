@@ -6,7 +6,7 @@ from brax.v1.envs import Env, State
 
 
 class PointMaze(Env):
-    """Jax/Brax implementation of the PointMaze.
+    """JAX/Brax implementation of the PointMaze.
     Highly inspired from the old python implementation of
     the PointMaze.
 

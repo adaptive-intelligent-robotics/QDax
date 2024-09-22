@@ -350,7 +350,6 @@ def reset_based_scoring_actor_dc_function_brax_envs(
         fitnesses,
         descriptors,
         extra_scores,
-        key,
     ) = scoring_actor_dc_function_brax_envs(
         actors_dc_params=actors_dc_params,
         descs=descs,
@@ -446,7 +445,7 @@ def create_default_brax_task_components(
 
     Args:
         env_name: Name of the BRAX environment (e.g. "ant_omni", "walker2d_uni"...).
-        key: Jax random key
+        key: JAX random key
         episode_length: The maximal rollout length.
         mlp_policy_hidden_layer_sizes: Hidden layer sizes of the policy network.
         deterministic: Whether we reset the initial state of the robot to the same
