@@ -149,9 +149,9 @@ def scoring_function_brax_envs(
         generate_unroll,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        key=key,
     )
-    _, data = jax.vmap(unroll_fn)(init_states, policies_params)
+    keys = jax.random.split(key, jax.tree.leaves(policies_params)[0].shape[0])
+    _, data = jax.vmap(unroll_fn)(init_states, policies_params, keys)
 
     # Create a mask to extract data properly
     mask = get_mask_from_transitions(data)
