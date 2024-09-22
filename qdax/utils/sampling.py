@@ -251,7 +251,7 @@ def sampling_reproducibility(
     descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
 ) -> Tuple[Fitness, Descriptor, ExtraScores, Fitness, Descriptor]:
     """Wrap scoring_function to perform sampling and compute the
-    expectation and reproduciblity.
+    expectation and reproducibility.
 
     This function return the reproducibility of fitnesses and descriptors for each
     individual over `num_samples` evaluations using the provided extractor

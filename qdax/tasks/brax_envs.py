@@ -289,8 +289,8 @@ def get_aurora_scoring_fn(
     """Evaluates policies contained in flatten_variables in parallel
 
     This rollout is only deterministic when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarly
-    evaluated with the same environment everytime, this won't be determinist.
+    If the init states are fixed but different, as a policy is not necessary
+    evaluated with the same environment every time, this won't be deterministic.
 
     When the init states are different, this is not purely stochastic. This
     choice was made for performance reason, as the reset function of brax envs

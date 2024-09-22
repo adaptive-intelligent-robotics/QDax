@@ -162,7 +162,7 @@ class SAC:
         key: RNGKey,
         deterministic: bool = False,
     ) -> Action:
-        """Selects an action acording to SAC policy.
+        """Selects an action according to SAC policy.
 
         Args:
             obs: agent observation(s)

@@ -42,7 +42,7 @@ def test_cmaes() -> None:
         key, subkey = jax.random.split(key)
         samples = cmaes.sample(state, subkey)
 
-        # udpate
+        # update
         state = cmaes.update(state, samples)
 
         # check stop condition

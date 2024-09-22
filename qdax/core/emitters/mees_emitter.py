@@ -427,7 +427,7 @@ class MEESEmitter(Emitter):
         scores_fn: Callable[[Fitness, Descriptor], jnp.ndarray],
     ) -> Tuple[Genotype, optax.OptState]:
         """Main es component, given a parent and a way to infer the score from
-        the fitnesses and descriptors fo its es-samples, return its
+        the fitnesses and descriptors of its es-samples, return its
         approximated-gradient-generated offspring.
 
         Args:
@@ -647,7 +647,7 @@ class MEESEmitter(Emitter):
 
         assert jax.tree.leaves(genotypes)[0].shape[0] == 1, (
             "ERROR: MAP-Elites-ES generates 1 offspring per generation, "
-            + "batch_size should be 1, the inputed batch has size:"
+            + "batch_size should be 1, the inputted batch has size:"
             + str(jax.tree.leaves(genotypes)[0].shape[0])
         )
 

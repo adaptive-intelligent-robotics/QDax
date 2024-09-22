@@ -368,7 +368,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             fitnesses: fitness of the initial genotypes of shape (batch_size,)
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
+            centroids: tessellation centroids of shape (batch_size, num_descriptors)
             extra_scores: unused extra_scores of the initial genotypes
 
         Returns:

@@ -1,7 +1,7 @@
 # QD Tasks
 The `tasks` directory provides default `scoring_function`'s to import easily to perform experiments without the boilerplate code so that the main script is kept simple and is not bloated. It provides a set of fixed tasks that is not meant to be modified. If you are developing and require the flexibility of modifying the task and the details that come along with it, we recommend copying and writing your own custom `scoring_function` in your main script instead of importing from `tasks`.
 
-The `tasks` directory also serves as a way to maintain a QD benchmark task suite that can be easily accesed. We implement several benchmark task across a range of domains. The tasks here are classical tasks from QD literature as well as more recent benchmarks tasks proposed at the [QD Benchmarks Workshop at GECCO 2022](https://quality-diversity.github.io/workshop).
+The `tasks` directory also serves as a way to maintain a QD benchmark task suite that can be easily accessed. We implement several benchmark task across a range of domains. The tasks here are classical tasks from QD literature as well as more recent benchmarks tasks proposed at the [QD Benchmarks Workshop at GECCO 2022](https://quality-diversity.github.io/workshop).
 
 ## Arm
 | Task      | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
@@ -89,8 +89,8 @@ desc_size = 2
 | Square                | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
 | Checkered             | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
 | Empty Circle          | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
-| Non-continous Islands | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
-| Continous Islands     | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
+| Non-continuous Islands | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
+| Continuous Islands     | n                    | $[0,1]^n$        | n                     | $[0,1]^n$         |             |
 
 ### Example Usage
 

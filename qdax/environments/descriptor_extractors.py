@@ -9,7 +9,7 @@ from qdax.custom_types import Descriptor, Params
 
 
 def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
-    """Compute final xy positon.
+    """Compute final xy position.
 
     This function suppose that state descriptor is the xy position, as it
     just select the final one of the state descriptors given.

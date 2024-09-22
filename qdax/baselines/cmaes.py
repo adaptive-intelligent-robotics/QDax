@@ -259,7 +259,7 @@ class CMAES:
             # unpack data
             cov, num_updates = operand
 
-            # enfore symmetry - did not change anything
+            # enforce symmetry - did not change anything
             cov = jnp.triu(cov) + jnp.triu(cov, 1).T
 
             # get eigen decomposition: eigenvalues, eigenvectors

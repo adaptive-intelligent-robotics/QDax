@@ -22,7 +22,7 @@ class OMGMEGAEmitterState(EmitterState):
 
     Args:
         gradients_repertoire: MapElites repertoire containing the gradients
-            of the indivuals.
+            of the individuals.
     """
 
     gradients_repertoire: MapElitesRepertoire
@@ -46,11 +46,11 @@ class OMGMEGAEmitter(Emitter):
     sampling.
     - in the state_update, we have to insert the gradients in the gradients
     repertoire in the same way the individuals were inserted. Once again, this is
-    slightly unoptimal because the same addition mecanism has to be computed two
+    slightly unoptimal because the same addition mechanism has to be computed two
     times. One solution that we are discussing and that is very similar to the first
-    solution discussed above, would be to decompose the addition mecanism in two
-    phases: one outputing the indices at which individuals will be added, and then
-    the actual insertion step. This would enable to re-use the same indices to add
+    solution discussed above, would be to decompose the addition mechanism in two
+    phases: one outputting the indices at which individuals will be added, and then
+    the actual insertion step. This would enable to reuse the same indices to add
     the gradients instead of having to recompute them.
 
     The two design choices seem acceptable and enable to have OMG MEGA compatible
