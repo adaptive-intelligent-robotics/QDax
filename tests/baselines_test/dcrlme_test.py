@@ -15,7 +15,7 @@ from qdax.core.neuroevolution.networks.networks import MLP, MLPDC
 from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.environments import descriptor_extractor
 from qdax.environments.wrappers import ClipRewardWrapper, OffsetRewardWrapper
-from qdax.tasks.brax_envs import reset_based_scoring_function_brax_envs
+from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.utils.metrics import default_qd_metrics
 
 
@@ -137,7 +137,7 @@ def test_dcrlme() -> None:
     # Prepare the scoring function
     bd_extraction_fn = descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        reset_based_scoring_function_brax_envs,
+        scoring_function_brax_envs,
         episode_length=episode_length,
         play_reset_fn=reset_fn,
         play_step_fn=play_step_fn,

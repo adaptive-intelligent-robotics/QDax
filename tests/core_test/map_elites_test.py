@@ -15,7 +15,7 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.tasks.brax_envs import scoring_function_brax_envs as scoring_function
 from qdax.utils.metrics import default_qd_metrics
 
 
@@ -49,6 +49,7 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
+    reset_fn = jax.jit(env.reset)
 
     # Init a random key
     key = jax.random.key(seed)
@@ -66,12 +67,6 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     keys = jax.random.split(subkey, num=batch_size)
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
-
-    # Create the initial environment states
-    key, subkey = jax.random.split(key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    init_states = reset_fn(keys)
 
     # Define the fonction to play a step with the policy in the environment
     def play_step_fn(
@@ -104,9 +99,9 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     # Prepare the scoring function
     descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function_brax_envs,
-        init_states=init_states,
+        scoring_function,
         episode_length=episode_length,
+        play_reset_fn=reset_fn,
         play_step_fn=play_step_fn,
         descriptor_extractor=descriptor_extraction_fn,
     )

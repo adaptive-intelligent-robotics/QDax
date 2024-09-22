@@ -9,7 +9,7 @@ from brax.envs import State as EnvState
 from flax.struct import PyTreeNode
 
 from qdax.core.neuroevolution.buffers.buffer import Transition
-from qdax.custom_types import Descriptor, Genotype, Params, RNGKey
+from qdax.custom_types import Genotype, Params, RNGKey
 
 
 class TrainingState(PyTreeNode):
@@ -61,60 +61,6 @@ def generate_unroll(
     (state, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
         (init_state, policy_params, key),
-        (),
-        length=episode_length,
-    )
-    return state, transitions
-
-
-@partial(jax.jit, static_argnames=("play_step_actor_dc_fn", "episode_length"))
-def generate_unroll_actor_dc(
-    init_state: EnvState,
-    actor_dc_params: Params,
-    desc: Descriptor,
-    key: RNGKey,
-    episode_length: int,
-    play_step_actor_dc_fn: Callable[
-        [EnvState, Descriptor, Params, RNGKey],
-        Tuple[
-            EnvState,
-            Descriptor,
-            Params,
-            RNGKey,
-            Transition,
-        ],
-    ],
-) -> Tuple[EnvState, Transition]:
-    """Generates an episode according to the agent's policy and descriptor,
-    returns the final state of the episode and the transitions of the episode.
-
-    Args:
-        init_state: first state of the rollout.
-        policy_dc_params: descriptor-conditioned policy params.
-        desc: descriptor the policy attempts to achieve.
-        key: random key for stochasiticity handling.
-        episode_length: length of the rollout.
-        play_step_fn: function describing how a step need to be taken.
-
-    Returns:
-        A new state, the experienced transition.
-    """
-
-    def _scan_play_step_fn(
-        carry: Tuple[EnvState, Params, Descriptor, RNGKey], unused_arg: Any
-    ) -> Tuple[Tuple[EnvState, Params, Descriptor, RNGKey], Transition]:
-        (
-            env_state,
-            actor_dc_params,
-            desc,
-            key,
-            transitions,
-        ) = play_step_actor_dc_fn(*carry)
-        return (env_state, actor_dc_params, desc, key), transitions
-
-    (state, _, _, _), transitions = jax.lax.scan(
-        _scan_play_step_fn,
-        (init_state, actor_dc_params, desc, key),
         (),
         length=episode_length,
     )

@@ -16,7 +16,7 @@ from qdax.core.mels import MELS
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import reset_based_scoring_function_brax_envs
+from qdax.tasks.brax_envs import scoring_function_brax_envs
 
 
 @pytest.mark.parametrize(
@@ -87,7 +87,7 @@ def test_mels(env_name: str, batch_size: int) -> None:
     # Prepare the scoring function
     descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        reset_based_scoring_function_brax_envs,
+        scoring_function_brax_envs,
         episode_length=episode_length,
         play_reset_fn=env.reset,
         play_step_fn=play_step_fn,

@@ -15,7 +15,7 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.tasks.brax_envs import scoring_function_brax_envs as scoring_function
 
 
 def test_mees() -> None:
@@ -45,6 +45,7 @@ def test_mees() -> None:
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
+    reset_fn = jax.jit(env.reset)
 
     # Init a random key
     key = jax.random.key(seed)
@@ -91,28 +92,12 @@ def test_mees() -> None:
 
         return next_state, policy_params, key, transition
 
-    # Create the initial environment states for samples and final indivs
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    key, subkey = jax.random.split(key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=sample_number, axis=0)
-    init_states_samples = reset_fn(keys)
-    key, subkey = jax.random.split(key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
-    init_states = reset_fn(keys)
-
-    # Prepare the scoring function for samples and final indivs
+    # Prepare the scoring function
     descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function_brax_envs,
-        init_states=init_states,
+        scoring_function,
         episode_length=episode_length,
-        play_step_fn=play_step_fn,
-        descriptor_extractor=descriptor_extraction_fn,
-    )
-    scoring_samples_fn = functools.partial(
-        scoring_function_brax_envs,
-        init_states=init_states_samples,
-        episode_length=episode_length,
+        play_reset_fn=reset_fn,
         play_step_fn=play_step_fn,
         descriptor_extractor=descriptor_extraction_fn,
     )
@@ -152,7 +137,7 @@ def test_mees() -> None:
     mees_emitter = MEESEmitter(
         config=mees_emitter_config,
         total_generations=num_iterations,
-        scoring_fn=scoring_samples_fn,
+        scoring_fn=scoring_fn,
         num_descriptors=env.descriptor_length,
     )
 

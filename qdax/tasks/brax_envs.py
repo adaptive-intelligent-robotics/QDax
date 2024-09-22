@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import qdax.environments
 from qdax import environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
-from qdax.core.neuroevolution.mdp_utils import generate_unroll, generate_unroll_actor_dc
+from qdax.core.neuroevolution.mdp_utils import generate_unroll
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import (
     Descriptor,
@@ -98,141 +98,12 @@ def get_mask_from_transitions(
     jax.jit,
     static_argnames=(
         "episode_length",
-        "play_step_fn",
-        "descriptor_extractor",
-    ),
-)
-def scoring_function_brax_envs(
-    policies_params: Genotype,
-    key: RNGKey,
-    init_states: EnvState,
-    episode_length: int,
-    play_step_fn: Callable[
-        [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
-    ],
-    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, ExtraScores]:
-    """Evaluates policies contained in policies_params in parallel in
-    deterministic or pseudo-deterministic environments.
-
-    This rollout is only deterministic when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarily
-    evaluated with the same environment everytime, this won't be determinist.
-    When the init states are different, this is not purely stochastic.
-
-    Args:
-        policies_params: The parameters of closed-loop controllers/policies to evaluate.
-        key: A jax random key
-        episode_length: The maximal rollout length.
-        play_step_fn: The function to play a step of the environment.
-        descriptor_extractor: The function to extract the descriptor.
-
-    Returns:
-        fitness: Array of fitnesses of all evaluated policies
-        descriptor: Behavioural descriptors of all evaluated policies
-        extra_scores: Additional information resulting from evaluation
-        key: The updated random key.
-    """
-
-    # Perform rollouts with each policy
-    key, subkey = jax.random.split(key)
-    unroll_fn = partial(
-        generate_unroll,
-        episode_length=episode_length,
-        play_step_fn=play_step_fn,
-        key=subkey,
-    )
-
-    _final_state, data = jax.vmap(unroll_fn)(init_states, policies_params)
-
-    # create a mask to extract data properly
-    mask = get_mask_from_transitions(data)
-
-    # scores
-    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    descriptors = descriptor_extractor(data, mask)
-
-    return fitnesses, descriptors, {"transitions": data}
-
-
-@partial(
-    jax.jit,
-    static_argnames=(
-        "episode_length",
-        "play_step_actor_dc_fn",
-        "descriptor_extractor",
-    ),
-)
-def scoring_actor_dc_function_brax_envs(
-    actors_dc_params: Genotype,
-    descs: Descriptor,
-    key: RNGKey,
-    init_states: EnvState,
-    episode_length: int,
-    play_step_actor_dc_fn: Callable[
-        [EnvState, Descriptor, Params, RNGKey],
-        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition],
-    ],
-    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, ExtraScores]:
-    """Evaluates policies contained in policy_dc_params in parallel in
-    deterministic or pseudo-deterministic environments.
-
-    This rollout is only deterministic when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarily
-    evaluated with the same environment everytime, this won't be determinist.
-    When the init states are different, this is not purely stochastic.
-
-    Args:
-        policy_dc_params: The parameters of closed-loop
-            descriptor-conditioned policy to evaluate.
-        descriptors: The descriptors the
-            descriptor-conditioned policy attempts to achieve.
-        key: A jax random key
-        episode_length: The maximal rollout length.
-        play_step_fn: The function to play a step of the environment.
-        descriptor_extractor: The function to extract the descriptor.
-
-    Returns:
-        fitness: Array of fitnesses of all evaluated policies
-        descriptor: Behavioural descriptors of all evaluated policies
-        extra_scores: Additional information resulting from evaluation
-        key: The updated random key.
-    """
-
-    # Perform rollouts with each policy
-    key, subkey = jax.random.split(key)
-    unroll_fn = partial(
-        generate_unroll_actor_dc,
-        episode_length=episode_length,
-        play_step_actor_dc_fn=play_step_actor_dc_fn,
-        key=subkey,
-    )
-
-    _final_state, data = jax.vmap(unroll_fn)(init_states, actors_dc_params, descs)
-
-    # create a mask to extract data properly
-    is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
-    mask = jnp.roll(is_done, 1, axis=1)
-    mask = mask.at[:, 0].set(0)
-
-    # Scores - add offset to ensure positive fitness (through positive rewards)
-    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    descriptors = descriptor_extractor(data, mask)
-
-    return fitnesses, descriptors, {"transitions": data}
-
-
-@partial(
-    jax.jit,
-    static_argnames=(
-        "episode_length",
         "play_reset_fn",
         "play_step_fn",
         "descriptor_extractor",
     ),
 )
-def reset_based_scoring_function_brax_envs(
+def scoring_function_brax_envs(
     policies_params: Genotype,
     key: RNGKey,
     episode_length: int,
@@ -268,99 +139,30 @@ def reset_based_scoring_function_brax_envs(
         extra_scores: Additional information resulting from the evaluation
     """
 
+    # Reset environments
     key, subkey = jax.random.split(key)
     keys = jax.random.split(
         subkey, jax.tree.leaves(policies_params)[0].shape[0]
     )
-    reset_fn = jax.vmap(play_reset_fn)
-    init_states = reset_fn(keys)
+    init_states = jax.vmap(play_reset_fn)(keys)
 
-    fitnesses, descriptors, extra_scores = scoring_function_brax_envs(
-        policies_params=policies_params,
-        key=key,
-        init_states=init_states,
+    # Step environments
+    unroll_fn = partial(
+        generate_unroll,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        descriptor_extractor=descriptor_extractor,
-    )
-
-    return fitnesses, descriptors, extra_scores
-
-
-@partial(
-    jax.jit,
-    static_argnames=(
-        "episode_length",
-        "play_reset_fn",
-        "play_step_actor_dc_fn",
-        "descriptor_extractor",
-    ),
-)
-def reset_based_scoring_actor_dc_function_brax_envs(
-    actors_dc_params: Genotype,
-    descs: Descriptor,
-    key: RNGKey,
-    episode_length: int,
-    play_reset_fn: Callable[[RNGKey], EnvState],
-    play_step_actor_dc_fn: Callable[
-        [EnvState, Descriptor, Params, RNGKey],
-        Tuple[EnvState, Descriptor, Params, RNGKey, QDTransition],
-    ],
-    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, ExtraScores]:
-    """Evaluates policies contained in policy_dc_params in parallel.
-    The play_reset_fn function allows for a more general scoring_function that can be
-    called with different batch-size and not only with a batch-size of the same
-    dimension as init_states.
-
-    To define purely stochastic environments, using the reset function from the
-    environment, use "play_reset_fn = env.reset".
-
-    To define purely deterministic environments, as in "scoring_function", generate
-    a single init_state using "init_state = env.reset(key)", then use
-    "play_reset_fn = lambda key: init_state".
-
-    Args:
-        policy_dc_params: The parameters of closed-loop
-            descriptor-conditioned policy to evaluate.
-        descriptors: The descriptors the
-            descriptor-conditioned policy attempts to achieve.
-        key: A jax random key
-        episode_length: The maximal rollout length.
-        play_reset_fn: The function to reset the environment
-            and obtain initial states.
-        play_step_fn: The function to play a step of the environment.
-        descriptor_extractor: The function to extract the descriptor.
-
-    Returns:
-        fitness: Array of fitnesses of all evaluated policies
-        descriptor: Behavioural descriptors of all evaluated policies
-        extra_scores: Additional information resulting from the evaluation
-        key: The updated random key.
-    """
-
-    key, subkey = jax.random.split(key)
-    keys = jax.random.split(
-        subkey, jax.tree.leaves(actors_dc_params)[0].shape[0]
-    )
-    reset_fn = jax.vmap(play_reset_fn)
-    init_states = reset_fn(keys)
-
-    (
-        fitnesses,
-        descriptors,
-        extra_scores,
-    ) = scoring_actor_dc_function_brax_envs(
-        actors_dc_params=actors_dc_params,
-        descs=descs,
         key=key,
-        init_states=init_states,
-        episode_length=episode_length,
-        play_step_actor_dc_fn=play_step_actor_dc_fn,
-        descriptor_extractor=descriptor_extractor,
     )
+    _, data = jax.vmap(unroll_fn)(init_states, policies_params)
 
-    return fitnesses, descriptors, extra_scores
+    # Create a mask to extract data properly
+    mask = get_mask_from_transitions(data)
+
+    # Evaluate
+    fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
+    descriptors = descriptor_extractor(data, mask)
+
+    return fitnesses, descriptors, {"transitions": data}
 
 
 def create_brax_scoring_fn(
@@ -419,7 +221,7 @@ def create_brax_scoring_fn(
         play_reset_fn = env.reset
 
     scoring_fn = functools.partial(
-        reset_based_scoring_function_brax_envs,
+        scoring_function_brax_envs,
         episode_length=episode_length,
         play_reset_fn=play_reset_fn,
         play_step_fn=play_step_fn,
