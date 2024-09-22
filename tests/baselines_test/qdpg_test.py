@@ -227,7 +227,7 @@ def test_qdpg() -> None:
     repertoire, emitter_state = map_elites.init(init_variables, centroids, subkey)
 
     @jax.jit
-    def update_scan_fn(carry: Any, unused: Any) -> Any:
+    def update_scan_fn(carry: Any, _: Any) -> Any:
         # iterate over grid
         repertoire, emitter_state, key = carry
         key, subkey = jax.random.split(key)

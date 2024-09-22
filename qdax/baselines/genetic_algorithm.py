@@ -131,7 +131,7 @@ class GeneticAlgorithm:
     def scan_update(
         self,
         carry: Tuple[GARepertoire, Optional[EmitterState], RNGKey],
-        unused: Any,
+        _: Any,
     ) -> Tuple[Tuple[GARepertoire, Optional[EmitterState], RNGKey], Metrics]:
         """Rewrites the update function in a way that makes it compatible with the
         jax.lax.scan primitive.
@@ -139,7 +139,7 @@ class GeneticAlgorithm:
         Args:
             carry: a tuple containing the repertoire, the emitter state and a
                 random key.
-            unused: unused element, necessary to respect jax.lax.scan API.
+            _: unused element, necessary to respect jax.lax.scan API.
 
         Returns:
             The updated repertoire and emitter state, with a new random key and metrics.

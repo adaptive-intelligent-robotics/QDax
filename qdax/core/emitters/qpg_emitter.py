@@ -312,7 +312,7 @@ class QualityPGEmitter(Emitter):
         emitter_state = emitter_state.replace(replay_buffer=replay_buffer)
 
         def scan_train_critics(
-            carry: QualityPGEmitterState, unused: Any
+            carry: QualityPGEmitterState, _: Any
         ) -> Tuple[QualityPGEmitterState, Any]:
             emitter_state = carry
             new_emitter_state = self._train_critics(emitter_state)
@@ -501,7 +501,7 @@ class QualityPGEmitter(Emitter):
 
         def scan_train_policy(
             carry: Tuple[QualityPGEmitterState, Genotype, optax.OptState],
-            unused: Any,
+            _: Any,
         ) -> Tuple[Tuple[QualityPGEmitterState, Genotype, optax.OptState], Any]:
             emitter_state, policy_params, policy_optimizer_state = carry
             (

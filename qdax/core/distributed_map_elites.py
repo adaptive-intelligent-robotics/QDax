@@ -191,7 +191,7 @@ class DistributedMAPElites(MAPElites):
         @jax.jit
         def _scan_update(
             carry: Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey],
-            unused: Any,
+            _: Any,
         ) -> Tuple[Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey], Metrics]:
             """Rewrites the update function in a way that makes it compatible with the
             jax.lax.scan primitive."""

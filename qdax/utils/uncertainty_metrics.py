@@ -288,7 +288,7 @@ def _perform_reevaluation(
 
         def _sampling_scan(
             key: RNGKey,
-            unused: Tuple[()],
+            _: Tuple[()],
         ) -> Tuple[Tuple[RNGKey], Tuple[Fitness, Descriptor, ExtraScores]]:
             key, subkey = jax.random.split(key)
             (

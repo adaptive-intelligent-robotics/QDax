@@ -45,7 +45,7 @@ class CMAPoolEmitter(Emitter):
         Returns:
             the batch size emitted by the emitter.
         """
-        return self._emitter.batch_size
+        return self._emitter.batch_size  # type: ignore
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
@@ -69,9 +69,7 @@ class CMAPoolEmitter(Emitter):
             The initial state of the emitter.
         """
 
-        def scan_emitter_init(
-            carry: RNGKey, unused: Any
-        ) -> Tuple[RNGKey, CMAEmitterState]:
+        def scan_emitter_init(carry: RNGKey, _: Any) -> Tuple[RNGKey, CMAEmitterState]:
             key = carry
             key, subkey = jax.random.split(key)
             emitter_state = self._emitter.init(
