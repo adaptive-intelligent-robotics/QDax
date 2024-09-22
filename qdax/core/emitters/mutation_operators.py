@@ -168,9 +168,7 @@ def polynomial_crossover(
     )
     crossover_fn = jax.vmap(crossover_fn)
     # TODO: check that key usage is correct
-    x = jax.tree.map(
-        lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2
-    )
+    x = jax.tree.map(lambda x1_, x2_: crossover_fn(x1_, x2_, crossover_keys), x1, x2)
     return x
 
 
@@ -223,8 +221,6 @@ def isoline_variation(
     keys_tree = jax.tree.unflatten(jax.tree.structure(x1), keys)
 
     # apply isolinedd to each branch of the tree
-    x = jax.tree.map(
-        lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree
-    )
+    x = jax.tree.map(lambda y1, y2, key: _variation_fn(y1, y2, key), x1, x2, keys_tree)
 
     return x

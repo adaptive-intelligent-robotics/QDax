@@ -114,9 +114,7 @@ class MOMERepertoire(MapElitesRepertoire):
         cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
 
         # get genotypes (front) from the chosen indices
-        pareto_front_genotypes = jax.tree.map(
-            lambda x: x[cells_idx], self.genotypes
-        )
+        pareto_front_genotypes = jax.tree.map(lambda x: x[cells_idx], self.genotypes)
 
         # prepare second sampling function
         sample_in_fronts = jax.vmap(self._sample_in_masked_pareto_front)
@@ -130,9 +128,7 @@ class MOMERepertoire(MapElitesRepertoire):
         )
 
         # remove the dim coming from pareto front
-        sampled_genotypes = jax.tree.map(
-            lambda x: x.squeeze(axis=1), sampled_genotypes
-        )
+        sampled_genotypes = jax.tree.map(lambda x: x.squeeze(axis=1), sampled_genotypes)
 
         return sampled_genotypes
 
@@ -287,16 +283,12 @@ class MOMERepertoire(MapElitesRepertoire):
             index = index.astype(jnp.int32)
 
             # get current repertoire cell data
-            cell_genotype = jax.tree.map(
-                lambda x: x[index][0], carry.genotypes
-            )
+            cell_genotype = jax.tree.map(lambda x: x[index][0], carry.genotypes)
             cell_fitness = carry.fitnesses[index][0]
             cell_descriptor = carry.descriptors[index][0]
             cell_mask = jnp.any(cell_fitness == -jnp.inf, axis=-1)
 
-            new_genotypes = jax.tree.map(
-                lambda x: jnp.expand_dims(x, axis=0), genotype
-            )
+            new_genotypes = jax.tree.map(lambda x: jnp.expand_dims(x, axis=0), genotype)
 
             # update pareto front
             (

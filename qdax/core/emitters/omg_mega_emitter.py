@@ -202,9 +202,7 @@ class OMGMEGAEmitter(Emitter):
         update_grad = jnp.sum(jax.vmap(lambda x, y: x * y)(coeffs, grads), axis=-1)
 
         # update the genotypes
-        new_genotypes = jax.tree.map(
-            lambda x, y: x + y, genotypes, update_grad
-        )
+        new_genotypes = jax.tree.map(lambda x, y: x + y, genotypes, update_grad)
 
         return new_genotypes, {}
 

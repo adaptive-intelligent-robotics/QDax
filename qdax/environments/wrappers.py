@@ -22,9 +22,7 @@ class CompletedEvalWrapper(Wrapper):
         reset_state = self.env.reset(rng)
         reset_state.metrics["reward"] = reset_state.reward
         eval_metrics = CompletedEvalMetrics(
-            current_episode_metrics=jax.tree.map(
-                jp.zeros_like, reset_state.metrics
-            ),
+            current_episode_metrics=jax.tree.map(jp.zeros_like, reset_state.metrics),
             completed_episodes_metrics=jax.tree.map(
                 lambda x: jp.zeros_like(jp.sum(x)), reset_state.metrics
             ),

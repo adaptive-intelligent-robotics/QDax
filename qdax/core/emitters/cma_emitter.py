@@ -216,9 +216,7 @@ class CMAEmitter(Emitter, ABC):
         sorted_indices = jnp.flip(jnp.argsort(ranking_criteria))
 
         # sort the candidates
-        sorted_candidates = jax.tree.map(
-            lambda x: x[sorted_indices], genotypes
-        )
+        sorted_candidates = jax.tree.map(lambda x: x[sorted_indices], genotypes)
         sorted_improvements = improvements[sorted_indices]
 
         # compute reinitialize condition

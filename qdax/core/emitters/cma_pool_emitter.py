@@ -155,9 +155,7 @@ class CMAPoolEmitter(Emitter):
         current_index = emitter_state.current_index
         emitter_states = emitter_state.emitter_states
 
-        used_emitter_state = jax.tree.map(
-            lambda x: x[current_index], emitter_states
-        )
+        used_emitter_state = jax.tree.map(lambda x: x[current_index], emitter_states)
 
         # update the used emitter state
         used_emitter_state = self._emitter.state_update(

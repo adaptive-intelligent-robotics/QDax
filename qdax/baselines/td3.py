@@ -341,9 +341,7 @@ class TD3:
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        transitions = jax.tree.map(
-            lambda x: jnp.swapaxes(x, 0, 1), transitions
-        )
+        transitions = jax.tree.map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
         masks = jnp.isnan(transitions.rewards)
         descriptors = descriptor_extraction_fn(transitions, masks)
 

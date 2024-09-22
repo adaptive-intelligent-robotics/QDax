@@ -141,9 +141,7 @@ def scoring_function_brax_envs(
 
     # Reset environments
     key, subkey = jax.random.split(key)
-    keys = jax.random.split(
-        subkey, jax.tree.leaves(policies_params)[0].shape[0]
-    )
+    keys = jax.random.split(subkey, jax.tree.leaves(policies_params)[0].shape[0])
     init_states = jax.vmap(play_reset_fn)(keys)
 
     # Step environments

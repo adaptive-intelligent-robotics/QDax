@@ -137,9 +137,7 @@ class GARepertoire(Repertoire):
         survivor_indices = indices[: self.size]
 
         # keep only the best ones
-        new_candidates = jax.tree.map(
-            lambda x: x[survivor_indices], candidates
-        )
+        new_candidates = jax.tree.map(lambda x: x[survivor_indices], candidates)
 
         new_repertoire = self.replace(
             genotypes=new_candidates, fitnesses=candidates_fitnesses[survivor_indices]
