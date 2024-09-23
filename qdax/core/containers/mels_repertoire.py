@@ -72,7 +72,7 @@ class MELSRepertoire(MapElitesRepertoire):
     Args:
         genotypes: a PyTree containing all the genotypes in the repertoire ordered
             by the centroids. Each leaf has a shape (num_centroids, num_features). The
-            PyTree can be a simple Jax array or a more complex nested structure such
+            PyTree can be a simple JAX array or a more complex nested structure such
             as to represent parameters of neural network in Flax.
         fitnesses: an array that contains the fitness of solutions in each cell of the
             repertoire, ordered by centroids. The array shape is (num_centroids,).
@@ -243,7 +243,7 @@ class MELSRepertoire(MapElitesRepertoire):
         )
 
         # create new repertoire
-        new_repertoire_genotypes = jax.tree_util.tree_map(
+        new_repertoire_genotypes = jax.tree.map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
@@ -298,7 +298,7 @@ class MELSRepertoire(MapElitesRepertoire):
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
 
         # default genotypes is all 0
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
             genotype,
         )

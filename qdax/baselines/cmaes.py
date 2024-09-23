@@ -166,28 +166,25 @@ class CMAES:
         )
 
     @partial(jax.jit, static_argnames=("self",))
-    def sample(
-        self, cmaes_state: CMAESState, random_key: RNGKey
-    ) -> Tuple[Genotype, RNGKey]:
+    def sample(self, cmaes_state: CMAESState, key: RNGKey) -> Genotype:
         """
         Sample a population.
 
         Args:
             cmaes_state: current state of the algorithm
-            random_key: jax random key
+            key: jax random key
 
         Returns:
             A tuple that contains a batch of population size genotypes and
             a new random key.
         """
-        random_key, subkey = jax.random.split(random_key)
         samples = jax.random.multivariate_normal(
-            subkey,
+            key,
             shape=(self._population_size,),
             mean=cmaes_state.mean,
             cov=(cmaes_state.sigma**2) * cmaes_state.cov_matrix,
         )
-        return samples, random_key
+        return samples
 
     @partial(jax.jit, static_argnames=("self",))
     def update_state(

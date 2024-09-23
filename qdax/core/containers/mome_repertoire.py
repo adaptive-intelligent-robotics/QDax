@@ -56,7 +56,7 @@ class MOMERepertoire(MapElitesRepertoire):
         Returns:
             The repertoire capacity.
         """
-        first_leaf = jax.tree_util.tree_leaves(self.genotypes)[0]
+        first_leaf = jax.tree.leaves(self.genotypes)[0]
         return int(first_leaf.shape[0] * first_leaf.shape[1])
 
     @jax.jit
@@ -64,44 +64,40 @@ class MOMERepertoire(MapElitesRepertoire):
         self,
         pareto_front_genotypes: ParetoFront[Genotype],
         mask: Mask,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Genotype:
         """Sample one single genotype in masked pareto front.
-
-        Note: do not retrieve a random key because this function
-        is to be vmapped. The public method that uses this function
-        will return a random key
 
         Args:
             pareto_front_genotypes: the genotypes of a pareto front
             mask: a mask associated to the front
-            random_key: a random key to handle stochastic operations
+            key: a random key to handle stochastic operations
 
         Returns:
             A single genotype among the pareto front.
         """
         p = (1.0 - mask) / jnp.sum(1.0 - mask)
 
-        genotype_sample = jax.tree_util.tree_map(
-            lambda x: jax.random.choice(random_key, x, shape=(1,), p=p),
+        genotype_sample = jax.tree.map(
+            lambda x: jax.random.choice(key, x, shape=(1,), p=p),
             pareto_front_genotypes,
         )
 
         return genotype_sample
 
     @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
+    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
         """Sample elements in the repertoire.
 
         This method sample a non-empty pareto front, and then sample
         genotypes from this pareto front.
 
         Args:
-            random_key: a random key to handle stochasticity.
+            key: a random key to handle stochasticity.
             num_samples: number of samples to retrieve from the repertoire.
 
         Returns:
-            A sample of genotypes and a new random key.
+            A sample of genotypes.
         """
 
         # create sampling probability for the cells
@@ -114,32 +110,27 @@ class MOMERepertoire(MapElitesRepertoire):
         indices = jnp.arange(start=0, stop=repertoire_empty.shape[0])
 
         # choose idx - among indices of cells that are not empty
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
 
         # get genotypes (front) from the chosen indices
-        pareto_front_genotypes = jax.tree_util.tree_map(
-            lambda x: x[cells_idx], self.genotypes
-        )
+        pareto_front_genotypes = jax.tree.map(lambda x: x[cells_idx], self.genotypes)
 
         # prepare second sampling function
         sample_in_fronts = jax.vmap(self._sample_in_masked_pareto_front)
 
         # sample genotypes from the pareto front
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, num=num_samples)
+        subkeys = jax.random.split(key, num=num_samples)
         sampled_genotypes = sample_in_fronts(  # type: ignore
             pareto_front_genotypes=pareto_front_genotypes,
             mask=repertoire_empty[cells_idx],
-            random_key=subkeys,
+            key=subkeys,
         )
 
         # remove the dim coming from pareto front
-        sampled_genotypes = jax.tree_util.tree_map(
-            lambda x: x.squeeze(axis=1), sampled_genotypes
-        )
+        sampled_genotypes = jax.tree.map(lambda x: x.squeeze(axis=1), sampled_genotypes)
 
-        return sampled_genotypes, random_key
+        return sampled_genotypes
 
     @jax.jit
     def _update_masked_pareto_front(
@@ -185,7 +176,7 @@ class MOMERepertoire(MapElitesRepertoire):
         cat_fitnesses = jnp.concatenate(
             [pareto_front_fitnesses, new_batch_of_fitnesses], axis=0
         )
-        cat_genotypes = jax.tree_util.tree_map(
+        cat_genotypes = jax.tree.map(
             lambda x, y: jnp.concatenate([x, y], axis=0),
             pareto_front_genotypes,
             new_batch_of_genotypes,
@@ -208,7 +199,7 @@ class MOMERepertoire(MapElitesRepertoire):
 
         # get new fitness, genotypes and descriptors
         new_front_fitness = jnp.take(cat_fitnesses, indices, axis=0)
-        new_front_genotypes = jax.tree_util.tree_map(
+        new_front_genotypes = jax.tree.map(
             lambda x: jnp.take(x, indices, axis=0), cat_genotypes
         )
         new_front_descriptors = jnp.take(cat_descriptors, indices, axis=0)
@@ -232,10 +223,10 @@ class MOMERepertoire(MapElitesRepertoire):
         front_size = len(pareto_front_fitnesses)  # type: ignore
         new_front_fitness = new_front_fitness[:front_size, :]
 
-        new_front_genotypes = jax.tree_util.tree_map(
+        new_front_genotypes = jax.tree.map(
             lambda x: x * new_mask_indices[0], new_front_genotypes
         )
-        new_front_genotypes = jax.tree_util.tree_map(
+        new_front_genotypes = jax.tree.map(
             lambda x: x[:front_size], new_front_genotypes
         )
 
@@ -292,16 +283,12 @@ class MOMERepertoire(MapElitesRepertoire):
             index = index.astype(jnp.int32)
 
             # get current repertoire cell data
-            cell_genotype = jax.tree_util.tree_map(
-                lambda x: x[index][0], carry.genotypes
-            )
+            cell_genotype = jax.tree.map(lambda x: x[index][0], carry.genotypes)
             cell_fitness = carry.fitnesses[index][0]
             cell_descriptor = carry.descriptors[index][0]
             cell_mask = jnp.any(cell_fitness == -jnp.inf, axis=-1)
 
-            new_genotypes = jax.tree_util.tree_map(
-                lambda x: jnp.expand_dims(x, axis=0), genotype
-            )
+            new_genotypes = jax.tree.map(lambda x: jnp.expand_dims(x, axis=0), genotype)
 
             # update pareto front
             (
@@ -324,7 +311,7 @@ class MOMERepertoire(MapElitesRepertoire):
             cell_fitness = cell_fitness - jnp.inf * jnp.expand_dims(cell_mask, axis=-1)
 
             # update grid
-            new_genotypes = jax.tree_util.tree_map(
+            new_genotypes = jax.tree.map(
                 lambda x, y: x.at[index].set(y), carry.genotypes, cell_genotype
             )
             new_fitnesses = carry.fitnesses.at[index].set(cell_fitness)
@@ -402,7 +389,7 @@ class MOMERepertoire(MapElitesRepertoire):
         default_fitnesses = -jnp.inf * jnp.ones(
             shape=(num_centroids, pareto_front_max_length, num_criteria)
         )
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(
                 shape=(
                     num_centroids,

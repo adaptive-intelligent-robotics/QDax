@@ -88,55 +88,54 @@ class PBT:
     @partial(jax.jit, static_argnames=("self",))
     def update_states_and_buffer(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         population_returns: jnp.ndarray,
         training_state: PBTTrainingState,
         replay_buffer: ReplayBuffer,
-    ) -> Tuple[RNGKey, PBTTrainingState, ReplayBuffer]:
+    ) -> Tuple[PBTTrainingState, ReplayBuffer]:
         """
         Updates the agents of the population states as well as
         their shared replay buffer.
 
         Args:
-            random_key: Random RNG key.
+            key: Random key.
             population_returns: Returns of the agents in the populations.
             training_state: The training state of the PBT scheme.
             replay_buffer: Shared replay buffer by the agents.
 
         Returns:
-            Updated random key, updated PBT training state and updated replay buffer.
+            Updated PBT training state and updated replay buffer.
         """
         indices_sorted = jax.numpy.argsort(-population_returns)
         best_indices = indices_sorted[: self._num_best_to_replace_from]
         indices_to_replace = indices_sorted[-self._num_worse_to_replace :]
 
-        random_key, key = jax.random.split(random_key)
         indices_used_to_replace = jax.random.choice(
             key, best_indices, shape=(self._num_worse_to_replace,), replace=True
         )
 
-        training_state = jax.tree_util.tree_map(
+        training_state = jax.tree.map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             training_state,
             jax.vmap(training_state.__class__.resample_hyperparams)(training_state),
         )
 
-        replay_buffer = jax.tree_util.tree_map(
+        replay_buffer = jax.tree.map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             replay_buffer,
             replay_buffer,
         )
 
-        return random_key, training_state, replay_buffer
+        return training_state, replay_buffer
 
     @partial(jax.jit, static_argnames=("self",))
     def update_states_and_buffer_pmap(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         population_returns: jnp.ndarray,
         training_state: PBTTrainingState,
         replay_buffer: ReplayBuffer,
-    ) -> Tuple[RNGKey, PBTTrainingState, ReplayBuffer]:
+    ) -> Tuple[PBTTrainingState, ReplayBuffer]:
         """
         Updates the agents of the population states as well as
         their shared replay buffer. This is the version of the function to be
@@ -144,7 +143,7 @@ class PBT:
         and implement a parallel update through communication between the devices.
 
         Args:
-            random_key: Random RNG key.
+            key: Random RNG key.
             population_returns: Returns of the agents in the populations.
             training_state: The training state of the PBT scheme.
             replay_buffer: Shared replay buffer by the agents.
@@ -156,7 +155,7 @@ class PBT:
         best_indices = indices_sorted[: self._num_best_to_replace_from]
         indices_to_replace = indices_sorted[-self._num_worse_to_replace :]
 
-        best_individuals, best_buffers, best_returns = jax.tree_util.tree_map(
+        best_individuals, best_buffers, best_returns = jax.tree.map(
             lambda x: x[best_indices],
             (training_state, replay_buffer, population_returns),
         )
@@ -164,19 +163,19 @@ class PBT:
             gathered_best_individuals,
             gathered_best_buffers,
             gathered_best_returns,
-        ) = jax.tree_util.tree_map(
+        ) = jax.tree.map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (best_individuals, best_buffers, best_returns),
         )
         pop_indices_sorted = jax.numpy.argsort(-gathered_best_returns)
         best_pop_indices = pop_indices_sorted[: self._num_best_to_replace_from]
 
-        random_key, key = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         indices_used_to_replace = jax.random.choice(
-            key, best_pop_indices, shape=(self._num_worse_to_replace,), replace=True
+            subkey, best_pop_indices, shape=(self._num_worse_to_replace,), replace=True
         )
 
-        training_state = jax.tree_util.tree_map(
+        training_state = jax.tree.map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             training_state,
             jax.vmap(gathered_best_individuals.__class__.resample_hyperparams)(
@@ -184,10 +183,10 @@ class PBT:
             ),
         )
 
-        replay_buffer = jax.tree_util.tree_map(
+        replay_buffer = jax.tree.map(
             lambda x, y: x.at[indices_to_replace].set(y[indices_used_to_replace]),
             replay_buffer,
             gathered_best_buffers,
         )
 
-        return random_key, training_state, replay_buffer
+        return training_state, replay_buffer

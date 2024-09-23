@@ -85,7 +85,7 @@ def intra_batch_comp(
     )
 
     # If we do not use a fitness (i.e same fitness everywhere), we create a virtual
-    # fitness function to add individuals with the same bd
+    # fitness function to add individuals with the same descriptor
     additional_score = jnp.where(
         jnp.nanmax(eval_scores) == jnp.nanmin(eval_scores), 1.0, 0.0
     )
@@ -122,8 +122,8 @@ def intra_batch_comp(
         fitness,
     ).any()
 
-    # Discard Individuals with Nans as their BD (mainly for the readdition where we
-    # have NaN bds)
+    # Discard individuals with nan as their descriptor (mainly for the readdition
+    # where we have nan descriptors)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
     # Negate to know if we keep the individual
@@ -137,7 +137,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
     Args:
         genotypes: a PyTree containing all the genotypes in the repertoire ordered
             by the centroids. Each leaf has a shape (num_centroids, num_features). The
-            PyTree can be a simple Jax array or a more complex nested structure such
+            PyTree can be a simple JAX array or a more complex nested structure such
             as to represent parameters of neural network in Flax.
         fitnesses: an array that contains the fitness of solutions in each cell of the
             repertoire, ordered by centroids. The array shape is (num_centroids,).
@@ -290,29 +290,31 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             -1,
         )
 
-        # We get all the indices of the empty bds first and then the filled ones
+        # We get all the indices of the empty descriptors first and then the filled ones
         # (because of -1)
-        sorted_bds = jax.lax.top_k(
+        sorted_descriptors = jax.lax.top_k(
             -1 * batch_of_indices.squeeze(), batch_of_indices.shape[0]
         )[1]
         batch_of_indices = jnp.where(
-            jnp.squeeze(batch_of_distances.at[sorted_bds].get() <= self.l_value),
-            batch_of_indices.at[sorted_bds].get(),
+            jnp.squeeze(
+                batch_of_distances.at[sorted_descriptors].get() <= self.l_value
+            ),
+            batch_of_indices.at[sorted_descriptors].get(),
             empty_indexes,
         )
 
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
 
         # ReIndexing of all the inputs to the correct sorted way
-        batch_of_descriptors = batch_of_descriptors.at[sorted_bds].get()
-        batch_of_genotypes = jax.tree_util.tree_map(
-            lambda x: x.at[sorted_bds].get(), batch_of_genotypes
+        batch_of_descriptors = batch_of_descriptors.at[sorted_descriptors].get()
+        batch_of_genotypes = jax.tree.map(
+            lambda x: x.at[sorted_descriptors].get(), batch_of_genotypes
         )
-        batch_of_fitnesses = batch_of_fitnesses.at[sorted_bds].get()
-        batch_of_observations = batch_of_observations.at[sorted_bds].get()
-        not_novel_enough = not_novel_enough.at[sorted_bds].get()
+        batch_of_fitnesses = batch_of_fitnesses.at[sorted_descriptors].get()
+        batch_of_observations = batch_of_observations.at[sorted_descriptors].get()
+        not_novel_enough = not_novel_enough.at[sorted_descriptors].get()
 
-        # Check to find Individuals with same BD within the Batch
+        # Check to find Individuals with same descriptor within the Batch
         keep_indiv = jax.jit(
             jax.vmap(intra_batch_comp, in_axes=(0, 0, None, None, None), out_axes=(0))
         )(
@@ -357,7 +359,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )
 
         # create new grid
-        new_grid_genotypes = jax.tree_util.tree_map(
+        new_grid_genotypes = jax.tree.map(
             lambda grid_genotypes, new_genotypes: grid_genotypes.at[
                 batch_of_indices.squeeze()
             ].set(new_genotypes),
@@ -387,28 +389,25 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )
 
     @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
+    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
         """Sample elements in the repertoire.
 
         Args:
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
             num_samples: the number of elements to be sampled
 
         Returns:
             samples: a batch of genotypes sampled in the repertoire
-            random_key: an updated jax PRNG random key
         """
-
-        random_key, sub_key = jax.random.split(random_key)
         grid_empty = self.fitnesses == -jnp.inf
         p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
-        samples = jax.tree_util.tree_map(
-            lambda x: jax.random.choice(sub_key, x, shape=(num_samples,), p=p),
+        samples = jax.tree.map(
+            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
             self.genotypes,
         )
 
-        return samples, random_key
+        return samples
 
     @classmethod
     def init(
@@ -440,7 +439,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # Initialize grid with default values
         default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.full(shape=(max_size,) + x.shape[1:], fill_value=jnp.nan),
             genotypes,
         )

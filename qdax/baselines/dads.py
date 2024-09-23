@@ -40,7 +40,7 @@ class DadsTrainingState(TrainingState):
     target_critic_params: Params
     dynamics_optimizer_state: optax.OptState
     dynamics_params: Params
-    random_key: RNGKey
+    key: RNGKey
     steps: jnp.ndarray
     normalization_running_stats: RunningMeanStdState
 
@@ -120,7 +120,7 @@ class DADS(SAC):
 
     def init(  # type: ignore
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         action_size: int,
         observation_size: int,
         descriptor_size: int,
@@ -128,7 +128,7 @@ class DADS(SAC):
         """Initialise the training state of the algorithm.
 
         Args:
-            random_key: a jax random key
+            key: a jax random key
             action_size: the size of the environment's action space
             observation_size: the size of the environment's observation space
             descriptor_size: the size of the environment's descriptor space (i.e. the
@@ -143,17 +143,17 @@ class DADS(SAC):
         dummy_dyn_obs = jnp.zeros((1, descriptor_size))
         dummy_skill = jnp.zeros((1, self._config.num_skills))
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         policy_params = self._policy.init(subkey, dummy_obs)
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         dynamics_params = self._dynamics.init(
             subkey,
             obs=dummy_dyn_obs,
@@ -178,7 +178,7 @@ class DADS(SAC):
             target_critic_params=target_critic_params,
             dynamics_optimizer_state=dynamics_optimizer_state,
             dynamics_params=dynamics_params,
-            random_key=random_key,
+            key=key,
             normalization_running_stats=RunningMeanStdState(
                 mean=jnp.zeros(
                     descriptor_size,
@@ -274,7 +274,7 @@ class DADS(SAC):
             the played transition
         """
 
-        random_key = training_state.random_key
+        key = training_state.key
         policy_params = training_state.policy_params
         obs = jnp.concatenate([env_state.obs, skills], axis=1)
 
@@ -284,10 +284,11 @@ class DADS(SAC):
         else:
             state_desc = jnp.zeros((env_state.obs.shape[0], 2))
 
-        actions, random_key = self.select_action(
+        key, subkey = jax.random.split(key)
+        actions = self.select_action(
             obs=obs,
             policy_params=policy_params,
-            random_key=random_key,
+            key=subkey,
             deterministic=deterministic,
         )
 
@@ -324,26 +325,21 @@ class DADS(SAC):
             actions=actions,
             truncations=truncations,
         )
+
+        key, subkey = jax.random.split(key)
         if not evaluation:
             training_state = training_state.replace(
-                random_key=random_key,
+                key=subkey,
                 normalization_running_stats=normalization_running_stats,
             )
         else:
             training_state = training_state.replace(
-                random_key=random_key,
+                key=subkey,
             )
 
         return next_env_state, training_state, transition
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-            "env_batch_size",
-        ),
-    )
+    @partial(jax.jit, static_argnames=("self", "play_step_fn", "env_batch_size"))
     def eval_policy_fn(
         self,
         training_state: DadsTrainingState,
@@ -382,7 +378,7 @@ class DADS(SAC):
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        reshaped_transitions = jax.tree_util.tree_map(
+        reshaped_transitions = jax.tree.map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
             transitions,
         )
@@ -479,13 +475,13 @@ class DADS(SAC):
         Args:
             training_state: the current training state of the algorithm.
             transitions: transitions sampled from a replay buffer.
-            random_key: a random key to handle stochasticity.
+            key: a random key to handle stochasticity.
 
         Returns:
             The updated training state and training metrics.
         """
 
-        random_key = training_state.random_key
+        key = training_state.key
 
         # Update skill-dynamics
         (
@@ -500,48 +496,49 @@ class DADS(SAC):
         )
 
         # update alpha
+        key, subkey = jax.random.split(key)
         (
             alpha_params,
             alpha_optimizer_state,
             alpha_loss,
-            random_key,
         ) = self._update_alpha(
             alpha_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update critic
+        key, subkey = jax.random.split(key)
         (
             critic_params,
             target_critic_params,
             critic_optimizer_state,
             critic_loss,
-            random_key,
         ) = self._update_critic(
             critic_lr=self._config.learning_rate,
             reward_scaling=self._config.reward_scaling,
             discount=self._config.discount,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update actor
+        key, subkey = jax.random.split(key)
         (
             policy_params,
             policy_optimizer_state,
             policy_loss,
-            random_key,
         ) = self._update_actor(
             policy_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # Create new training state
+        key, subkey = jax.random.split(key)
         new_training_state = DadsTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -552,7 +549,7 @@ class DADS(SAC):
             target_critic_params=target_critic_params,
             dynamics_optimizer_state=dynamics_optimizer_state,
             dynamics_params=dynamics_params,
-            random_key=random_key,
+            key=subkey,
             normalization_running_stats=training_state.normalization_running_stats,
             steps=training_state.steps + 1,
         )
@@ -589,9 +586,11 @@ class DADS(SAC):
         """
 
         # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-        transitions, random_key = replay_buffer.sample(
-            random_key,
+        key = training_state.key
+
+        key, subkey = jax.random.split(key)
+        transitions = replay_buffer.sample(
+            subkey,
             sample_size=self._config.batch_size,
         )
 

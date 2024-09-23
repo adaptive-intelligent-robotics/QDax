@@ -79,11 +79,11 @@ class DeceptiveEvolvabilityV0(QDSuiteTask):
         Returns:
             The fitness and descriptor.
         """
-        bd = multivariate_normal(
+        descriptor = multivariate_normal(
             params, self.mu_1, self.sigma_1
         ) + self.beta * multivariate_normal(params, self.mu_2, self.sigma_2)
         constant_fitness = jnp.asarray(1.0)
-        return constant_fitness, bd
+        return constant_fitness, descriptor
 
     def get_saddle_point(self) -> Genotype:
         """

@@ -38,6 +38,8 @@ def test_mome(num_descriptors: int) -> None:
     lag = 2.2
     base_lag = 0.0
 
+    key = jax.random.key(42)
+
     def rastrigin_scorer(
         genotypes: jnp.ndarray, base_lag: float, lag: float
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -68,10 +70,10 @@ def test_mome(num_descriptors: int) -> None:
     scoring_function = partial(rastrigin_scorer, base_lag=base_lag, lag=lag)
 
     def scoring_fn(
-        genotypes: jnp.ndarray, random_key: RNGKey
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+        genotypes: jnp.ndarray, key: RNGKey
+    ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors = scoring_function(genotypes)
-        return fitnesses, descriptors, {}, random_key
+        return fitnesses, descriptors, {}
 
     reference_point = jnp.array([-150, -150])
 
@@ -79,8 +81,7 @@ def test_mome(num_descriptors: int) -> None:
     metrics_function = partial(default_moqd_metrics, reference_point=reference_point)
 
     # initial population
-    random_key = jax.random.key(42)
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     genotypes = jax.random.uniform(
         subkey,
         (batch_size, num_variables),
@@ -111,13 +112,14 @@ def test_mome(num_descriptors: int) -> None:
         batch_size=batch_size,
     )
 
-    centroids, random_key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=num_descriptors,
         num_init_cvt_samples=20000,
         num_centroids=num_centroids,
         minval=minval,
         maxval=maxval,
-        random_key=random_key,
+        key=subkey,
     )
 
     mome = MOME(
@@ -126,18 +128,19 @@ def test_mome(num_descriptors: int) -> None:
         metrics_function=metrics_function,
     )
 
-    repertoire, emitter_state, random_key = mome.init(
-        genotypes, centroids, pareto_front_max_length, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = mome.init(
+        genotypes, centroids, pareto_front_max_length, subkey
     )
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         mome.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

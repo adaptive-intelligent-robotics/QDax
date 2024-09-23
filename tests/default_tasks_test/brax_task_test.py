@@ -30,15 +30,16 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     seed = 42
     num_init_cvt_samples = 1000
     num_centroids = 50
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptor = 0.0
+    max_descriptor = 1.0
 
     # Init a random key
-    random_key = jax.random.key(seed)
+    key = jax.random.key(seed)
 
-    env, policy_network, scoring_fn, random_key = create_default_brax_task_components(
+    key, subkey = jax.random.split(key)
+    env, policy_network, scoring_fn = create_default_brax_task_components(
         env_name=env_name,
-        random_key=random_key,
+        key=subkey,
     )
 
     # Define emitter
@@ -64,33 +65,34 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     )
 
     # Compute the centroids
-    centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
-        minval=min_bd,
-        maxval=max_bd,
-        random_key=random_key,
+        minval=min_descriptor,
+        maxval=max_descriptor,
+        key=subkey,
     )
 
     # Init population of controllers
-    init_variables, random_key = init_population_controllers(
-        policy_network, env, batch_size, random_key
+    key, subkey = jax.random.split(key)
+    init_variables = init_population_controllers(
+        policy_network, env, batch_size, subkey
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
-    )
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = map_elites.init(init_variables, centroids, subkey)
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

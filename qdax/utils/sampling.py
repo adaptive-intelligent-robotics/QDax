@@ -115,22 +115,16 @@ def dummy_extra_scores_extractor(
     return extra_scores
 
 
-@partial(
-    jax.jit,
-    static_argnames=(
-        "scoring_fn",
-        "num_samples",
-    ),
-)
+@partial(jax.jit, static_argnames=("scoring_fn", "num_samples"))
 def multi_sample_scoring_function(
     policies_params: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     scoring_fn: Callable[
         [Genotype, RNGKey],
-        Tuple[Fitness, Descriptor, ExtraScores, RNGKey],
+        Tuple[Fitness, Descriptor, ExtraScores],
     ],
     num_samples: int,
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """
     Wrap scoring_function to perform sampling.
 
@@ -139,19 +133,16 @@ def multi_sample_scoring_function(
 
     Args:
         policies_params: policies to evaluate
-        random_key: JAX random key
+        key: JAX random key
         scoring_fn: scoring function used for evaluation
         num_samples: number of samples to generate for each individual
 
     Returns:
         (n, num_samples) array of fitnesses,
         (n, num_samples, num_descriptors) array of descriptors,
-        dict with num_samples extra_scores per individual,
-        JAX random key
+        dict with num_samples extra_scores per individual
     """
-
-    random_key, subkey = jax.random.split(random_key)
-    keys = jax.random.split(subkey, num=num_samples)
+    keys = jax.random.split(key, num=num_samples)
 
     # evaluate
     sample_scoring_fn = jax.vmap(
@@ -160,13 +151,13 @@ def multi_sample_scoring_function(
         in_axes=(None, 0),
         # indicates that the vectorized axis will become axis 1, i.e., the final
         # output is shape (batch_size, num_samples, ...) except for the random key
-        out_axes=(1, 1, 1, 0),
+        out_axes=(1, 1, 1),
     )
-    all_fitnesses, all_descriptors, all_extra_scores, _ = sample_scoring_fn(
+    all_fitnesses, all_descriptors, all_extra_scores = sample_scoring_fn(
         policies_params, keys
     )
 
-    return all_fitnesses, all_descriptors, all_extra_scores, random_key
+    return all_fitnesses, all_descriptors, all_extra_scores
 
 
 @partial(
@@ -181,10 +172,10 @@ def multi_sample_scoring_function(
 )
 def sampling(
     policies_params: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     scoring_fn: Callable[
         [Genotype, RNGKey],
-        Tuple[Fitness, Descriptor, ExtraScores, RNGKey],
+        Tuple[Fitness, Descriptor, ExtraScores],
     ],
     num_samples: int,
     extra_scores_extractor: Callable[
@@ -192,7 +183,7 @@ def sampling(
     ] = dummy_extra_scores_extractor,
     fitness_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
     descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """Wrap scoring_function to perform sampling.
 
     This function return the expected fitnesses and descriptors for each
@@ -201,7 +192,7 @@ def sampling(
 
     Args:
         policies_params: policies to evaluate
-        random_key: JAX random key
+        key: JAX random key
         scoring_fn: scoring function used for evaluation
         num_samples: number of samples to generate for each individual
         extra_scores_extractor: function to extract the extra_scores from
@@ -221,17 +212,14 @@ def sampling(
         all_fitnesses,
         all_descriptors,
         all_extra_scores,
-        random_key,
-    ) = multi_sample_scoring_function(
-        policies_params, random_key, scoring_fn, num_samples
-    )
+    ) = multi_sample_scoring_function(policies_params, key, scoring_fn, num_samples)
 
     # Extract final scores
     descriptors = descriptor_extractor(all_descriptors)
     fitnesses = fitness_extractor(all_fitnesses)
     extra_scores = extra_scores_extractor(all_extra_scores, num_samples)
 
-    return fitnesses, descriptors, extra_scores, random_key
+    return fitnesses, descriptors, extra_scores
 
 
 @partial(
@@ -248,7 +236,7 @@ def sampling(
 )
 def sampling_reproducibility(
     policies_params: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     scoring_fn: Callable[
         [Genotype, RNGKey],
         Tuple[Fitness, Descriptor, ExtraScores, RNGKey],
@@ -261,7 +249,7 @@ def sampling_reproducibility(
     descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
     fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
     descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
-) -> Tuple[Fitness, Descriptor, ExtraScores, Fitness, Descriptor, RNGKey]:
+) -> Tuple[Fitness, Descriptor, ExtraScores, Fitness, Descriptor]:
     """Wrap scoring_function to perform sampling and compute the
     expectation and reproducibility.
 
@@ -271,7 +259,7 @@ def sampling_reproducibility(
 
     Args:
         policies_params: policies to evaluate
-        random_key: JAX random key
+        key: JAX random key
         scoring_fn: scoring function used for evaluation
         num_samples: number of samples to generate for each individual
         extra_scores_extractor: function to extract the extra_scores from
@@ -287,8 +275,7 @@ def sampling_reproducibility(
 
     Returns:
         The expected fitnesses, descriptors and extra_scores of the individuals
-        The fitnesses and descriptors reproducibility of the individuals
-        A new random key
+        The fitnesses and descriptors reproducibility of the individuals.
     """
 
     # Perform sampling
@@ -296,10 +283,7 @@ def sampling_reproducibility(
         all_fitnesses,
         all_descriptors,
         all_extra_scores,
-        random_key,
-    ) = multi_sample_scoring_function(
-        policies_params, random_key, scoring_fn, num_samples
-    )
+    ) = multi_sample_scoring_function(policies_params, key, scoring_fn, num_samples)
 
     # Extract final scores
     descriptors = descriptor_extractor(all_descriptors)
@@ -316,5 +300,4 @@ def sampling_reproducibility(
         extra_scores,
         fitnesses_reproducibility,
         descriptors_reproducibility,
-        random_key,
     )

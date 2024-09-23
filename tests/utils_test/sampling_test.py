@@ -9,7 +9,7 @@ from qdax import environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.tasks.brax_envs import scoring_function_brax_envs as scoring_function
 from qdax.utils.sampling import (
     average,
     closest,
@@ -34,7 +34,7 @@ def test_sampling() -> None:
     env = environments.create(env_name, episode_length=episode_length)
 
     # Init a random key
-    random_key = jax.random.key(seed)
+    key = jax.random.key(seed)
 
     # Init policy network
     policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)
@@ -45,7 +45,7 @@ def test_sampling() -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
     fake_batch = jnp.zeros(shape=(1, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
@@ -54,7 +54,7 @@ def test_sampling() -> None:
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
         """
         Play an environment step and return the updated state and the transition.
@@ -76,22 +76,19 @@ def test_sampling() -> None:
             next_state_desc=next_state.info["state_descriptor"],
         )
 
-        return next_state, policy_params, random_key, transition
+        return next_state, policy_params, key, transition
 
-    # Create the initial environment states for samples and final indivs
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    random_key, subkey = jax.random.split(random_key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=1, axis=0)
-    init_states = reset_fn(keys)
+    key, subkey = jax.random.split(key)
+    init_state = env.reset(subkey)
 
-    # Create the scoring function
-    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    # Prepare the scoring function
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function_brax_envs,
-        init_states=init_states,
+        scoring_function,
         episode_length=episode_length,
+        play_reset_fn=lambda _: init_state,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Test function for different extractors
@@ -110,9 +107,9 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
-        fitnesses, descriptors, _, _ = scoring_fn(init_variables, random_key)
-        sample_fitnesses, sample_descriptors, _, _ = scoring_1_sample_fn(
-            init_variables, random_key
+        fitnesses, descriptors, _ = scoring_fn(init_variables, key)
+        sample_fitnesses, sample_descriptors, _ = scoring_1_sample_fn(
+            init_variables, key
         )
 
         # Compare
@@ -131,8 +128,8 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
-        sample_fitnesses, sample_descriptors, _, _ = scoring_multi_sample_fn(
-            init_variables, random_key
+        sample_fitnesses, sample_descriptors, _ = scoring_multi_sample_fn(
+            init_variables, key
         )
 
         # Compare
@@ -151,6 +148,7 @@ def test_sampling() -> None:
     def sampling_reproducibility_test(
         fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
         descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+        key: RNGKey,
     ) -> None:
 
         # Compare scoring against perforing a single sample
@@ -163,14 +161,14 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
+        key, subkey = jax.random.split(key)
         (
             _,
             _,
             _,
             fitnesses_reproducibility,
             descriptors_reproducibility,
-            _,
-        ) = scoring_1_sample_fn(init_variables, random_key)
+        ) = scoring_1_sample_fn(init_variables, subkey)
 
         # Compare - all reproducibility should be 0
         pytest.assume(
@@ -200,14 +198,14 @@ def test_sampling() -> None:
         )
 
         # Evaluate individuals using the scoring functions
+        key, subkey = jax.random.split(key)
         (
             _,
             _,
             _,
             fitnesses_reproducibility,
             descriptors_reproducibility,
-            _,
-        ) = scoring_multi_sample_fn(init_variables, random_key)
+        ) = scoring_multi_sample_fn(init_variables, subkey)
 
         # Compare - all reproducibility should be 0
         pytest.assume(
@@ -228,6 +226,7 @@ def test_sampling() -> None:
         )
 
     # Call the test for each type of extractor
-    sampling_reproducibility_test(std, std)
-    sampling_reproducibility_test(mad, mad)
-    sampling_reproducibility_test(iqr, iqr)
+    key_1, key_2, key_3 = jax.random.split(key, 3)
+    sampling_reproducibility_test(std, std, key_1)
+    sampling_reproducibility_test(mad, mad, key_2)
+    sampling_reproducibility_test(iqr, iqr, key_3)

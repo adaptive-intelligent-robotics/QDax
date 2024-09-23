@@ -6,7 +6,7 @@ from brax.v1.envs import Env, State
 
 
 class PointMaze(Env):
-    """Jax/Brax implementation of the PointMaze.
+    """JAX/Brax implementation of the PointMaze.
     Highly inspired from the old python implementation of
     the PointMaze.
 
@@ -91,11 +91,11 @@ class PointMaze(Env):
         return [self._x_min, self._y_min], [self._x_max, self._y_max]
 
     @property
-    def behavior_descriptor_length(self) -> int:
+    def descriptor_length(self) -> int:
         return self.state_descriptor_length
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def descriptor_limits(self) -> Tuple[List[float], List[float]]:
         return self.state_descriptor_limits
 
     @property

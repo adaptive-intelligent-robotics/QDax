@@ -92,28 +92,28 @@ class OMGMEGAEmitter(Emitter):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[OMGMEGAEmitterState, RNGKey]:
+    ) -> OMGMEGAEmitterState:
         """Initialises the state of the emitter. Creates an empty repertoire
         that will later contain the gradients of the individuals.
 
         Args:
             genotypes: The genotypes of the initial population.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The initial emitter state.
         """
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
+        first_genotype = jax.tree.map(lambda x: x[0], genotypes)
 
         # add a dimension of size num descriptors + 1
-        gradient_genotype = jax.tree_util.tree_map(
+        gradient_genotype = jax.tree.map(
             lambda x: jnp.repeat(
                 jnp.expand_dims(x, axis=-1), repeats=self._num_descriptors + 1, axis=-1
             ),
@@ -137,21 +137,15 @@ class OMGMEGAEmitter(Emitter):
             extra_scores,
         )
 
-        return (
-            OMGMEGAEmitterState(gradients_repertoire=gradients_repertoire),
-            random_key,
-        )
+        return OMGMEGAEmitterState(gradients_repertoire=gradients_repertoire)
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: OMGMEGAEmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         OMG emitter function that samples elements in the repertoire and does a gradient
         update with random coefficients to create new candidates.
@@ -159,28 +153,26 @@ class OMGMEGAEmitter(Emitter):
         Args:
             repertoire: current repertoire
             emitter_state: current emitter state, contains the gradients
-            random_key: random key
+            key: random key
 
         Returns:
             new_genotypes: new candidates to be added to the grid
-            random_key: updated random key
         """
         # sample genotypes
-        (
-            genotypes,
-            _,
-        ) = repertoire.sample(random_key, num_samples=self._batch_size)
+        key, subkey = jax.random.split(key)
+        genotypes = repertoire.sample(subkey, num_samples=self._batch_size)
 
         # sample gradients - use the same random key for sampling
         # See class docstrings for discussion about this choice
-        gradients, random_key = emitter_state.gradients_repertoire.sample(
-            random_key, num_samples=self._batch_size
+        key, subkey = jax.random.split(key)
+        gradients = emitter_state.gradients_repertoire.sample(
+            subkey, num_samples=self._batch_size
         )
 
-        fitness_gradients = jax.tree_util.tree_map(
+        fitness_gradients = jax.tree.map(
             lambda x: jnp.expand_dims(x[:, :, 0], axis=-1), gradients
         )
-        descriptors_gradients = jax.tree_util.tree_map(lambda x: x[:, :, 1:], gradients)
+        descriptors_gradients = jax.tree.map(lambda x: x[:, :, 1:], gradients)
 
         # Normalize the gradients
         norm_fitness_gradients = jnp.linalg.norm(
@@ -195,15 +187,14 @@ class OMGMEGAEmitter(Emitter):
         descriptors_gradients = descriptors_gradients / norm_descriptors_gradients
 
         # Draw random coefficients
-        random_key, subkey = jax.random.split(random_key)
         coeffs = jax.random.multivariate_normal(
-            subkey,
+            key,
             shape=(self._batch_size,),
             mean=self._mu,
             cov=self._sigma,
         )
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
-        grads = jax.tree_util.tree_map(
+        grads = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=-1),
             fitness_gradients,
             descriptors_gradients,
@@ -211,16 +202,11 @@ class OMGMEGAEmitter(Emitter):
         update_grad = jnp.sum(jax.vmap(lambda x, y: x * y)(coeffs, grads), axis=-1)
 
         # update the genotypes
-        new_genotypes = jax.tree_util.tree_map(
-            lambda x, y: x + y, genotypes, update_grad
-        )
+        new_genotypes = jax.tree.map(lambda x, y: x + y, genotypes, update_grad)
 
-        return new_genotypes, {}, random_key
+        return new_genotypes, {}
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: OMGMEGAEmitterState,
