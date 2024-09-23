@@ -133,7 +133,7 @@ class DCRLEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[DCRLEmitterState, RNGKey]:
+    ) -> DCRLEmitterState:
         """Initializes the emitter state.
 
         Args:
@@ -141,11 +141,11 @@ class DCRLEmitter(Emitter):
             key: A random key.
 
         Returns:
-            The initial state of the PGAMEEmitter, a new random key.
+            The initial state of the PGAMEEmitter.
         """
 
-        observation_size = jax.tree_util.tree_leaves(genotypes)[1].shape[1]
-        descriptor_size = self._env.behavior_descriptor_length
+        observation_size = jax.tree.leaves(genotypes)[1].shape[1]
+        descriptor_size = self._env.descriptor_length
         action_size = self._env.action_size
 
         # Initialise critic, greedy actor and population
@@ -157,11 +157,11 @@ class DCRLEmitter(Emitter):
         critic_params = self._critic_network.init(
             subkey, obs=fake_obs, actions=fake_action, desc=fake_desc
         )
-        target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
+        target_critic_params = jax.tree.map(lambda x: x, critic_params)
 
         key, subkey = jax.random.split(key)
         actor_params = self._actor_network.init(subkey, obs=fake_obs, desc=fake_desc)
-        target_actor_params = jax.tree_util.tree_map(lambda x: x, actor_params)
+        target_actor_params = jax.tree.map(lambda x: x, actor_params)
 
         # Prepare init optimizer states
         critic_opt_state = self._critic_optimizer.init(critic_params)
@@ -204,7 +204,7 @@ class DCRLEmitter(Emitter):
             steps=jnp.array(0),
         )
 
-        return emitter_state, key
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def _similarity(self, descs_1: Descriptor, descs_2: Descriptor) -> jnp.array:
@@ -223,22 +223,17 @@ class DCRLEmitter(Emitter):
     def _normalize_desc(self, desc: Descriptor) -> Descriptor:
         return (
             2
-            * (desc - self._env.behavior_descriptor_limits[0])
-            / (
-                self._env.behavior_descriptor_limits[1]
-                - self._env.behavior_descriptor_limits[0]
-            )
+            * (desc - self._env.descriptor_limits[0])
+            / (self._env.descriptor_limits[1] - self._env.descriptor_limits[0])
             - 1
         )
 
     @partial(jax.jit, static_argnames=("self",))
     def _unnormalize_desc(self, desc_normalized: Descriptor) -> Descriptor:
         return 0.5 * (
-            self._env.behavior_descriptor_limits[1]
-            - self._env.behavior_descriptor_limits[0]
+            self._env.descriptor_limits[1] - self._env.descriptor_limits[0]
         ) * desc_normalized + 0.5 * (
-            self._env.behavior_descriptor_limits[1]
-            + self._env.behavior_descriptor_limits[0]
+            self._env.descriptor_limits[1] + self._env.descriptor_limits[0]
         )
 
     @partial(jax.jit, static_argnames=("self",))
@@ -274,16 +269,13 @@ class DCRLEmitter(Emitter):
         actor_dc_params["params"]["Dense_0"]["bias"] = equivalent_bias
         return actor_dc_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Repertoire,
         emitter_state: DCRLEmitterState,
         key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores]:
         """Do a step of PG emission.
 
         Args:
@@ -295,33 +287,28 @@ class DCRLEmitter(Emitter):
             A batch of offspring, the new emitter state and a new key.
         """
         # PG emitter
-        parents_pg, descs_pg, key = repertoire.sample_with_descs(
-            key, self._config.dcrl_batch_size
+        key, subkey = jax.random.split(key)
+        parents_pg, descs_pg = repertoire.sample_with_descs(
+            subkey, self._config.dcrl_batch_size
         )
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
         # Actor injection emitter
-        _, descs_ai, key = repertoire.sample_with_descs(key, self._config.ai_batch_size)
-        descs_ai = descs_ai.reshape(
-            descs_ai.shape[0], self._env.behavior_descriptor_length
-        )
+        _, descs_ai = repertoire.sample_with_descs(key, self._config.ai_batch_size)
+        descs_ai = descs_ai.reshape(descs_ai.shape[0], self._env.descriptor_length)
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 
         # Concatenate PG and AI genotypes
-        genotypes = jax.tree_util.tree_map(
+        genotypes = jax.tree.map(
             lambda x1, x2: jnp.concatenate((x1, x2), axis=0), genotypes_pg, genotypes_ai
         )
 
         return (
             genotypes,
             {"desc_prime": jnp.concatenate([descs_pg, descs_ai], axis=0)},
-            key,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit_pg(
         self,
         emitter_state: DCRLEmitterState,
@@ -348,10 +335,7 @@ class DCRLEmitter(Emitter):
 
         return offsprings
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def emit_ai(self, emitter_state: DCRLEmitterState, descs: Descriptor) -> Genotype:
         """Emit the offsprings generated through pg mutation.
 
@@ -386,10 +370,7 @@ class DCRLEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: DCRLEmitterState,
@@ -448,10 +429,10 @@ class DCRLEmitter(Emitter):
 
         # sample transitions from the replay buffer
         key, subkey = jax.random.split(emitter_state.key)
-        transitions, key = replay_buffer.sample(
+        transitions = replay_buffer.sample(
             subkey, self._config.num_critic_training_steps * self._config.batch_size
         )
-        transitions = jax.tree_util.tree_map(
+        transitions = jax.tree.map(
             lambda x: jnp.reshape(
                 x,
                 (
@@ -503,19 +484,20 @@ class DCRLEmitter(Emitter):
             New emitter state where the critic and the greedy actor have been
             updated. Optimizer states have also been updated in the process.
         """
+        key, subkey = jax.random.split(emitter_state.key)
+
         # Update Critic
         (
             critic_opt_state,
             critic_params,
             target_critic_params,
-            key,
         ) = self._update_critic(
             critic_params=emitter_state.critic_params,
             target_critic_params=emitter_state.target_critic_params,
             target_actor_params=emitter_state.target_actor_params,
             critic_opt_state=emitter_state.critic_opt_state,
             transitions=transitions,
-            key=emitter_state.key,
+            key=subkey,
         )
 
         # Update greedy actor
@@ -563,7 +545,7 @@ class DCRLEmitter(Emitter):
         critic_opt_state: Params,
         transitions: DCRLTransition,
         key: RNGKey,
-    ) -> Tuple[Params, Params, Params, RNGKey]:
+    ) -> Tuple[Params, Params, Params]:
 
         # compute loss and gradients
         key, subkey = jax.random.split(key)
@@ -572,7 +554,7 @@ class DCRLEmitter(Emitter):
             target_actor_params,
             target_critic_params,
             transitions,
-            subkey,
+            key,
         )
         critic_updates, critic_opt_state = self._critic_optimizer.update(
             critic_gradient, critic_opt_state
@@ -582,14 +564,14 @@ class DCRLEmitter(Emitter):
         critic_params = optax.apply_updates(critic_params, critic_updates)
 
         # Soft update of target critic network
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_critic_params,
             critic_params,
         )
 
-        return critic_opt_state, critic_params, target_critic_params, key
+        return critic_opt_state, critic_params, target_critic_params
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
@@ -614,7 +596,7 @@ class DCRLEmitter(Emitter):
         actor_params = optax.apply_updates(actor_params, policy_updates)
 
         # Soft update of target greedy actor
-        target_actor_params = jax.tree_util.tree_map(
+        target_actor_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             target_actor_params,
@@ -627,10 +609,7 @@ class DCRLEmitter(Emitter):
             target_actor_params,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+    @partial(jax.jit, static_argnames=("self",))
     def _mutation_function_pg(
         self,
         policy_params: Genotype,
@@ -650,9 +629,10 @@ class DCRLEmitter(Emitter):
         Returns:
             The updated params of the neural network.
         """
+        key, subkey = jax.random.split(emitter_state.key)
         # Get transitions
-        transitions, key = emitter_state.replay_buffer.sample(
-            emitter_state.key,
+        transitions = emitter_state.replay_buffer.sample(
+            subkey,
             sample_size=self._config.num_pg_training_steps * self._config.batch_size,
         )
         descs_prime = jnp.tile(
@@ -664,7 +644,7 @@ class DCRLEmitter(Emitter):
             * transitions.rewards,
             desc_prime=descs_prime_normalized,
         )
-        transitions = jax.tree_util.tree_map(
+        transitions = jax.tree.map(
             lambda x: jnp.reshape(
                 x,
                 (

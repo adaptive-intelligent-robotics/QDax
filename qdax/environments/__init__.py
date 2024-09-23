@@ -10,7 +10,7 @@ from brax.v1.envs.wrappers import (
 )
 
 from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
-from qdax.environments.bd_extractors import (
+from qdax.environments.descriptor_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )
@@ -42,7 +42,7 @@ reward_offset = {
     "walker2d_uni": 1.413,
 }
 
-behavior_descriptor_extractor = {
+descriptor_extractor = {
     "pointmaze": get_final_xy_position,
     "anttrap": get_final_xy_position,
     "humanoidtrap": get_final_xy_position,

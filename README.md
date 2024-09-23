@@ -11,7 +11,7 @@
 [![codecov](https://codecov.io/gh/adaptive-intelligent-robotics/QDax/branch/feat/add-codecov/graph/badge.svg)](https://codecov.io/gh/adaptive-intelligent-robotics/QDax)
 
 
-QDax is a tool to accelerate Quality-Diversity (QD) and neuro-evolution algorithms through hardware accelerators and massive parallelization. QD algorithms usually take days/weeks to run on large CPU clusters. With QDax, QD algorithms can now be run in minutes! ⏩ ⏩ 🕛
+QDax is a tool to accelerate Quality-Diversity (QD) and neuroevolution algorithms through hardware accelerators and massive parallelization. QD algorithms usually take days/weeks to run on large CPU clusters. With QDax, QD algorithms can now be run in minutes! ⏩ ⏩ 🕛
 
 QDax has been developed as a research framework: it is flexible and easy to extend and build on and can be used for any problem setting. Get started with simple example and run a QD algorithm in minutes here! [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)
 
@@ -60,14 +60,14 @@ num_iterations = 50
 grid_shape = (100, 100)
 min_param = 0.0
 max_param = 1.0
-min_bd = 0.0
-max_bd = 1.0
+min_descriptor = 0.0
+max_descriptor = 1.0
 
 # Init a random key
-random_key = jax.random.key(seed)
+key = jax.random.key(seed)
 
 # Init population of controllers
-random_key, subkey = jax.random.split(random_key)
+key, subkey = jax.random.split(key)
 init_variables = jax.random.uniform(
     subkey,
     shape=(init_batch_size, num_param_dimensions),
@@ -106,19 +106,19 @@ map_elites = MAPElites(
 # Compute the centroids
 centroids = compute_euclidean_centroids(
     grid_shape=grid_shape,
-    minval=min_bd,
-    maxval=max_bd,
+    minval=min_descriptor,
+    maxval=max_descriptor,
 )
 
 # Initializes repertoire and emitter state
-repertoire, emitter_state, random_key = map_elites.init(init_variables, centroids, random_key)
+repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
 
 # Run MAP-Elites loop
 for i in range(num_iterations):
-    (repertoire, emitter_state, metrics, random_key,) = map_elites.update(
+    (repertoire, emitter_state, metrics, key,) = map_elites.update(
         repertoire,
         emitter_state,
-        random_key,
+        key,
     )
 
 # Get contents of repertoire
@@ -133,6 +133,7 @@ QDax currently supports the following algorithms:
 | Algorithm                                                                                                                     | Example                                                                                                                                                                                         |
 |-------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [MAP-Elites](https://arxiv.org/abs/1504.04909)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)  |
+| [AURORA](https://arxiv.org/abs/2106.05648)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/aurora.ipynb)  |
 | [CVT MAP-Elites](https://arxiv.org/abs/1610.05729)                                                                            | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)  |
 | [Policy Gradient Assisted MAP-Elites (PGA-ME)](https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/pgame.ipynb)      |
 | [DCRL-ME](https://arxiv.org/abs/2401.08632)                                                                                   | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/dcrlme.ipynb)     |

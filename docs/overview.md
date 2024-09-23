@@ -22,18 +22,18 @@ More importantly, QDax handles the archive management which is the key idea of Q
 ## Code Example
 ```python
 # Initializes repertoire and emitter state
-repertoire, emitter_state, random_key = map_elites.init(init_variables, centroids, random_key)
+repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
 
 for i in range(num_iterations):
 
     # generate new population with the emitter
-    genotypes, random_key = map_elites._emitter.emit(
-        repertoire, emitter_state, random_key
+    genotypes, key = map_elites._emitter.emit(
+        repertoire, emitter_state, key
     )
 
     # scores/evaluates the population
-    fitnesses, descriptors, extra_scores, random_key = map_elites._scoring_function(
-        genotypes, random_key
+    fitnesses, descriptors, extra_scores, key = map_elites._scoring_function(
+        genotypes, key
     )
 
     # update repertoire

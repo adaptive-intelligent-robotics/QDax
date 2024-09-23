@@ -25,14 +25,14 @@ class QDSuiteTask(abc.ABC):
     def scoring_function(
         self,
         params: Genotype,
-        random_key: RNGKey,
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         """
         Evaluate params in parallel
         """
         fitnesses, descriptors = jax.vmap(self.evaluation)(params)
 
-        return fitnesses, descriptors, {}, random_key
+        return fitnesses, descriptors, {}
 
     @abc.abstractmethod
     def get_descriptor_size(self) -> int:
@@ -64,13 +64,13 @@ class QDSuiteTask(abc.ABC):
             The minimum and maximum descriptor assuming that
             the descriptor space is bounded.
         """
-        min_bd, max_bd = self.get_min_max_descriptor()
-        if jnp.isinf(max_bd) or jnp.isinf(min_bd):
+        min_descriptor, max_descriptor = self.get_min_max_descriptor()
+        if jnp.isinf(max_descriptor) or jnp.isinf(min_descriptor):
             raise NotImplementedError(
                 "Boundedness has not been implemented " "for this unbounded task"
             )
         else:
-            return min_bd, max_bd
+            return min_descriptor, max_descriptor
 
     @abc.abstractmethod
     def get_min_max_params(

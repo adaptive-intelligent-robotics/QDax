@@ -311,7 +311,7 @@ def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         return data, value, indice
 
     def scannable_top_1(
-        carry: jnp.ndarray, unused: Any
+        carry: jnp.ndarray, _: Any
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         data = carry
         data, value, indice = top_1(data)

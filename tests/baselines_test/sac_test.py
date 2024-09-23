@@ -82,7 +82,7 @@ def test_sac() -> None:
     sac = SAC(config=sac_config, action_size=env.action_size)
     key, subkey = jax.random.split(key)
     training_state = sac.init(
-        random_key=subkey,
+        key=subkey,
         action_size=env.action_size,
         observation_size=env.observation_size,
     )

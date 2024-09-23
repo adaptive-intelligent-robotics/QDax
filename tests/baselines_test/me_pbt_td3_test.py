@@ -67,9 +67,10 @@ def test_me_pbt_td3() -> None:
         episode_length=episode_length,
         auto_reset=True,
     )
-    min_bd, max_bd = env.behavior_descriptor_limits
+    min_descriptor, max_descriptor = env.descriptor_limits
 
     key = jax.random.key(seed)
+
     key, subkey = jax.random.split(key)
     eval_env_first_states = jax.jit(eval_env.reset)(rng=subkey)
 
@@ -112,19 +113,23 @@ def test_me_pbt_td3() -> None:
     )
 
     # get scoring function
-    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
-    eval_policy = agent.get_eval_qd_fn(eval_env, bd_extraction_fn=bd_extraction_fn)
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
+    eval_policy = agent.get_eval_qd_fn(
+        eval_env, descriptor_extraction_fn=descriptor_extraction_fn
+    )
 
-    def scoring_function(genotypes, random_key):  # type: ignore
-        population_size = jax.tree_util.tree_leaves(genotypes)[0].shape[0]
-        first_states = jax.tree_util.tree_map(
+    def scoring_function(genotypes, key):  # type: ignore
+        population_size = jax.tree.leaves(genotypes)[0].shape[0]
+        first_states = jax.tree.map(
             lambda x: jnp.expand_dims(x, axis=0), eval_env_first_states
         )
-        first_states = jax.tree_util.tree_map(
+        first_states = jax.tree.map(
             lambda x: jnp.repeat(x, population_size, axis=0), first_states
         )
-        population_returns, population_bds, _, _ = eval_policy(genotypes, first_states)
-        return population_returns, population_bds, {}, random_key
+        population_returns, population_descriptors, _, _ = eval_policy(
+            genotypes, first_states
+        )
+        return population_returns, population_descriptors, {}
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
@@ -142,13 +147,14 @@ def test_me_pbt_td3() -> None:
         metrics_function=metrics_function,
     )
 
-    centroids, key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
-        minval=min_bd,
-        maxval=max_bd,
-        random_key=key,
+        minval=min_descriptor,
+        maxval=max_descriptor,
+        key=subkey,
     )
 
     key, *keys = jax.random.split(key, num=1 + num_devices)
@@ -164,9 +170,7 @@ def test_me_pbt_td3() -> None:
 
     # Need to convert to PRNGKey because of github.com/jax-ml/jax/issues/23647
     keys = jax.random.key_data(keys)
-    keys, training_states, _ = jax.pmap(agent_init_fn, axis_name="p", devices=devices)(
-        keys
-    )
+    training_states, _ = jax.pmap(agent_init_fn, axis_name="p", devices=devices)(keys)
 
     # empty optimizers states to avoid too heavy repertories
     training_states = jax.pmap(
@@ -176,10 +180,10 @@ def test_me_pbt_td3() -> None:
     )(training_states)
 
     # initialize map-elites
-    repertoire, emitter_state, keys = map_elites.get_distributed_init_fn(
+    repertoire, emitter_state = map_elites.get_distributed_init_fn(
         devices=devices, centroids=centroids
     )(
-        genotypes=training_states, random_key=keys
+        genotypes=training_states, key=keys
     )  # type: ignore
 
     update_fn = map_elites.get_distributed_update_fn(num_iterations=1, devices=devices)
@@ -187,17 +191,15 @@ def test_me_pbt_td3() -> None:
     initial_metrics = jax.pmap(metrics_function, axis_name="p", devices=devices)(
         repertoire
     )
-    initial_metrics_cpu = jax.tree_util.tree_map(
+    initial_metrics_cpu = jax.tree.map(
         lambda x: jax.device_put(x, jax.devices("cpu")[0])[0], initial_metrics
     )
     initial_qd_score = initial_metrics_cpu["qd_score"]
 
     for _ in range(num_loops):
 
-        repertoire, emitter_state, keys, metrics = update_fn(
-            repertoire, emitter_state, keys
-        )
-        metrics_cpu = jax.tree_util.tree_map(
+        repertoire, emitter_state, metrics = update_fn(repertoire, emitter_state, keys)
+        metrics_cpu = jax.tree.map(
             lambda x: jax.device_put(x, jax.devices("cpu")[0])[0], metrics
         )
 

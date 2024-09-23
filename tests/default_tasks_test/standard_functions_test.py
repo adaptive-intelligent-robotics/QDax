@@ -36,14 +36,14 @@ def test_standard_functions(task_name: str, batch_size: int) -> None:
     grid_shape = (100, 100)
     min_param = 0.0
     max_param = 1.0
-    min_bd = min_param
-    max_bd = max_param
+    min_descriptor = min_param
+    max_descriptor = max_param
 
     # Init a random key
-    random_key = jax.random.key(seed)
+    key = jax.random.key(seed)
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     init_variables = jax.random.uniform(
         subkey, shape=(init_batch_size, num_param_dimensions)
     )
@@ -82,23 +82,22 @@ def test_standard_functions(task_name: str, batch_size: int) -> None:
     # Compute the centroids
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
-    )
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state = map_elites.init(init_variables, centroids, subkey)
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )
