@@ -38,7 +38,7 @@ def test_jumanji_utils() -> None:
     state, _timestep = jax.jit(env.step)(state, action)
 
     # Init a random key
-    random_key = jax.random.key(seed)
+    key = jax.random.key(seed)
 
     # get number of actions
     num_actions = env.action_spec().maximum + 1
@@ -69,7 +69,7 @@ def test_jumanji_utils() -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jax.random.split(subkey, num=batch_size)
 
     # compute observation size from observation spec
@@ -84,17 +84,17 @@ def test_jumanji_utils() -> None:
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
     # Create the initial environment states
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
     reset_fn = jax.jit(jax.vmap(env.reset))
 
     init_states, init_timesteps = reset_fn(keys)
 
     # Prepare the scoring function
-    def bd_extraction(
+    def descriptor_extraction(
         data: QDTransition, mask: jnp.ndarray, linear_projection: jnp.ndarray
     ) -> Descriptor:
-        """Extract a behavior descriptor from a trajectory.
+        """Extract a descriptor from a trajectory.
 
         This extractor takes the mean observation in the trajectory and project
         it in a two dimension space.
@@ -105,7 +105,7 @@ def test_jumanji_utils() -> None:
             linear_projection: a linear projection.
 
         Returns:
-            Behavior descriptors.
+            Descriptors.
         """
 
         # pre-process the observation
@@ -120,13 +120,13 @@ def test_jumanji_utils() -> None:
         return descriptors
 
     # create a random projection to a two dim space
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     linear_projection = jax.random.uniform(
         subkey, (2, observation_size), minval=-1, maxval=1, dtype=jnp.float32
     )
 
-    bd_extraction_fn = functools.partial(
-        bd_extraction, linear_projection=linear_projection
+    descriptor_extraction_fn = functools.partial(
+        descriptor_extraction, linear_projection=linear_projection
     )
 
     # define the scoring function
@@ -136,12 +136,11 @@ def test_jumanji_utils() -> None:
         init_timesteps=init_timesteps,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
-    fitnesses, descriptors, extra_scores, random_key = scoring_fn(
-        init_variables, random_key
-    )
+    key, subkey = jax.random.split(key)
+    fitnesses, descriptors, extra_scores = scoring_fn(init_variables, subkey)
 
     pytest.assume(fitnesses.shape == (population_size,))
     pytest.assume(jnp.sum(jnp.isnan(fitnesses)) == 0.0)

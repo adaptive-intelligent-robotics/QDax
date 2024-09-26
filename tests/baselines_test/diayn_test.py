@@ -63,14 +63,16 @@ def test_diayn() -> None:
     )
 
     key = jax.random.key(seed)
-    env_state = jax.jit(env.reset)(rng=key)
-    eval_env_first_state = jax.jit(eval_env.reset)(rng=key)
+
+    key, subkey_1, subkey_2 = jax.random.split(key, 3)
+    env_state = jax.jit(env.reset)(rng=subkey_1)
+    eval_env_first_state = jax.jit(eval_env.reset)(rng=subkey_2)
 
     # Initialize buffer
     dummy_transition = QDTransition.init_dummy(
         observation_dim=env.observation_size + num_skills,
         action_dim=env.action_size,
-        descriptor_dim=env.behavior_descriptor_length,
+        descriptor_dim=env.descriptor_length,
     )
     replay_buffer = ReplayBuffer.init(
         buffer_size=buffer_size, transition=dummy_transition
@@ -99,10 +101,11 @@ def test_diayn() -> None:
     if descriptor_full_state:
         descriptor_size = env.observation_size
     else:
-        descriptor_size = env.behavior_descriptor_length
+        descriptor_size = env.descriptor_length
 
+    key, subkey = jax.random.split(key)
     training_state = diayn.init(
-        key,
+        subkey,
         action_size=env.action_size,
         observation_size=env.observation_size,
         descriptor_size=descriptor_size,

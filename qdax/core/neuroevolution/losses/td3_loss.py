@@ -56,12 +56,11 @@ def make_td3_loss_fn(
         target_policy_params: Params,
         target_critic_params: Params,
         transitions: Transition,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> jnp.ndarray:
         """Critics loss function for TD3 agent"""
         noise = (
-            jax.random.normal(random_key, shape=transitions.actions.shape)
-            * policy_noise
+            jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
         ).clip(-noise_clip, noise_clip)
 
         next_action = (
@@ -158,12 +157,11 @@ def make_td3_loss_dc_fn(
         target_actor_params: Params,
         target_critic_params: Params,
         transitions: Transition,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> jnp.ndarray:
         """Descriptor-conditioned critic loss function for TD3 agent"""
         noise = (
-            jax.random.normal(random_key, shape=transitions.actions.shape)
-            * policy_noise
+            jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
         ).clip(-noise_clip, noise_clip)
 
         next_action = (
@@ -236,7 +234,7 @@ def td3_critic_loss_fn(
     reward_scaling: float,
     discount: float,
     transitions: Transition,
-    random_key: RNGKey,
+    key: RNGKey,
 ) -> jnp.ndarray:
     """Critics loss function for TD3 agent.
 
@@ -256,7 +254,7 @@ def td3_critic_loss_fn(
         Return the loss function used to train the critic in TD3.
     """
     noise = (
-        jax.random.normal(random_key, shape=transitions.actions.shape) * policy_noise
+        jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
     ).clip(-noise_clip, noise_clip)
 
     next_action = (policy_fn(target_policy_params, transitions.next_obs) + noise).clip(

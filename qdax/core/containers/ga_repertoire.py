@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -34,7 +34,7 @@ class GARepertoire(Repertoire):
     @property
     def size(self) -> int:
         """Gives the size of the population."""
-        first_leaf = jax.tree_util.tree_leaves(self.genotypes)[0]
+        first_leaf = jax.tree.leaves(self.genotypes)[0]
         return int(first_leaf.shape[0])
 
     def save(self, path: str = "./") -> None:
@@ -78,11 +78,11 @@ class GARepertoire(Repertoire):
         )
 
     @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, random_key: RNGKey, num_samples: int) -> Tuple[Genotype, RNGKey]:
+    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
         """Sample genotypes from the repertoire.
 
         Args:
-            random_key: a random key to handle stochasticity.
+            key: a random key to handle stochasticity.
             num_samples: the number of genotypes to sample.
 
         Returns:
@@ -94,15 +94,14 @@ class GARepertoire(Repertoire):
         p = jnp.any(mask, axis=-1) / jnp.sum(jnp.any(mask, axis=-1))
 
         # sample
-        random_key, subkey = jax.random.split(random_key)
-        samples = jax.tree_util.tree_map(
+        samples = jax.tree.map(
             lambda x: jax.random.choice(
-                subkey, x, shape=(num_samples,), p=p, replace=False
+                key, x, shape=(num_samples,), p=p, replace=False
             ),
             self.genotypes,
         )
 
-        return samples, random_key
+        return samples
 
     @jax.jit
     def add(
@@ -122,7 +121,7 @@ class GARepertoire(Repertoire):
         """
 
         # gather individuals and fitnesses
-        candidates = jax.tree_util.tree_map(
+        candidates = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
             self.genotypes,
             batch_of_genotypes,
@@ -138,9 +137,7 @@ class GARepertoire(Repertoire):
         survivor_indices = indices[: self.size]
 
         # keep only the best ones
-        new_candidates = jax.tree_util.tree_map(
-            lambda x: x[survivor_indices], candidates
-        )
+        new_candidates = jax.tree.map(lambda x: x[survivor_indices], candidates)
 
         new_repertoire = self.replace(
             genotypes=new_candidates, fitnesses=candidates_fitnesses[survivor_indices]
@@ -174,7 +171,7 @@ class GARepertoire(Repertoire):
         )
 
         # create default genotypes
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
         )
 

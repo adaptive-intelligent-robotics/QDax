@@ -25,24 +25,26 @@ def test_uncertainty_metrics() -> None:
     genotype_dim = 8
 
     # Init a random key
-    random_key = jax.random.key(seed)
+    key = jax.random.key(seed)
 
     # First, init a deterministic environment
+    key, subkey = jax.random.split(key)
     init_policies = jax.random.uniform(
-        random_key, shape=(batch_size, genotype_dim), minval=0, maxval=1
-    )
-    fitnesses, descriptors, extra_scores, random_key = arm_scoring_function(
-        init_policies, random_key
+        subkey, shape=(batch_size, genotype_dim), minval=0, maxval=1
     )
 
+    key, subkey = jax.random.split(key)
+    fitnesses, descriptors, extra_scores = arm_scoring_function(init_policies, subkey)
+
     # Initialise a container
-    centroids, random_key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=2,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=jnp.array([0.0, 0.0]),
         maxval=jnp.array([1.0, 1.0]),
-        random_key=random_key,
+        key=subkey,
     )
     repertoire = MapElitesRepertoire.init(
         genotypes=init_policies,
@@ -63,12 +65,13 @@ def test_uncertainty_metrics() -> None:
     )
 
     # Test that reevaluation_function accurately predicts no change
-    corrected_repertoire, random_key = reevaluation_function(
+    key, subkey = jax.random.split(key)
+    corrected_repertoire = reevaluation_function(
         repertoire=repertoire,
         empty_corrected_repertoire=empty_corrected_repertoire,
         scoring_fn=arm_scoring_function,
         num_reevals=num_reevals,
-        random_key=random_key,
+        key=subkey,
     )
     pytest.assume(
         jnp.allclose(
@@ -77,12 +80,13 @@ def test_uncertainty_metrics() -> None:
     )
 
     # Test that scanned reevaluation_function accurately predicts no change
-    corrected_repertoire, random_key = reevaluation_function(
+    key, subkey = jax.random.split(key)
+    corrected_repertoire = reevaluation_function(
         repertoire=repertoire,
         empty_corrected_repertoire=empty_corrected_repertoire,
         scoring_fn=arm_scoring_function,
         num_reevals=num_reevals,
-        random_key=random_key,
+        key=subkey,
         scan_size=scan_size,
     )
     pytest.assume(
@@ -92,17 +96,17 @@ def test_uncertainty_metrics() -> None:
     )
 
     # Test that reevaluation_reproducibility_function accurately predicts no change
+    key, subkey = jax.random.split(key)
     (
         corrected_repertoire,
         fit_reproducibility_repertoire,
         desc_reproducibility_repertoire,
-        random_key,
     ) = reevaluation_reproducibility_function(
         repertoire=repertoire,
         empty_corrected_repertoire=empty_corrected_repertoire,
         scoring_fn=arm_scoring_function,
         num_reevals=num_reevals,
-        random_key=random_key,
+        key=subkey,
     )
     pytest.assume(
         jnp.allclose(
@@ -132,8 +136,9 @@ def test_uncertainty_metrics() -> None:
     )
 
     # Second, init a stochastic environment
+    key, subkey = jax.random.split(key)
     init_policies = jax.random.uniform(
-        random_key, shape=(batch_size, genotype_dim), minval=0, maxval=1
+        subkey, shape=(batch_size, genotype_dim), minval=0, maxval=1
     )
     noisy_scoring_function = functools.partial(
         noisy_arm_scoring_function,
@@ -141,18 +146,18 @@ def test_uncertainty_metrics() -> None:
         desc_variance=0.01,
         params_variance=0.0,
     )
-    fitnesses, descriptors, extra_scores, random_key = noisy_scoring_function(
-        init_policies, random_key
-    )
+    key, subkey = jax.random.split(key)
+    fitnesses, descriptors, extra_scores = noisy_scoring_function(init_policies, subkey)
 
     # Initialise a container
-    centroids, random_key = compute_cvt_centroids(
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
         num_descriptors=2,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=jnp.array([0.0, 0.0]),
         maxval=jnp.array([1.0, 1.0]),
-        random_key=random_key,
+        key=subkey,
     )
     repertoire = MapElitesRepertoire.init(
         genotypes=init_policies,
@@ -173,17 +178,17 @@ def test_uncertainty_metrics() -> None:
     )
 
     # Test that reevaluation_function runs and keeps at least one solution
+    key, subkey = jax.random.split(key)
     (
         corrected_repertoire,
         fit_reproducibility_repertoire,
         desc_reproducibility_repertoire,
-        random_key,
     ) = reevaluation_reproducibility_function(
         repertoire=repertoire,
         empty_corrected_repertoire=empty_corrected_repertoire,
         scoring_fn=noisy_scoring_function,
         num_reevals=num_reevals,
-        random_key=random_key,
+        key=subkey,
     )
     pytest.assume(jnp.any(corrected_repertoire.fitnesses > -jnp.inf))
     pytest.assume(jnp.any(fit_reproducibility_repertoire.fitnesses > -jnp.inf))

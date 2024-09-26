@@ -19,7 +19,7 @@ Notes:
 import jax
 from qdax.tasks.arm import arm_scoring_function
 
-random_key = jax.random.key(0)
+key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = arm_scoring_function
@@ -31,7 +31,7 @@ min_desc, max_desc = 0., 1.
 # Get initial batch of parameters
 num_param_dimensions = ...
 init_batch_size = ...
-random_key, _subkey = jax.random.split(random_key)
+key, _subkey = jax.random.split(key)
 initial_params = jax.random.uniform(
     _subkey,
     shape=(init_batch_size, num_param_dimensions),
@@ -56,7 +56,7 @@ desc_size = 2
 import jax
 from qdax.tasks.standard_functions import sphere_scoring_function
 
-random_key = jax.random.key(0)
+key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = sphere_scoring_function
@@ -68,7 +68,7 @@ min_desc, max_desc = 0., 1.
 # Get initial batch of parameters
 num_param_dimensions = ...
 init_batch_size = ...
-random_key, _subkey = jax.random.split(random_key)
+key, _subkey = jax.random.split(key)
 initial_params = jax.random.uniform(
     _subkey,
     shape=(init_batch_size, num_param_dimensions),
@@ -98,7 +98,7 @@ desc_size = 2
 import jax
 from qdax.tasks.hypervolume_functions import square_scoring_function
 
-random_key = jax.random.key(0)
+key = jax.random.key(0)
 
 # Get scoring function
 scoring_fn = square_scoring_function
@@ -110,7 +110,7 @@ min_desc, max_desc = 0., 1.
 # Get initial batch of parameters
 num_param_dimensions = ...
 init_batch_size = ...
-random_key, _subkey = jax.random.split(random_key)
+key, _subkey = jax.random.split(key)
 initial_params = jax.random.uniform(
     _subkey,
     shape=(init_batch_size, num_param_dimensions),
@@ -127,7 +127,7 @@ desc_size = num_param_dimensions
 
 | Task                           | Parameter Dimensions | Parameter Bounds                                                               | Descriptor Dimensions                 | Descriptor Bounds                                                           | Description |
 |--------------------------------|----------------------|--------------------------------------------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------|-------------|
-| archimedean-spiral-v0          | 1                    | $[0,\alpha\pi]^n$ (angle param.)<br/> $[0,max-arc-length]$ (arc length param.) | 1 (geodesic BD)<br/> 2 (euclidean BD) | $[0,max-arc-length]$ (geodesic BD)<br/> $[-radius,radius]^2$ (euclidean BD) |             |
+| archimedean-spiral-v0          | 1                    | $[0,\alpha\pi]^n$ (angle param.)<br/> $[0,max-arc-length]$ (arc length param.) | 1 (geodesic descriptor)<br/> 2 (euclidean descriptor) | $[0,max-arc-length]$ (geodesic descriptor)<br/> $[-radius,radius]^2$ (euclidean descriptor) |             |
 | SSF-v0                         | $n$                  | Unbounded                                                                      | 1                                     | $[ 0 ,$ ∞ $)$                                                               |             |
 | deceptive-evolvability-v0<br/> | $n$ (2 by default)   | Bounded area including the two gaussian peaks                                  | 1                                     | $[0,max-sum-gaussians]$                                                     |             |
 
@@ -147,7 +147,7 @@ min_param, max_param = task.get_min_max_params()
 min_desc, max_desc = task.get_bounded_min_max_descriptor()  # To consider bounded Descriptor space
 # If the task has a descriptor space that is not bounded, then the unbounded descriptor
 # space can be obtained via the following:
-# min_bd, max_bd = task.get_min_max_bd()
+# min_descriptor, max_descriptor = task.get_min_max_descriptor()
 
 # Get initial batch of parameters
 initial_params = task.get_initial_parameters(batch_size=...)

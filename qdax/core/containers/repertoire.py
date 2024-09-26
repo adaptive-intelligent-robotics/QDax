@@ -28,13 +28,13 @@ class Repertoire(flax.struct.PyTreeNode, ABC):
     @abstractmethod
     def sample(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         num_samples: int,
     ) -> Genotype:
         """Sample genotypes from the repertoire.
 
         Args:
-            random_key: a random key to handle stochasticity.
+            key: a random key to handle stochasticity.
             num_samples: the number of genotypes to sample.
 
         Returns:

@@ -34,6 +34,8 @@ def test_td3() -> None:
     critic_learning_rate = 3e-4
     policy_learning_rate = 3e-4
 
+    key = jax.random.key(seed)
+
     # Create environment
     env = environments.create(
         env_name=env_name,
@@ -49,10 +51,10 @@ def test_td3() -> None:
         auto_reset=True,
         eval_metrics=True,
     )
-    key = jax.random.key(seed)
-    key, subkey = jax.random.split(key)
-    env_state = jax.jit(env.reset)(rng=key)
-    eval_env_first_state = jax.jit(eval_env.reset)(rng=key)
+
+    key, subkey_1, subkey_2 = jax.random.split(key, 3)
+    env_state = jax.jit(env.reset)(rng=subkey_1)
+    eval_env_first_state = jax.jit(eval_env.reset)(rng=subkey_2)
 
     # Initialize buffer
     dummy_transition = Transition.init_dummy(
@@ -83,7 +85,7 @@ def test_td3() -> None:
 
     key, subkey = jax.random.split(key)
     training_state = td3.init(
-        key, action_size=env.action_size, observation_size=env.observation_size
+        subkey, action_size=env.action_size, observation_size=env.observation_size
     )
 
     # Wrap and jit play step function
