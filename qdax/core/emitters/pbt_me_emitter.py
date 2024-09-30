@@ -9,8 +9,10 @@ from jax import numpy as jnp
 from qdax.baselines.pbt import PBTTrainingState
 from qdax.baselines.sac_pbt import PBTSAC
 from qdax.baselines.td3_pbt import PBTTD3
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 from qdax.environments.base_wrappers import QDEnv
@@ -61,6 +63,7 @@ class PBTEmitter(Emitter):
         config: PBTEmitterConfig,
         env: QDEnv,
         variation_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
+        selector: Optional[Selector] = None,
     ) -> None:
 
         # Parameters internalization
@@ -89,6 +92,8 @@ class PBTEmitter(Emitter):
         self._num_to_exchange = int(
             config.pg_population_size_per_device * config.fraction_sort_exchange
         )
+
+        self._selector = selector
 
     def init(
         self,
@@ -166,7 +171,7 @@ class PBTEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         emitter_state: PBTEmitterState,
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores]:
@@ -190,8 +195,12 @@ class PBTEmitter(Emitter):
         if self._config.ga_population_size_per_device > 0:
             mutation_ga_batch_size = self._config.ga_population_size_per_device
             sample_key_1, sample_key_2, variation_key = jax.random.split(key, 3)
-            x1 = repertoire.sample(sample_key_1, mutation_ga_batch_size)
-            x2 = repertoire.sample(sample_key_2, mutation_ga_batch_size)
+            x1 = repertoire.select(
+                sample_key_1, mutation_ga_batch_size, selector=self._selector
+            ).genotypes
+            x2 = repertoire.select(
+                sample_key_2, mutation_ga_batch_size, selector=self._selector
+            ).genotypes
             x_mutation_ga = self._variation_fn(x1, x2, variation_key)
 
             # Gather offspring
@@ -219,7 +228,7 @@ class PBTEmitter(Emitter):
     def state_update(
         self,
         emitter_state: PBTEmitterState,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         genotypes: Optional[Genotype],
         fitnesses: Fitness,
         descriptors: Optional[Descriptor],
@@ -365,9 +374,11 @@ class PBTEmitter(Emitter):
         # Replacing with samples from the ME repertoire
         if self._num_to_replace_from_samples > 0:
             key, subkey = jax.random.split(key)
-            me_samples = repertoire.sample(
-                subkey, self._config.pg_population_size_per_device
-            )
+            me_samples = repertoire.select(
+                subkey,
+                self._config.pg_population_size_per_device,
+                selector=self._selector,
+            ).genotypes
             # Resample hyper-params
             me_samples = jax.vmap(me_samples.__class__.resample_hyperparams)(me_samples)
             upper_bound = all_fitnesses[

@@ -13,6 +13,7 @@ from qdax.core.containers.mapelites_repertoire import (
     get_cells_indices,
 )
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -52,6 +53,7 @@ class CMAEmitter(Emitter, ABC):
         sigma_g: float,
         min_count: Optional[int] = None,
         max_count: Optional[float] = None,
+        selector: Optional[Selector] = None,
     ):
         """
         Class for the emitter of CMA ME from "Covariance Matrix Adaptation for the
@@ -95,6 +97,8 @@ class CMAEmitter(Emitter, ABC):
         self._centroids = centroids
 
         self._cma_initial_state = self._cmaes.init()
+
+        self._selector = selector
 
     @property
     def batch_size(self) -> int:
@@ -339,7 +343,9 @@ class CMAEmitter(Emitter, ABC):
         """
 
         # re-sample
-        random_genotype = repertoire.sample(key, 1)
+        random_genotype = repertoire.select(
+            key, num_samples=1, selector=self._selector
+        ).genotypes
 
         # remove the batch dim
         new_mean = jax.tree.map(lambda x: x.squeeze(0), random_genotype)

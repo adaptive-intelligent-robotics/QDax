@@ -12,8 +12,10 @@ import jax
 import optax
 from jax import numpy as jnp
 
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.networks import QModule
@@ -69,6 +71,7 @@ class QualityPGEmitter(Emitter):
         config: QualityPGConfig,
         policy_network: nn.Module,
         env: QDEnv,
+        selector: Optional[Selector] = None,
     ) -> None:
         self._config = config
         self._env = env
@@ -100,6 +103,8 @@ class QualityPGEmitter(Emitter):
         self._policies_optimizer = optax.adam(
             learning_rate=self._config.policy_learning_rate
         )
+
+        self._selector = selector
 
     @property
     def batch_size(self) -> int:
@@ -193,7 +198,7 @@ class QualityPGEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         emitter_state: QualityPGEmitterState,
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores]:
@@ -212,7 +217,9 @@ class QualityPGEmitter(Emitter):
 
         # sample parents
         mutation_pg_batch_size = int(batch_size - 1)
-        parents = repertoire.sample(key, mutation_pg_batch_size)
+        parents = repertoire.select(
+            key, mutation_pg_batch_size, selector=self._selector
+        ).genotypes
 
         # apply the pg mutation
         offsprings_pg = self.emit_pg(emitter_state, parents)

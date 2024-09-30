@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import flax.struct
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
+from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -130,7 +133,7 @@ def intra_batch_comp(
     return jnp.logical_not(discard_indiv)
 
 
-class UnstructuredRepertoire(flax.struct.PyTreeNode):
+class UnstructuredRepertoire(GARepertoire):
     """
     Class for the unstructured repertoire in Map Elites.
 
@@ -149,8 +152,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         observations: observations that the genotype gathered in the environment.
     """
 
-    genotypes: Genotype
-    fitnesses: Fitness
     descriptors: Descriptor
     observations: Observation
     l_value: jnp.ndarray
@@ -388,29 +389,35 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             max_size=self.max_size,
         )
 
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
-        """Sample elements in the repertoire.
+    def select(
+        self,
+        key: RNGKey,
+        num_samples: int,
+        selector: Optional[Selector[UnstructuredRepertoire]] = None,
+    ) -> UnstructuredRepertoire:
+        """Select elements in the repertoire.
+
+        This method sample a non-empty pareto front, and then sample
+        genotypes from this pareto front.
 
         Args:
-            key: a jax PRNG random key
-            num_samples: the number of elements to be sampled
+            key: a random key to handle stochasticity.
+            num_samples: number of samples to retrieve from the repertoire.
+            selector: selector to choose the individuals. Defaults to None.
 
         Returns:
-            samples: a batch of genotypes sampled in the repertoire
+            A repertoire containing the selected individuals.
         """
-        grid_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.genotypes,
-        )
+        if selector is None:
+            selector = UniformSelector(select_with_replacement=True)
 
-        return samples
+        repertoire = selector.select(self, key, num_samples)
+
+        return repertoire
 
     @classmethod
-    def init(
+    def init(  # type: ignore
         cls,
         genotypes: Genotype,
         fitnesses: Fitness,

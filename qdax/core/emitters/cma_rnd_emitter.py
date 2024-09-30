@@ -104,7 +104,9 @@ class CMARndEmitter(CMAEmitter):
 
         # re-sample
         key, subkey = jax.random.split(key)
-        random_genotype = repertoire.sample(subkey, 1)
+        random_genotype = repertoire.select(
+            subkey, num_samples=1, selector=self._selector
+        ).genotypes
 
         # get new mean - remove the batch dim
         new_mean = jax.tree.map(lambda x: x.squeeze(0), random_genotype)

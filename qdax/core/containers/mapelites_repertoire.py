@@ -8,13 +8,15 @@ import warnings
 from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
 
-import flax
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
+from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -137,7 +139,7 @@ def get_cells_indices(
     return func(batch_of_descriptors)
 
 
-class MapElitesRepertoire(flax.struct.PyTreeNode):
+class MapElitesRepertoire(GARepertoire):
     """Class for the repertoire in Map Elites.
 
     Args:
@@ -154,8 +156,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             shape is (num_centroids, num_descriptors).
     """
 
-    genotypes: Genotype
-    fitnesses: Fitness
     descriptors: Descriptor
     centroids: Centroid
 
@@ -183,6 +183,17 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         jnp.save(path + "descriptors.npy", self.descriptors)
         jnp.save(path + "centroids.npy", self.centroids)
 
+    def select(
+        self,
+        key: RNGKey,
+        num_samples: int,
+        selector: Optional[Selector[MapElitesRepertoire]] = None,
+    ) -> MapElitesRepertoire:
+        if selector is None:
+            selector = UniformSelector(select_with_replacement=True)
+        repertoire = selector.select(self, key, num_samples)
+        return repertoire
+
     @classmethod
     def load(cls, reconstruction_fn: Callable, path: str = "./") -> MapElitesRepertoire:
         """Loads a MAP Elites Repertoire.
@@ -209,29 +220,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             descriptors=descriptors,
             centroids=centroids,
         )
-
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
-        """Sample elements in the repertoire.
-
-        Args:
-            key: a jax PRNG random key
-            num_samples: the number of elements to be sampled
-
-        Returns:
-            samples: a batch of genotypes sampled in the repertoire
-            key: an updated jax PRNG random key
-        """
-
-        repertoire_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
-
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.genotypes,
-        )
-
-        return samples
 
     @partial(jax.jit, static_argnames=("num_samples",))
     def sample_with_descs(
@@ -346,7 +334,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
     @classmethod
-    def init(
+    def init(  # type: ignore
         cls,
         genotypes: Genotype,
         fitnesses: Fitness,

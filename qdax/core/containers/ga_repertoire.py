@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from functools import partial
-from typing import Callable
+from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.repertoire import Repertoire
+from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import Fitness, Genotype, RNGKey
 
 
@@ -77,31 +78,16 @@ class GARepertoire(Repertoire):
             fitnesses=fitnesses,
         )
 
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
-        """Sample genotypes from the repertoire.
-
-        Args:
-            key: a random key to handle stochasticity.
-            num_samples: the number of genotypes to sample.
-
-        Returns:
-            The sample of genotypes.
-        """
-
-        # prepare sampling probability
-        mask = self.fitnesses != -jnp.inf
-        p = jnp.any(mask, axis=-1) / jnp.sum(jnp.any(mask, axis=-1))
-
-        # sample
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(
-                key, x, shape=(num_samples,), p=p, replace=False
-            ),
-            self.genotypes,
-        )
-
-        return samples
+    def select(
+        self,
+        key: RNGKey,
+        num_samples: int,
+        selector: Optional[Selector[GARepertoire]] = None,
+    ) -> GARepertoire:
+        if selector is None:
+            selector = UniformSelector(select_with_replacement=False)
+        repertoire = selector.select(self, key, num_samples)
+        return repertoire
 
     @jax.jit
     def add(
@@ -151,6 +137,8 @@ class GARepertoire(Repertoire):
         genotypes: Genotype,
         fitnesses: Fitness,
         population_size: int,
+        *args,
+        **kwargs,
     ) -> GARepertoire:
         """Initializes the repertoire.
 
