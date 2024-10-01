@@ -39,7 +39,7 @@ class GeneticAlgorithm:
     @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
         self, genotypes: Genotype, population_size: int, key: RNGKey
-    ) -> Tuple[GARepertoire, Optional[EmitterState]]:
+    ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics]:
         """Initialize a GARepertoire with an initial population of genotypes.
 
         Args:
@@ -73,7 +73,10 @@ class GeneticAlgorithm:
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
