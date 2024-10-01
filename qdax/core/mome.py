@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.map_elites import MAPElites
-from qdax.custom_types import Centroid, RNGKey
+from qdax.custom_types import Centroid, Metrics, RNGKey
 
 
 class MOME(MAPElites):
@@ -27,7 +27,7 @@ class MOME(MAPElites):
         centroids: Centroid,
         pareto_front_max_length: int,
         key: RNGKey,
-    ) -> Tuple[MOMERepertoire, Optional[EmitterState]]:
+    ) -> Tuple[MOMERepertoire, Optional[EmitterState], Metrics]:
         """Initialize a MOME grid with an initial population of genotypes. Requires
         the definition of centroids that can be computed with any method such as
         CVT or Euclidean mapping.
@@ -68,4 +68,7 @@ class MOME(MAPElites):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics

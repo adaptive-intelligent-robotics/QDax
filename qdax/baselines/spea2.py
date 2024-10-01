@@ -15,7 +15,7 @@ import jax
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 from qdax.core.containers.spea2_repertoire import SPEA2Repertoire
 from qdax.core.emitters.emitter import EmitterState
-from qdax.custom_types import Genotype, RNGKey
+from qdax.custom_types import Genotype, Metrics, RNGKey
 
 
 class SPEA2(GeneticAlgorithm):
@@ -37,7 +37,7 @@ class SPEA2(GeneticAlgorithm):
         population_size: int,
         num_neighbours: int,
         key: RNGKey,
-    ) -> Tuple[SPEA2Repertoire, Optional[EmitterState]]:
+    ) -> Tuple[SPEA2Repertoire, Optional[EmitterState], Metrics]:
 
         # score initial genotypes
         key, subkey = jax.random.split(key)
@@ -71,4 +71,7 @@ class SPEA2(GeneticAlgorithm):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics
