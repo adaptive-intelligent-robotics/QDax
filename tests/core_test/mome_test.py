@@ -129,7 +129,7 @@ def test_mome(num_descriptors: int) -> None:
     )
 
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state = mome.init(
+    repertoire, emitter_state, init_metrics = mome.init(
         genotypes, centroids, pareto_front_max_length, subkey
     )
 

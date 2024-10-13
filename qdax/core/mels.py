@@ -59,7 +59,7 @@ class MELS(MAPElites):
         genotypes: Genotype,
         centroids: Centroid,
         key: RNGKey,
-    ) -> Tuple[MELSRepertoire, Optional[EmitterState]]:
+    ) -> Tuple[MELSRepertoire, Optional[EmitterState], Metrics]:
         """Initialize a MAP-Elites Low-Spread repertoire with an initial
         population of genotypes. Requires the definition of centroids that can
         be computed with any method such as CVT or Euclidean mapping.
@@ -107,4 +107,8 @@ class MELS(MAPElites):
             descriptors=descriptors,
             extra_scores=extra_scores,
         )
-        return repertoire, emitter_state
+
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics

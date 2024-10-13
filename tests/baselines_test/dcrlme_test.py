@@ -197,7 +197,9 @@ def test_dcrlme() -> None:
 
     # compute initial repertoire
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state = map_elites.init(init_params, centroids, subkey)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_params, centroids, subkey
+    )
 
     @jax.jit
     def update_scan_fn(carry: Any, key: RNGKey) -> Any:

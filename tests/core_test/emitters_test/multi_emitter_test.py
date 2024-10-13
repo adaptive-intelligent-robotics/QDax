@@ -92,7 +92,9 @@ def test_multi_emitter() -> None:
 
     # Compute initial repertoire
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state = map_elites.init(init_variables, centroids, subkey)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_variables, centroids, subkey
+    )
 
     # Run the algorithm
     (

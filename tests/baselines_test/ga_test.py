@@ -110,11 +110,11 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
 
     key, subkey = jax.random.split(key)
     if isinstance(algo_instance, SPEA2):
-        repertoire, emitter_state = algo_instance.init(
+        repertoire, emitter_state, init_metrics = algo_instance.init(
             genotypes, population_size, num_neighbours, subkey
         )
     else:
-        repertoire, emitter_state = algo_instance.init(
+        repertoire, emitter_state, init_metrics = algo_instance.init(
             genotypes, population_size, subkey
         )
 

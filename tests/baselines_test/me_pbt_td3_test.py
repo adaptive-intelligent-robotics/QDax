@@ -180,7 +180,7 @@ def test_me_pbt_td3() -> None:
     )(training_states)
 
     # initialize map-elites
-    repertoire, emitter_state = map_elites.get_distributed_init_fn(
+    repertoire, emitter_state, init_metrics = map_elites.get_distributed_init_fn(
         devices=devices, centroids=centroids
     )(
         genotypes=training_states, key=keys
