@@ -21,7 +21,7 @@ class DistributedMAPElites(MAPElites):
         genotypes: Genotype,
         centroids: Centroid,
         key: RNGKey,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState]]:
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
@@ -80,8 +80,10 @@ class DistributedMAPElites(MAPElites):
             descriptors=descriptors,
             extra_scores=extra_scores,
         )
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
 
-        return repertoire, emitter_state
+        return repertoire, emitter_state, metrics
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
