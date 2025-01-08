@@ -128,11 +128,12 @@ def intra_batch_comp(
     true_positions = jnp.nonzero(eq_mask, size=eq_mask.size, fill_value=-1)[0]
     tie_indices = jnp.take(knn_relevant_indices, true_positions, mode='clip')
 
-    # Instead of keeping the minimal indexed individual, we keep the first tied individual
-    # as encountered in knn_relevant_indices ordering.
+    # Instead of keeping the minimal indexed individual, we keep the first tied
+    # individual as encountered in knn_relevant_indices ordering.
     keep_index = tie_indices[0]  # First individual in the tie list
 
-    # If there's more than one individual tied, discard the current one if it's not the "keep_index"
+    # If there's more than one individual tied,
+    # discard the current one if it's not the "keep_index"
     tie_discard = jnp.logical_and((tie_indices.size > 1), (current_index != keep_index))
 
     discard_indiv = jnp.logical_or(discard_indiv, tie_discard)
