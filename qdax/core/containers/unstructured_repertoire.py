@@ -122,8 +122,23 @@ def intra_batch_comp(
         fitness,
     ).any()
 
-    # Discard individuals with nan as their descriptor (mainly for the readdition
-    # where we have nan descriptors)
+    # Check for ties
+    eq_mask = (eval_scores[knn_relevant_indices] == current_fitness)
+
+    true_positions = jnp.nonzero(eq_mask, size=eq_mask.size, fill_value=-1)[0]
+    tie_indices = jnp.take(knn_relevant_indices, true_positions, mode='clip')
+
+    # Instead of keeping the minimal indexed individual, we keep the first tied individual
+    # as encountered in knn_relevant_indices ordering.
+    keep_index = tie_indices[0]  # First individual in the tie list
+
+    # If there's more than one individual tied, discard the current one if it's not the "keep_index"
+    tie_discard = jnp.logical_and((tie_indices.size > 1), (current_index != keep_index))
+
+    discard_indiv = jnp.logical_or(discard_indiv, tie_discard)
+
+    # Discard Individuals with Nans as their BD (mainly for the readdition where we
+    # have NaN bds)
     discard_indiv = jnp.logical_or(discard_indiv, not_existent)
 
     # Negate to know if we keep the individual
