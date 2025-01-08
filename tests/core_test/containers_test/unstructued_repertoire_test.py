@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 
 
-def test_unstructured_repertoire_add_same_fitness():
+def test_unstructured_repertoire_add_same_fitness() -> None:
     """
     Tests that when a batch of new individuals all share the same descriptors
     and the same fitness, the repertoire does not discard them all.
