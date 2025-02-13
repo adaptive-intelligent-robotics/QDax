@@ -5,7 +5,6 @@ algorithm as well as several variants."""
 from __future__ import annotations
 
 import warnings
-from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
 
 import jax
@@ -221,36 +220,6 @@ class MapElitesRepertoire(GARepertoire):
             centroids=centroids,
         )
 
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample_with_descs(
-        self,
-        key: RNGKey,
-        num_samples: int,
-    ) -> Tuple[Genotype, Descriptor]:
-        """Sample elements in the repertoire.
-
-        Args:
-            key: a jax PRNG random key
-            num_samples: the number of elements to be sampled
-
-        Returns:
-            samples: a batch of genotypes sampled in the repertoire
-        """
-
-        repertoire_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
-
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.genotypes,
-        )
-        descs = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.descriptors,
-        )
-
-        return samples, descs
-
     @jax.jit
     def add(
         self,
@@ -279,9 +248,11 @@ class MapElitesRepertoire(GARepertoire):
 
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
-        batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
 
         num_centroids = self.centroids.shape[0]
+        batch_of_fitnesses = jnp.reshape(
+            batch_of_fitnesses, (batch_of_descriptors.shape[0], 1)
+        )
 
         # get fitness segment max
         best_fitnesses = jax.ops.segment_max(
@@ -298,10 +269,7 @@ class MapElitesRepertoire(GARepertoire):
         )
 
         # get addition condition
-        repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(
-            repertoire_fitnesses, batch_of_indices, 0
-        )
+        current_fitnesses = jnp.take_along_axis(self.fitnesses, batch_of_indices, 0)
         addition_condition = batch_of_fitnesses > current_fitnesses
 
         # assign fake position when relevant : num_centroids is out of bound
@@ -320,7 +288,7 @@ class MapElitesRepertoire(GARepertoire):
 
         # compute new fitness and descriptors
         new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze(axis=-1)].set(
-            batch_of_fitnesses.squeeze(axis=-1)
+            batch_of_fitnesses
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
             batch_of_descriptors
@@ -406,7 +374,7 @@ class MapElitesRepertoire(GARepertoire):
         num_centroids = centroids.shape[0]
 
         # default fitness is -inf
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # default genotypes is all 0
         default_genotypes = jax.tree.map(

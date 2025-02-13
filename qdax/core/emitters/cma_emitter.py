@@ -132,7 +132,7 @@ class CMAEmitter(Emitter, ABC):
 
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # return the initial state
         key, subkey = jax.random.split(key)
@@ -204,7 +204,9 @@ class CMAEmitter(Emitter, ABC):
 
         # Compute the improvements - needed for re-init condition
         indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - emitter_state.previous_fitnesses[indices]
+        improvements = (
+            fitnesses - emitter_state.previous_fitnesses.squeeze(axis=1)[indices]
+        )
 
         ranking_criteria = self._ranking_criteria(
             emitter_state=emitter_state,

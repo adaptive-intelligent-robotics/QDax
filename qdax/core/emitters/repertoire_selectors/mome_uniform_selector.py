@@ -11,7 +11,7 @@ from qdax.custom_types import Mask, RNGKey
 if TYPE_CHECKING:
     from qdax.core.containers.mome_repertoire import MOMERepertoire
 
-MOMERepertoireT = TypeVar("MOMERepertoireT", bound=MOMERepertoire)
+MOMERepertoireT = TypeVar("MOMERepertoireT", bound="MOMERepertoire")
 
 
 class MOMEUniformSelector(Selector[MOMERepertoireT]):
@@ -21,7 +21,6 @@ class MOMEUniformSelector(Selector[MOMERepertoireT]):
     And then, it selects individuals uniformly at random from the selected cells.
     """
 
-    @jax.jit
     def _sample_in_masked_pareto_front(
         self,
         pareto_front: MOMERepertoireT,
@@ -95,7 +94,7 @@ class MOMEUniformSelector(Selector[MOMERepertoireT]):
         # sample genotypes from the pareto front
         subkeys = jax.random.split(key, num=num_samples)
         selected = sample_in_fronts(  # type: ignore
-            pareto_fronts=pareto_fronts,
+            pareto_front=pareto_fronts,
             mask=repertoire_empty[cells_idx],
             key=subkeys,
         )

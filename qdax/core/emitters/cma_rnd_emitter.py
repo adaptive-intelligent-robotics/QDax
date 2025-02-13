@@ -57,7 +57,7 @@ class CMARndEmitter(CMAEmitter):
 
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # take a random direction
         key, subkey = jax.random.split(key)

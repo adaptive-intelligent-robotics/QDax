@@ -3,7 +3,11 @@ from __future__ import annotations
 import jax
 from jax import numpy as jnp
 
-from qdax.core.emitters.repertoire_selectors.selector import GARepertoireT, Selector
+from qdax.core.emitters.repertoire_selectors.selector import (
+    GARepertoireT,
+    Selector,
+    unfold_repertoire,
+)
 from qdax.custom_types import RNGKey
 
 
@@ -31,9 +35,13 @@ class UniformSelector(Selector[GARepertoireT]):
         Returns:
             A repertoire containing the selected individuals.
         """
-        size_repertoire = repertoire.fitnesses.shape[0]
+        repertoire_unfolded = unfold_repertoire(repertoire)
+        # repertoire_unfolded = repertoire
 
-        repertoire_empty = repertoire.fitnesses == -jnp.inf
+        size_repertoire = repertoire_unfolded.fitnesses.shape[0]
+
+        repertoire_empty = repertoire_unfolded.fitnesses == -jnp.inf
+        repertoire_empty = jnp.any(repertoire_unfolded.fitnesses == -jnp.inf, axis=-1)
         p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
 
         indexes = jnp.arange(size_repertoire)
@@ -48,7 +56,7 @@ class UniformSelector(Selector[GARepertoireT]):
 
         selected: GARepertoireT = jax.tree.map(
             lambda x: x[selected_indexes],
-            repertoire,
+            repertoire_unfolded,
         )
 
         return selected

@@ -277,7 +277,7 @@ class MEESEmitter(Emitter):
             genotypes,
         )
         last_updated_fitnesses = -jnp.inf * jnp.ones(
-            shape=self._config.last_updated_size
+            shape=(self._config.last_updated_size, 1)
         )
 
         emitter_state = MEESEmitterState(
@@ -342,12 +342,12 @@ class MEESEmitter(Emitter):
             """Sample uniformly from the 2 highest fitness cells."""
 
             max_fitnesses, _ = jax.lax.top_k(
-                fitnesses, self._config.exploit_num_cell_sample
+                fitnesses.squeeze(axis=1), self._config.exploit_num_cell_sample
             )
             min_fitness = jnp.nanmin(
                 jnp.where(max_fitnesses > -jnp.inf, max_fitnesses, jnp.inf)
             )
-            genotypes_empty = fitnesses < min_fitness
+            genotypes_empty = fitnesses.squeeze(axis=1) < min_fitness
             p = (1.0 - genotypes_empty) / jnp.sum(1.0 - genotypes_empty)
             samples = jax.tree.map(
                 lambda x: jax.random.choice(key, x, shape=(1,), p=p),
@@ -400,7 +400,9 @@ class MEESEmitter(Emitter):
         novelties = emitter_state.novelty_archive.novelty(
             repertoire.descriptors, self._config.novelty_nearest_neighbors
         )
-        novelties = jnp.where(repertoire.fitnesses > -jnp.inf, novelties, -jnp.inf)
+        novelties = jnp.where(
+            repertoire.fitnesses.squeeze(axis=1) > -jnp.inf, novelties, -jnp.inf
+        )
 
         # Sample uniformly for the explore_num_cell_sample most novel cells
         max_novelties, _ = jax.lax.top_k(

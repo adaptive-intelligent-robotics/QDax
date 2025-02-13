@@ -245,6 +245,7 @@ class UnstructuredRepertoire(GARepertoire):
             A new unstructured repertoire where the relevant individuals have been
             added.
         """
+        batch_of_fitnesses = batch_of_fitnesses.reshape(-1, 1)
 
         # We need to replace all the descriptors that are not filled with jnp inf
         filtered_descriptors = jnp.where(
@@ -269,11 +270,11 @@ class UnstructuredRepertoire(GARepertoire):
         # We remove individuals that are too close to the second nn.
         # This avoids having clusters of individuals after adding them.
         not_novel_enough = jnp.where(
-            jnp.squeeze(second_neighbours <= self.l_value), True, False
+            jnp.squeeze(second_neighbours <= self.l_value[0]), True, False
         )
 
         # batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
-        batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
+        # batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
         batch_of_observations = jnp.expand_dims(batch_of_observations, axis=-1)
 
         # TODO: Doesn't Work if Archive is full. Need to use the closest individuals
@@ -286,7 +287,7 @@ class UnstructuredRepertoire(GARepertoire):
             )[0]
         )
         batch_of_indices = jnp.where(
-            jnp.squeeze(batch_of_distances <= self.l_value),
+            jnp.squeeze(batch_of_distances <= self.l_value[0]),
             jnp.squeeze(batch_of_indices),
             -1,
         )
@@ -298,7 +299,7 @@ class UnstructuredRepertoire(GARepertoire):
         )[1]
         batch_of_indices = jnp.where(
             jnp.squeeze(
-                batch_of_distances.at[sorted_descriptors].get() <= self.l_value
+                batch_of_distances.at[sorted_descriptors].get() <= self.l_value[0]
             ),
             batch_of_indices.at[sorted_descriptors].get(),
             empty_indexes,
@@ -325,7 +326,7 @@ class UnstructuredRepertoire(GARepertoire):
             ),  # keep track of where we are in the batch to assure right comparisons
             batch_of_descriptors.squeeze(),
             batch_of_fitnesses.squeeze(),
-            self.l_value,
+            self.l_value[0],
         )
 
         keep_indiv = jnp.logical_and(keep_indiv, jnp.logical_not(not_novel_enough))
@@ -345,8 +346,7 @@ class UnstructuredRepertoire(GARepertoire):
         )
 
         # get addition condition
-        grid_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(grid_fitnesses, batch_of_indices, 0)
+        current_fitnesses = jnp.take_along_axis(self.fitnesses, batch_of_indices, 0)
         addition_condition = batch_of_fitnesses > current_fitnesses
         addition_condition = jnp.logical_and(
             addition_condition, jnp.expand_dims(keep_indiv, axis=-1)
@@ -370,7 +370,7 @@ class UnstructuredRepertoire(GARepertoire):
 
         # compute new fitness and descriptors
         new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze()].set(
-            batch_of_fitnesses.squeeze()
+            batch_of_fitnesses
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze()].set(
             batch_of_descriptors.squeeze()
@@ -382,7 +382,7 @@ class UnstructuredRepertoire(GARepertoire):
 
         return UnstructuredRepertoire(
             genotypes=new_grid_genotypes,
-            fitnesses=new_fitnesses.squeeze(),
+            fitnesses=new_fitnesses,
             descriptors=new_descriptors.squeeze(),
             observations=new_observations.squeeze(),
             l_value=self.l_value,
@@ -445,7 +445,7 @@ class UnstructuredRepertoire(GARepertoire):
         """
 
         # Initialize grid with default values
-        default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(max_size, 1))
         default_genotypes = jax.tree.map(
             lambda x: jnp.full(shape=(max_size,) + x.shape[1:], fill_value=jnp.nan),
             genotypes,
@@ -461,7 +461,7 @@ class UnstructuredRepertoire(GARepertoire):
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
             observations=default_observations,
-            l_value=l_value,
+            l_value=jnp.full(shape=(max_size,), fill_value=l_value),
             max_size=max_size,
         )
 

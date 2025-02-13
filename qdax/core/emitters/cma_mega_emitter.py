@@ -136,7 +136,7 @@ class CMAMEGAEmitter(Emitter):
 
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # return the initial state
         key, subkey = jax.random.split(key)
@@ -230,7 +230,9 @@ class CMAMEGAEmitter(Emitter):
 
         # Update the archive and compute the improvements
         indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - emitter_state.previous_fitnesses[indices]
+        improvements = (
+            fitnesses - emitter_state.previous_fitnesses.squeeze(axis=1)[indices]
+        )
 
         # condition for being a new cell
         condition = improvements == jnp.inf
