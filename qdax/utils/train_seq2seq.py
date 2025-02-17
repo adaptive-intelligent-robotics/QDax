@@ -14,6 +14,7 @@ import jax.numpy as jnp
 import optax
 from flax.training import train_state
 
+from qdax.core.aurora import AURORA
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
 from qdax.custom_types import Params, RNGKey
@@ -125,8 +126,8 @@ def lstm_ae_train(
         alpha = 0.0001
 
     # compute mean/std of the obs for normalization
-    mean_obs = jnp.nanmean(repertoire.observations, axis=(0, 1))
-    std_obs = jnp.nanstd(repertoire.observations, axis=(0, 1))
+    mean_obs = jnp.nanmean(repertoire.extra_scores[AURORA.OBSERVATION_KEY], axis=(0, 1))
+    std_obs = jnp.nanstd(repertoire.extra_scores[AURORA.OBSERVATION_KEY], axis=(0, 1))
     # the std where they were NaNs was set to zero. But here we divide by the
     # std, so we replace the zeros by inf here.
     std_obs = jnp.where(std_obs == 0, jnp.inf, std_obs)
@@ -170,7 +171,8 @@ def lstm_ae_train(
     valid_indexes = indiv_indices.at[idx_p1].get()
 
     # Normalising Dataset
-    steps_per_epoch = repertoire.observations.shape[0] // batch_size
+    observations = repertoire.extra_scores[AURORA.OBSERVATION_KEY]
+    steps_per_epoch = observations.shape[0] // batch_size
 
     loss_val = 0.0
     for epoch in range(num_epochs):
@@ -179,7 +181,7 @@ def lstm_ae_train(
 
         # create dataset with the observation from the sample of valid indexes
         training_dataset = (
-            repertoire.observations.at[valid_indexes, ...].get() - mean_obs
+            observations.at[valid_indexes, ...].get() - mean_obs
         ) / std_obs
         training_dataset = training_dataset.at[valid_indexes].get()
 
