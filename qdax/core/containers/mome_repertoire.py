@@ -15,6 +15,7 @@ from qdax.core.containers.mapelites_repertoire import (
     get_cells_indices,
 )
 from qdax.core.emitters.repertoire_selectors.mome_uniform_selector import (
+    MOMERepertoireT,
     MOMEUniformSelector,
 )
 from qdax.core.emitters.repertoire_selectors.selector import Selector
@@ -66,8 +67,8 @@ class MOMERepertoire(MapElitesRepertoire):
         self,
         key: RNGKey,
         num_samples: int,
-        selector: Optional[Selector[MOMERepertoire]] = None,
-    ) -> MOMERepertoire:
+        selector: Optional[Selector[MOMERepertoireT]] = None,
+    ) -> MOMERepertoireT:
         if selector is None:
             selector = MOMEUniformSelector()
         repertoire = selector.select(self, key, num_samples)
