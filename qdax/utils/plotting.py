@@ -120,8 +120,12 @@ def plot_2d_map_elites_repertoire(
         repertoire.
     """
 
-    # TODO: check it and fix it if needed
-    grid_empty = repertoire_fitnesses == -jnp.inf
+    if repertoire_fitnesses.ndim == 2:
+        repertoire_fitnesses = repertoire_fitnesses.squeeze(axis=1)
+    elif repertoire_fitnesses.ndim >= 3:
+        raise ValueError("fitnesses must be 1D or 2D")
+
+    grid_empty = repertoire_fitnesses.ravel() == -jnp.inf
     num_descriptors = centroids.shape[1]
     if num_descriptors != 2:
         raise NotImplementedError("Grid plot supports 2 descriptors only for now.")
@@ -620,6 +624,11 @@ def plot_multidimensional_map_elites_grid(
 
     descriptors = repertoire.descriptors
     fitnesses = repertoire.fitnesses
+
+    if fitnesses.ndim == 2:
+        fitnesses = fitnesses.squeeze(axis=1)
+    elif fitnesses.ndim >= 3:
+        raise ValueError("fitnesses must be 1D or 2D")
 
     is_grid_empty = fitnesses.ravel() == -jnp.inf
     num_descriptors = descriptors.shape[1]

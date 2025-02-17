@@ -17,6 +17,7 @@ from qdax.core.emitters.qpg_emitter import (
     QualityPGEmitter,
     QualityPGEmitterState,
 )
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import (
     Descriptor,
@@ -67,10 +68,11 @@ class DiversityPGEmitter(QualityPGEmitter):
         policy_network: nn.Module,
         env: QDEnv,
         score_novelty: Callable[[Archive, StateDescriptor], Reward],
+        selector: Optional[Selector] = None,
     ) -> None:
 
         # usual init operations from PGAME
-        super().__init__(config, policy_network, env)
+        super().__init__(config, policy_network, env, selector)
 
         self._config: DiversityPGConfig = config
 

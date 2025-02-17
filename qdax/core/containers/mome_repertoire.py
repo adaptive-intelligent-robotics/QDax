@@ -5,7 +5,6 @@ well as several variants."""
 from __future__ import annotations
 
 import warnings
-from functools import partial
 from typing import Any, Optional, Tuple
 
 import jax
@@ -15,6 +14,11 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
+from qdax.core.emitters.repertoire_selectors.mome_uniform_selector import (
+    MOMERepertoireT,
+    MOMEUniformSelector,
+)
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -59,78 +63,16 @@ class MOMERepertoire(MapElitesRepertoire):
         first_leaf = jax.tree.leaves(self.genotypes)[0]
         return int(first_leaf.shape[0] * first_leaf.shape[1])
 
-    @jax.jit
-    def _sample_in_masked_pareto_front(
+    def select(
         self,
-        pareto_front_genotypes: ParetoFront[Genotype],
-        mask: Mask,
         key: RNGKey,
-    ) -> Genotype:
-        """Sample one single genotype in masked pareto front.
-
-        Args:
-            pareto_front_genotypes: the genotypes of a pareto front
-            mask: a mask associated to the front
-            key: a random key to handle stochastic operations
-
-        Returns:
-            A single genotype among the pareto front.
-        """
-        p = (1.0 - mask) / jnp.sum(1.0 - mask)
-
-        genotype_sample = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(1,), p=p),
-            pareto_front_genotypes,
-        )
-
-        return genotype_sample
-
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
-        """Sample elements in the repertoire.
-
-        This method sample a non-empty pareto front, and then sample
-        genotypes from this pareto front.
-
-        Args:
-            key: a random key to handle stochasticity.
-            num_samples: number of samples to retrieve from the repertoire.
-
-        Returns:
-            A sample of genotypes.
-        """
-
-        # create sampling probability for the cells
-        repertoire_empty = jnp.any(self.fitnesses == -jnp.inf, axis=-1)
-        occupied_cells = jnp.any(~repertoire_empty, axis=-1)
-
-        p = occupied_cells / jnp.sum(occupied_cells)
-
-        # possible indices - num cells
-        indices = jnp.arange(start=0, stop=repertoire_empty.shape[0])
-
-        # choose idx - among indices of cells that are not empty
-        key, subkey = jax.random.split(key)
-        cells_idx = jax.random.choice(subkey, indices, shape=(num_samples,), p=p)
-
-        # get genotypes (front) from the chosen indices
-        pareto_front_genotypes = jax.tree.map(lambda x: x[cells_idx], self.genotypes)
-
-        # prepare second sampling function
-        sample_in_fronts = jax.vmap(self._sample_in_masked_pareto_front)
-
-        # sample genotypes from the pareto front
-        subkeys = jax.random.split(key, num=num_samples)
-        sampled_genotypes = sample_in_fronts(  # type: ignore
-            pareto_front_genotypes=pareto_front_genotypes,
-            mask=repertoire_empty[cells_idx],
-            key=subkeys,
-        )
-
-        # remove the dim coming from pareto front
-        sampled_genotypes = jax.tree.map(lambda x: x.squeeze(axis=1), sampled_genotypes)
-
-        return sampled_genotypes
+        num_samples: int,
+        selector: Optional[Selector[MOMERepertoireT]] = None,
+    ) -> MOMERepertoireT:
+        if selector is None:
+            selector = MOMEUniformSelector()
+        repertoire = selector.select(self, key, num_samples)
+        return repertoire
 
     @jax.jit
     def _update_masked_pareto_front(

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import flax.struct
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
+from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -130,7 +133,7 @@ def intra_batch_comp(
     return jnp.logical_not(discard_indiv)
 
 
-class UnstructuredRepertoire(flax.struct.PyTreeNode):
+class UnstructuredRepertoire(GARepertoire):
     """
     Class for the unstructured repertoire in Map Elites.
 
@@ -149,8 +152,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         observations: observations that the genotype gathered in the environment.
     """
 
-    genotypes: Genotype
-    fitnesses: Fitness
     descriptors: Descriptor
     observations: Observation
     l_value: jnp.ndarray
@@ -244,6 +245,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             A new unstructured repertoire where the relevant individuals have been
             added.
         """
+        batch_of_fitnesses = batch_of_fitnesses.reshape(-1, 1)
 
         # We need to replace all the descriptors that are not filled with jnp inf
         filtered_descriptors = jnp.where(
@@ -268,11 +270,11 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         # We remove individuals that are too close to the second nn.
         # This avoids having clusters of individuals after adding them.
         not_novel_enough = jnp.where(
-            jnp.squeeze(second_neighbours <= self.l_value), True, False
+            jnp.squeeze(second_neighbours <= self.l_value[0]), True, False
         )
 
         # batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
-        batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
+        # batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
         batch_of_observations = jnp.expand_dims(batch_of_observations, axis=-1)
 
         # TODO: Doesn't Work if Archive is full. Need to use the closest individuals
@@ -285,7 +287,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             )[0]
         )
         batch_of_indices = jnp.where(
-            jnp.squeeze(batch_of_distances <= self.l_value),
+            jnp.squeeze(batch_of_distances <= self.l_value[0]),
             jnp.squeeze(batch_of_indices),
             -1,
         )
@@ -297,7 +299,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )[1]
         batch_of_indices = jnp.where(
             jnp.squeeze(
-                batch_of_distances.at[sorted_descriptors].get() <= self.l_value
+                batch_of_distances.at[sorted_descriptors].get() <= self.l_value[0]
             ),
             batch_of_indices.at[sorted_descriptors].get(),
             empty_indexes,
@@ -324,7 +326,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             ),  # keep track of where we are in the batch to assure right comparisons
             batch_of_descriptors.squeeze(),
             batch_of_fitnesses.squeeze(),
-            self.l_value,
+            self.l_value[0],
         )
 
         keep_indiv = jnp.logical_and(keep_indiv, jnp.logical_not(not_novel_enough))
@@ -344,8 +346,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )
 
         # get addition condition
-        grid_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(grid_fitnesses, batch_of_indices, 0)
+        current_fitnesses = jnp.take_along_axis(self.fitnesses, batch_of_indices, 0)
         addition_condition = batch_of_fitnesses > current_fitnesses
         addition_condition = jnp.logical_and(
             addition_condition, jnp.expand_dims(keep_indiv, axis=-1)
@@ -369,7 +370,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # compute new fitness and descriptors
         new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze()].set(
-            batch_of_fitnesses.squeeze()
+            batch_of_fitnesses
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze()].set(
             batch_of_descriptors.squeeze()
@@ -381,36 +382,42 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         return UnstructuredRepertoire(
             genotypes=new_grid_genotypes,
-            fitnesses=new_fitnesses.squeeze(),
+            fitnesses=new_fitnesses,
             descriptors=new_descriptors.squeeze(),
             observations=new_observations.squeeze(),
             l_value=self.l_value,
             max_size=self.max_size,
         )
 
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
-        """Sample elements in the repertoire.
+    def select(
+        self,
+        key: RNGKey,
+        num_samples: int,
+        selector: Optional[Selector[UnstructuredRepertoire]] = None,
+    ) -> UnstructuredRepertoire:
+        """Select elements in the repertoire.
+
+        This method sample a non-empty pareto front, and then sample
+        genotypes from this pareto front.
 
         Args:
-            key: a jax PRNG random key
-            num_samples: the number of elements to be sampled
+            key: a random key to handle stochasticity.
+            num_samples: number of samples to retrieve from the repertoire.
+            selector: selector to choose the individuals. Defaults to None.
 
         Returns:
-            samples: a batch of genotypes sampled in the repertoire
+            A repertoire containing the selected individuals.
         """
-        grid_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.genotypes,
-        )
+        if selector is None:
+            selector = UniformSelector(select_with_replacement=True)
 
-        return samples
+        repertoire = selector.select(self, key, num_samples)
+
+        return repertoire
 
     @classmethod
-    def init(
+    def init(  # type: ignore
         cls,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -438,7 +445,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         """
 
         # Initialize grid with default values
-        default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(max_size, 1))
         default_genotypes = jax.tree.map(
             lambda x: jnp.full(shape=(max_size,) + x.shape[1:], fill_value=jnp.nan),
             genotypes,
@@ -454,7 +461,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
             observations=default_observations,
-            l_value=l_value,
+            l_value=jnp.full(shape=(max_size,), fill_value=l_value),
             max_size=max_size,
         )
 

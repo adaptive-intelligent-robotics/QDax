@@ -4,8 +4,9 @@ from typing import Callable, Optional, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.repertoire import Repertoire
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.custom_types import ExtraScores, Genotype, RNGKey
 
 
@@ -16,16 +17,18 @@ class MixingEmitter(Emitter):
         variation_fn: Callable[[Genotype, Genotype, RNGKey], Tuple[Genotype, RNGKey]],
         variation_percentage: float,
         batch_size: int,
+        selector: Optional[Selector] = None,
     ) -> None:
         self._mutation_fn = mutation_fn
         self._variation_fn = variation_fn
         self._variation_percentage = variation_percentage
         self._batch_size = batch_size
+        self._selector = selector
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         emitter_state: Optional[EmitterState],
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores]:
@@ -52,13 +55,19 @@ class MixingEmitter(Emitter):
 
         if n_variation > 0:
             sample_key_1, sample_key_2, variation_key = jax.random.split(key, 3)
-            x1 = repertoire.sample(sample_key_1, n_variation)
-            x2 = repertoire.sample(sample_key_2, n_variation)
+            x1 = repertoire.select(
+                sample_key_1, n_variation, selector=self._selector
+            ).genotypes
+            x2 = repertoire.select(
+                sample_key_2, n_variation, selector=self._selector
+            ).genotypes
             x_variation = self._variation_fn(x1, x2, variation_key)
 
         if n_mutation > 0:
             sample_key, mutation_key = jax.random.split(key)
-            x1 = repertoire.sample(sample_key, n_mutation)
+            x1 = repertoire.select(
+                sample_key, n_mutation, selector=self._selector
+            ).genotypes
             x_mutation = self._mutation_fn(x1, mutation_key)
 
         if n_variation == 0:
