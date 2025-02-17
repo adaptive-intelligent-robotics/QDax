@@ -14,7 +14,10 @@ from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.selector import (
+    MapElitesRepertoireT,
+    Selector,
+)
 from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import (
     Centroid,
@@ -186,8 +189,8 @@ class MapElitesRepertoire(GARepertoire):
         self,
         key: RNGKey,
         num_samples: int,
-        selector: Optional[Selector[MapElitesRepertoire]] = None,
-    ) -> MapElitesRepertoire:
+        selector: Optional[Selector[MapElitesRepertoireT]] = None,
+    ) -> MapElitesRepertoireT:
         if selector is None:
             selector = UniformSelector(select_with_replacement=True)
         repertoire = selector.select(self, key, num_samples)

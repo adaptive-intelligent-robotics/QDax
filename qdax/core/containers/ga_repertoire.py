@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.repertoire import Repertoire
-from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.selector import GARepertoireT, Selector
 from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import Fitness, Genotype, RNGKey
 
@@ -82,8 +82,8 @@ class GARepertoire(Repertoire):
         self,
         key: RNGKey,
         num_samples: int,
-        selector: Optional[Selector[GARepertoire]] = None,
-    ) -> GARepertoire:
+        selector: Optional[Selector[GARepertoireT]] = None,
+    ) -> GARepertoireT:
         if selector is None:
             selector = UniformSelector(select_with_replacement=False)
         repertoire = selector.select(self, key, num_samples)
