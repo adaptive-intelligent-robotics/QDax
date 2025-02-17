@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.custom_types import Fitness, Genotype
+from qdax.custom_types import ExtraScores, Fitness, Genotype
 from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
@@ -82,7 +82,10 @@ class NSGA2Repertoire(GARepertoire):
 
     @jax.jit
     def add(
-        self, batch_of_genotypes: Genotype, batch_of_fitnesses: Fitness
+        self,
+        batch_of_genotypes: Genotype,
+        batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> NSGA2Repertoire:
         """Implements the repertoire addition rules.
 
@@ -101,10 +104,15 @@ class NSGA2Repertoire(GARepertoire):
         Args:
             batch_of_genotypes: new genotypes that we try to add.
             batch_of_fitnesses: fitness of those new genotypes.
+            batch_of_extra_scores: extra scores of those new genotypes.
 
         Returns:
             The updated repertoire.
         """
+
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
         # All the candidates
         candidates = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
@@ -240,6 +248,18 @@ class NSGA2Repertoire(GARepertoire):
         new_candidates = jax.tree.map(lambda x: x[indices], candidates)
         new_scores = candidate_fitnesses[indices]
 
-        new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_scores)
+        filtered_batch_of_extra_scores = {
+            key: value
+            for key, value in batch_of_extra_scores.items()
+            if key in self.keys_extra_scores
+        }
+        new_extra_scores = jax.tree.map(
+            lambda x: x[indices], filtered_batch_of_extra_scores
+        )
+        new_repertoire = self.replace(
+            genotypes=new_candidates,
+            fitnesses=new_scores,
+            extra_scores=new_extra_scores,
+        )
 
         return new_repertoire  # type: ignore

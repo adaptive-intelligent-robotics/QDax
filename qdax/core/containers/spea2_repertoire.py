@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from typing import Optional, Tuple
+
 import flax
 import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.custom_types import Fitness, Genotype
+from qdax.custom_types import ExtraScores, Fitness, Genotype
 
 
 class SPEA2Repertoire(GARepertoire):
@@ -56,6 +58,7 @@ class SPEA2Repertoire(GARepertoire):
         self,
         batch_of_genotypes: Genotype,
         batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> SPEA2Repertoire:
         """Updates the population with the new solutions.
 
@@ -67,10 +70,15 @@ class SPEA2Repertoire(GARepertoire):
             batch_of_genotypes: genotypes of the new individuals that are
                 considered to be added to the population.
             batch_of_fitnesses: their corresponding fitnesses.
+            batch_of_extra_scores: extra scores of those new genotypes.
 
         Returns:
             Updated repertoire.
         """
+
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
         # All the candidates
         candidates = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=0),
@@ -86,11 +94,23 @@ class SPEA2Repertoire(GARepertoire):
         # sort the strengths (the smaller the better (sic, respect paper's notation))
         indices = jnp.argsort(strength_scores)[: self.size]
 
-        # keep the survivors
+        # keep only the survivors
         new_candidates = jax.tree.map(lambda x: x[indices], candidates)
-        new_fitnesses = candidates_fitnesses[indices]
+        new_scores = candidates_fitnesses[indices]
 
-        new_repertoire = self.replace(genotypes=new_candidates, fitnesses=new_fitnesses)
+        filtered_batch_of_extra_scores = {
+            key: value
+            for key, value in batch_of_extra_scores.items()
+            if key in self.keys_extra_scores
+        }
+        new_extra_scores = jax.tree.map(
+            lambda x: x[indices], filtered_batch_of_extra_scores
+        )
+        new_repertoire = self.replace(
+            genotypes=new_candidates,
+            fitnesses=new_scores,
+            extra_scores=new_extra_scores,
+        )
 
         return new_repertoire  # type: ignore
 
@@ -101,6 +121,10 @@ class SPEA2Repertoire(GARepertoire):
         fitnesses: Fitness,
         population_size: int,
         num_neighbours: int,
+        *args,
+        extra_scores: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
+        **kwargs,
     ) -> GARepertoire:
         """Initializes the repertoire.
 
@@ -111,10 +135,16 @@ class SPEA2Repertoire(GARepertoire):
             genotypes: first batch of genotypes
             fitnesses: corresponding fitnesses
             population_size: size of the population we want to evolve
+            extra_scores: extra scores resulting from the evaluation of the genotypes
+            keys_extra_scores: keys of the extra scores to store in the repertoire
 
         Returns:
             An initial repertoire.
         """
+
+        if extra_scores is None:
+            extra_scores = {}
+
         # create default fitnesses
         default_fitnesses = -jnp.inf * jnp.ones(
             shape=(population_size, fitnesses.shape[-1])
@@ -125,13 +155,27 @@ class SPEA2Repertoire(GARepertoire):
             lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
         )
 
+        # create default extra scores
+        filtered_extra_scores = {
+            key: value
+            for key, value in extra_scores.items()
+            if key in keys_extra_scores
+        }
+
+        default_extra_scores = jax.tree.map(
+            lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]),
+            filtered_extra_scores,
+        )
+
         # create an initial repertoire with those default values
         repertoire = cls(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
+            extra_scores=default_extra_scores,
+            keys_extra_scores=keys_extra_scores,
             num_neighbours=num_neighbours,
         )
 
-        new_repertoire = repertoire.add(genotypes, fitnesses)
+        new_repertoire = repertoire.add(genotypes, fitnesses, extra_scores)
 
         return new_repertoire  # type: ignore

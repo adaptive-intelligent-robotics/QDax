@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
+import flax
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.repertoire import Repertoire
-from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.selector import GARepertoireT, Selector
 from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
-from qdax.custom_types import Fitness, Genotype, RNGKey
+from qdax.custom_types import ExtraScores, Fitness, Genotype, RNGKey
 
 
 class GARepertoire(Repertoire):
@@ -31,6 +32,10 @@ class GARepertoire(Repertoire):
 
     genotypes: Genotype
     fitnesses: Fitness
+    extra_scores: ExtraScores
+    keys_extra_scores: Tuple[str, ...] = flax.struct.field(
+        pytree_node=False,
+    )
 
     @property
     def size(self) -> int:
@@ -82,8 +87,8 @@ class GARepertoire(Repertoire):
         self,
         key: RNGKey,
         num_samples: int,
-        selector: Optional[Selector[GARepertoire]] = None,
-    ) -> GARepertoire:
+        selector: Optional[Selector[GARepertoireT]] = None,
+    ) -> GARepertoireT:
         if selector is None:
             selector = UniformSelector(select_with_replacement=False)
         repertoire = selector.select(self, key, num_samples)
@@ -91,7 +96,10 @@ class GARepertoire(Repertoire):
 
     @jax.jit
     def add(
-        self, batch_of_genotypes: Genotype, batch_of_fitnesses: Fitness
+        self,
+        batch_of_genotypes: Genotype,
+        batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> GARepertoire:
         """Implements the repertoire addition rules.
 
@@ -105,6 +113,14 @@ class GARepertoire(Repertoire):
         Returns:
             The updated repertoire.
         """
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
+        filtered_batch_of_extra_scores = {
+            key: value
+            for key, value in batch_of_extra_scores.items()
+            if key in self.keys_extra_scores
+        }
 
         # gather individuals and fitnesses
         candidates = jax.tree.map(
@@ -124,9 +140,13 @@ class GARepertoire(Repertoire):
 
         # keep only the best ones
         new_candidates = jax.tree.map(lambda x: x[survivor_indices], candidates)
-
+        new_extra_scores = jax.tree.map(
+            lambda x: x[survivor_indices], filtered_batch_of_extra_scores
+        )
         new_repertoire = self.replace(
-            genotypes=new_candidates, fitnesses=candidates_fitnesses[survivor_indices]
+            genotypes=new_candidates,
+            fitnesses=candidates_fitnesses[survivor_indices],
+            extra_scores=new_extra_scores,
         )
 
         return new_repertoire  # type: ignore
@@ -138,6 +158,8 @@ class GARepertoire(Repertoire):
         fitnesses: Fitness,
         population_size: int,
         *args,
+        extra_scores: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
         **kwargs,
     ) -> GARepertoire:
         """Initializes the repertoire.
@@ -149,10 +171,16 @@ class GARepertoire(Repertoire):
             genotypes: first batch of genotypes
             fitnesses: corresponding fitnesses
             population_size: size of the population we want to evolve
+            extra_scores: extra scores resulting from the evaluation of the genotypes
+            keys_extra_scores: keys of the extra scores to store in the repertoire
 
         Returns:
             An initial repertoire.
         """
+
+        if extra_scores is None:
+            extra_scores = {}
+
         # create default fitnesses
         default_fitnesses = -jnp.inf * jnp.ones(
             shape=(population_size, fitnesses.shape[-1])
@@ -163,9 +191,26 @@ class GARepertoire(Repertoire):
             lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]), genotypes
         )
 
-        # create an initial repertoire with those default values
-        repertoire = cls(genotypes=default_genotypes, fitnesses=default_fitnesses)
+        # create default extra scores
+        filtered_extra_scores = {
+            key: value
+            for key, value in extra_scores.items()
+            if key in keys_extra_scores
+        }
 
-        new_repertoire = repertoire.add(genotypes, fitnesses)
+        default_extra_scores = jax.tree.map(
+            lambda x: jnp.zeros(shape=(population_size,) + x.shape[1:]),
+            filtered_extra_scores,
+        )
+
+        # create an initial repertoire with those default values
+        repertoire = cls(
+            genotypes=default_genotypes,
+            fitnesses=default_fitnesses,
+            extra_scores=default_extra_scores,
+            keys_extra_scores=keys_extra_scores,
+        )
+
+        new_repertoire = repertoire.add(genotypes, fitnesses, extra_scores)
 
         return new_repertoire  # type: ignore
