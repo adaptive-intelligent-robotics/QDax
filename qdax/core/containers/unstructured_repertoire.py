@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import flax.struct
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
+from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
+    ExtraScores,
     Fitness,
     Genotype,
-    Observation,
     RNGKey,
 )
 
@@ -130,7 +133,7 @@ def intra_batch_comp(
     return jnp.logical_not(discard_indiv)
 
 
-class UnstructuredRepertoire(flax.struct.PyTreeNode):
+class UnstructuredRepertoire(GARepertoire):
     """
     Class for the unstructured repertoire in Map Elites.
 
@@ -144,15 +147,11 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         descriptors: an array that contains the descriptors of solutions in each cell
             of the repertoire, ordered by centroids. The array shape
             is (num_centroids, num_descriptors).
-        centroids: an array the contains the centroids of the tessellation. The array
-            shape is (num_centroids, num_descriptors).
-        observations: observations that the genotype gathered in the environment.
+        extra_scores: extra scores resulting from the evaluation of the genotypes
+        keys_extra_scores: keys of the extra scores to store in the repertoire
     """
 
-    genotypes: Genotype
-    fitnesses: Fitness
     descriptors: Descriptor
-    observations: Observation
     l_value: jnp.ndarray
     max_size: int = flax.struct.field(pytree_node=False)
 
@@ -186,7 +185,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         jnp.save(path + "genotypes.npy", flat_genotypes)
         jnp.save(path + "fitnesses.npy", self.fitnesses)
         jnp.save(path + "descriptors.npy", self.descriptors)
-        jnp.save(path + "observations.npy", self.observations)
         jnp.save(path + "l_value.npy", self.l_value)
         jnp.save(path + "max_size.npy", self.max_size)
 
@@ -210,7 +208,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         fitnesses = jnp.load(path + "fitnesses.npy")
         descriptors = jnp.load(path + "descriptors.npy")
-        observations = jnp.load(path + "observations.npy")
         l_value = jnp.load(path + "l_value.npy")
         max_size = int(jnp.load(path + "max_size.npy").item())
 
@@ -218,7 +215,6 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            observations=observations,
             l_value=l_value,
             max_size=max_size,
         )
@@ -229,7 +225,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
-        batch_of_observations: Observation,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> UnstructuredRepertoire:
         """Adds a batch of genotypes to the repertoire.
 
@@ -238,12 +234,18 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
                 for addition in the repertoire.
             batch_of_descriptors: associated descriptors.
             batch_of_fitnesses: associated fitness.
-            batch_of_observations: associated observations.
+            batch_of_extra_scores: associated extra scores.
 
         Returns:
             A new unstructured repertoire where the relevant individuals have been
             added.
         """
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
+        filtered_batch_of_extra_scores = self.filter_extra_scores(batch_of_extra_scores)
+
+        batch_of_fitnesses = batch_of_fitnesses.reshape(-1, 1)
 
         # We need to replace all the descriptors that are not filled with jnp inf
         filtered_descriptors = jnp.where(
@@ -268,12 +270,14 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         # We remove individuals that are too close to the second nn.
         # This avoids having clusters of individuals after adding them.
         not_novel_enough = jnp.where(
-            jnp.squeeze(second_neighbours <= self.l_value), True, False
+            jnp.squeeze(second_neighbours <= self.l_value[0]), True, False
         )
 
         # batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
-        batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
-        batch_of_observations = jnp.expand_dims(batch_of_observations, axis=-1)
+        # batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
+        filtered_batch_of_extra_scores = jax.tree.map(
+            lambda x: jnp.expand_dims(x, axis=-1), filtered_batch_of_extra_scores
+        )
 
         # TODO: Doesn't Work if Archive is full. Need to use the closest individuals
         # in that case.
@@ -285,7 +289,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             )[0]
         )
         batch_of_indices = jnp.where(
-            jnp.squeeze(batch_of_distances <= self.l_value),
+            jnp.squeeze(batch_of_distances <= self.l_value[0]),
             jnp.squeeze(batch_of_indices),
             -1,
         )
@@ -297,7 +301,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )[1]
         batch_of_indices = jnp.where(
             jnp.squeeze(
-                batch_of_distances.at[sorted_descriptors].get() <= self.l_value
+                batch_of_distances.at[sorted_descriptors].get() <= self.l_value[0]
             ),
             batch_of_indices.at[sorted_descriptors].get(),
             empty_indexes,
@@ -311,7 +315,10 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             lambda x: x.at[sorted_descriptors].get(), batch_of_genotypes
         )
         batch_of_fitnesses = batch_of_fitnesses.at[sorted_descriptors].get()
-        batch_of_observations = batch_of_observations.at[sorted_descriptors].get()
+
+        filtered_batch_of_extra_scores = jax.tree.map(
+            lambda x: x.at[sorted_descriptors].get(), filtered_batch_of_extra_scores
+        )
         not_novel_enough = not_novel_enough.at[sorted_descriptors].get()
 
         # Check to find Individuals with same descriptor within the Batch
@@ -324,7 +331,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             ),  # keep track of where we are in the batch to assure right comparisons
             batch_of_descriptors.squeeze(),
             batch_of_fitnesses.squeeze(),
-            self.l_value,
+            self.l_value[0],
         )
 
         keep_indiv = jnp.logical_and(keep_indiv, jnp.logical_not(not_novel_enough))
@@ -344,8 +351,7 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
         )
 
         # get addition condition
-        grid_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(grid_fitnesses, batch_of_indices, 0)
+        current_fitnesses = jnp.take_along_axis(self.fitnesses, batch_of_indices, 0)
         addition_condition = batch_of_fitnesses > current_fitnesses
         addition_condition = jnp.logical_and(
             addition_condition, jnp.expand_dims(keep_indiv, axis=-1)
@@ -369,55 +375,68 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
 
         # compute new fitness and descriptors
         new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze()].set(
-            batch_of_fitnesses.squeeze()
+            batch_of_fitnesses
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze()].set(
             batch_of_descriptors.squeeze()
         )
 
-        new_observations = self.observations.at[batch_of_indices.squeeze()].set(
-            batch_of_observations.squeeze()
+        new_extra_scores = jax.tree.map(
+            lambda x, y: x.at[batch_of_indices.squeeze()].set(y.squeeze()).squeeze(),
+            self.extra_scores,
+            filtered_batch_of_extra_scores,
         )
 
         return UnstructuredRepertoire(
             genotypes=new_grid_genotypes,
-            fitnesses=new_fitnesses.squeeze(),
+            fitnesses=new_fitnesses,
             descriptors=new_descriptors.squeeze(),
-            observations=new_observations.squeeze(),
+            extra_scores=new_extra_scores,
+            keys_extra_scores=self.keys_extra_scores,
             l_value=self.l_value,
             max_size=self.max_size,
         )
 
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
-        """Sample elements in the repertoire.
+    def select(
+        self,
+        key: RNGKey,
+        num_samples: int,
+        selector: Optional[Selector[UnstructuredRepertoire]] = None,
+    ) -> UnstructuredRepertoire:
+        """Select elements in the repertoire.
+
+        This method sample a non-empty pareto front, and then sample
+        genotypes from this pareto front.
 
         Args:
-            key: a jax PRNG random key
-            num_samples: the number of elements to be sampled
+            key: a random key to handle stochasticity.
+            num_samples: number of samples to retrieve from the repertoire.
+            selector: selector to choose the individuals. Defaults to None.
 
         Returns:
-            samples: a batch of genotypes sampled in the repertoire
+            A repertoire containing the selected individuals.
         """
-        grid_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - grid_empty) / jnp.sum(1.0 - grid_empty)
 
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.genotypes,
-        )
+        if selector is None:
+            selector = UniformSelector(select_with_replacement=True)
 
-        return samples
+        # Explicitly cast return value to UnstructuredRepertoire
+        repertoire: UnstructuredRepertoire = selector.select(self, key, num_samples)
+
+        return repertoire
 
     @classmethod
-    def init(
+    def init(  # type: ignore
         cls,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
-        observations: Observation,
         l_value: jnp.ndarray,
         max_size: int,
+        *args,
+        extra_scores: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
+        **kwargs,
     ) -> UnstructuredRepertoire:
         """Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
@@ -429,35 +448,51 @@ class UnstructuredRepertoire(flax.struct.PyTreeNode):
             fitnesses: fitness of the initial genotypes of shape (batch_size,)
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
-            observations: observations experienced in the evaluation task.
             l_value: threshold distance of the repertoire.
             max_size: maximal size of the container
+            extra_scores: extra scores resulting from the evaluation of the genotypes
+            keys_extra_scores: keys of the extra scores to store in the repertoire
 
         Returns:
             an initialized unstructured repertoire.
         """
 
+        if extra_scores is None:
+            extra_scores = {}
+
         # Initialize grid with default values
-        default_fitnesses = -jnp.inf * jnp.ones(shape=max_size)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(max_size, 1))
         default_genotypes = jax.tree.map(
             lambda x: jnp.full(shape=(max_size,) + x.shape[1:], fill_value=jnp.nan),
             genotypes,
         )
         default_descriptors = jnp.zeros(shape=(max_size, descriptors.shape[-1]))
 
-        default_observations = jnp.full(
-            shape=(max_size,) + observations.shape[1:], fill_value=jnp.nan
+        # create default extra scores
+        filtered_extra_scores = {
+            key: value
+            for key, value in extra_scores.items()
+            if key in keys_extra_scores
+        }
+
+        default_extra_scores = jax.tree.map(
+            lambda x: jnp.zeros(shape=(max_size,) + x.shape[1:]),
+            filtered_extra_scores,
         )
 
         repertoire = UnstructuredRepertoire(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
-            observations=default_observations,
-            l_value=l_value,
+            l_value=jnp.full(shape=(max_size,), fill_value=l_value),
             max_size=max_size,
+            extra_scores=default_extra_scores,
+            keys_extra_scores=keys_extra_scores,
         )
 
         return repertoire.add(  # type: ignore
-            genotypes, descriptors, fitnesses, observations
+            genotypes,
+            descriptors,
+            fitnesses,
+            extra_scores,
         )

@@ -4,7 +4,10 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    compute_euclidean_centroids,
+)
 from qdax.utils.plotting import plot_multidimensional_map_elites_grid
 
 
@@ -38,6 +41,8 @@ def test_onion_grid(num_descriptors: int, grid_shape: Tuple[int, ...]) -> None:
     minval = jnp.array([0] * num_descriptors)
     maxval = jnp.array([1] * num_descriptors)
 
+    centroids = compute_euclidean_centroids(grid_shape, minval, maxval)
+
     key = jax.random.key(seed=0)
     key, key_desc, key_fit = jax.random.split(key, num=3)
 
@@ -49,7 +54,12 @@ def test_onion_grid(num_descriptors: int, grid_shape: Tuple[int, ...]) -> None:
     # Uncomment to test with "empty" descriptors
     # fitnesses = fitnesses.at[10:].set(-jnp.inf)
 
-    repertoire = MapElitesRepertoire(None, fitnesses, descriptors, None)
+    repertoire = MapElitesRepertoire.init(
+        genotypes=jnp.zeros_like(descriptors),
+        fitnesses=fitnesses,
+        descriptors=descriptors,
+        centroids=centroids,
+    )
 
     fig, ax = plot_multidimensional_map_elites_grid(
         repertoire=repertoire,

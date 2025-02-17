@@ -13,9 +13,9 @@ def test_add_to_mels_repertoire() -> None:
     num_descriptors = 2
 
     # create a repertoire instance
-    repertoire = MELSRepertoire(
+    repertoire = MELSRepertoire.init(
         genotypes=jnp.zeros(shape=(num_centroids, genotype_size)),
-        fitnesses=jnp.ones(shape=(num_centroids,)) * (-jnp.inf),
+        fitnesses=jnp.ones(shape=(num_centroids, 1)) * (-jnp.inf),
         descriptors=jnp.zeros(shape=(num_centroids, num_descriptors)),
         centroids=jnp.array(
             [
@@ -25,7 +25,7 @@ def test_add_to_mels_repertoire() -> None:
                 [1.0, 2.0],
             ]
         ),
-        spreads=jnp.full(shape=(num_centroids,), fill_value=jnp.inf),
+        # spreads=jnp.full(shape=(num_centroids,), fill_value=jnp.inf),
     )
 
     #
@@ -66,7 +66,11 @@ def test_add_to_mels_repertoire() -> None:
 
     # check values
     pytest.assume(jnp.allclose(repertoire.genotypes, expected_genotypes, atol=1e-6))
-    pytest.assume(jnp.allclose(repertoire.fitnesses, expected_fitnesses, atol=1e-6))
+    pytest.assume(
+        jnp.allclose(
+            repertoire.fitnesses.squeeze(axis=1), expected_fitnesses, atol=1e-6
+        )
+    )
     pytest.assume(jnp.allclose(repertoire.descriptors, expected_descriptors, atol=1e-6))
     pytest.assume(jnp.allclose(repertoire.spreads, expected_spreads, atol=1e-6))
 
@@ -150,7 +154,9 @@ def test_add_to_mels_repertoire() -> None:
             jnp.allclose(repertoire.genotypes, expected_genotypes_1, atol=1e-6)
         )
         pytest.assume(
-            jnp.allclose(repertoire.fitnesses, expected_fitnesses_1, atol=1e-6)
+            jnp.allclose(
+                repertoire.fitnesses.squeeze(axis=1), expected_fitnesses_1, atol=1e-6
+            )
         )
         pytest.assume(
             jnp.allclose(repertoire.descriptors, expected_descriptors_1, atol=1e-6)
@@ -161,7 +167,9 @@ def test_add_to_mels_repertoire() -> None:
             jnp.allclose(repertoire.genotypes, expected_genotypes_2, atol=1e-6)
         )
         pytest.assume(
-            jnp.allclose(repertoire.fitnesses, expected_fitnesses_2, atol=1e-6)
+            jnp.allclose(
+                repertoire.fitnesses.squeeze(axis=1), expected_fitnesses_2, atol=1e-6
+            )
         )
         pytest.assume(
             jnp.allclose(repertoire.descriptors, expected_descriptors_2, atol=1e-6)
@@ -179,9 +187,9 @@ def test_add_with_single_eval() -> None:
     num_descriptors = 2
 
     # create a repertoire instance
-    repertoire = MELSRepertoire(
+    repertoire = MELSRepertoire.init(
         genotypes=jnp.zeros(shape=(num_centroids, genotype_size)),
-        fitnesses=jnp.ones(shape=(num_centroids,)) * (-jnp.inf),
+        fitnesses=jnp.ones(shape=(num_centroids, 1)) * (-jnp.inf),
         descriptors=jnp.zeros(shape=(num_centroids, num_descriptors)),
         centroids=jnp.array(
             [
@@ -191,7 +199,6 @@ def test_add_with_single_eval() -> None:
                 [1.0, 2.0],
             ]
         ),
-        spreads=jnp.full(shape=(num_centroids,), fill_value=jnp.inf),
     )
 
     # Insert a single solution with only one eval.
@@ -231,6 +238,10 @@ def test_add_with_single_eval() -> None:
 
     # check values
     pytest.assume(jnp.allclose(repertoire.genotypes, expected_genotypes, atol=1e-6))
-    pytest.assume(jnp.allclose(repertoire.fitnesses, expected_fitnesses, atol=1e-6))
+    pytest.assume(
+        jnp.allclose(
+            repertoire.fitnesses.squeeze(axis=1), expected_fitnesses, atol=1e-6
+        )
+    )
     pytest.assume(jnp.allclose(repertoire.descriptors, expected_descriptors, atol=1e-6))
     pytest.assume(jnp.allclose(repertoire.spreads, expected_spreads, atol=1e-6))

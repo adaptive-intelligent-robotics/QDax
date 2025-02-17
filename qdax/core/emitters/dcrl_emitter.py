@@ -4,15 +4,17 @@ in JAX for Brax environments.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import flax.linen as nn
 import jax
 import optax
 from jax import numpy as jnp
 
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import DCRLTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_dc_fn
 from qdax.core.neuroevolution.networks.networks import QModuleDC
@@ -70,6 +72,7 @@ class DCRLEmitter(Emitter):
         policy_network: nn.Module,
         actor_network: nn.Module,
         env: QDEnv,
+        selector: Optional[Selector] = None,
     ) -> None:
         self._config = config
         self._env = env
@@ -107,6 +110,8 @@ class DCRLEmitter(Emitter):
         self._policies_optimizer = optax.adam(
             learning_rate=self._config.policy_learning_rate
         )
+
+        self._selector = selector
 
     @property
     def batch_size(self) -> int:
@@ -272,7 +277,7 @@ class DCRLEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: MapElitesRepertoire,
         emitter_state: DCRLEmitterState,
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores]:
@@ -288,13 +293,19 @@ class DCRLEmitter(Emitter):
         """
         # PG emitter
         key, subkey = jax.random.split(key)
-        parents_pg, descs_pg = repertoire.sample_with_descs(
-            subkey, self._config.dcrl_batch_size
+        selected_sub_repertoire = repertoire.select(
+            subkey, num_samples=self._config.dcrl_batch_size, selector=self._selector
         )
+        parents_pg = selected_sub_repertoire.genotypes
+        descs_pg = selected_sub_repertoire.descriptors
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
         # Actor injection emitter
-        _, descs_ai = repertoire.sample_with_descs(key, self._config.ai_batch_size)
+        key, subkey = jax.random.split(key)
+        descs_ai = repertoire.select(
+            key, self._config.ai_batch_size, selector=self._selector
+        ).descriptors
+
         descs_ai = descs_ai.reshape(descs_ai.shape[0], self._env.descriptor_length)
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 

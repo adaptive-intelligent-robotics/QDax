@@ -4,7 +4,7 @@ well as several variants."""
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -186,6 +186,12 @@ class MELSRepertoire(MapElitesRepertoire):
         Returns:
             The updated repertoire.
         """
+
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
+        filtered_batch_of_extra_scores = self.filter_extra_scores(batch_of_extra_scores)
+
         batch_size, num_samples = batch_of_fitnesses.shape
 
         # Compute indices/cells of all descriptors.
@@ -222,10 +228,7 @@ class MELSRepertoire(MapElitesRepertoire):
         num_centroids = self.centroids.shape[0]
 
         # get current repertoire fitnesses and spreads
-        repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(
-            repertoire_fitnesses, batch_of_indices, 0
-        )
+        current_fitnesses = jnp.take_along_axis(self.fitnesses, batch_of_indices, 0)
 
         repertoire_spreads = jnp.expand_dims(self.spreads, axis=-1)
         current_spreads = jnp.take_along_axis(repertoire_spreads, batch_of_indices, 0)
@@ -237,7 +240,8 @@ class MELSRepertoire(MapElitesRepertoire):
             addition_condition_fitness, addition_condition_spread
         )
 
-        # assign fake position when relevant : num_centroids is out of bound
+        # assign fake position when relevant : num_centroids is out of
+        # bound
         batch_of_indices = jnp.where(
             addition_condition, batch_of_indices, num_centroids
         )
@@ -253,7 +257,7 @@ class MELSRepertoire(MapElitesRepertoire):
 
         # compute new fitness and descriptors
         new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze(axis=-1)].set(
-            batch_of_fitnesses.squeeze(axis=-1)
+            batch_of_fitnesses,
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
             batch_of_descriptors
@@ -262,9 +266,20 @@ class MELSRepertoire(MapElitesRepertoire):
             batch_of_spreads.squeeze(axis=-1)
         )
 
+        # update extra scores
+        new_extra_scores = jax.tree.map(
+            lambda repertoire_scores, new_scores: repertoire_scores.at[
+                batch_of_indices.squeeze(axis=-1)
+            ].set(new_scores),
+            self.extra_scores,
+            filtered_batch_of_extra_scores,
+        )
+
         return MELSRepertoire(
             genotypes=new_repertoire_genotypes,
             fitnesses=new_fitnesses,
+            extra_scores=new_extra_scores,
+            keys_extra_scores=self.keys_extra_scores,
             descriptors=new_descriptors,
             centroids=self.centroids,
             spreads=new_spreads,
@@ -275,6 +290,8 @@ class MELSRepertoire(MapElitesRepertoire):
         cls,
         genotype: Genotype,
         centroids: Centroid,
+        one_extra_score: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
     ) -> MELSRepertoire:
         """Initialize a MAP-Elites Low-Spread repertoire with an initial population of
         genotypes. Requires the definition of centroids that can be computed with any
@@ -286,16 +303,26 @@ class MELSRepertoire(MapElitesRepertoire):
         Args:
             genotype: the typical genotype that will be stored.
             centroids: the centroids of the repertoire.
+            extra_scores: extra scores to store in the repertoire
+            keys_extra_scores: keys of the extra scores to store in the repertoire
 
         Returns:
             A repertoire filled with default values.
         """
+        if one_extra_score is None:
+            one_extra_score = {}
+
+        one_extra_score = {
+            key: value
+            for key, value in one_extra_score.items()
+            if key in keys_extra_scores
+        }
 
         # get number of centroids
         num_centroids = centroids.shape[0]
 
         # default fitness is -inf
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # default genotypes is all 0
         default_genotypes = jax.tree.map(
@@ -309,10 +336,18 @@ class MELSRepertoire(MapElitesRepertoire):
         # default spread is inf so that any spread will be less
         default_spreads = jnp.full(shape=num_centroids, fill_value=jnp.inf)
 
+        # default extra scores is empty dict
+        default_extra_scores = jax.tree.map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
+            one_extra_score,
+        )
+
         return cls(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
             centroids=centroids,
             spreads=default_spreads,
+            extra_scores=default_extra_scores,
+            keys_extra_scores=keys_extra_scores,
         )

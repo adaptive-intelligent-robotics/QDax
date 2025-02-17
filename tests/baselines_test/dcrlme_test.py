@@ -28,17 +28,17 @@ def test_dcrlme() -> None:
     max_bd = 30.0
 
     num_iterations = 5
-    batch_size = 256
+    batch_size = 128
 
     # Archive
     num_init_cvt_samples = 50000
     num_centroids = 1024
-    policy_hidden_layer_sizes = (128, 128)
+    policy_hidden_layer_sizes = (64, 64)
 
     # DCRL-ME
-    ga_batch_size = 128
-    dcrl_batch_size = 64
-    ai_batch_size = 64
+    ga_batch_size = 64
+    dcrl_batch_size = 32
+    ai_batch_size = 32
     lengthscale = 0.1
 
     # GA emitter
@@ -46,7 +46,7 @@ def test_dcrlme() -> None:
     line_sigma = 0.05
 
     # DCRL emitter
-    critic_hidden_layer_size = (256, 256)
+    critic_hidden_layer_size = (64, 64)
     num_critic_training_steps = 3000
     num_pg_training_steps = 150
     replay_buffer_size = 1_000_000

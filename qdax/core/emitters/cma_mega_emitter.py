@@ -12,6 +12,7 @@ from qdax.core.containers.mapelites_repertoire import (
     get_cells_indices,
 )
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -56,6 +57,7 @@ class CMAMEGAEmitter(Emitter):
         num_descriptors: int,
         centroids: Centroid,
         sigma_g: float,
+        selector: Optional[Selector] = None,
     ):
         """
         Class for the emitter of CMA Mega from "Differentiable Quality Diversity" by
@@ -98,6 +100,8 @@ class CMAMEGAEmitter(Emitter):
 
         self._cma_initial_state = self._cmaes.init()
 
+        self._selector = selector
+
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
@@ -107,7 +111,7 @@ class CMAMEGAEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[CMAMEGAState, RNGKey]:
+    ) -> CMAMEGAState:
         """
         Initializes the CMA-MEGA emitter.
 
@@ -132,7 +136,7 @@ class CMAMEGAEmitter(Emitter):
 
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # return the initial state
         key, subkey = jax.random.split(key)
@@ -226,7 +230,9 @@ class CMAMEGAEmitter(Emitter):
 
         # Update the archive and compute the improvements
         indices = get_cells_indices(descriptors, repertoire.centroids)
-        improvements = fitnesses - emitter_state.previous_fitnesses[indices]
+        improvements = (
+            fitnesses - emitter_state.previous_fitnesses.squeeze(axis=1)[indices]
+        )
 
         # condition for being a new cell
         condition = improvements == jnp.inf
@@ -272,7 +278,9 @@ class CMAMEGAEmitter(Emitter):
 
         # re-sample
         key, subkey = jax.random.split(key)
-        random_theta = repertoire.sample(subkey, 1)
+        random_theta = repertoire.select(
+            subkey, num_samples=1, selector=self._selector
+        ).genotypes
 
         # update theta in case of reinit
         theta = jax.tree.map(

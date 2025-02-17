@@ -197,7 +197,9 @@ def reevaluation_reproducibility_function(
         repertoire.fitnesses == -jnp.inf, -jnp.inf, fitnesses_reproducibility
     )
     descriptors_reproducibility = jnp.where(
-        repertoire.fitnesses == -jnp.inf, -jnp.inf, descriptors_reproducibility
+        repertoire.fitnesses == -jnp.inf,
+        -jnp.inf,
+        jnp.expand_dims(descriptors_reproducibility, axis=-1),
     )
 
     # Fill-in corrected repertoire
@@ -315,4 +317,5 @@ def _perform_reevaluation(
         all_fitnesses = jnp.hstack(all_fitnesses)
         all_descriptors = jnp.hstack(all_descriptors)
 
+    all_fitnesses = all_fitnesses.reshape(all_fitnesses.shape[0], num_reevals, -1)
     return all_fitnesses, all_descriptors, all_extra_scores
