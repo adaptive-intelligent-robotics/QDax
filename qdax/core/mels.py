@@ -77,7 +77,27 @@ class MELS(MAPElites):
         # score initial genotypes
         key, subkey = jax.random.split(key)
         fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
+        return self.init_ask_tell(
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            centroids=centroids,
+            key=key,
+            extra_scores=extra_scores,
+        )
+        
 
+    @partial(jax.jit, static_argnames=("self",))
+    def init_ask_tell(
+        self,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        centroids: Centroid,
+        key: RNGKey,
+        extra_scores: Optional[ExtraScores] = {},
+    ) -> Tuple[MELSRepertoire, Optional[EmitterState]]:
+        
         # init the repertoire
         repertoire = MELSRepertoire.init(
             genotypes=genotypes,
