@@ -55,7 +55,6 @@ class DCRLEmitterState(EmitterState):
     target_actor_params: Params
     replay_buffer: ReplayBuffer
     key: RNGKey
-    steps: jnp.ndarray
 
 
 class DCRLEmitter(Emitter):
@@ -73,8 +72,10 @@ class DCRLEmitter(Emitter):
     ) -> None:
         self._config = config
         self._env = env
-        self._policy_network = policy_network
         self._actor_network = actor_network
+        self._actor_critic_iterations = int(
+            config.num_critic_training_steps / config.policy_delay
+        )  # actor and critic training are packed into a single function
 
         # Init Critics
         critic_network = QModuleDC(
@@ -118,11 +119,7 @@ class DCRLEmitter(Emitter):
 
     @property
     def use_all_data(self) -> bool:
-        """Whether to use all data or not when used along other emitters.
-
-        QualityPGEmitter uses the transitions from the genotypes that were generated
-        by other emitters.
-        """
+        """Whether to use all data or not when used along other emitters"""
         return True
 
     def init(
@@ -133,7 +130,7 @@ class DCRLEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> DCRLEmitterState:
+    ) -> Tuple[DCRLEmitterState, RNGKey]:
         """Initializes the emitter state.
 
         Args:
@@ -141,11 +138,11 @@ class DCRLEmitter(Emitter):
             key: A random key.
 
         Returns:
-            The initial state of the PGAMEEmitter.
+            The initial state of the PGAMEEmitter, a new random key.
         """
 
         observation_size = jax.tree.leaves(genotypes)[1].shape[1]
-        descriptor_size = self._env.descriptor_length
+        descriptor_size = self._env.behavior_descriptor_length
         action_size = self._env.action_size
 
         # Initialise critic, greedy actor and population
@@ -182,7 +179,7 @@ class DCRLEmitter(Emitter):
         transitions = extra_scores["transitions"]
         episode_length = transitions.obs.shape[1]
 
-        desc = jnp.repeat(descriptors[:, jnp.newaxis, :], episode_length, axis=1)
+        desc = jnp.repeat(descriptors[:, None, :], episode_length, axis=1)
         desc_normalized = jax.vmap(jax.vmap(self._normalize_desc))(desc)
 
         transitions = transitions.replace(
@@ -201,10 +198,9 @@ class DCRLEmitter(Emitter):
             target_actor_params=target_actor_params,
             replay_buffer=replay_buffer,
             key=subkey,
-            steps=jnp.array(0),
         )
 
-        return emitter_state
+        return emitter_state, key
 
     @partial(jax.jit, static_argnames=("self",))
     def _similarity(self, descs_1: Descriptor, descs_2: Descriptor) -> jnp.array:
@@ -223,17 +219,22 @@ class DCRLEmitter(Emitter):
     def _normalize_desc(self, desc: Descriptor) -> Descriptor:
         return (
             2
-            * (desc - self._env.descriptor_limits[0])
-            / (self._env.descriptor_limits[1] - self._env.descriptor_limits[0])
+            * (desc - self._env.behavior_descriptor_limits[0])
+            / (
+                self._env.behavior_descriptor_limits[1]
+                - self._env.behavior_descriptor_limits[0]
+            )
             - 1
         )
 
     @partial(jax.jit, static_argnames=("self",))
     def _unnormalize_desc(self, desc_normalized: Descriptor) -> Descriptor:
         return 0.5 * (
-            self._env.descriptor_limits[1] - self._env.descriptor_limits[0]
+            self._env.behavior_descriptor_limits[1]
+            - self._env.behavior_descriptor_limits[0]
         ) * desc_normalized + 0.5 * (
-            self._env.descriptor_limits[1] + self._env.descriptor_limits[0]
+            self._env.behavior_descriptor_limits[1]
+            + self._env.behavior_descriptor_limits[0]
         )
 
     @partial(jax.jit, static_argnames=("self",))
@@ -269,14 +270,17 @@ class DCRLEmitter(Emitter):
         actor_dc_params["params"]["Dense_0"]["bias"] = equivalent_bias
         return actor_dc_params
 
-    @partial(jax.jit, static_argnames=("self",))
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def emit(
         self,
         repertoire: Repertoire,
         emitter_state: DCRLEmitterState,
         key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores]:
-        """Do a step of PG emission.
+    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        """Do a step of policy-gradient and actor-injection emission.
 
         Args:
             repertoire: the current repertoire of genotypes
@@ -287,15 +291,18 @@ class DCRLEmitter(Emitter):
             A batch of offspring, the new emitter state and a new key.
         """
         # PG emitter
-        key, subkey = jax.random.split(key)
-        parents_pg, descs_pg = repertoire.sample_with_descs(
-            subkey, self._config.dcrl_batch_size
+        parents_pg, descs_pg, key = repertoire.sample_with_descs(
+            key, self._config.dcrl_batch_size
         )
+        key, subkey = jax.random.split(key)
+        emitter_state = emitter_state.replace(key=subkey)
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
         # Actor injection emitter
-        _, descs_ai = repertoire.sample_with_descs(key, self._config.ai_batch_size)
-        descs_ai = descs_ai.reshape(descs_ai.shape[0], self._env.descriptor_length)
+        _, descs_ai, key = repertoire.sample_with_descs(key, self._config.ai_batch_size)
+        descs_ai = descs_ai.reshape(
+            descs_ai.shape[0], self._env.behavior_descriptor_length
+        )
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 
         # Concatenate PG and AI genotypes
@@ -306,9 +313,13 @@ class DCRLEmitter(Emitter):
         return (
             genotypes,
             {"desc_prime": jnp.concatenate([descs_pg, descs_ai], axis=0)},
+            key,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def emit_pg(
         self,
         emitter_state: DCRLEmitterState,
@@ -327,15 +338,56 @@ class DCRLEmitter(Emitter):
         Returns:
             A new set of offsprings.
         """
-        mutation_fn = partial(
-            self._mutation_function_pg,
-            emitter_state=emitter_state,
+        # normalize the intended descriptors and prepare them for concatenation
+        descs_prime_normalized = jnp.tile(
+            jax.vmap(self._normalize_desc)(descs), self._config.batch_size
+        ).reshape(self._config.dcrl_batch_size, self._config.batch_size, -1)
+
+        # create a batch of policy optimizer states
+        policy_opt_states = jax.vmap(self._policies_optimizer.init)(parents)
+
+        # prepare the batched policy update function with vmapping
+        batched_policy_update_fn = jax.vmap(
+            partial(self._update_policy, critic_params=emitter_state.critic_params),
+            in_axes=(0, 0, 0, None),
         )
-        offsprings = jax.vmap(mutation_fn)(parents, descs)
 
-        return offsprings
+        def scan_update_policies(
+            carry: Tuple[Params, optax.OptState, jnp.ndarray, RNGKey],
+            _: None,
+        ) -> Tuple[Tuple[Params, optax.OptState, jnp.ndarray, RNGKey], Any]:
 
-    @partial(jax.jit, static_argnames=("self",))
+            (policy_params, policy_opt_state, desc_prime, key) = carry
+
+            # sample a mini-batch of data from the replay-buffer
+            transitions, key = emitter_state.replay_buffer.sample(
+                key, self._config.batch_size
+            )
+            (
+                new_policy_params,
+                new_policy_opt_states,
+            ) = batched_policy_update_fn(
+                policy_params, policy_opt_state, desc_prime, transitions
+            )
+            return (new_policy_params, new_policy_opt_states, desc_prime, key), ()
+
+        (
+            final_policy_params,
+            policy_opt_state,
+            desc_prime,
+            key,
+        ), _ = jax.lax.scan(
+            scan_update_policies,
+            (parents, policy_opt_states, descs_prime_normalized, emitter_state.key),
+            length=self._config.num_pg_training_steps,
+        )
+
+        return final_policy_params
+
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def emit_ai(self, emitter_state: DCRLEmitterState, descs: Descriptor) -> Genotype:
         """Emit the offsprings generated through pg mutation.
 
@@ -370,7 +422,10 @@ class DCRLEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    @partial(jax.jit, static_argnames=("self",))
+    @partial(
+        jax.jit,
+        static_argnames=("self",),
+    )
     def state_update(
         self,
         emitter_state: DCRLEmitterState,
@@ -424,154 +479,81 @@ class DCRLEmitter(Emitter):
         )
 
         # Add transitions to replay buffer
-        replay_buffer = emitter_state.replay_buffer.insert(transitions)
-        emitter_state = emitter_state.replace(replay_buffer=replay_buffer)
-
-        # sample transitions from the replay buffer
-        key, subkey = jax.random.split(emitter_state.key)
-        transitions = replay_buffer.sample(
-            subkey, self._config.num_critic_training_steps * self._config.batch_size
+        emitter_state = emitter_state.replace(
+            replay_buffer=emitter_state.replay_buffer.insert(transitions)
         )
-        transitions = jax.tree.map(
-            lambda x: jnp.reshape(
-                x,
-                (
-                    self._config.num_critic_training_steps,
-                    self._config.batch_size,
-                    *x.shape[1:],
-                ),
-            ),
-            transitions,
-        )
-        transitions = transitions.replace(
-            rewards=self._similarity(transitions.desc, transitions.desc_prime)
-            * transitions.rewards
-        )
-        emitter_state = emitter_state.replace(key=key)
 
-        def scan_train_critics(
-            carry: DCRLEmitterState,
-            transitions: DCRLTransition,
-        ) -> Tuple[DCRLEmitterState, Any]:
-            emitter_state = carry
-            new_emitter_state = self._train_critics(emitter_state, transitions)
-            return new_emitter_state, ()
-
-        # Train critics and greedy actor
-        emitter_state, _ = jax.lax.scan(
-            scan_train_critics,
+        # Conduct Actor-Critic training
+        new_emitter_state, _ = jax.lax.scan(
+            self._scan_actor_critic_training,
             emitter_state,
-            transitions,
-            length=self._config.num_critic_training_steps,
+            length=self._actor_critic_iterations,
         )
 
-        return emitter_state  # type: ignore
+        return new_emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
-    def _train_critics(
-        self, emitter_state: DCRLEmitterState, transitions: DCRLTransition
-    ) -> DCRLEmitterState:
-        """Apply one gradient step to critics and to the greedy actor
-        (contained in carry in training_state), then soft update target critics
-        and target actor.
-
-        Those updates are very similar to those made in TD3.
+    def _scan_update_critic(
+        self,
+        carry: Tuple[Params, Params, optax.OptState, Params, RNGKey],
+        transitions: DCRLTransition,
+    ) -> Tuple[Tuple[Params, Params, optax.OptState, Params, RNGKey], Any]:
+        """A scan-ready function to update the critic network parameters
+        with one gradient step.
 
         Args:
-            emitter_state: actual emitter state
+            carry: packed carry containing critic parameters, target critic
+                parameters, critic optimiser state, target actor parameters,
+                and the random key.
+            transitions: a mini-batch of DCRLtransitions for gradient computation
 
         Returns:
-            New emitter state where the critic and the greedy actor have been
-            updated. Optimizer states have also been updated in the process.
+            new_carry: new carry containing updated parameters (target actor
+                parameters is unchanged).
+            empty tuple: compulsory signature for jax.lax.scan
         """
-        key, subkey = jax.random.split(emitter_state.key)
-
-        # Update Critic
+        # unpack the carry
         (
-            critic_opt_state,
             critic_params,
             target_critic_params,
-        ) = self._update_critic(
-            critic_params=emitter_state.critic_params,
-            target_critic_params=emitter_state.target_critic_params,
-            target_actor_params=emitter_state.target_actor_params,
-            critic_opt_state=emitter_state.critic_opt_state,
-            transitions=transitions,
-            key=subkey,
-        )
-
-        # Update greedy actor
-        (
-            actor_opt_state,
-            actor_params,
+            critic_opt_state,
             target_actor_params,
-        ) = jax.lax.cond(
-            emitter_state.steps % self._config.policy_delay == 0,
-            lambda x: self._update_actor(*x),
-            lambda _: (
-                emitter_state.actor_opt_state,
-                emitter_state.actor_params,
-                emitter_state.target_actor_params,
-            ),
-            operand=(
-                emitter_state.actor_params,
-                emitter_state.actor_opt_state,
-                emitter_state.target_actor_params,
-                emitter_state.critic_params,
-                transitions,
-            ),
-        )
+            key,
+        ) = carry
 
-        # Create new training state
-        new_emitter_state = emitter_state.replace(
-            critic_params=critic_params,
-            critic_opt_state=critic_opt_state,
-            actor_params=actor_params,
-            actor_opt_state=actor_opt_state,
-            target_critic_params=target_critic_params,
-            target_actor_params=target_actor_params,
-            key=key,
-            steps=emitter_state.steps + 1,
-        )
-
-        return new_emitter_state  # type: ignore
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _update_critic(
-        self,
-        critic_params: Params,
-        target_critic_params: Params,
-        target_actor_params: Params,
-        critic_opt_state: Params,
-        transitions: DCRLTransition,
-        key: RNGKey,
-    ) -> Tuple[Params, Params, Params]:
-
-        # compute loss and gradients
+        # compute critic gradients
         key, subkey = jax.random.split(key)
         critic_gradient = jax.grad(self._critic_loss_fn)(
             critic_params,
             target_actor_params,
             target_critic_params,
             transitions,
-            key,
+            subkey,
         )
-        critic_updates, critic_opt_state = self._critic_optimizer.update(
+        critic_updates, new_critic_opt_state = self._critic_optimizer.update(
             critic_gradient, critic_opt_state
         )
 
         # update critic
-        critic_params = optax.apply_updates(critic_params, critic_updates)
+        new_critic_params = optax.apply_updates(critic_params, critic_updates)
 
         # Soft update of target critic network
-        target_critic_params = jax.tree.map(
-            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
-            + self._config.soft_tau_update * x2,
+        new_target_critic_params = jax.tree.map(
+            lambda x, y: (1.0 - self._config.soft_tau_update) * x
+            + self._config.soft_tau_update * y,
             target_critic_params,
-            critic_params,
+            new_critic_params,
+        )
+        # pack into new carry
+        new_carry = (
+            new_critic_params,
+            new_target_critic_params,
+            new_critic_opt_state,
+            target_actor_params,
+            key,
         )
 
-        return critic_opt_state, critic_params, target_critic_params
+        return new_carry, ()
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
@@ -582,6 +564,22 @@ class DCRLEmitter(Emitter):
         critic_params: Params,
         transitions: DCRLTransition,
     ) -> Tuple[optax.OptState, Params, Params]:
+        """Function to update the DC-actor with one Policy-Gradient step.
+
+        Args:
+            actor_params: neural network parameters of the DC-actor.
+            actor_opt_state: optimiser state of the actor.
+            target_actor_params: target actor parameters (used in TD3 to
+                smooth the actor-critic learning).
+            critic_params: the parameters of the critic networks which plays
+                as a differentiable target.
+            transitions: a mini-batch of DCRLtransitions.
+
+        Returns:
+            new_actor_params: new actor parameters after taking the PG step
+            new_target_actor_params: new target actor parameters (soft-tau update)
+            new_actor_opt_state: updated optimiser state
+        """
 
         # Update greedy actor
         policy_gradient = jax.grad(self._actor_loss_fn)(
@@ -591,64 +589,47 @@ class DCRLEmitter(Emitter):
         )
         (
             policy_updates,
-            actor_opt_state,
+            new_actor_opt_state,
         ) = self._actor_optimizer.update(policy_gradient, actor_opt_state)
-        actor_params = optax.apply_updates(actor_params, policy_updates)
+        new_actor_params = optax.apply_updates(actor_params, policy_updates)
 
         # Soft update of target greedy actor
-        target_actor_params = jax.tree.map(
-            lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
-            + self._config.soft_tau_update * x2,
+        new_target_actor_params = jax.tree.map(
+            lambda x, y: (1.0 - self._config.soft_tau_update) * x
+            + self._config.soft_tau_update * y,
             target_actor_params,
-            actor_params,
+            new_actor_params,
         )
-
-        return (
-            actor_opt_state,
-            actor_params,
-            target_actor_params,
-        )
+        return new_actor_params, new_target_actor_params, new_actor_opt_state
 
     @partial(jax.jit, static_argnames=("self",))
-    def _mutation_function_pg(
-        self,
-        policy_params: Genotype,
-        descs: Descriptor,
-        emitter_state: DCRLEmitterState,
-    ) -> Genotype:
-        """Apply pg mutation to a policy via multiple steps of gradient descent.
-        First, update the rewards to be diversity rewards, then apply the gradient
-        steps.
+    def _scan_actor_critic_training(
+        self, carry: DCRLEmitterState, _: None
+    ) -> Tuple[DCRLEmitterState, Tuple]:
+        """
+        Perform a few (policy delay) steps of critic followed by one step of
+        actor training, all packed into a single scan-ready function.
+        Transition data are sampled step-by-step to promote memory efficiency.
 
         Args:
-            policy_params: a policy, supposed to be a differentiable neural
-                network.
-            emitter_state: the current state of the emitter, containing among others,
-                the replay buffer, the critic.
+            carry: emitter state
+            _: None
 
         Returns:
-            The updated params of the neural network.
+            new_emitter_state: new emitter state containing updated network
+                parameters as the new carry.
+            empty tuple: compulsory signature for jax.lax.scan
         """
-        key, subkey = jax.random.split(emitter_state.key)
-        # Get transitions
-        transitions = emitter_state.replay_buffer.sample(
-            subkey,
-            sample_size=self._config.num_pg_training_steps * self._config.batch_size,
-        )
-        descs_prime = jnp.tile(
-            descs, (self._config.num_pg_training_steps * self._config.batch_size, 1)
-        )
-        descs_prime_normalized = jax.vmap(self._normalize_desc)(descs_prime)
-        transitions = transitions.replace(
-            rewards=self._similarity(transitions.desc, descs_prime_normalized)
-            * transitions.rewards,
-            desc_prime=descs_prime_normalized,
+
+        emitter_state = carry
+        transitions, key = emitter_state.replay_buffer.sample(
+            emitter_state.key, self._config.batch_size * (self._config.policy_delay + 1)
         )
         transitions = jax.tree.map(
             lambda x: jnp.reshape(
                 x,
                 (
-                    self._config.num_pg_training_steps,
+                    self._config.policy_delay + 1,
                     self._config.batch_size,
                     *x.shape[1:],
                 ),
@@ -656,94 +637,96 @@ class DCRLEmitter(Emitter):
             transitions,
         )
 
-        # Replace key
-        emitter_state = emitter_state.replace(key=key)
+        # rescale rewards by descriptor similarity
+        transitions = transitions.replace(
+            rewards=self._similarity(transitions.desc, transitions.desc_prime)
+            * transitions.rewards
+        )
 
-        # Define new policy optimizer state
-        policy_opt_state = self._policies_optimizer.init(policy_params)
+        # split the transitions for critic and actor
+        critic_data = jax.tree.map(lambda x: x[:-1], transitions)
+        actor_data = jax.tree.map(lambda x: x[-1], transitions)
 
-        def scan_train_policy(
-            carry: Tuple[DCRLEmitterState, Genotype, optax.OptState],
-            transitions: DCRLTransition,
-        ) -> Tuple[Tuple[DCRLEmitterState, Genotype, optax.OptState], Any]:
-            emitter_state, policy_params, policy_opt_state = carry
-            (
-                new_emitter_state,
-                new_policy_params,
-                new_policy_opt_state,
-            ) = self._train_policy(
-                emitter_state,
-                policy_params,
-                policy_opt_state,
-                transitions,
-            )
-            return (
-                new_emitter_state,
-                new_policy_params,
-                new_policy_opt_state,
-            ), ()
-
+        # scan training critics
         (
-            emitter_state,
-            policy_params,
-            policy_opt_state,
-        ), _ = jax.lax.scan(
-            scan_train_policy,
-            (emitter_state, policy_params, policy_opt_state),
-            transitions,
-            length=self._config.num_pg_training_steps,
+            new_critic_params,
+            new_target_critic_params,
+            new_critic_opt_state,
+            target_actor_params,
+            key,
+        ), () = jax.lax.scan(
+            self._scan_update_critic,
+            (
+                emitter_state.critic_params,
+                emitter_state.target_critic_params,
+                emitter_state.critic_opt_state,
+                emitter_state.target_actor_params,
+                key,
+            ),
+            critic_data,
         )
 
-        return policy_params
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _train_policy(
-        self,
-        emitter_state: DCRLEmitterState,
-        policy_params: Params,
-        policy_opt_state: optax.OptState,
-        transitions: DCRLTransition,
-    ) -> Tuple[DCRLEmitterState, Params, optax.OptState]:
-        """Apply one gradient step to a policy (called policy_params).
-
-        Args:
-            emitter_state: current state of the emitter.
-            policy_params: parameters corresponding to the weights and bias of
-                the neural network that defines the policy.
-
-        Returns:
-            The new emitter state and new params of the NN.
-        """
-        # update policy
-        policy_opt_state, policy_params = self._update_policy(
-            critic_params=emitter_state.critic_params,
-            policy_opt_state=policy_opt_state,
-            policy_params=policy_params,
-            transitions=transitions,
+        # train actor with one gradient step
+        (new_actor_params, new_target_actor_params, new_actor_opt_state) = (
+            self._update_actor(
+                emitter_state.actor_params,
+                emitter_state.actor_opt_state,
+                target_actor_params,
+                new_critic_params,
+                actor_data,
+            )
         )
 
-        return emitter_state, policy_params, policy_opt_state
+        new_emitter_state = emitter_state.replace(
+            critic_params=new_critic_params,
+            critic_opt_state=new_critic_opt_state,
+            actor_params=new_actor_params,
+            actor_opt_state=new_actor_opt_state,
+            target_critic_params=new_target_critic_params,
+            target_actor_params=new_target_actor_params,
+            key=key,
+        )
+
+        return new_emitter_state, ()
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_policy(
         self,
-        critic_params: Params,
-        policy_opt_state: optax.OptState,
         policy_params: Params,
+        policy_opt_state: optax.OptState,
+        desc_prime: jnp.ndarray,
         transitions: DCRLTransition,
-    ) -> Tuple[optax.OptState, Params]:
+        critic_params: Params,
+    ) -> Tuple[Params, optax.OptState]:
+        """Perform one step of PG update on the off-spring policy.
+        This function is vmapped to mutate the entire batch of off-springs
+        in parallel.
 
-        # compute loss
+        Args:
+            policy_params: the parameters of the policy.
+            policy_opt_state: the optimiser state of the policy.
+            desc_prime: the normalised intended descriptor of the policy.
+            transitions: a mini-batch of transitions for gradient computation
+            critic_params: the parameters of the critic networks serving as
+                a differentiable target. This is fixed in each iteration.
+
+        Returns:
+            new_policy_params: new policy parameters
+            new_policy_opt_state: updated optimiser state
+        """
+
+        # Compute gradient
         policy_gradient = jax.grad(self._policy_loss_fn)(
             policy_params,
             critic_params,
+            desc_prime,
             transitions,
         )
-        # Compute gradient and update policies
+        # Update the policy
         (
             policy_updates,
-            policy_opt_state,
+            new_policy_opt_state,
         ) = self._policies_optimizer.update(policy_gradient, policy_opt_state)
-        policy_params = optax.apply_updates(policy_params, policy_updates)
+        new_policy_params = optax.apply_updates(policy_params, policy_updates)
 
-        return policy_opt_state, policy_params
+        return new_policy_params, new_policy_opt_state
