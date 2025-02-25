@@ -15,6 +15,7 @@ This PR introduces:
 - [ ] clean docstrings and comments have been written
 - [ ] relevant section have been added to the documentation
 - [ ] if any issue/observation has been discovered, a new issue has been opened
+- [ ] the source branch is `develop` if this PR introduces a new feature
 
 ## Future improvements
 
