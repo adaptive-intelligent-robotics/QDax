@@ -25,7 +25,6 @@ setup(
         "brax>=0.10.4",
         "chex>=0.1.86",
         "flax>=0.8.5",
-        "gym>=0.26.2",
         "jax>=0.4.28",
         "jaxlib>=0.4.28",  # necessary to build the doc atm
         "jinja2>=3.1.4",
