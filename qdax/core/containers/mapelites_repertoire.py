@@ -5,16 +5,20 @@ algorithm as well as several variants."""
 from __future__ import annotations
 
 import warnings
-from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
 
-import flax
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
+from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.emitters.repertoire_selectors.selector import (
+    MapElitesRepertoireT,
+    Selector,
+)
+from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSelector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -137,7 +141,7 @@ def get_cells_indices(
     return func(batch_of_descriptors)
 
 
-class MapElitesRepertoire(flax.struct.PyTreeNode):
+class MapElitesRepertoire(GARepertoire):
     """Class for the repertoire in Map Elites.
 
     Args:
@@ -154,8 +158,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             shape is (num_centroids, num_descriptors).
     """
 
-    genotypes: Genotype
-    fitnesses: Fitness
     descriptors: Descriptor
     centroids: Centroid
 
@@ -183,6 +185,17 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         jnp.save(path + "descriptors.npy", self.descriptors)
         jnp.save(path + "centroids.npy", self.centroids)
 
+    def select(
+        self,
+        key: RNGKey,
+        num_samples: int,
+        selector: Optional[Selector[MapElitesRepertoireT]] = None,
+    ) -> MapElitesRepertoireT:
+        if selector is None:
+            selector = UniformSelector(select_with_replacement=True)
+        repertoire = selector.select(self, key, num_samples)
+        return repertoire
+
     @classmethod
     def load(cls, reconstruction_fn: Callable, path: str = "./") -> MapElitesRepertoire:
         """Loads a MAP Elites Repertoire.
@@ -209,59 +222,6 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
             descriptors=descriptors,
             centroids=centroids,
         )
-
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample(self, key: RNGKey, num_samples: int) -> Genotype:
-        """Sample elements in the repertoire.
-
-        Args:
-            key: a jax PRNG random key
-            num_samples: the number of elements to be sampled
-
-        Returns:
-            samples: a batch of genotypes sampled in the repertoire
-            key: an updated jax PRNG random key
-        """
-
-        repertoire_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
-
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.genotypes,
-        )
-
-        return samples
-
-    @partial(jax.jit, static_argnames=("num_samples",))
-    def sample_with_descs(
-        self,
-        key: RNGKey,
-        num_samples: int,
-    ) -> Tuple[Genotype, Descriptor]:
-        """Sample elements in the repertoire.
-
-        Args:
-            key: a jax PRNG random key
-            num_samples: the number of elements to be sampled
-
-        Returns:
-            samples: a batch of genotypes sampled in the repertoire
-        """
-
-        repertoire_empty = self.fitnesses == -jnp.inf
-        p = (1.0 - repertoire_empty) / jnp.sum(1.0 - repertoire_empty)
-
-        samples = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.genotypes,
-        )
-        descs = jax.tree.map(
-            lambda x: jax.random.choice(key, x, shape=(num_samples,), p=p),
-            self.descriptors,
-        )
-
-        return samples, descs
 
     @jax.jit
     def add(
@@ -291,9 +251,11 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
-        batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
 
         num_centroids = self.centroids.shape[0]
+        batch_of_fitnesses = jnp.reshape(
+            batch_of_fitnesses, (batch_of_descriptors.shape[0], 1)
+        )
 
         # get fitness segment max
         best_fitnesses = jax.ops.segment_max(
@@ -310,10 +272,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
         # get addition condition
-        repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(
-            repertoire_fitnesses, batch_of_indices, 0
-        )
+        current_fitnesses = jnp.take_along_axis(self.fitnesses, batch_of_indices, 0)
         addition_condition = batch_of_fitnesses > current_fitnesses
 
         # assign fake position when relevant : num_centroids is out of bound
@@ -332,7 +291,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
 
         # compute new fitness and descriptors
         new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze(axis=-1)].set(
-            batch_of_fitnesses.squeeze(axis=-1)
+            batch_of_fitnesses
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
             batch_of_descriptors
@@ -346,7 +305,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         )
 
     @classmethod
-    def init(
+    def init(  # type: ignore
         cls,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -418,7 +377,7 @@ class MapElitesRepertoire(flax.struct.PyTreeNode):
         num_centroids = centroids.shape[0]
 
         # default fitness is -inf
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # default genotypes is all 0
         default_genotypes = jax.tree.map(
