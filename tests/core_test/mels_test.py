@@ -139,7 +139,9 @@ def test_mels(env_name: str, batch_size: int) -> None:
 
     # Compute initial repertoire
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state = mels.init(init_variables, centroids, subkey)
+    repertoire, emitter_state, init_metrics = mels.init(
+        init_variables, centroids, subkey
+    )
 
     # Run the algorithm
     (
