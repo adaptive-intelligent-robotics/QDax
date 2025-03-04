@@ -9,8 +9,15 @@ import jax.numpy as jnp
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.emitters.emitter import EmitterState
 from qdax.core.map_elites import MAPElites
-from qdax.custom_types import Centroid, RNGKey
-
+from qdax.custom_types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    Metrics,
+    RNGKey,
+)
 
 class MOME(MAPElites):
     """Implements Multi-Objectives MAP Elites.
@@ -47,7 +54,30 @@ class MOME(MAPElites):
         key, subkey = jax.random.split(key)
         fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
 
-        # init the repertoire
+        return self.init_ask_tell(
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            centroids=centroids,
+            pareto_front_max_length=pareto_front_max_length,
+            key=key,
+            extra_scores=extra_scores
+        )
+
+    @partial(jax.jit, static_argnames=("self",))
+    def init_ask_tell(
+        self,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        centroids: Centroid,
+        pareto_front_max_length: int,
+        key: RNGKey,
+        extra_scores: Optional[ExtraScores] = None,
+    ) -> Tuple[MOMERepertoire, Optional[EmitterState]]:
+        if extra_scores is None:
+            extra_scores = {}
+        #  init the repertoire
         repertoire = MOMERepertoire.init(
             genotypes=genotypes,
             fitnesses=fitnesses,
