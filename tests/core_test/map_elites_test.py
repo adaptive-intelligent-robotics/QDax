@@ -17,7 +17,8 @@ from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.tasks.brax_envs import scoring_function_brax_envs as scoring_function
 from qdax.utils.metrics import default_qd_metrics
-
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
+from qdax.core.custom_repertoire_map_elites import CustomRepertoireMAPElites
 
 def get_mixing_emitter(batch_size: int) -> MixingEmitter:
     """Create a mixing emitter with a given batch size."""
@@ -35,7 +36,7 @@ def get_mixing_emitter(batch_size: int) -> MixingEmitter:
     "env_name, batch_size",
     [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
 )
-def test_map_elites(env_name: str, batch_size: int) -> None:
+def test_map_elites(env_name: str, batch_size: int, custom_repertoire=False) -> None:
     batch_size = batch_size
     env_name = env_name
     episode_length = 100
@@ -115,13 +116,6 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     # Define a metrics function
     metrics_fn = functools.partial(default_qd_metrics, qd_offset=reward_offset)
 
-    # Instantiate MAP-Elites
-    map_elites = MAPElites(
-        scoring_function=scoring_fn,
-        emitter=mixing_emitter,
-        metrics_function=metrics_fn,
-    )
-
     # Compute the centroids
     key, subkey = jax.random.split(key)
     centroids = compute_cvt_centroids(
@@ -132,6 +126,21 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
         maxval=max_descriptor,
         key=subkey,
     )
+
+    if custom_repertoire:
+        map_elites = CustomRepertoireMAPElites(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_fn,
+            repertoire_init=MapElitesRepertoire.init
+        )
+    else:
+        # Instantiate MAP-Elites
+        map_elites = MAPElites(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_fn,
+        )
 
     # Compute initial repertoire
     key, subkey = jax.random.split(key)
@@ -153,4 +162,5 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
 
 
 if __name__ == "__main__":
-    test_map_elites(env_name="pointmaze", batch_size=10)
+    test_map_elites(env_name="pointmaze", batch_size=10, custom_repertoire=False)
+    test_map_elites(env_name="pointmaze", batch_size=10, custom_repertoire=True)

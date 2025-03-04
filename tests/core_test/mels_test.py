@@ -17,13 +17,14 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.tasks.brax_envs import scoring_function_brax_envs
-
+from qdax.core.custom_repertoire_map_elites import CustomRepertoireMAPElites
+from qdax.core.containers.mels_repertoire import MELSRepertoire
 
 @pytest.mark.parametrize(
     "env_name, batch_size",
     [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
 )
-def test_mels(env_name: str, batch_size: int) -> None:
+def test_mels(env_name: str, batch_size: int, custom_repertoire=False) -> None:
     batch_size = batch_size
     env_name = env_name
     num_samples = 5
@@ -118,14 +119,6 @@ def test_mels(env_name: str, batch_size: int) -> None:
 
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    # Instantiate ME-LS.
-    mels = MELS(
-        scoring_function=scoring_fn,
-        emitter=mixing_emitter,
-        metrics_function=metrics_fn,
-        num_samples=num_samples,
-    )
-
     # Compute the centroids
     key, subkey = jax.random.split(key)
     centroids = compute_cvt_centroids(
@@ -136,6 +129,22 @@ def test_mels(env_name: str, batch_size: int) -> None:
         maxval=max_descriptor,
         key=subkey,
     )
+
+    if custom_repertoire:
+        mels = CustomRepertoireMAPElites(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_fn,
+            repertoire_init=MELSRepertoire.init
+        )
+    else:
+        # Instantiate ME-LS.
+        mels = MELS(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_fn,
+            num_samples=num_samples,
+        )
 
     # Compute initial repertoire
     key, subkey = jax.random.split(key)
@@ -157,4 +166,5 @@ def test_mels(env_name: str, batch_size: int) -> None:
 
 
 if __name__ == "__main__":
-    test_mels(env_name="pointmaze", batch_size=10)
+    test_mels(env_name="pointmaze", batch_size=10, custom_repertoire=False)
+    test_mels(env_name="pointmaze", batch_size=10, custom_repertoire=True)

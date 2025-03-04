@@ -16,10 +16,12 @@ from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.mome import MOME
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_moqd_metrics
+from qdax.core.containers.mome_repertoire import MOMERepertoire
+from qdax.core.custom_repertoire_map_elites import CustomRepertoireMAPElites
 
 
 @pytest.mark.parametrize("num_descriptors", [1, 2])
-def test_mome(num_descriptors: int) -> None:
+def test_mome(num_descriptors: int, custom_repertoire=False) -> None:
 
     pareto_front_max_length = 50
     num_variables = 120
@@ -121,17 +123,32 @@ def test_mome(num_descriptors: int) -> None:
         maxval=maxval,
         key=subkey,
     )
+    if custom_repertoire:
+        repertoire_init = partial(
+            MOMERepertoire.init,
+            pareto_front_max_length=pareto_front_max_length,
+        )
+        mome = CustomRepertoireMAPElites(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_function,
+            repertoire_init=repertoire_init
+        )
+        key, subkey = jax.random.split(key)
+        repertoire, emitter_state = mome.init(
+            genotypes, centroids, subkey
+        )
+    else:
+        mome = MOME(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_function,
+        )
 
-    mome = MOME(
-        scoring_function=scoring_fn,
-        emitter=mixing_emitter,
-        metrics_function=metrics_function,
-    )
-
-    key, subkey = jax.random.split(key)
-    repertoire, emitter_state = mome.init(
-        genotypes, centroids, pareto_front_max_length, subkey
-    )
+        key, subkey = jax.random.split(key)
+        repertoire, emitter_state = mome.init(
+            genotypes, centroids, pareto_front_max_length, subkey
+        )
 
     # Run the algorithm
     (
@@ -149,4 +166,6 @@ def test_mome(num_descriptors: int) -> None:
 
 
 if __name__ == "__main__":
-    test_mome(num_descriptors=1)
+    test_mome(num_descriptors=1, custom_repertoire=False)
+    test_mome(num_descriptors=1, custom_repertoire=True)
+    
