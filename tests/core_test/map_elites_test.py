@@ -37,7 +37,7 @@ def get_mixing_emitter(batch_size: int) -> MixingEmitter:
     [("walker2d_uni", 1, False), ("walker2d_uni", 10, False), ("hopper_uni", 10, False),
      ("walker2d_uni", 1, True), ("walker2d_uni", 10, True), ("hopper_uni", 10, True)],
 )
-def test_map_elites(env_name: str, batch_size: int, custom_repertoire=False) -> None:
+def test_map_elites(env_name: str, batch_size: int, custom_repertoire: bool) -> None:
     batch_size = batch_size
     env_name = env_name
     episode_length = 100

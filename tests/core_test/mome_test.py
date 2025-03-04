@@ -23,7 +23,7 @@ from qdax.core.custom_repertoire_map_elites import CustomRepertoireMAPElites
 @pytest.mark.parametrize("num_descriptors, custom_repertoire", 
                          [(1, False), (2, False), (1, True), (2, True)]
                          )
-def test_mome(num_descriptors: int, custom_repertoire=False) -> None:
+def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
 
     pareto_front_max_length = 50
     num_variables = 120

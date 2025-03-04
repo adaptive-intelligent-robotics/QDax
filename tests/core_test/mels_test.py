@@ -25,7 +25,7 @@ from qdax.core.containers.mels_repertoire import MELSRepertoire
     [("walker2d_uni", 1, False), ("walker2d_uni", 10, False), ("hopper_uni", 10, False),
      ("walker2d_uni", 1, True), ("walker2d_uni", 10, True), ("hopper_uni", 10, True)],
 )
-def test_mels(env_name: str, batch_size: int, custom_repertoire=False) -> None:
+def test_mels(env_name: str, batch_size: int, custom_repertoire: bool) -> None:
     batch_size = batch_size
     env_name = env_name
     num_samples = 5
