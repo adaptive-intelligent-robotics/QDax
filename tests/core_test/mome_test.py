@@ -20,7 +20,7 @@ from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.custom_repertoire_map_elites import CustomRepertoireMAPElites
 
 
-@pytest.mark.parametrize("num_descriptors", [1, 2])
+@pytest.mark.parametrize("num_descriptors", [1, 2], [False, True])
 def test_mome(num_descriptors: int, custom_repertoire=False) -> None:
 
     pareto_front_max_length = 50

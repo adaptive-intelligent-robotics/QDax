@@ -35,6 +35,7 @@ def get_mixing_emitter(batch_size: int) -> MixingEmitter:
 @pytest.mark.parametrize(
     "env_name, batch_size",
     [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
+    [False, True]
 )
 def test_map_elites(env_name: str, batch_size: int, custom_repertoire=False) -> None:
     batch_size = batch_size

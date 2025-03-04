@@ -23,6 +23,7 @@ from qdax.core.containers.mels_repertoire import MELSRepertoire
 @pytest.mark.parametrize(
     "env_name, batch_size",
     [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
+    [False, True]
 )
 def test_mels(env_name: str, batch_size: int, custom_repertoire=False) -> None:
     batch_size = batch_size
