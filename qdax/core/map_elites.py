@@ -92,7 +92,7 @@ class MAPElites:
         descriptors: Descriptor,
         centroids: Centroid,
         key: RNGKey,
-        extra_scores: Optional[ExtraScores] = {},
+        extra_scores: Optional[ExtraScores] = None,
     ) -> Tuple[MapElitesRepertoire, Optional[EmitterState]]:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes and their evaluations. 
@@ -111,6 +111,8 @@ class MAPElites:
         Returns:
             An initialized MAP-Elite repertoire with the initial state of the emitter.
         """
+        if extra_scores is None:
+            extra_scores = {}
         # init the repertoire
         repertoire = MapElitesRepertoire.init(
             genotypes=genotypes,
@@ -236,8 +238,8 @@ class MAPElites:
         descriptors: Descriptor,
         repertoire: MapElitesRepertoire,
         emitter_state: EmitterState,
-        extra_scores: Optional[ExtraScores] = {},
-        extra_info: Optional[ExtraScores] = {},
+        extra_scores: Optional[ExtraScores] = None,
+        extra_info: Optional[ExtraScores] = None,
     ) -> Tuple[MapElitesRepertoire, EmitterState]:
         """
         Add new genotypes to the repertoire and update the emitter state.
@@ -250,6 +252,10 @@ class MAPElites:
             repertoire: the MAP-Elites repertoire
             emitter_state: state of the emitter
         """
+        if extra_scores is None:
+            extra_scores = {}
+        if extra_info is None:
+            extra_info = {}
         # add genotypes in the repertoire
         repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
 

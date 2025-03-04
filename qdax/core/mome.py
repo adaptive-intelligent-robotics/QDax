@@ -73,9 +73,11 @@ class MOME(MAPElites):
         centroids: Centroid,
         pareto_front_max_length: int,
         key: RNGKey,
-        extra_scores: Optional[ExtraScores] = {},
+        extra_scores: Optional[ExtraScores] = None,
     ) -> Tuple[MOMERepertoire, Optional[EmitterState]]:
-        # init the repertoire
+        if extra_scores is None:
+            extra_scores = {}
+        #  init the repertoire
         repertoire = MOMERepertoire.init(
             genotypes=genotypes,
             fitnesses=fitnesses,

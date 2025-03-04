@@ -95,8 +95,10 @@ class MELS(MAPElites):
         descriptors: Descriptor,
         centroids: Centroid,
         key: RNGKey,
-        extra_scores: Optional[ExtraScores] = {},
+        extra_scores: Optional[ExtraScores] = None,
     ) -> Tuple[MELSRepertoire, Optional[EmitterState]]:
+        if extra_scores is None:
+            extra_scores = {}
         
         # init the repertoire
         repertoire = MELSRepertoire.init(

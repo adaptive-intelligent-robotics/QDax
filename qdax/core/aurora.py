@@ -169,9 +169,11 @@ class AURORA:
         l_value: jnp.ndarray,
         max_size: int,
         key: RNGKey,
-        extra_scores: Optional[ExtraScores] = {},
+        extra_scores: Optional[ExtraScores] = None,
     ) -> Tuple[UnstructuredRepertoire, Optional[EmitterState]]:
-
+        if extra_scores is None:
+            extra_scores = {}
+            
         observations = extra_scores["last_valid_observations"]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
@@ -283,8 +285,8 @@ class AURORA:
         repertoire: MapElitesRepertoire,
         emitter_state: EmitterState,
         aurora_extra_info: AuroraExtraInfo,
-        extra_scores: Optional[ExtraScores] = {},
-        extra_info: Optional[ExtraScores] = {},
+        extra_scores: Optional[ExtraScores] = None,
+        extra_info: Optional[ExtraScores] = None,
     ) -> Tuple[MapElitesRepertoire, EmitterState]:
         """
         Add new genotypes to the repertoire and update the emitter state.
@@ -297,6 +299,11 @@ class AURORA:
             repertoire: the MAP-Elites repertoire
             emitter_state: state of the emitter
         """
+        if extra_scores is None:
+            extra_scores = {}
+        if extra_info is None:
+            extra_info = {}
+
         observations = extra_scores["last_valid_observations"]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
