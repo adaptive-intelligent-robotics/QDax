@@ -2,6 +2,7 @@
 
 import functools
 from typing import Dict, Tuple
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -17,6 +18,7 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.utils.sampling import multi_sample_scoring_function
 
 
 @pytest.mark.parametrize(
@@ -228,6 +230,11 @@ def test_mels_ask_tell(env_name: str, batch_size: int) -> None:
         play_reset_fn=env.reset,
         play_step_fn=play_step_fn,
         descriptor_extractor=descriptor_extraction_fn,
+    )
+    scoring_fn = partial(
+        multi_sample_scoring_function,
+        scoring_fn=scoring_fn,
+        num_samples=num_samples,
     )
 
     # Define emitter
