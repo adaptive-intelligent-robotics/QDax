@@ -4,7 +4,6 @@ algorithm as well as several variants."""
 
 from __future__ import annotations
 
-import warnings
 from typing import Callable, List, Optional, Tuple, Union
 
 import jax
@@ -156,6 +155,8 @@ class MapElitesRepertoire(GARepertoire):
             is (num_centroids, num_descriptors).
         centroids: an array that contains the centroids of the tessellation. The array
             shape is (num_centroids, num_descriptors).
+        extra_scores: extra scores resulting from the evaluation of the genotypes
+        keys_extra_scores: keys of the extra scores to store in the repertoire
     """
 
     descriptors: Descriptor
@@ -242,12 +243,16 @@ class MapElitesRepertoire(GARepertoire):
                 aforementioned genotypes. Its shape is (batch_size, num_descriptors)
             batch_of_fitnesses: an array that contains the fitnesses of the
                 aforementioned genotypes. Its shape is (batch_size,)
-            batch_of_extra_scores: unused tree that contains the extra_scores of
+            batch_of_extra_scores: tree that contains the extra_scores of
                 aforementioned genotypes.
 
         Returns:
             The updated MAP-Elites repertoire.
         """
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
+        filtered_batch_of_extra_scores = self.filter_extra_scores(batch_of_extra_scores)
 
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
@@ -297,11 +302,22 @@ class MapElitesRepertoire(GARepertoire):
             batch_of_descriptors
         )
 
+        # update extra scores
+        new_extra_scores = jax.tree.map(
+            lambda repertoire_scores, new_scores: repertoire_scores.at[
+                batch_of_indices.squeeze(axis=-1)
+            ].set(new_scores),
+            self.extra_scores,
+            filtered_batch_of_extra_scores,
+        )
+
         return MapElitesRepertoire(
             genotypes=new_repertoire_genotypes,
             fitnesses=new_fitnesses,
             descriptors=new_descriptors,
             centroids=self.centroids,
+            extra_scores=new_extra_scores,
+            keys_extra_scores=self.keys_extra_scores,
         )
 
     @classmethod
@@ -311,7 +327,10 @@ class MapElitesRepertoire(GARepertoire):
         fitnesses: Fitness,
         descriptors: Descriptor,
         centroids: Centroid,
+        *args,
         extra_scores: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
+        **kwargs,
     ) -> MapElitesRepertoire:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
@@ -328,24 +347,33 @@ class MapElitesRepertoire(GARepertoire):
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
             centroids: tessellation centroids of shape (batch_size, num_descriptors)
-            extra_scores: unused extra_scores of the initial genotypes
+            extra_scores: extra scores of the initial genotypes
+            keys_extra_scores: keys of the extra scores to store in the repertoire
 
         Returns:
             an initialized MAP-Elite repertoire
         """
-        warnings.warn(
-            (
-                "This type of repertoire does not store the extra scores "
-                "computed by the scoring function"
-            ),
-            stacklevel=2,
-        )
+
+        if extra_scores is None:
+            extra_scores = {}
+
+        extra_scores = {
+            key: value
+            for key, value in extra_scores.items()
+            if key in keys_extra_scores
+        }
 
         # retrieve one genotype from the population
         first_genotype = jax.tree.map(lambda x: x[0], genotypes)
+        first_extra_scores = jax.tree.map(lambda x: x[0], extra_scores)
 
         # create a repertoire with default values
-        repertoire = cls.init_default(genotype=first_genotype, centroids=centroids)
+        repertoire = cls.init_default(
+            genotype=first_genotype,
+            centroids=centroids,
+            one_extra_score=first_extra_scores,
+            keys_extra_scores=keys_extra_scores,
+        )
 
         # add initial population to the repertoire
         new_repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
@@ -357,6 +385,8 @@ class MapElitesRepertoire(GARepertoire):
         cls,
         genotype: Genotype,
         centroids: Centroid,
+        one_extra_score: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
     ) -> MapElitesRepertoire:
         """Initialize a Map-Elites repertoire with an initial population of
         genotypes. Requires the definition of centroids that can be computed
@@ -368,10 +398,19 @@ class MapElitesRepertoire(GARepertoire):
         Args:
             genotype: the typical genotype that will be stored.
             centroids: the centroids of the repertoire
+            keys_extra_scores: keys of the extra scores to store in the repertoire
 
         Returns:
             A repertoire filled with default values.
         """
+        if one_extra_score is None:
+            one_extra_score = {}
+
+        one_extra_score = {
+            key: value
+            for key, value in one_extra_score.items()
+            if key in keys_extra_scores
+        }
 
         # get number of centroids
         num_centroids = centroids.shape[0]
@@ -388,9 +427,17 @@ class MapElitesRepertoire(GARepertoire):
         # default descriptor is all zeros
         default_descriptors = jnp.zeros_like(centroids)
 
+        # default extra scores is empty dict
+        default_extra_scores = jax.tree.map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
+            one_extra_score,
+        )
+
         return cls(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
             centroids=centroids,
+            extra_scores=default_extra_scores,
+            keys_extra_scores=keys_extra_scores,
         )
