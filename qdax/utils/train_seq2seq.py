@@ -14,10 +14,9 @@ import jax.numpy as jnp
 import optax
 from flax.training import train_state
 
-from qdax.core.aurora import AURORA
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
-from qdax.custom_types import Params, RNGKey
+from qdax.custom_types import Observation, Params, RNGKey
 from qdax.environments.descriptor_extractors import AuroraExtraInfoNormalization
 
 
@@ -110,13 +109,31 @@ def train_step(
 
 
 def lstm_ae_train(
-    key: RNGKey,
     repertoire: UnstructuredRepertoire,
     params: Params,
     epoch: int,
+    observations: Observation,
+    key: RNGKey,
+    *,
     model: Seq2seq,
     batch_size: int = 128,
 ) -> AuroraExtraInfoNormalization:
+    """
+    Train the seq2seq model for the AURORA algorithm.
+
+    Args:
+        repertoire: The repertoire containing genotypes, fitnesses, and extra scores.
+        params: The parameters of the seq2seq model to be trained.
+        epoch: The training epoch number, used to determine training hyperparameters.
+        observations: The observations extracted from the environment.
+        key: JAX random number generator key.
+        model: The seq2seq model architecture to be trained, typically an LSTM.
+        batch_size: The number of samples to process in each training batch.
+
+    Returns:
+        AuroraExtraInfoNormalization: An object containing the trained model parameters,
+                                      along with observation normalization statistics.
+    """
 
     if epoch > 100:
         num_epochs = 25
@@ -126,8 +143,8 @@ def lstm_ae_train(
         alpha = 0.0001
 
     # compute mean/std of the obs for normalization
-    mean_obs = jnp.nanmean(repertoire.extra_scores[AURORA.OBSERVATION_KEY], axis=(0, 1))
-    std_obs = jnp.nanstd(repertoire.extra_scores[AURORA.OBSERVATION_KEY], axis=(0, 1))
+    mean_obs = jnp.nanmean(observations, axis=(0, 1))
+    std_obs = jnp.nanstd(observations, axis=(0, 1))
     # the std where they were NaNs was set to zero. But here we divide by the
     # std, so we replace the zeros by inf here.
     std_obs = jnp.where(std_obs == 0, jnp.inf, std_obs)
@@ -171,7 +188,6 @@ def lstm_ae_train(
     valid_indexes = indiv_indices.at[idx_p1].get()
 
     # Normalising Dataset
-    observations = repertoire.extra_scores[AURORA.OBSERVATION_KEY]
     steps_per_epoch = observations.shape[0] // batch_size
 
     loss_val = 0.0

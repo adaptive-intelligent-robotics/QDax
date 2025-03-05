@@ -38,8 +38,6 @@ class AURORA:
             any useful metric to track its evolution
     """
 
-    OBSERVATION_KEY = "last_valid_observations"
-
     def __init__(
         self,
         scoring_function: Callable[
@@ -50,14 +48,34 @@ class AURORA:
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
         encoder_function: Callable[[Observation, AuroraExtraInfo], Descriptor],
         training_function: Callable[
-            [RNGKey, UnstructuredRepertoire, Params, int], AuroraExtraInfo
+            [UnstructuredRepertoire, Params, int, Observation, RNGKey],
+            AuroraExtraInfo,
         ],
+        observations_key: str = "observations",
     ) -> None:
+        """
+        Args:
+            scoring_function: a function that takes a batch of genotypes and compute
+                their fitnesses and descriptors
+            emitter: an emitter is used to suggest offsprings given a MAPELites
+                repertoire.
+            metrics_function: a function that takes a repertoire and computes
+                any useful metric to track its evolution
+            encoder_function: a function that takes a batch of observations and
+                returns a batch of descriptors
+            training_function: a function that takes a repertoire, a model
+                parameters, an iteration number and a key, and returns an updated
+                AuroraExtraInfo
+            observations_key: the key to use for the observations in the extra_scores
+                of the repertoire
+        """
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
         self._encoder_fn = encoder_function
         self._train_fn = training_function
+
+        self.observations_key = observations_key
 
     def train(
         self,
@@ -66,16 +84,18 @@ class AURORA:
         iteration: int,
         key: RNGKey,
     ) -> Tuple[UnstructuredRepertoire, AuroraExtraInfo]:
+        observations = repertoire.extra_scores[self.observations_key]
+
         key, subkey = jax.random.split(key)
         aurora_extra_info = self._train_fn(
-            key,
             repertoire,
             model_params,
             iteration,
+            observations,
+            subkey,
         )
 
         # re-addition of all the new behavioural descriptors with the new ae
-        observations = repertoire.extra_scores[self.OBSERVATION_KEY]
         new_descriptors = self._encoder_fn(observations, aurora_extra_info)
 
         return (
@@ -151,7 +171,7 @@ class AURORA:
             subkey,
         )
 
-        observations = extra_scores["last_valid_observations"]
+        observations = extra_scores[self.observations_key]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
 
@@ -160,7 +180,7 @@ class AURORA:
             fitnesses=fitnesses,
             descriptors=descriptors,
             extra_scores=extra_scores,
-            keys_extra_scores=(self.OBSERVATION_KEY,),
+            keys_extra_scores=(self.observations_key,),
             l_value=l_value,
             max_size=max_size,
         )
@@ -221,7 +241,7 @@ class AURORA:
             subkey,
         )
 
-        observations = extra_scores[self.OBSERVATION_KEY]
+        observations = extra_scores[self.observations_key]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
 
