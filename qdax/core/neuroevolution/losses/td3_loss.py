@@ -125,13 +125,12 @@ def make_td3_loss_dc_fn(
     def _policy_loss_fn(
         policy_params: Params,
         critic_params: Params,
+        desc_prime: jnp.ndarray,
         transitions: Transition,
     ) -> jnp.ndarray:
         """Policy loss function for TD3 agent"""
         action = policy_fn(policy_params, transitions.obs)
-        q_value = critic_fn(
-            critic_params, transitions.obs, action, transitions.desc_prime
-        )
+        q_value = critic_fn(critic_params, transitions.obs, action, desc_prime)
         q1_action = jnp.take(q_value, jnp.asarray([0]), axis=-1)
         policy_loss = -jnp.mean(q1_action)
         return policy_loss
@@ -157,11 +156,12 @@ def make_td3_loss_dc_fn(
         target_actor_params: Params,
         target_critic_params: Params,
         transitions: Transition,
-        key: RNGKey,
+        random_key: RNGKey,
     ) -> jnp.ndarray:
         """Descriptor-conditioned critic loss function for TD3 agent"""
         noise = (
-            jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
+            jax.random.normal(random_key, shape=transitions.actions.shape)
+            * policy_noise
         ).clip(-noise_clip, noise_clip)
 
         next_action = (
@@ -283,3 +283,4 @@ def td3_critic_loss_fn(
     q_loss = jnp.sum(q_losses, axis=-1)
 
     return q_loss
+

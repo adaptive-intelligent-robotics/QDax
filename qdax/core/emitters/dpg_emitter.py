@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional, Tuple
 
 import flax.linen as nn
 import jax
+from jax import numpy as jnp
 import optax
 
 from qdax.core.containers.archive import Archive
@@ -17,7 +18,6 @@ from qdax.core.emitters.qpg_emitter import (
     QualityPGEmitter,
     QualityPGEmitterState,
 )
-from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import (
     Descriptor,
@@ -55,7 +55,7 @@ class DiversityPGEmitter(QualityPGEmitter):
     """
     A diversity policy gradient emitter used to implement QDPG algorithm.
 
-    Please not that the inheritance between DiversityPGEmitter and QualityPGEmitter
+    Please note that the inheritance between DiversityPGEmitter and QualityPGEmitter
     could be increased with changes in the way transitions samples are handled in
     the QualityPGEmitter. But this would modify the computation/memory strategy of the
     current implementation. Hence, we won't apply this yet and will discuss this with
@@ -68,16 +68,15 @@ class DiversityPGEmitter(QualityPGEmitter):
         policy_network: nn.Module,
         env: QDEnv,
         score_novelty: Callable[[Archive, StateDescriptor], Reward],
-        selector: Optional[Selector] = None,
     ) -> None:
 
         # usual init operations from PGAME
-        super().__init__(config, policy_network, env, selector)
+        super().__init__(config, policy_network, env)
 
         self._config: DiversityPGConfig = config
-
         # define scoring function
         self._score_novelty = score_novelty
+
 
     def init(
         self,
@@ -125,7 +124,6 @@ class DiversityPGEmitter(QualityPGEmitter):
         # get the transitions out of the dictionary
         assert "transitions" in extra_scores.keys(), "Missing transitions or wrong key"
         transitions = extra_scores["transitions"]
-
         archive = archive.insert(transitions.state_desc)
 
         # init emitter state
@@ -137,6 +135,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         )
 
         return emitter_state
+
 
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
@@ -169,239 +168,111 @@ class DiversityPGEmitter(QualityPGEmitter):
             New emitter state where the replay buffer has been filled with
             the new experienced transitions.
         """
-        key = emitter_state.key
 
         # get the transitions out of the dictionary
         assert "transitions" in extra_scores.keys(), "Missing transitions or wrong key"
         transitions = extra_scores["transitions"]
 
-        # add transitions in the replay buffer
-        replay_buffer = emitter_state.replay_buffer.insert(transitions)
-        emitter_state = emitter_state.replace(replay_buffer=replay_buffer)
-
-        archive = emitter_state.archive.insert(transitions.state_desc)
-
-        def scan_train_critics(
-            carry: DiversityPGEmitterState, transitions: QDTransition
-        ) -> Tuple[DiversityPGEmitterState, Any]:
-            emitter_state = carry
-            new_emitter_state = self._train_critics(emitter_state, transitions)
-            return new_emitter_state, ()
-
-        # sample transitions
-        key, subkey = jax.random.split(key)
-        transitions = emitter_state.replay_buffer.sample(
-            key=subkey,
-            sample_size=self._config.num_critic_training_steps
-            * self._config.batch_size,
+        # add transitions to the replay buffer and archive
+        emitter_state = emitter_state.replace(
+            replay_buffer=emitter_state.replay_buffer.insert(transitions),
+            archive=emitter_state.archive.insert(transitions.state_desc)
         )
 
-        # update the rewards - diversity rewards
-        state_descriptors = transitions.state_desc
-        diversity_rewards = self._score_novelty(archive, state_descriptors)
-        transitions = transitions.replace(rewards=diversity_rewards)
-
-        # reshape the transitions
-        transitions = jax.tree.map(
-            lambda x: x.reshape(
-                (
-                    self._config.num_critic_training_steps,
-                    self._config.batch_size,
-                )
-                + x.shape[1:]
-            ),
-            transitions,
-        )
-
-        # Train critics and greedy actor
-        emitter_state, _ = jax.lax.scan(
-            scan_train_critics,
+        # Conduct Actor-Critic training
+        final_emitter_state, _ = jax.lax.scan(
+            self._scan_actor_critic_training,
             emitter_state,
-            (transitions),
-            length=self._config.num_critic_training_steps,
+            length=self._actor_critic_iterations,
         )
 
-        emitter_state = emitter_state.replace(archive=archive, key=key)
+        return final_emitter_state  # type: ignore
 
-        return emitter_state  # type: ignore
 
     @partial(jax.jit, static_argnames=("self",))
-    def _train_critics(
-        self, emitter_state: DiversityPGEmitterState, transitions: QDTransition
-    ) -> DiversityPGEmitterState:
-        """Apply one gradient step to critics and to the greedy actor
-        (contained in carry in training_state), then soft update target critics
-        and target greedy actor.
-
-        Those updates are very similar to those made in TD3.
+    def _scan_actor_critic_training(
+        self, carry: QualityPGEmitterState, _: None
+    ) -> Tuple[QualityPGEmitterState, Tuple]:
+        """
+        Perform a few (policy delay) steps of critic followed by one step of
+        actor training, all packed into a single scan-ready function.
+        Transition data are sampled step-by-step to promote memory efficiency.
 
         Args:
-            emitter_state: actual emitter state
+            carry: emitter state
+            _: None
 
         Returns:
-            New emitter state where the critic and the greedy actor have been
-            updated. Optimizer states have also been updated in the process.
+            new_emitter_state: new emitter state containing updated network
+                parameters as the new carry.
+            empty tuple: compulsory signature for jax.lax.scan
         """
+
+        emitter_state = carry
         key = emitter_state.key
 
-        # Update Critic
-        key, subkey = jax.random.split(key)
-        (
-            critic_optimizer_state,
-            critic_params,
-            target_critic_params,
-        ) = self._update_critic(
-            critic_params=emitter_state.critic_params,
-            target_critic_params=emitter_state.target_critic_params,
-            target_actor_params=emitter_state.target_actor_params,
-            critic_optimizer_state=emitter_state.critic_optimizer_state,
-            transitions=transitions,
-            key=subkey,
-        )
-
-        # Update greedy policy
-        (
-            policy_optimizer_state,
-            actor_params,
-            target_actor_params,
-        ) = jax.lax.cond(
-            emitter_state.steps % self._config.policy_delay == 0,
-            lambda x: self._update_actor(*x),
-            lambda _: (
-                emitter_state.actor_opt_state,
-                emitter_state.actor_params,
-                emitter_state.target_actor_params,
-            ),
-            operand=(
-                emitter_state.actor_params,
-                emitter_state.actor_opt_state,
-                emitter_state.target_actor_params,
-                emitter_state.critic_params,
-                transitions,
-            ),
-        )
-
-        # Create new training state
-        new_emitter_state = emitter_state.replace(
-            critic_params=critic_params,
-            critic_optimizer_state=critic_optimizer_state,
-            actor_params=actor_params,
-            actor_opt_state=policy_optimizer_state,
-            target_critic_params=target_critic_params,
-            target_actor_params=target_actor_params,
-            key=key,
-            steps=emitter_state.steps + 1,
-            replay_buffer=emitter_state.replay_buffer,
-        )
-
-        return new_emitter_state  # type: ignore
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _mutation_function_pg(
-        self,
-        policy_params: Genotype,
-        emitter_state: DiversityPGEmitterState,
-    ) -> Genotype:
-        """Apply pg mutation to a policy via multiple steps of gradient descent.
-        TODO: random key not properly handled.
-
-        Args:
-            policy_params: a policy, supposed to be a differentiable neural
-                network.
-            emitter_state: the current state of the emitter, containing among others,
-                the replay buffer, the critic.
-
-        Returns:
-            the updated params of the neural network.
-        """
-
-        # Define new policy optimizer state
-        policy_optimizer_state = self._policies_optimizer.init(policy_params)
-
-        def scan_train_policy(
-            carry: Tuple[DiversityPGEmitterState, Genotype, optax.OptState],
-            transitions: QDTransition,
-        ) -> Tuple[Tuple[DiversityPGEmitterState, Genotype, optax.OptState], Any]:
-            emitter_state, policy_params, policy_optimizer_state = carry
-            (
-                new_emitter_state,
-                new_policy_params,
-                new_policy_optimizer_state,
-            ) = self._train_policy(
-                emitter_state,
-                policy_params,
-                policy_optimizer_state,
-                transitions,
-            )
-            return (
-                new_emitter_state,
-                new_policy_params,
-                new_policy_optimizer_state,
-            ), ()
-
         # sample transitions
         transitions = emitter_state.replay_buffer.sample(
-            key=emitter_state.key,
-            sample_size=self._config.num_pg_training_steps * self._config.batch_size,
+            key,
+            self._config.batch_size * (self._config.policy_delay + 1),
         )
 
         # update the rewards - diversity rewards
         state_descriptors = transitions.state_desc
-        diversity_rewards = self._score_novelty(
-            emitter_state.archive, state_descriptors
-        )
+        diversity_rewards = self._score_novelty(emitter_state.archive, state_descriptors)
         transitions = transitions.replace(rewards=diversity_rewards)
 
-        # reshape the transitions
         transitions = jax.tree.map(
-            lambda x: x.reshape(
+            lambda x: jnp.reshape(
+                x,
                 (
-                    self._config.num_pg_training_steps,
+                    self._config.policy_delay + 1,
                     self._config.batch_size,
-                )
-                + x.shape[1:]
+                    *x.shape[1:],
+                ),
             ),
             transitions,
         )
+        # split the transitions for critic and actor
+        critic_data = jax.tree.map(lambda x: x[:-1], transitions)
+        actor_data = jax.tree.map(lambda x: x[-1], transitions)
 
+        # scan training critics
         (
-            emitter_state,
-            policy_params,
-            policy_optimizer_state,
-        ), _ = jax.lax.scan(
-            scan_train_policy,
-            (emitter_state, policy_params, policy_optimizer_state),
-            (transitions),
-            length=self._config.num_pg_training_steps,
+            new_critic_params,
+            new_target_critic_params,
+            new_critic_opt_state,
+            target_actor_params,
+            key,
+        ), () = jax.lax.scan(
+            self._scan_update_critic,
+            (
+                emitter_state.critic_params,
+                emitter_state.target_critic_params,
+                emitter_state.critic_optimizer_state,
+                emitter_state.target_actor_params,
+                key,
+            ),
+            critic_data,
+        )
+        # update the actor with one gradient step
+        (new_actor_params, new_target_actor_params, new_actor_opt_state) = (
+            self._update_actor(
+                emitter_state.actor_params,
+                emitter_state.actor_opt_state,
+                target_actor_params,
+                new_critic_params,
+                actor_data,
+            )
+        )
+        new_emitter_state = emitter_state.replace(
+            critic_params=new_critic_params,
+            critic_optimizer_state=new_critic_opt_state,
+            actor_params=new_actor_params,
+            actor_opt_state=new_actor_opt_state,
+            target_critic_params=new_target_critic_params,
+            target_actor_params=new_target_actor_params,
+            key=key,
         )
 
-        return policy_params
-
-    @partial(jax.jit, static_argnames=("self",))
-    def _train_policy(
-        self,
-        emitter_state: DiversityPGEmitterState,
-        policy_params: Params,
-        policy_optimizer_state: optax.OptState,
-        transitions: QDTransition,
-    ) -> Tuple[DiversityPGEmitterState, Params, optax.OptState]:
-        """Apply one gradient step to a policy (called policies_params).
-
-        Args:
-            emitter_state: current state of the emitter.
-            policy_params: parameters corresponding to the weights and bias of
-                the neural network that defines the policy.
-
-        Returns:
-            The new emitter state and new params of the NN.
-        """
-
-        # update policy
-        policy_optimizer_state, policy_params = self._update_policy(
-            critic_params=emitter_state.critic_params,
-            policy_optimizer_state=policy_optimizer_state,
-            policy_params=policy_params,
-            transitions=transitions,
-        )
-
-        return emitter_state, policy_params, policy_optimizer_state
+        return new_emitter_state, ()
