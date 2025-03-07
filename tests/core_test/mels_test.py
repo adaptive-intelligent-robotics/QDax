@@ -1,8 +1,8 @@
 """Tests MAP-Elites Low-Spread implementation."""
 
 import functools
-from typing import Dict, Tuple
 from functools import partial
+from typing import Dict, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -13,19 +13,25 @@ from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.containers.mels_repertoire import MELSRepertoire
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
+from qdax.core.map_elites import MAPElites
 from qdax.core.mels import MELS
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
 from qdax.tasks.brax_envs import scoring_function_brax_envs
 from qdax.utils.sampling import multi_sample_scoring_function
-from qdax.core.map_elites import MAPElites
 
 
 @pytest.mark.parametrize(
     "env_name, batch_size, custom_repertoire",
-    [("walker2d_uni", 1, False), ("walker2d_uni", 10, False), ("hopper_uni", 10, False),
-    ("walker2d_uni", 1, True), ("walker2d_uni", 10, True), ("hopper_uni", 10, True)],
+    [
+        ("walker2d_uni", 1, False),
+        ("walker2d_uni", 10, False),
+        ("hopper_uni", 10, False),
+        ("walker2d_uni", 1, True),
+        ("walker2d_uni", 10, True),
+        ("hopper_uni", 10, True),
+    ],
 )
 def test_mels(env_name: str, batch_size: int, custom_repertoire: bool) -> None:
     batch_size = batch_size
@@ -133,7 +139,7 @@ def test_mels(env_name: str, batch_size: int, custom_repertoire: bool) -> None:
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_fn,
-            repertoire_init=MELSRepertoire.init
+            repertoire_init=MELSRepertoire.init,
         )
     else:
         # Instantiate ME-LS.
@@ -143,7 +149,6 @@ def test_mels(env_name: str, batch_size: int, custom_repertoire: bool) -> None:
             metrics_function=metrics_fn,
             num_samples=num_samples,
         )
-
 
     # Compute the centroids
     key, subkey = jax.random.split(key)
@@ -174,10 +179,17 @@ def test_mels(env_name: str, batch_size: int, custom_repertoire: bool) -> None:
 
     pytest.assume(repertoire is not None)
 
+
 @pytest.mark.parametrize(
     "env_name, batch_size, custom_repertoire",
-    [("walker2d_uni", 1, False), ("walker2d_uni", 10, False), ("hopper_uni", 10, False), 
-     ("walker2d_uni", 1, True), ("walker2d_uni", 10, True), ("hopper_uni", 10, True)],
+    [
+        ("walker2d_uni", 1, False),
+        ("walker2d_uni", 10, False),
+        ("hopper_uni", 10, False),
+        ("walker2d_uni", 1, True),
+        ("walker2d_uni", 10, True),
+        ("hopper_uni", 10, True),
+    ],
 )
 def test_mels_ask_tell(env_name: str, batch_size: int, custom_repertoire: bool) -> None:
     batch_size = batch_size
@@ -285,7 +297,7 @@ def test_mels_ask_tell(env_name: str, batch_size: int, custom_repertoire: bool) 
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_fn,
-            repertoire_init=MELSRepertoire.init
+            repertoire_init=MELSRepertoire.init,
         )
     else:
         # Instantiate ME-LS.
@@ -295,7 +307,6 @@ def test_mels_ask_tell(env_name: str, batch_size: int, custom_repertoire: bool) 
             metrics_function=metrics_fn,
             num_samples=num_samples,
         )
-
 
     # Compute the centroids
     key, subkey = jax.random.split(key)
@@ -323,7 +334,7 @@ def test_mels_ask_tell(env_name: str, batch_size: int, custom_repertoire: bool) 
     )
 
     # Run the algorithm
-    for i in range(num_iterations):
+    for _ in range(num_iterations):
         key, subkey = jax.random.split(key)
         # Generate solutions
         genotypes, extra_info = mels.ask(repertoire, emitter_state, subkey)
@@ -345,6 +356,7 @@ def test_mels_ask_tell(env_name: str, batch_size: int, custom_repertoire: bool) 
         )
 
     pytest.assume(repertoire is not None)
+
 
 if __name__ == "__main__":
     test_mels(env_name="pointmaze", batch_size=10)

@@ -41,7 +41,9 @@ class DistributedMAPElites(MAPElites):
             and a random key.
         """
         # score initial genotypes
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, key)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, key
+        )  # type: ignore
 
         # gather across all devices
         (
@@ -117,7 +119,9 @@ class DistributedMAPElites(MAPElites):
 
         # scores the offsprings
         key, subkey = jax.random.split(key)
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, subkey
+        )  # type: ignore
 
         # gather across all devices
         (

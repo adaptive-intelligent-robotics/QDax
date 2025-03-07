@@ -248,6 +248,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     pytest.assume(repertoire is not None)
 
+
 @pytest.mark.parametrize(
     "env_name, batch_size",
     [("halfcheetah_uni", 10), ("walker2d_uni", 10), ("hopper_uni", 10)],
@@ -434,7 +435,7 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
                 emitter_state=emitter_state,
                 aurora_extra_info=aurora_extra_info,
                 extra_scores=extra_scores,
-                extra_info=extra_info
+                extra_info=extra_info,
             )
 
         # update nb steps estimation

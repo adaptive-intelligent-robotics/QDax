@@ -8,20 +8,21 @@ import jax.numpy as jnp
 import pytest
 
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
+from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.emitters.mutation_operators import (
     polynomial_crossover,
     polynomial_mutation,
 )
 from qdax.core.emitters.standard_emitters import MixingEmitter
+from qdax.core.map_elites import MAPElites
 from qdax.core.mome import MOME
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_moqd_metrics
-from qdax.core.map_elites import MAPElites
-from qdax.core.containers.mome_repertoire import MOMERepertoire
 
-@pytest.mark.parametrize("num_descriptors, custom_repertoire", 
-                         [(1, False), (2, False), (1, True), (2, True)]
-                         )
+
+@pytest.mark.parametrize(
+    "num_descriptors, custom_repertoire", [(1, False), (2, False), (1, True), (2, True)]
+)
 def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
 
     pareto_front_max_length = 50
@@ -134,12 +135,10 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_function,
-            repertoire_init=repertoire_init
+            repertoire_init=repertoire_init,
         )
         key, subkey = jax.random.split(key)
-        repertoire, emitter_state = mome.init(
-            genotypes, centroids, subkey
-        )
+        repertoire, emitter_state = mome.init(genotypes, centroids, subkey)
     else:
         mome = MOME(
             scoring_function=scoring_fn,
@@ -153,7 +152,7 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
         )
 
     # Run the algorithm
-    for i in range(num_iterations):
+    for _ in range(num_iterations):
         key, subkey = jax.random.split(key)
         # Generate solutions
         genotypes, extra_info = mome.ask(repertoire, emitter_state, subkey)
@@ -174,11 +173,12 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
             extra_info=extra_info,
         )
 
-    pytest.assume(current_metrics["coverage"]> 20)
+    pytest.assume(current_metrics["coverage"] > 20)
 
-@pytest.mark.parametrize("num_descriptors, custom_repertoire", 
-                         [(1, False), (2, False), (1, True), (2, True)]
-                         )
+
+@pytest.mark.parametrize(
+    "num_descriptors, custom_repertoire", [(1, False), (2, False), (1, True), (2, True)]
+)
 def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
 
     pareto_front_max_length = 50
@@ -291,19 +291,19 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_function,
-            repertoire_init=repertoire_init
+            repertoire_init=repertoire_init,
         )
-         # Evaluate the initial population
+        # Evaluate the initial population
         key, subkey = jax.random.split(key)
         fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
 
         repertoire, emitter_state = mome.init_ask_tell(
-            genotypes=genotypes, 
-            fitnesses=fitnesses, 
+            genotypes=genotypes,
+            fitnesses=fitnesses,
             descriptors=descriptors,
-            centroids=centroids, 
+            centroids=centroids,
             key=subkey,
-            extra_scores=extra_scores
+            extra_scores=extra_scores,
         )
     else:
         mome = MOME(
@@ -317,13 +317,13 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
         fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
 
         repertoire, emitter_state = mome.init_ask_tell(
-            genotypes=genotypes, 
-            fitnesses=fitnesses, 
+            genotypes=genotypes,
+            fitnesses=fitnesses,
             descriptors=descriptors,
-            centroids=centroids, 
-            pareto_front_max_length=pareto_front_max_length, 
+            centroids=centroids,
+            pareto_front_max_length=pareto_front_max_length,
             key=subkey,
-            extra_scores=extra_scores
+            extra_scores=extra_scores,
         )
 
     # Run the algorithm
@@ -339,6 +339,7 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
     )
 
     pytest.assume(metrics["coverage"][-1] > 20)
+
 
 if __name__ == "__main__":
     test_mome(num_descriptors=1)

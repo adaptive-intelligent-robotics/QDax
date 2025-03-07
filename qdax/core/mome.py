@@ -8,7 +8,6 @@ import jax.numpy as jnp
 
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-
 from qdax.core.map_elites import MAPElites
 from qdax.custom_types import (
     Centroid,
@@ -20,6 +19,7 @@ from qdax.custom_types import (
     RNGKey,
 )
 
+
 class MOME(MAPElites):
     """Implements Multi-Objectives MAP Elites.
 
@@ -27,6 +27,7 @@ class MOME(MAPElites):
     that had to be overwritten is the init function as it has to take
     into account the specificities of the the Multi Objective repertoire.
     """
+
     def __init__(
         self,
         scoring_function: Callable[
@@ -35,14 +36,14 @@ class MOME(MAPElites):
         emitter: Emitter,
         metrics_function: Callable[[MOMERepertoire], Metrics],
         repertoire_init: Callable[
-            [Genotype, Fitness, Descriptor, Centroid, ExtraScores], MOMERepertoire
+            [Genotype, Fitness, Descriptor, Centroid, int, Optional[ExtraScores]],
+            MOMERepertoire,
         ] = MOMERepertoire.init,
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
-        self._repertoire_init = repertoire_init
-
+        self._repertoire_init = repertoire_init  # type: ignore
 
     @partial(jax.jit, static_argnames=("self", "pareto_front_max_length"))
     def init(
@@ -68,9 +69,11 @@ class MOME(MAPElites):
         """
         # score initial genotypes
         key, subkey = jax.random.split(key)
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, subkey
+        )  # type: ignore
 
-        return self.init_ask_tell(
+        repertoire, emitter_state = self.init_ask_tell(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
@@ -79,7 +82,7 @@ class MOME(MAPElites):
             key=key,
             extra_scores=extra_scores,
         )
-
+        return repertoire, emitter_state
 
     @partial(jax.jit, static_argnames=("self", "pareto_front_max_length"))
     def init_ask_tell(
@@ -93,7 +96,8 @@ class MOME(MAPElites):
         extra_scores: Optional[ExtraScores] = None,
     ) -> Tuple[MOMERepertoire, Optional[EmitterState]]:
         """
-        Initialize a Map-Elites repertoire with an initial population of genotypes and their evaluations. 
+        Initialize a Map-Elites repertoire with an initial population of genotypes
+        and their evaluations.
         Requires the definition of centroids that can be computed with any method
         such as CVT or Euclidean mapping.
 
@@ -114,13 +118,13 @@ class MOME(MAPElites):
         if extra_scores is None:
             extra_scores = {}
         # init the repertoire
-        repertoire = self._repertoire_init(
+        repertoire = self._repertoire_init(  # type: ignore
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
             extra_scores=extra_scores,
-            pareto_front_max_length=pareto_front_max_length
+            pareto_front_max_length=pareto_front_max_length,
         )
 
         # get initial state of the emitter

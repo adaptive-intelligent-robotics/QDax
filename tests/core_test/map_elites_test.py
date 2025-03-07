@@ -151,6 +151,7 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
 
     pytest.assume(repertoire is not None)
 
+
 @pytest.mark.parametrize(
     "env_name, batch_size",
     [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
@@ -268,7 +269,7 @@ def test_map_elites_ask_tell(env_name: str, batch_size: int) -> None:
     )
 
     # Run the algorithm
-    for i in range(num_iterations):
+    for _ in range(num_iterations):
         key, subkey = jax.random.split(key)
         # Generate solutions
         genotypes, extra_info = map_elites.ask(repertoire, emitter_state, subkey)
@@ -290,6 +291,7 @@ def test_map_elites_ask_tell(env_name: str, batch_size: int) -> None:
         )
 
     pytest.assume(repertoire is not None)
+
 
 if __name__ == "__main__":
     test_map_elites(env_name="pointmaze", batch_size=10)

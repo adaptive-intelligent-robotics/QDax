@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Optional, Tuple
-
-import jax
+from typing import Callable, Tuple
 
 from qdax.core.containers.mels_repertoire import MELSRepertoire
-from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.emitter import Emitter
 from qdax.core.map_elites import MAPElites
 from qdax.custom_types import (
     Centroid,
@@ -56,5 +54,3 @@ class MELS(MAPElites):
         self._metrics_function = metrics_function
         self._num_samples = num_samples
         self._repertoire_init = repertoire_init
-
-    
