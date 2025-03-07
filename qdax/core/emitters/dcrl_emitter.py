@@ -490,7 +490,7 @@ class DCRLEmitter(Emitter):
             length=self._actor_critic_iterations,
         )
 
-        return final_emitter_state
+        return final_emitter_state  # type: ignore
     
 
     @partial(jax.jit, static_argnames=("self",))
