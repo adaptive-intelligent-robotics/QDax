@@ -45,10 +45,14 @@ class MAPElites:
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
+        repertoire_init: Callable[
+            [Genotype, Fitness, Descriptor, Centroid, ExtraScores], MapElitesRepertoire
+        ] = MapElitesRepertoire.init,
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
+        self._repertoire_init = repertoire_init
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
@@ -114,7 +118,7 @@ class MAPElites:
         if extra_scores is None:
             extra_scores = {}
         # init the repertoire
-        repertoire = MapElitesRepertoire.init(
+        repertoire = self._repertoire_init(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,

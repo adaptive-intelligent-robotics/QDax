@@ -159,7 +159,6 @@ class AURORA:
             extra_scores=extra_scores,
         )
     
-    @partial(jax.jit, static_argnames=("self",))
     def init_ask_tell(
         self,
         genotypes: Genotype,

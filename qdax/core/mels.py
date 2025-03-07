@@ -43,6 +43,9 @@ class MELS(MAPElites):
         emitter: Emitter,
         metrics_function: Callable[[MELSRepertoire], Metrics],
         num_samples: int,
+        repertoire_init: Callable[
+            [Genotype, Fitness, Descriptor, Centroid, ExtraScores], MELSRepertoire
+        ] = MELSRepertoire.init,
     ) -> None:
         self._scoring_function = partial(
             multi_sample_scoring_function,
@@ -52,81 +55,6 @@ class MELS(MAPElites):
         self._emitter = emitter
         self._metrics_function = metrics_function
         self._num_samples = num_samples
+        self._repertoire_init = repertoire_init
 
-    @partial(jax.jit, static_argnames=("self",))
-    def init(
-        self,
-        genotypes: Genotype,
-        centroids: Centroid,
-        key: RNGKey,
-    ) -> Tuple[MELSRepertoire, Optional[EmitterState]]:
-        """Initialize a MAP-Elites Low-Spread repertoire with an initial
-        population of genotypes. Requires the definition of centroids that can
-        be computed with any method such as CVT or Euclidean mapping.
-
-        Args:
-            genotypes: initial genotypes, pytree in which leaves
-                have shape (batch_size, num_features)
-            centroids: tessellation centroids of shape (batch_size, num_descriptors)
-            key: a random key used for stochastic operations.
-
-        Returns:
-            A tuple of (initialized MAP-Elites Low-Spread repertoire, initial emitter
-            state, JAX random key).
-        """
-        # score initial genotypes
-        key, subkey = jax.random.split(key)
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
-        return self.init_ask_tell(
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-            key=key,
-            extra_scores=extra_scores,
-        )
-        
-
-    @partial(jax.jit, static_argnames=("self",))
-    def init_ask_tell(
-        self,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
-        centroids: Centroid,
-        key: RNGKey,
-        extra_scores: Optional[ExtraScores] = None,
-    ) -> Tuple[MELSRepertoire, Optional[EmitterState]]:
-        if extra_scores is None:
-            extra_scores = {}
-        
-        # init the repertoire
-        repertoire = MELSRepertoire.init(
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-            extra_scores=extra_scores,
-        )
-
-        # get initial state of the emitter
-        key, subkey = jax.random.split(key)
-        emitter_state = self._emitter.init(
-            key=subkey,
-            repertoire=repertoire,
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            extra_scores=extra_scores,
-        )
-
-        # update emitter state
-        emitter_state = self._emitter.state_update(
-            emitter_state=emitter_state,
-            repertoire=repertoire,
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            extra_scores=extra_scores,
-        )
-        return repertoire, emitter_state
+    

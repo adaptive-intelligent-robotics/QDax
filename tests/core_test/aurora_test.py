@@ -383,7 +383,7 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
     fitnesses, descriptors, extra_scores = aurora_scoring_fn(init_variables, subkey)
 
     # Compute initial repertoire and emitter state
-    repertoire, emitter_state = aurora.init_ask_tell(
+    repertoire, emitter_state, aurora_extra_info = aurora.init_ask_tell(
         genotypes=init_variables,
         fitnesses=fitnesses,
         descriptors=descriptors,

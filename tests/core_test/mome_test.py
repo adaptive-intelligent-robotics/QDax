@@ -16,10 +16,13 @@ from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.mome import MOME
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
 from qdax.utils.metrics import default_moqd_metrics
+from qdax.core.map_elites import MAPElites
+from qdax.core.containers.mome_repertoire import MOMERepertoire
 
-
-@pytest.mark.parametrize("num_descriptors", [1, 2])
-def test_mome(num_descriptors: int) -> None:
+@pytest.mark.parametrize("num_descriptors, custom_repertoire", 
+                         [(1, False), (2, False), (1, True), (2, True)]
+                         )
+def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
 
     pareto_front_max_length = 50
     num_variables = 120
@@ -122,25 +125,32 @@ def test_mome(num_descriptors: int) -> None:
         key=subkey,
     )
 
-    mome = MOME(
-        scoring_function=None,
-        emitter=mixing_emitter,
-        metrics_function=metrics_function,
-    )
+    if custom_repertoire:
+        repertoire_init = partial(
+            MOMERepertoire.init,
+            pareto_front_max_length=pareto_front_max_length,
+        )
+        mome = MAPElites(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_function,
+            repertoire_init=repertoire_init
+        )
+        key, subkey = jax.random.split(key)
+        repertoire, emitter_state = mome.init(
+            genotypes, centroids, subkey
+        )
+    else:
+        mome = MOME(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_function,
+        )
 
-    # Evaluate the initial population
-    key, subkey = jax.random.split(key)
-    fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
-
-    repertoire, emitter_state = mome.init_ask_tell(
-        genotypes=genotypes, 
-        fitnesses=fitnesses, 
-        descriptors=descriptors,
-        centroids=centroids, 
-        pareto_front_max_length=pareto_front_max_length, 
-        key=subkey,
-        extra_scores=extra_scores
-    )
+        key, subkey = jax.random.split(key)
+        repertoire, emitter_state = mome.init(
+            genotypes, centroids, pareto_front_max_length, subkey
+        )
 
     # Run the algorithm
     for i in range(num_iterations):
@@ -166,8 +176,10 @@ def test_mome(num_descriptors: int) -> None:
 
     pytest.assume(current_metrics["coverage"]> 20)
 
-@pytest.mark.parametrize("num_descriptors", [1, 2])
-def test_mome_ask_tell(num_descriptors: int) -> None:
+@pytest.mark.parametrize("num_descriptors, custom_repertoire", 
+                         [(1, False), (2, False), (1, True), (2, True)]
+                         )
+def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
 
     pareto_front_max_length = 50
     num_variables = 120
@@ -270,16 +282,49 @@ def test_mome_ask_tell(num_descriptors: int) -> None:
         key=subkey,
     )
 
-    mome = MOME(
-        scoring_function=scoring_fn,
-        emitter=mixing_emitter,
-        metrics_function=metrics_function,
-    )
+    if custom_repertoire:
+        repertoire_init = partial(
+            MOMERepertoire.init,
+            pareto_front_max_length=pareto_front_max_length,
+        )
+        mome = MAPElites(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_function,
+            repertoire_init=repertoire_init
+        )
+         # Evaluate the initial population
+        key, subkey = jax.random.split(key)
+        fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
 
-    key, subkey = jax.random.split(key)
-    repertoire, emitter_state = mome.init(
-        genotypes, centroids, pareto_front_max_length, subkey
-    )
+        repertoire, emitter_state = mome.init_ask_tell(
+            genotypes=genotypes, 
+            fitnesses=fitnesses, 
+            descriptors=descriptors,
+            centroids=centroids, 
+            key=subkey,
+            extra_scores=extra_scores
+        )
+    else:
+        mome = MOME(
+            scoring_function=scoring_fn,
+            emitter=mixing_emitter,
+            metrics_function=metrics_function,
+        )
+
+        # Evaluate the initial population
+        key, subkey = jax.random.split(key)
+        fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
+
+        repertoire, emitter_state = mome.init_ask_tell(
+            genotypes=genotypes, 
+            fitnesses=fitnesses, 
+            descriptors=descriptors,
+            centroids=centroids, 
+            pareto_front_max_length=pareto_front_max_length, 
+            key=subkey,
+            extra_scores=extra_scores
+        )
 
     # Run the algorithm
     (
