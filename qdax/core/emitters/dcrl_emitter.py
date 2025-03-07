@@ -133,7 +133,7 @@ class DCRLEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[DCRLEmitterState, RNGKey]:
+    ) -> DCRLEmitterState:
         """Initializes the emitter state.
 
         Args:
@@ -277,7 +277,7 @@ class DCRLEmitter(Emitter):
         repertoire: Repertoire,
         emitter_state: DCRLEmitterState,
         key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores]:
         """Do a step of policy-gradient and actor-injection emission.
 
         Args:
@@ -483,15 +483,15 @@ class DCRLEmitter(Emitter):
         emitter_state = emitter_state.replace(
             replay_buffer=emitter_state.replay_buffer.insert(transitions)
         )
-
         # Conduct Actor-Critic training
-        new_emitter_state, _ = jax.lax.scan(
+        final_emitter_state, _ = jax.lax.scan(
             self._scan_actor_critic_training,
             emitter_state,
             length=self._actor_critic_iterations,
         )
 
-        return new_emitter_state
+        return final_emitter_state
+    
 
     @partial(jax.jit, static_argnames=("self",))
     def _scan_update_critic(
@@ -680,7 +680,6 @@ class DCRLEmitter(Emitter):
                 actor_data,
             )
         )
-
         new_emitter_state = emitter_state.replace(
             critic_params=new_critic_params,
             critic_opt_state=new_critic_opt_state,
@@ -692,6 +691,7 @@ class DCRLEmitter(Emitter):
         )
 
         return new_emitter_state, ()
+
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_policy(

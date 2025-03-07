@@ -133,7 +133,7 @@ class QualityPGEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[QualityPGEmitterState, RNGKey]:
+    ) -> QualityPGEmitterState:
         """Initializes the emitter state.
 
         Args:
@@ -205,7 +205,7 @@ class QualityPGEmitter(Emitter):
         repertoire: Repertoire,
         emitter_state: QualityPGEmitterState,
         key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores]:
         """Do a step of PG emission.
 
         Args:
@@ -361,7 +361,6 @@ class QualityPGEmitter(Emitter):
         emitter_state = emitter_state.replace(
             replay_buffer=emitter_state.replay_buffer.insert(transitions)
         )
-
         # Conduct Actor-Critic training
         final_emitter_state, _ = jax.lax.scan(
             self._scan_actor_critic_training,
@@ -370,6 +369,7 @@ class QualityPGEmitter(Emitter):
         )
 
         return final_emitter_state  # type: ignore
+
 
     @partial(jax.jit, static_argnames=("self",))
     def _scan_update_critic(
