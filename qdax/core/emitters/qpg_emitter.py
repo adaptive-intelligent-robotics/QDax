@@ -13,12 +13,17 @@ import optax
 from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.networks import QModule
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 from qdax.environments.base_wrappers import QDEnv
+
+
+
+
 
 
 @dataclass
@@ -68,9 +73,11 @@ class QualityPGEmitter(Emitter):
         config: QualityPGConfig,
         policy_network: nn.Module,
         env: QDEnv,
+        selector: Optional[Selector] = None,
     ) -> None:
         self._config = config
         self._env = env
+        self._selector = selector
         self._actor_critic_iterations = int(
             config.num_critic_training_steps / config.policy_delay
         )  # actor and critic training are packed into a single function
@@ -101,6 +108,7 @@ class QualityPGEmitter(Emitter):
         self._policies_optimizer = optax.adam(
             learning_rate=self._config.policy_learning_rate
         )
+
 
     @property
     def batch_size(self) -> int:
@@ -198,14 +206,14 @@ class QualityPGEmitter(Emitter):
         self,
         repertoire: Repertoire,
         emitter_state: QualityPGEmitterState,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
         """Do a step of PG emission.
 
         Args:
             repertoire: the current repertoire of genotypes
             emitter_state: the state of the emitter used
-            random_key: a random key
+            key: a random key
 
         Returns:
             A batch of offspring, the new emitter state and a new key.
@@ -215,11 +223,11 @@ class QualityPGEmitter(Emitter):
 
         # sample parents
         mutation_pg_batch_size = int(batch_size - 1)
-        parents = repertoire.sample(random_key, mutation_pg_batch_size)
+        parents = repertoire.select(
+            key, mutation_pg_batch_size, selector=self._selector
+            ).genotypes
 
         # apply the pg mutation
-        random_key, subkey = jax.random.split(random_key)
-        emitter_state = emitter_state.replace(key=subkey)
         offsprings_pg = self.emit_pg(emitter_state, parents)
 
         # get the actor (greedy actor)
@@ -274,10 +282,11 @@ class QualityPGEmitter(Emitter):
 
             # Unpack the carry
             (policy_params, policy_opt_state, key) = carry
+            key, subkey = jax.random.split(key)
 
             # sample a mini-batch of data from the replay-buffer
             transitions = emitter_state.replay_buffer.sample(
-                key, self._config.batch_size
+                subkey, self._config.batch_size
             )
             (
                 new_policy_params,
@@ -493,11 +502,11 @@ class QualityPGEmitter(Emitter):
         """
 
         emitter_state = carry
-        key = emitter_state.key
+        key, subkey = jax.random.split(emitter_state.key)
 
         # sample transitions
         transitions = emitter_state.replay_buffer.sample(
-            key,
+            subkey,
             self._config.batch_size * (self._config.policy_delay + 1),
         )
         transitions = jax.tree.map(

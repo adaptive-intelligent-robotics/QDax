@@ -4,7 +4,7 @@ in JAX for Brax environments.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import flax.linen as nn
 import jax
@@ -13,6 +13,7 @@ from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import DCRLTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_dc_fn
 from qdax.core.neuroevolution.networks.networks import QModuleDC
@@ -69,9 +70,11 @@ class DCRLEmitter(Emitter):
         policy_network: nn.Module,
         actor_network: nn.Module,
         env: QDEnv,
+        selector: Optional[Selector] = None,
     ) -> None:
         self._config = config
         self._env = env
+        self._selector = selector
         self._actor_network = actor_network
         self._actor_critic_iterations = int(
             config.num_critic_training_steps / config.policy_delay
@@ -286,15 +289,18 @@ class DCRLEmitter(Emitter):
             A batch of offspring, the new emitter state and a new key.
         """
         # PG emitter
-        parents_pg, descs_pg, key = repertoire.sample_with_descs(
-            key, self._config.dcrl_batch_size
-        )
         key, subkey = jax.random.split(key)
-        emitter_state = emitter_state.replace(key=subkey)
+        sub_repertoire = repertoire.select(
+            key, self._config.dcrl_batch_size, selector=self._selector
+            )
+        parents_pg = sub_repertoire.genotypes
+        descs_pg = sub_repertoire.descriptors
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
 
         # Actor injection emitter
-        _, descs_ai, key = repertoire.sample_with_descs(key, self._config.ai_batch_size)
+        descs_ai = repertoire.select(
+            subkey, self._config.ai_batch_size, selector=self._selector
+            ).descriptors
         descs_ai = descs_ai.reshape(
             descs_ai.shape[0], self._env.descriptor_length
         )
@@ -352,10 +358,11 @@ class DCRLEmitter(Emitter):
         ) -> Tuple[Tuple[Params, optax.OptState, jnp.ndarray, RNGKey], Any]:
 
             (policy_params, policy_opt_state, desc_prime, key) = carry
+            key, subkey = jax.random.split(key)
 
             # sample a mini-batch of data from the replay-buffer
-            transitions, key = emitter_state.replay_buffer.sample(
-                key, self._config.batch_size
+            transitions = emitter_state.replay_buffer.sample(
+                subkey, self._config.batch_size
             )
             (
                 new_policy_params,
@@ -616,8 +623,12 @@ class DCRLEmitter(Emitter):
         """
 
         emitter_state = carry
-        transitions, key = emitter_state.replay_buffer.sample(
-            emitter_state.key, self._config.batch_size * (self._config.policy_delay + 1)
+        key, subkey = jax.random.split(emitter_state.key)
+
+        # sample transitions
+        transitions = emitter_state.replay_buffer.sample(
+            subkey, 
+            self._config.batch_size * (self._config.policy_delay + 1)
         )
         transitions = jax.tree.map(
             lambda x: jnp.reshape(
@@ -636,7 +647,6 @@ class DCRLEmitter(Emitter):
             rewards=self._similarity(transitions.desc, transitions.desc_prime)
             * transitions.rewards
         )
-
         # split the transitions for critic and actor
         critic_data = jax.tree.map(lambda x: x[:-1], transitions)
         actor_data = jax.tree.map(lambda x: x[-1], transitions)
