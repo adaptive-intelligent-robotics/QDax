@@ -24,8 +24,6 @@ from qdax.environments.base_wrappers import QDEnv
 
 
 
-
-
 @dataclass
 class QualityPGConfig:
     """Configuration for QualityPG Emitter"""

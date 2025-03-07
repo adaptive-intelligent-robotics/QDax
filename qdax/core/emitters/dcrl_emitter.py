@@ -203,7 +203,7 @@ class DCRLEmitter(Emitter):
             key=subkey,
         )
 
-        return emitter_state, key
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def _similarity(self, descs_1: Descriptor, descs_2: Descriptor) -> jnp.array:
