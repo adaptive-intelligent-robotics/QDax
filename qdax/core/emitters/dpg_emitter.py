@@ -4,12 +4,11 @@ based on: https://arxiv.org/abs/2006.08505
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import flax.linen as nn
 import jax
 from jax import numpy as jnp
-import optax
 
 from qdax.core.containers.archive import Archive
 from qdax.core.containers.repertoire import Repertoire
@@ -19,20 +18,18 @@ from qdax.core.emitters.qpg_emitter import (
     QualityPGEmitterState,
 )
 from qdax.core.emitters.repertoire_selectors.selector import Selector
-from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import (
     Descriptor,
     ExtraScores,
     Fitness,
     Genotype,
-    Params,
     Reward,
     RNGKey,
     StateDescriptor,
 )
 from qdax.environments.base_wrappers import QDEnv
 
-print("hello")
+# print("hello")
 
 @dataclass
 class DiversityPGConfig(QualityPGConfig):
