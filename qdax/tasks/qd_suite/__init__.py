@@ -1,5 +1,5 @@
 from qdax.tasks.qd_suite.archimedean_spiral import (
-    ArchimedeanBD,
+    ArchimedeanDescriptor,
     ArchimedeanSpiralV0,
     ParameterizationGenotype,
 )
@@ -8,19 +8,19 @@ from qdax.tasks.qd_suite.ssf import SsfV0
 
 archimedean_spiral_v0_angle_euclidean_task = ArchimedeanSpiralV0(
     ParameterizationGenotype.angle,
-    ArchimedeanBD.euclidean,
+    ArchimedeanDescriptor.euclidean,
 )
 archimedean_spiral_v0_angle_geodesic_task = ArchimedeanSpiralV0(
     ParameterizationGenotype.angle,
-    ArchimedeanBD.geodesic,
+    ArchimedeanDescriptor.geodesic,
 )
 archimedean_spiral_v0_arc_length_euclidean_task = ArchimedeanSpiralV0(
     ParameterizationGenotype.arc_length,
-    ArchimedeanBD.euclidean,
+    ArchimedeanDescriptor.euclidean,
 )
 archimedean_spiral_v0_arc_length_geodesic_task = ArchimedeanSpiralV0(
     ParameterizationGenotype.arc_length,
-    ArchimedeanBD.geodesic,
+    ArchimedeanDescriptor.geodesic,
 )
 deceptive_evolvability_v0_task = DeceptiveEvolvabilityV0()
 ssf_v0_param_size_1_task = SsfV0(param_size=1)

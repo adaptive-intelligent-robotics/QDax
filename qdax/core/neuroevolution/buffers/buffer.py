@@ -466,22 +466,21 @@ class ReplayBuffer(flax.struct.PyTreeNode):
     @partial(jax.jit, static_argnames=("sample_size",))
     def sample(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         sample_size: int,
     ) -> Tuple[Transition, RNGKey]:
         """
         Sample a batch of transitions in the replay buffer.
         """
-        random_key, subkey = jax.random.split(random_key)
         idx = jax.random.randint(
-            subkey,
+            key,
             shape=(sample_size,),
             minval=0,
             maxval=self.current_size,
         )
         samples = jnp.take(self.data, idx, axis=0, mode="clip")
         transitions = self.transition.__class__.from_flatten(samples, self.transition)
-        return transitions, random_key
+        return transitions
 
     @jax.jit
     def insert(self, transitions: Transition) -> ReplayBuffer:

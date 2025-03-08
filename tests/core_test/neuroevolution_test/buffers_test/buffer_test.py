@@ -42,9 +42,7 @@ def test_insert_batch() -> None:
         buffer_size=buffer_size, transition=dummy_transition
     )
 
-    simple_transition = jax.tree_util.tree_map(
-        lambda x: x.repeat(3, axis=0), dummy_transition
-    )
+    simple_transition = jax.tree.map(lambda x: x.repeat(3, axis=0), dummy_transition)
     simple_transition = simple_transition.replace(rewards=jnp.arange(3))
     data = QDTransition.from_flatten(replay_buffer.data, dummy_transition)
     pytest.assume(
@@ -85,16 +83,15 @@ def test_sample() -> None:
         buffer_size=buffer_size, transition=dummy_transition
     )
 
-    simple_transition = jax.tree_util.tree_map(
-        lambda x: x.repeat(3, axis=0), dummy_transition
-    )
+    simple_transition = jax.tree.map(lambda x: x.repeat(3, axis=0), dummy_transition)
     simple_transition = simple_transition.replace(rewards=jnp.arange(3))
 
     replay_buffer = replay_buffer.insert(simple_transition)
-    random_key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
 
-    samples, random_key = replay_buffer.sample(random_key, 3)
+    key, subkey = jax.random.split(key)
+    samples = replay_buffer.sample(subkey, 3)
 
-    samples_shapes = jax.tree_util.tree_map(lambda x: x.shape, samples)
-    transition_shapes = jax.tree_util.tree_map(lambda x: x.shape, simple_transition)
+    samples_shapes = jax.tree.map(lambda x: x.shape, samples)
+    transition_shapes = jax.tree.map(lambda x: x.shape, simple_transition)
     pytest.assume((samples_shapes == transition_shapes))

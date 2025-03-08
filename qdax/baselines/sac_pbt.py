@@ -45,7 +45,7 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
         policy_params = training_state.policy_params
         critic_params = training_state.critic_params
         alpha_params = training_state.alpha_params
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
         return training_state.replace(  # type: ignore
@@ -75,20 +75,20 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
         training_state: "PBTSacTrainingState",
     ) -> "PBTSacTrainingState":
 
-        random_key = training_state.random_key
-        random_key, sub_key = jax.random.split(random_key)
+        key = training_state.key
+        key, sub_key = jax.random.split(key)
         discount = jax.random.uniform(sub_key, shape=(), minval=0.9, maxval=1.0)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         policy_lr = jax.random.uniform(sub_key, shape=(), minval=3e-5, maxval=3e-3)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         critic_lr = jax.random.uniform(sub_key, shape=(), minval=3e-5, maxval=3e-3)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         alpha_lr = jax.random.uniform(sub_key, shape=(), minval=3e-5, maxval=3e-3)
 
-        random_key, sub_key = jax.random.split(random_key)
+        key, sub_key = jax.random.split(key)
         reward_scaling = jax.random.uniform(sub_key, shape=(), minval=0.1, maxval=10.0)
 
         return training_state.replace(  # type: ignore
@@ -97,7 +97,7 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
             critic_lr=critic_lr,
             alpha_lr=alpha_lr,
             reward_scaling=reward_scaling,
-            random_key=random_key,
+            key=key,
         )
 
 
@@ -135,12 +135,12 @@ class PBTSAC(SAC):
         SAC.__init__(self, config=sac_config, action_size=action_size)
 
     def init(
-        self, random_key: RNGKey, action_size: int, observation_size: int
+        self, key: RNGKey, action_size: int, observation_size: int
     ) -> PBTSacTrainingState:
         """Initialise the training state of the algorithm.
 
         Args:
-            random_key: a jax random key
+            key: a jax random key
             action_size: the size of the environment's action space
             observation_size: the size of the environment's observation space
 
@@ -148,7 +148,7 @@ class PBTSAC(SAC):
             the initial training state of PBT-SAC
         """
 
-        sac_training_state = SAC.init(self, random_key, action_size, observation_size)
+        sac_training_state = SAC.init(self, key, action_size, observation_size)
 
         training_state = PBTSacTrainingState(
             policy_optimizer_state=sac_training_state.policy_optimizer_state,
@@ -159,7 +159,7 @@ class PBTSAC(SAC):
             alpha_params=sac_training_state.alpha_params,
             target_critic_params=sac_training_state.target_critic_params,
             normalization_running_stats=sac_training_state.normalization_running_stats,
-            random_key=sac_training_state.random_key,
+            key=sac_training_state.key,
             steps=sac_training_state.steps,
             discount=None,
             policy_lr=None,
@@ -192,9 +192,11 @@ class PBTSAC(SAC):
         """
 
         # sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-        transitions, random_key = replay_buffer.sample(
-            random_key,
+        key = training_state.key
+
+        key, subkey = jax.random.split(key)
+        transitions = replay_buffer.sample(
+            subkey,
             sample_size=self._config.batch_size,
         )
 
@@ -212,48 +214,49 @@ class PBTSAC(SAC):
             )
 
         # update alpha
+        key, subkey = jax.random.split(key)
         (
             alpha_params,
             alpha_optimizer_state,
             alpha_loss,
-            random_key,
         ) = self._update_alpha(
             alpha_lr=training_state.alpha_lr,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update critic
+        key, subkey = jax.random.split(key)
         (
             critic_params,
             target_critic_params,
             critic_optimizer_state,
             critic_loss,
-            random_key,
         ) = self._update_critic(
             critic_lr=training_state.critic_lr,
             reward_scaling=training_state.reward_scaling,
             discount=training_state.discount,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update actor
+        key, subkey = jax.random.split(key)
         (
             policy_params,
             policy_optimizer_state,
             policy_loss,
-            random_key,
         ) = self._update_actor(
             policy_lr=training_state.policy_lr,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # create new training state
+        key, subkey = jax.random.split(key)
         new_training_state = PBTSacTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -263,7 +266,7 @@ class PBTSAC(SAC):
             alpha_params=alpha_params,
             normalization_running_stats=training_state.normalization_running_stats,
             target_critic_params=target_critic_params,
-            random_key=random_key,
+            key=subkey,
             steps=training_state.steps + 1,
             discount=training_state.discount,
             policy_lr=training_state.policy_lr,
@@ -302,10 +305,10 @@ class PBTSAC(SAC):
         """
 
         def _init_fn(
-            random_key: RNGKey,
-        ) -> Tuple[RNGKey, PBTSacTrainingState, ReplayBuffer]:
+            key: RNGKey,
+        ) -> Tuple[PBTSacTrainingState, ReplayBuffer]:
 
-            random_key, *keys = jax.random.split(random_key, num=1 + population_size)
+            key, *keys = jax.random.split(key, num=population_size + 1)
             keys = jnp.stack(keys)
 
             init_dummy_transition = partial(
@@ -328,7 +331,7 @@ class PBTSAC(SAC):
                 self.init, action_size=action_size, observation_size=observation_size
             )
             training_states = jax.vmap(agent_init)(keys)
-            return random_key, training_states, replay_buffers
+            return training_states, replay_buffers
 
         return _init_fn
 
@@ -364,21 +367,22 @@ class PBTSAC(SAC):
     def get_eval_qd_fn(
         self,
         eval_env: Env,
-        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
+        descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
     ) -> Callable:
         """
-        Returns the function the evaluation the PBT population.
+        Returns the evaluation function of the PBT population.
 
         Args:
             eval_env: evaluation environment. Might be different from training env
                 if needed.
-            bd_extraction_fn: function to extract the bd from an episode.
+            descriptor_extraction_fn: function to extract the descriptor from an
+                episode.
 
         Returns:
             The function to evaluate the population. It takes as input the population
             training state as well as first eval environment states and returns the
-            population agents mean returns and mean bds over episodes as well as all
-            returns and bds from all agents over all episodes.
+            population agents mean returns and mean descriptors over episodes,
+            as well as allreturns and descriptors from all agents over all episodes.
         """
         play_eval_step = partial(
             self.play_qd_step_fn,
@@ -389,7 +393,7 @@ class PBTSAC(SAC):
         eval_policy = partial(
             self.eval_qd_policy_fn,
             play_step_fn=play_eval_step,
-            bd_extraction_fn=bd_extraction_fn,
+            descriptor_extraction_fn=descriptor_extraction_fn,
         )
         return jax.vmap(eval_policy)  # type: ignore
 

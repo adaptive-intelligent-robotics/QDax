@@ -57,33 +57,32 @@ class MultiEmitter(Emitter):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[Optional[EmitterState], RNGKey]:
+    ) -> Optional[EmitterState]:
         """
         Initialize the state of the emitter.
 
         Args:
             genotypes: The genotypes of the initial population.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
-            The initial emitter state and a random key.
+            The initial emitter state.
         """
 
         # prepare keys for each emitter
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, len(self.emitters))
+        keys = jax.random.split(key, len(self.emitters))
 
         # init all emitter states - gather them
         emitter_states = []
-        for emitter, subkey_emitter in zip(self.emitters, subkeys):
-            emitter_state, _ = emitter.init(
-                subkey_emitter,
+        for emitter, key_emitter in zip(self.emitters, keys):
+            emitter_state = emitter.init(
+                key_emitter,
                 repertoire,
                 genotypes,
                 fitnesses,
@@ -92,54 +91,53 @@ class MultiEmitter(Emitter):
             )
             emitter_states.append(emitter_state)
 
-        return MultiEmitterState(tuple(emitter_states)), random_key
+        return MultiEmitterState(tuple(emitter_states))
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[Repertoire],
         emitter_state: Optional[MultiEmitterState],
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """Emit new population. Use all the sub emitters to emit subpopulation
         and gather them.
 
         Args:
             repertoire: a repertoire of genotypes.
             emitter_state: the current state of the emitter.
-            random_key: key for random operations.
+            key: key for random operations.
 
         Returns:
-            Offsprings and a new random key.
+            Offsprings.
         """
         assert emitter_state is not None
         assert len(emitter_state.emitter_states) == len(self.emitters)
 
         # prepare subkeys for each sub emitter
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, len(self.emitters))
+        keys = jax.random.split(key, len(self.emitters))
 
         # emit from all emitters and gather offsprings
         all_offsprings = []
         all_extra_info: ExtraScores = {}
-        for emitter, sub_emitter_state, subkey_emitter in zip(
+        for emitter, sub_emitter_state, key_emitter in zip(
             self.emitters,
             emitter_state.emitter_states,
-            subkeys,
+            keys,
         ):
-            genotype, extra_info, _ = emitter.emit(
-                repertoire, sub_emitter_state, subkey_emitter
+            genotype, extra_info = emitter.emit(
+                repertoire, sub_emitter_state, key_emitter
             )
-            batch_size = jax.tree_util.tree_leaves(genotype)[0].shape[0]
+            batch_size = jax.tree.leaves(genotype)[0].shape[0]
             assert batch_size == emitter.batch_size
             all_offsprings.append(genotype)
             all_extra_info = {**all_extra_info, **extra_info}
 
         # concatenate offsprings together
-        offsprings = jax.tree_util.tree_map(
+        offsprings = jax.tree.map(
             lambda *x: jnp.concatenate(x, axis=0), *all_offsprings
         )
-        return offsprings, all_extra_info, random_key
+        return offsprings, all_extra_info
 
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
@@ -171,7 +169,7 @@ class MultiEmitter(Emitter):
         emitter_states = []
 
         def _get_sub_pytree(pytree: ArrayTree, start: int, end: int) -> ArrayTree:
-            return jax.tree_util.tree_map(lambda x: x[start:end], pytree)
+            return jax.tree.map(lambda x: x[start:end], pytree)
 
         for emitter, sub_emitter_state, index_start, index_end in zip(
             self.emitters,
@@ -193,7 +191,7 @@ class MultiEmitter(Emitter):
             # update only with the data of the emitted genotypes
             else:
                 # extract relevant data
-                sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree_util.tree_map(
+                sub_gen, sub_fit, sub_desc, sub_extra_scores = jax.tree.map(
                     partial(_get_sub_pytree, start=index_start, end=index_end),
                     (
                         genotypes,

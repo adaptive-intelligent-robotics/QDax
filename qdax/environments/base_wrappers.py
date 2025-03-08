@@ -28,12 +28,12 @@ class QDEnv(Env):
 
     @property
     @abstractmethod
-    def behavior_descriptor_length(self) -> int:
+    def descriptor_length(self) -> int:
         pass
 
     @property
     @abstractmethod
-    def behavior_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
+    def descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
         pass
 
     @property
@@ -76,12 +76,12 @@ class QDWrapper(QDEnv):
         return self.env.state_descriptor_limits
 
     @property
-    def behavior_descriptor_length(self) -> int:
-        return self.env.behavior_descriptor_length
+    def descriptor_length(self) -> int:
+        return self.env.descriptor_length
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
-        return self.env.behavior_descriptor_limits
+    def descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
+        return self.env.descriptor_limits
 
     @property
     def name(self) -> str:

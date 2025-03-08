@@ -110,8 +110,8 @@ def test_wrapper(env_name: str) -> None:
     print("Observation size: ", env.observation_size)
     print("Action size: ", env.action_size)
 
-    random_key = jax.random.PRNGKey(seed)
-    init_state = env.reset(random_key)
+    key = jax.random.key(seed)
+    init_state = env.reset(key)
 
     joint_angle = jp.concatenate(
         [joint.angle_vel(init_state.qp)[0] for joint in env.sys.joints]

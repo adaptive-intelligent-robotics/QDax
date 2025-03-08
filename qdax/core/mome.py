@@ -26,8 +26,8 @@ class MOME(MAPElites):
         genotypes: jnp.ndarray,
         centroids: Centroid,
         pareto_front_max_length: int,
-        random_key: RNGKey,
-    ) -> Tuple[MOMERepertoire, Optional[EmitterState], RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[MOMERepertoire, Optional[EmitterState]]:
         """Initialize a MOME grid with an initial population of genotypes. Requires
         the definition of centroids that can be computed with any method such as
         CVT or Euclidean mapping.
@@ -37,16 +37,15 @@ class MOME(MAPElites):
             centroids: centroids of the repertoire.
             pareto_front_max_length: maximum size of the pareto front. This is
                 necessary to respect jax.jit fixed shape size constraint.
-            random_key: a random key to handle stochasticity.
+            key: a random key to handle stochasticity.
 
         Returns:
             The initial repertoire and emitter state, and a new random key.
         """
 
         # first score
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
-            genotypes, random_key
-        )
+        key, subkey = jax.random.split(key)
+        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
 
         # init the repertoire
         repertoire = MOMERepertoire.init(
@@ -59,8 +58,9 @@ class MOME(MAPElites):
         )
 
         # get initial state of the emitter
-        emitter_state, random_key = self._emitter.init(
-            random_key=random_key,
+        key, subkey = jax.random.split(key)
+        emitter_state = self._emitter.init(
+            key=subkey,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -68,4 +68,4 @@ class MOME(MAPElites):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state, random_key
+        return repertoire, emitter_state

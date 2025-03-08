@@ -58,8 +58,8 @@ class MELS(MAPElites):
         self,
         genotypes: Genotype,
         centroids: Centroid,
-        random_key: RNGKey,
-    ) -> Tuple[MELSRepertoire, Optional[EmitterState], RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[MELSRepertoire, Optional[EmitterState]]:
         """Initialize a MAP-Elites Low-Spread repertoire with an initial
         population of genotypes. Requires the definition of centroids that can
         be computed with any method such as CVT or Euclidean mapping.
@@ -68,16 +68,15 @@ class MELS(MAPElites):
             genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
             centroids: tessellation centroids of shape (batch_size, num_descriptors)
-            random_key: a random key used for stochastic operations.
+            key: a random key used for stochastic operations.
 
         Returns:
             A tuple of (initialized MAP-Elites Low-Spread repertoire, initial emitter
             state, JAX random key).
         """
         # score initial genotypes
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
-            genotypes, random_key
-        )
+        key, subkey = jax.random.split(key)
+        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
 
         # init the repertoire
         repertoire = MELSRepertoire.init(
@@ -89,8 +88,9 @@ class MELS(MAPElites):
         )
 
         # get initial state of the emitter
-        emitter_state, random_key = self._emitter.init(
-            random_key=random_key,
+        key, subkey = jax.random.split(key)
+        emitter_state = self._emitter.init(
+            key=subkey,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -107,4 +107,4 @@ class MELS(MAPElites):
             descriptors=descriptors,
             extra_scores=extra_scores,
         )
-        return repertoire, emitter_state, random_key
+        return repertoire, emitter_state

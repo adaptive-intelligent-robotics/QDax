@@ -2,7 +2,7 @@
 
 [PBT](https://arxiv.org/abs/1711.09846) is optimization method to jointly optimise a population of models and their hyperparameters to maximize performance.
 
-To use PBT in QDax to train SAC, one can use the two following components (see [examples](../../examples/sac_pbt.ipynb) to see how to use the components appropriatly):
+To use PBT in QDax to train SAC, one can use the two following components (see [examples](../../examples/sac_pbt.ipynb) to see how to use the components appropriately):
 
 ::: qdax.baselines.sac_pbt.PBTSAC
 

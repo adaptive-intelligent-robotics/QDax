@@ -28,9 +28,7 @@ class GeneticAlgorithm:
 
     def __init__(
         self,
-        scoring_function: Callable[
-            [Genotype, RNGKey], Tuple[Fitness, ExtraScores, RNGKey]
-        ],
+        scoring_function: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]],
         emitter: Emitter,
         metrics_function: Callable[[GARepertoire], Metrics],
     ) -> None:
@@ -40,23 +38,22 @@ class GeneticAlgorithm:
 
     @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
-        self, genotypes: Genotype, population_size: int, random_key: RNGKey
-    ) -> Tuple[GARepertoire, Optional[EmitterState], RNGKey]:
+        self, genotypes: Genotype, population_size: int, key: RNGKey
+    ) -> Tuple[GARepertoire, Optional[EmitterState]]:
         """Initialize a GARepertoire with an initial population of genotypes.
 
         Args:
             genotypes: the initial population of genotypes
             population_size: the maximal size of the repertoire
-            random_key: a random key to handle stochastic operations
+            key: a random key to handle stochastic operations
 
         Returns:
             The initial repertoire, an initial emitter state and a new random key.
         """
 
         # score initial genotypes
-        fitnesses, extra_scores, random_key = self._scoring_function(
-            genotypes, random_key
-        )
+        key, subkey = jax.random.split(key)
+        fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
 
         # init the repertoire
         repertoire = GARepertoire.init(
@@ -66,8 +63,9 @@ class GeneticAlgorithm:
         )
 
         # get initial state of the emitter
-        emitter_state, random_key = self._emitter.init(
-            random_key=random_key,
+        key, subkey = jax.random.split(key)
+        emitter_state = self._emitter.init(
+            key=subkey,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -75,15 +73,15 @@ class GeneticAlgorithm:
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state, random_key
+        return repertoire, emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         repertoire: GARepertoire,
         emitter_state: Optional[EmitterState],
-        random_key: RNGKey,
-    ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics]:
         """
         Performs one iteration of a Genetic algorithm.
         1. A batch of genotypes is sampled in the repertoire and the genotypes
@@ -94,7 +92,7 @@ class GeneticAlgorithm:
         Args:
             repertoire: a repertoire
             emitter_state: state of the emitter
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
 
         Returns:
             the updated MAP-Elites repertoire
@@ -104,14 +102,12 @@ class GeneticAlgorithm:
         """
 
         # generate offsprings
-        genotypes, extra_info, random_key = self._emitter.emit(
-            repertoire, emitter_state, random_key
-        )
+        key, subkey = jax.random.split(key)
+        genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
 
         # score the offsprings
-        fitnesses, extra_scores, random_key = self._scoring_function(
-            genotypes, random_key
-        )
+        key, subkey = jax.random.split(key)
+        fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
 
         # update the repertoire
         repertoire = repertoire.add(genotypes, fitnesses)
@@ -129,13 +125,13 @@ class GeneticAlgorithm:
         # update the metrics
         metrics = self._metrics_function(repertoire)
 
-        return repertoire, emitter_state, metrics, random_key
+        return repertoire, emitter_state, metrics
 
     @partial(jax.jit, static_argnames=("self",))
     def scan_update(
         self,
         carry: Tuple[GARepertoire, Optional[EmitterState], RNGKey],
-        unused: Any,
+        _: Any,
     ) -> Tuple[Tuple[GARepertoire, Optional[EmitterState], RNGKey], Metrics]:
         """Rewrites the update function in a way that makes it compatible with the
         jax.lax.scan primitive.
@@ -143,15 +139,16 @@ class GeneticAlgorithm:
         Args:
             carry: a tuple containing the repertoire, the emitter state and a
                 random key.
-            unused: unused element, necessary to respect jax.lax.scan API.
+            _: unused element, necessary to respect jax.lax.scan API.
 
         Returns:
             The updated repertoire and emitter state, with a new random key and metrics.
         """
         # iterate over grid
-        repertoire, emitter_state, random_key = carry
-        repertoire, emitter_state, metrics, random_key = self.update(
-            repertoire, emitter_state, random_key
+        repertoire, emitter_state, key = carry
+        key, subkey = jax.random.split(key)
+        repertoire, emitter_state, metrics = self.update(
+            repertoire, emitter_state, subkey
         )
 
-        return (repertoire, emitter_state, random_key), metrics
+        return (repertoire, emitter_state, key), metrics

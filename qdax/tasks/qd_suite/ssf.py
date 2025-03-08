@@ -39,10 +39,10 @@ class SsfV0(QDSuiteTask):
         norm = jnp.linalg.norm(params, ord=2)
         r_2k_plus_1, _, k = self._get_k(params)
         index = jnp.floor(norm / r_2k_plus_1)
-        bd = jax.lax.cond(index == 0.0, lambda: norm, lambda: r_2k_plus_1)
+        descriptor = jax.lax.cond(index == 0.0, lambda: norm, lambda: r_2k_plus_1)
         constant_fitness = jnp.asarray(1.0)
-        bd = jnp.asarray(bd).reshape((self.get_descriptor_size(),))
-        return constant_fitness, bd
+        descriptor = jnp.asarray(descriptor).reshape((self.get_descriptor_size(),))
+        return constant_fitness, descriptor
 
     def get_descriptor_size(self) -> int:
         """

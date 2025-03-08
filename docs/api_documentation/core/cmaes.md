@@ -1,3 +1,3 @@
 # CMAES class
 
-::: qdax.core.cmaes.CMAES
+::: qdax.baselines.cmaes.CMAES

@@ -28,13 +28,12 @@ class NSGA2(GeneticAlgorithm):
 
     @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
-        self, genotypes: Genotype, population_size: int, random_key: RNGKey
-    ) -> Tuple[NSGA2Repertoire, Optional[EmitterState], RNGKey]:
+        self, genotypes: Genotype, population_size: int, key: RNGKey
+    ) -> Tuple[NSGA2Repertoire, Optional[EmitterState]]:
 
         # score initial genotypes
-        fitnesses, extra_scores, random_key = self._scoring_function(
-            genotypes, random_key
-        )
+        key, subkey = jax.random.split(key)
+        fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
 
         # init the repertoire
         repertoire = NSGA2Repertoire.init(
@@ -44,8 +43,9 @@ class NSGA2(GeneticAlgorithm):
         )
 
         # get initial state of the emitter
-        emitter_state, random_key = self._emitter.init(
-            random_key=random_key,
+        key, subkey = jax.random.split(key)
+        emitter_state = self._emitter.init(
+            key=subkey,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -62,4 +62,4 @@ class NSGA2(GeneticAlgorithm):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state, random_key
+        return repertoire, emitter_state
