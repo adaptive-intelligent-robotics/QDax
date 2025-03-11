@@ -13,7 +13,7 @@ import jax
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 from qdax.core.containers.nsga2_repertoire import NSGA2Repertoire
 from qdax.core.emitters.emitter import EmitterState
-from qdax.custom_types import Genotype, RNGKey
+from qdax.custom_types import Genotype, Metrics, RNGKey
 
 
 class NSGA2(GeneticAlgorithm):
@@ -29,7 +29,7 @@ class NSGA2(GeneticAlgorithm):
     @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
         self, genotypes: Genotype, population_size: int, key: RNGKey
-    ) -> Tuple[NSGA2Repertoire, Optional[EmitterState]]:
+    ) -> Tuple[NSGA2Repertoire, Optional[EmitterState], Metrics]:
 
         # score initial genotypes
         key, subkey = jax.random.split(key)
@@ -62,4 +62,7 @@ class NSGA2(GeneticAlgorithm):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics

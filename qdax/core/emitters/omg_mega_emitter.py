@@ -1,11 +1,12 @@
 from functools import partial
-from typing import Tuple
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -67,6 +68,7 @@ class OMGMEGAEmitter(Emitter):
         sigma_g: float,
         num_descriptors: int,
         centroids: Centroid,
+        selector: Optional[Selector] = None,
     ):
         """Creates an instance of the OMGMEGAEmitter class.
 
@@ -89,6 +91,8 @@ class OMGMEGAEmitter(Emitter):
         self._batch_size = batch_size
         self._centroids = centroids
         self._num_descriptors = num_descriptors
+
+        self._selector = selector
 
     def init(
         self,
@@ -160,13 +164,16 @@ class OMGMEGAEmitter(Emitter):
         """
         # sample genotypes
         key, subkey = jax.random.split(key)
-        genotypes = repertoire.sample(subkey, num_samples=self._batch_size)
 
-        # sample gradients - use the same random key for sampling
-        # See class docstrings for discussion about this choice
-        key, subkey = jax.random.split(key)
-        gradients = emitter_state.gradients_repertoire.sample(
-            subkey, num_samples=self._batch_size
+        size_repertoire = repertoire.fitnesses.shape[0]
+        repertoire_indexes = repertoire.replace(genotypes=jnp.arange(size_repertoire))
+        indexes_selected = repertoire_indexes.select(
+            subkey, num_samples=self._batch_size, selector=self._selector
+        ).genotypes
+
+        genotypes = jax.tree.map(lambda x: x[indexes_selected], repertoire.genotypes)
+        gradients = jax.tree.map(
+            lambda x: x[indexes_selected], emitter_state.gradients_repertoire.genotypes
         )
 
         fitness_gradients = jax.tree.map(

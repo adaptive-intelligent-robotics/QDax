@@ -126,7 +126,9 @@ class AURORA:
         l_value: jnp.ndarray,
         max_size: int,
         key: RNGKey,
-    ) -> Tuple[UnstructuredRepertoire, Optional[EmitterState], AuroraExtraInfo]:
+    ) -> Tuple[
+        UnstructuredRepertoire, Optional[EmitterState], Metrics, AuroraExtraInfo
+    ]:
         """Initialize an unstructured repertoire with an initial population of
         genotypes. Also performs the first training of the AURORA encoder.
 
@@ -170,7 +172,9 @@ class AURORA:
         max_size: int,
         key: RNGKey,
         extra_scores: Optional[ExtraScores] = None,
-    ) -> Tuple[UnstructuredRepertoire, Optional[EmitterState], AuroraExtraInfo]:
+    ) -> Tuple[
+        UnstructuredRepertoire, Optional[EmitterState], Metrics, AuroraExtraInfo
+    ]:
         if extra_scores is None:
             extra_scores = {}
 
@@ -202,7 +206,10 @@ class AURORA:
             repertoire, aurora_extra_info.model_params, iteration=0, key=key
         )
 
-        return repertoire, emitter_state, updated_aurora_extra_info
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics, updated_aurora_extra_info
 
     @partial(jax.jit, static_argnames=("self",))
     def update(

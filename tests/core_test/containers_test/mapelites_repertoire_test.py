@@ -36,7 +36,7 @@ def test_mapelites_repertoire() -> None:
     pytest.assume(jnp.allclose(centroids, expected_centroids, atol=1e-6))
 
     # create an instance
-    repertoire = MapElitesRepertoire(
+    repertoire = MapElitesRepertoire.init(
         genotypes=jnp.zeros(shape=(num_centroids, genotype_size)),
         fitnesses=jnp.ones(shape=(num_centroids,)) * (-jnp.inf),
         descriptors=jnp.zeros(shape=(num_centroids, num_descriptors)),
@@ -75,5 +75,7 @@ def test_mapelites_repertoire() -> None:
 
     # check values
     pytest.assume(jnp.allclose(repertoire.genotypes, expected_genotypes, atol=1e-6))
-    pytest.assume(jnp.allclose(repertoire.fitnesses, expected_fitnesses, atol=1e-6))
+    pytest.assume(
+        jnp.allclose(repertoire.fitnesses.ravel(), expected_fitnesses, atol=1e-6)
+    )
     pytest.assume(jnp.allclose(repertoire.descriptors, expected_descriptors, atol=1e-6))

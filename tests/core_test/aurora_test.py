@@ -184,7 +184,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
     # init step of the aurora algorithm
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state, aurora_extra_info = aurora.init(
+    repertoire, emitter_state, init_metrics, aurora_extra_info = aurora.init(
         init_variables,
         aurora_extra_info,
         jnp.asarray(l_value_init),
@@ -384,7 +384,7 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
     fitnesses, descriptors, extra_scores = aurora_scoring_fn(init_variables, subkey)
 
     # Compute initial repertoire and emitter state
-    repertoire, emitter_state, aurora_extra_info = aurora.init_ask_tell(
+    repertoire, emitter_state, metrics, aurora_extra_info = aurora.init_ask_tell(
         genotypes=init_variables,
         fitnesses=fitnesses,
         descriptors=descriptors,
