@@ -29,8 +29,6 @@ from qdax.custom_types import (
 )
 from qdax.environments.base_wrappers import QDEnv
 
-# print("hello")
-
 
 @dataclass
 class DiversityPGConfig(QualityPGConfig):
