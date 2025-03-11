@@ -159,7 +159,9 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
             repertoire_init=_repertoire_init,
         )
         key, subkey = jax.random.split(key)
-        repertoire, emitter_state = mome.init(genotypes, centroids, subkey)
+        repertoire, emitter_state, init_metrics = mome.init(
+            genotypes, centroids, subkey
+        )
     else:
         mome = MOME(
             scoring_function=scoring_fn,
@@ -169,7 +171,9 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
         )
 
         key, subkey = jax.random.split(key)
-        repertoire, emitter_state = mome.init(genotypes, centroids, subkey)
+        repertoire, emitter_state, init_metrics = mome.init(
+            genotypes, centroids, subkey
+        )
 
     # Run the algorithm
     for _ in range(num_iterations):
