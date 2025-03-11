@@ -28,9 +28,6 @@ class MELS(MAPElites):
     The same scoring function can be passed into both MAPElites and this class.
     We have overridden __init__ such that it takes in the scoring function and
     wraps it such that every solution is evaluated `num_samples` times.
-
-    We also overrode the init method to use the MELSRepertoire instead of
-    MapElitesRepertoire.
     """
 
     def __init__(

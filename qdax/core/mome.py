@@ -19,9 +19,14 @@ from qdax.custom_types import (
 class MOME(MAPElites):
     """Implements Multi-Objectives MAP Elites.
 
-    Note: most functions are inherited from MAPElites. The only function
-    that had to be overwritten is the init function as it has to take
-    into account the specificities of the the Multi Objective repertoire.
+    Most methods in this class are inherited from MAPElites.
+
+    The same scoring function can be passed into both MAPElites and this class.
+    We have overridden __init__ such that it takes into account the specificities
+    of the Multi-Objective repertoire, particularly the pareto_front_max_length.
+    In particular, we create a wrapper around the provided repertoire_init function
+    to properly handle the pareto_front_max_length parameter when initializing
+    the MOMERepertoire.
     """
 
     def __init__(
