@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 from qdax.core.containers.mels_repertoire import MELSRepertoire
 from qdax.core.emitters.emitter import Emitter
@@ -42,7 +42,8 @@ class MELS(MAPElites):
         metrics_function: Callable[[MELSRepertoire], Metrics],
         num_samples: int,
         repertoire_init: Callable[
-            [Genotype, Fitness, Descriptor, Centroid, ExtraScores], MELSRepertoire
+            [Genotype, Fitness, Descriptor, Centroid, Optional[ExtraScores]],
+            MELSRepertoire,
         ] = MELSRepertoire.init,
     ) -> None:
         self._scoring_function = partial(

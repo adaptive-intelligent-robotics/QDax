@@ -46,7 +46,7 @@ class MAPElites:
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
         repertoire_init: Callable[
-            [Genotype, Fitness, Descriptor, Centroid, ExtraScores],
+            [Genotype, Fitness, Descriptor, Centroid, Optional[ExtraScores]],
             MapElitesRepertoire,
         ] = MapElitesRepertoire.init,
     ) -> None:
@@ -76,11 +76,14 @@ class MAPElites:
         Returns:
             An initialized MAP-Elite repertoire with the initial state of the emitter
         """
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # score initial genotypes
         key, subkey = jax.random.split(key)
         (fitnesses, descriptors, extra_scores) = self._scoring_function(
             genotypes, subkey
-        )  # type: ignore
+        )
 
         repertoire, emitter_state = self.init_ask_tell(
             genotypes=genotypes,
@@ -123,12 +126,12 @@ class MAPElites:
         if extra_scores is None:
             extra_scores = {}
         # init the repertoire
-        repertoire = self._repertoire_init(  # type: ignore
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-            extra_scores=extra_scores,
+        repertoire = self._repertoire_init(
+            genotypes,
+            fitnesses,
+            descriptors,
+            centroids,
+            extra_scores,
         )
 
         # get initial state of the emitter
@@ -170,6 +173,9 @@ class MAPElites:
             metrics about the updated repertoire
             a new jax PRNG key
         """
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # generate offsprings with the emitter
         key, subkey = jax.random.split(key)
         genotypes, extra_info = self.ask(repertoire, emitter_state, subkey)
@@ -178,7 +184,7 @@ class MAPElites:
         key, subkey = jax.random.split(key)
         (fitnesses, descriptors, extra_scores) = self._scoring_function(
             genotypes, subkey
-        )  # type: ignore
+        )
 
         repertoire, emitter_state, metrics = self.tell(
             genotypes=genotypes,

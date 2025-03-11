@@ -232,6 +232,10 @@ class AURORA:
             metrics about the updated repertoire
             a new key
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # generate offsprings with the emitter
         key, subkey = jax.random.split(key)
         genotypes, extra_info = self.ask(repertoire, emitter_state, subkey)
@@ -241,7 +245,7 @@ class AURORA:
         fitnesses, descriptors, extra_scores = self._scoring_function(
             genotypes,
             subkey,
-        )  # type: ignore
+        )
 
         repertoire, emitter_state, metrics = self.tell(
             genotypes=genotypes,
@@ -321,7 +325,7 @@ class AURORA:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            extra_scores=extra_scores | extra_info,  # type: ignore
+            extra_scores={**extra_scores, **extra_info},
         )
 
         # update the metrics

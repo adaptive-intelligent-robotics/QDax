@@ -1,7 +1,7 @@
 """Tests that MOME is running."""
 
 from functools import partial
-from typing import Tuple
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -16,7 +16,14 @@ from qdax.core.emitters.mutation_operators import (
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.mome import MOME
-from qdax.custom_types import Descriptor, ExtraScores, Fitness, RNGKey
+from qdax.custom_types import (
+    Centroid,
+    Descriptor,
+    ExtraScores,
+    Fitness,
+    Genotype,
+    RNGKey,
+)
 from qdax.utils.metrics import default_moqd_metrics
 
 
@@ -127,15 +134,29 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
     )
 
     if custom_repertoire:
-        repertoire_init = partial(
-            MOMERepertoire.init,
-            pareto_front_max_length=pareto_front_max_length,
-        )
+        # This is a workaround to make the repertoire_init function that works
+        # with the pareto_front_max_length argument.
+        def _repertoire_init(
+            genotypes: Genotype,
+            fitnesses: Fitness,
+            descriptors: Descriptor,
+            centroids: Centroid,
+            extra_scores: Optional[ExtraScores] = None,
+        ) -> MOMERepertoire:
+            return MOMERepertoire.init(
+                genotypes,
+                fitnesses,
+                descriptors,
+                centroids,
+                pareto_front_max_length,
+                extra_scores,
+            )
+
         mome = MAPElites(
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_function,
-            repertoire_init=repertoire_init,
+            repertoire_init=_repertoire_init,
         )
         key, subkey = jax.random.split(key)
         repertoire, emitter_state = mome.init(genotypes, centroids, subkey)
@@ -144,12 +165,11 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_function,
+            pareto_front_max_length=pareto_front_max_length,
         )
 
         key, subkey = jax.random.split(key)
-        repertoire, emitter_state = mome.init(
-            genotypes, centroids, pareto_front_max_length, subkey
-        )
+        repertoire, emitter_state = mome.init(genotypes, centroids, subkey)
 
     # Run the algorithm
     for _ in range(num_iterations):
@@ -283,15 +303,28 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
     )
 
     if custom_repertoire:
-        repertoire_init = partial(
-            MOMERepertoire.init,
-            pareto_front_max_length=pareto_front_max_length,
-        )
+
+        def _repertoire_init(
+            genotypes: Genotype,
+            fitnesses: Fitness,
+            descriptors: Descriptor,
+            centroids: Centroid,
+            extra_scores: Optional[ExtraScores] = None,
+        ) -> MOMERepertoire:
+            return MOMERepertoire.init(
+                genotypes,
+                fitnesses,
+                descriptors,
+                centroids,
+                pareto_front_max_length,
+                extra_scores,
+            )
+
         mome = MAPElites(
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_function,
-            repertoire_init=repertoire_init,
+            repertoire_init=_repertoire_init,
         )
         # Evaluate the initial population
         key, subkey = jax.random.split(key)
@@ -310,6 +343,7 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
             scoring_function=scoring_fn,
             emitter=mixing_emitter,
             metrics_function=metrics_function,
+            pareto_front_max_length=pareto_front_max_length,
         )
 
         # Evaluate the initial population
@@ -321,7 +355,6 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
-            pareto_front_max_length=pareto_front_max_length,
             key=subkey,
             extra_scores=extra_scores,
         )
