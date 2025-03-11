@@ -326,7 +326,7 @@ def test_mels_ask_tell(env_name: str, batch_size: int, custom_repertoire: bool) 
     fitnesses, descriptors, extra_scores = scoring_fn(init_variables, subkey)
 
     # Compute initial repertoire and emitter state
-    repertoire, emitter_state = mels.init_ask_tell(
+    repertoire, emitter_state, init_metrics = mels.init_ask_tell(
         genotypes=init_variables,
         fitnesses=fitnesses,
         descriptors=descriptors,

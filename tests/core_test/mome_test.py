@@ -330,7 +330,7 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
         key, subkey = jax.random.split(key)
         fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
 
-        repertoire, emitter_state = mome.init_ask_tell(
+        repertoire, emitter_state, init_metrics = mome.init_ask_tell(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
@@ -350,7 +350,7 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
         key, subkey = jax.random.split(key)
         fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
 
-        repertoire, emitter_state = mome.init_ask_tell(
+        repertoire, emitter_state, init_metrics = mome.init_ask_tell(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
