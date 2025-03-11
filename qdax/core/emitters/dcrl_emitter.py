@@ -217,7 +217,7 @@ class DCRLEmitter(Emitter):
         return jnp.exp(
             -jnp.linalg.norm(descs_1 - descs_2, axis=-1) / self._config.lengthscale
         )
-    
+
     @partial(jax.jit, static_argnames=("self",))
     def _normalize_desc(self, desc: Descriptor) -> Descriptor:
         return (
@@ -292,7 +292,7 @@ class DCRLEmitter(Emitter):
         key, subkey = jax.random.split(key)
         sub_repertoire = repertoire.select(
             key, self._config.dcrl_batch_size, selector=self._selector
-            )
+        )
         parents_pg = sub_repertoire.genotypes
         descs_pg = sub_repertoire.descriptors
         genotypes_pg = self.emit_pg(emitter_state, parents_pg, descs_pg)
@@ -300,10 +300,8 @@ class DCRLEmitter(Emitter):
         # Actor injection emitter
         descs_ai = repertoire.select(
             subkey, self._config.ai_batch_size, selector=self._selector
-            ).descriptors
-        descs_ai = descs_ai.reshape(
-            descs_ai.shape[0], self._env.descriptor_length
-        )
+        ).descriptors
+        descs_ai = descs_ai.reshape(descs_ai.shape[0], self._env.descriptor_length)
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
 
         # Concatenate PG and AI genotypes
@@ -491,7 +489,6 @@ class DCRLEmitter(Emitter):
         )
 
         return final_emitter_state  # type: ignore
-    
 
     @partial(jax.jit, static_argnames=("self",))
     def _scan_update_critic(
@@ -627,8 +624,7 @@ class DCRLEmitter(Emitter):
 
         # sample transitions
         transitions = emitter_state.replay_buffer.sample(
-            subkey, 
-            self._config.batch_size * (self._config.policy_delay + 1)
+            subkey, self._config.batch_size * (self._config.policy_delay + 1)
         )
         transitions = jax.tree.map(
             lambda x: jnp.reshape(
@@ -691,7 +687,6 @@ class DCRLEmitter(Emitter):
         )
 
         return new_emitter_state, ()
-
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_policy(

@@ -283,4 +283,3 @@ def td3_critic_loss_fn(
     q_loss = jnp.sum(q_losses, axis=-1)
 
     return q_loss
-

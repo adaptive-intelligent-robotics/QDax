@@ -31,6 +31,7 @@ from qdax.environments.base_wrappers import QDEnv
 
 # print("hello")
 
+
 @dataclass
 class DiversityPGConfig(QualityPGConfig):
     """Configuration for DiversityPG Emitter"""
@@ -76,7 +77,6 @@ class DiversityPGEmitter(QualityPGEmitter):
         self._config: DiversityPGConfig = config
         # define scoring function
         self._score_novelty = score_novelty
-
 
     def init(
         self,
@@ -136,7 +136,6 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         return emitter_state
 
-
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
@@ -176,7 +175,7 @@ class DiversityPGEmitter(QualityPGEmitter):
         # add transitions to the replay buffer and archive
         emitter_state = emitter_state.replace(
             replay_buffer=emitter_state.replay_buffer.insert(transitions),
-            archive=emitter_state.archive.insert(transitions.state_desc)
+            archive=emitter_state.archive.insert(transitions.state_desc),
         )
 
         # Conduct Actor-Critic training
@@ -187,7 +186,6 @@ class DiversityPGEmitter(QualityPGEmitter):
         )
 
         return final_emitter_state  # type: ignore
-
 
     @partial(jax.jit, static_argnames=("self",))
     def _scan_actor_critic_training(
@@ -219,7 +217,9 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         # update the rewards - diversity rewards
         state_descriptors = transitions.state_desc
-        diversity_rewards = self._score_novelty(emitter_state.archive, state_descriptors)
+        diversity_rewards = self._score_novelty(
+            emitter_state.archive, state_descriptors
+        )
         transitions = transitions.replace(rewards=diversity_rewards)
 
         transitions = jax.tree.map(

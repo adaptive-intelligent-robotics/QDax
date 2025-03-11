@@ -13,15 +13,13 @@ import optax
 from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
-from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.networks import QModule
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
 from qdax.environments.base_wrappers import QDEnv
-
-
 
 
 @dataclass
@@ -106,7 +104,6 @@ class QualityPGEmitter(Emitter):
         self._policies_optimizer = optax.adam(
             learning_rate=self._config.policy_learning_rate
         )
-
 
     @property
     def batch_size(self) -> int:
@@ -223,7 +220,7 @@ class QualityPGEmitter(Emitter):
         mutation_pg_batch_size = int(batch_size - 1)
         parents = repertoire.select(
             key, mutation_pg_batch_size, selector=self._selector
-            ).genotypes
+        ).genotypes
 
         # apply the pg mutation
         offsprings_pg = self.emit_pg(emitter_state, parents)
@@ -243,7 +240,6 @@ class QualityPGEmitter(Emitter):
         )
 
         return genotypes, {}
-
 
     @partial(
         jax.jit,
@@ -369,7 +365,6 @@ class QualityPGEmitter(Emitter):
         )
 
         return final_emitter_state  # type: ignore
-
 
     @partial(jax.jit, static_argnames=("self",))
     def _scan_update_critic(
@@ -561,7 +556,6 @@ class QualityPGEmitter(Emitter):
         )
 
         return new_emitter_state, ()
-
 
     @partial(jax.jit, static_argnames=("self",))
     def _update_policy(
