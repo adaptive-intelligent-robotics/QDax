@@ -40,8 +40,12 @@ class DistributedMAPElites(MAPElites):
             An initialized MAP-Elite repertoire with the initial state of the emitter,
             and a random key.
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # score initial genotypes
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, key)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(genotypes, key)
 
         # gather across all devices
         (
@@ -114,13 +118,19 @@ class DistributedMAPElites(MAPElites):
             metrics about the updated repertoire
             a new jax PRNG key
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # generate offsprings with the emitter
         key, subkey = jax.random.split(key)
         genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
 
         # scores the offsprings
         key, subkey = jax.random.split(key)
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, subkey
+        )
 
         # gather across all devices
         (

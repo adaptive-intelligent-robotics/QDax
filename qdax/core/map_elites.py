@@ -40,15 +40,20 @@ class MAPElites:
 
     def __init__(
         self,
-        scoring_function: Callable[
-            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores]
+        scoring_function: Optional[
+            Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores]]
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
+        repertoire_init: Callable[
+            [Genotype, Fitness, Descriptor, Centroid, Optional[ExtraScores]],
+            MapElitesRepertoire,
+        ] = MapElitesRepertoire.init,
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
+        self._repertoire_init = repertoire_init
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
@@ -69,20 +74,64 @@ class MAPElites:
             key: a random key used for stochastic operations.
 
         Returns:
-            An initialized MAP-Elite repertoire with the initial state of the emitter,
-            and a random key.
+            An initialized MAP-Elite repertoire with the initial state of the emitter
         """
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # score initial genotypes
         key, subkey = jax.random.split(key)
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, subkey
+        )
 
-        # init the repertoire
-        repertoire = MapElitesRepertoire.init(
+        repertoire, emitter_state, metrics = self.init_ask_tell(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
+            key=key,
             extra_scores=extra_scores,
+        )
+        return repertoire, emitter_state, metrics
+
+    @partial(jax.jit, static_argnames=("self",))
+    def init_ask_tell(
+        self,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        centroids: Centroid,
+        key: RNGKey,
+        extra_scores: Optional[ExtraScores] = None,
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
+        """
+        Initialize a Map-Elites repertoire with an initial population of genotypes
+        and their evaluations.
+        Requires the definition of centroids that can be computed with any method
+        such as CVT or Euclidean mapping.
+
+        Args:
+            genotypes: initial genotypes, pytree in which leaves
+                have shape (batch_size, num_features)
+            fitnesses: initial fitnesses of the genotypes
+            descriptors: initial descriptors of the genotypes
+            centroids: tessellation centroids of shape (batch_size, num_descriptors)
+            key: a random key used for stochastic operations.
+            extra_scores: extra scores of the initial genotypes (optional)
+
+        Returns:
+            An initialized MAP-Elite repertoire with the initial state of the emitter.
+        """
+        if extra_scores is None:
+            extra_scores = {}
+        # init the repertoire
+        repertoire = self._repertoire_init(
+            genotypes,
+            fitnesses,
+            descriptors,
+            centroids,
+            extra_scores,
         )
 
         # get initial state of the emitter
@@ -127,30 +176,28 @@ class MAPElites:
             metrics about the updated repertoire
             a new jax PRNG key
         """
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # generate offsprings with the emitter
         key, subkey = jax.random.split(key)
-        genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
+        genotypes, extra_info = self.ask(repertoire, emitter_state, subkey)
 
         # scores the offsprings
         key, subkey = jax.random.split(key)
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, subkey
+        )
 
-        # add genotypes in the repertoire
-        repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
-
-        # update emitter state after scoring is made
-        emitter_state = self._emitter.state_update(
-            emitter_state=emitter_state,
-            repertoire=repertoire,
+        repertoire, emitter_state, metrics = self.tell(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            extra_scores={**extra_scores, **extra_info},
+            repertoire=repertoire,
+            emitter_state=emitter_state,
+            extra_scores=extra_scores,
+            extra_info=extra_info,
         )
-
-        # update the metrics
-        metrics = self._metrics_function(repertoire)
-
         return repertoire, emitter_state, metrics
 
     @partial(jax.jit, static_argnames=("self",))
@@ -183,3 +230,66 @@ class MAPElites:
         )
 
         return (repertoire, emitter_state, key), metrics
+
+    @partial(jax.jit, static_argnames=("self",))
+    def ask(
+        self,
+        repertoire: MapElitesRepertoire,
+        emitter_state: Optional[EmitterState],
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
+        """
+        Ask the emitter to generate a new batch of genotypes.
+
+        Args:
+            repertoire: the MAP-Elites repertoire
+            emitter_state: state of the emitter
+            key: a jax PRNG random key
+        """
+        key, subkey = jax.random.split(key)
+        genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
+        return genotypes, extra_info
+
+    @partial(jax.jit, static_argnames=("self",))
+    def tell(
+        self,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        repertoire: MapElitesRepertoire,
+        emitter_state: EmitterState,
+        extra_scores: Optional[ExtraScores] = None,
+        extra_info: Optional[ExtraScores] = None,
+    ) -> Tuple[MapElitesRepertoire, EmitterState, Metrics]:
+        """
+        Add new genotypes to the repertoire and update the emitter state.
+
+        Args:
+            genotypes: new genotypes to add to the repertoire
+            fitnesses: fitnesses of the new genotypes
+            descriptors: descriptors of the new genotypes
+            extra_scores: extra scores of the new genotypes
+            repertoire: the MAP-Elites repertoire
+            emitter_state: state of the emitter
+        """
+        if extra_scores is None:
+            extra_scores = {}
+        if extra_info is None:
+            extra_info = {}
+        # add genotypes in the repertoire
+        repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
+
+        # update emitter state after scoring is made
+        emitter_state = self._emitter.state_update(
+            emitter_state=emitter_state,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores={**extra_scores, **extra_info},
+        )
+
+        # update the metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics
