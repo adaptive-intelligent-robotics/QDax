@@ -2,12 +2,9 @@ absl-py==1.0.0
 brax==0.10.4
 chex==0.1.86
 flax==0.8.5
-gym==0.26.2
-ipython
 jax==0.4.28
 jaxlib==0.4.28
 jumanji==0.3.1
-jupyter
 numpy==1.26.4
 optax==0.1.9
 protobuf==3.19.5

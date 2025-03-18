@@ -21,7 +21,7 @@ class DistributedMAPElites(MAPElites):
         genotypes: Genotype,
         centroids: Centroid,
         key: RNGKey,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState]]:
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
@@ -40,8 +40,12 @@ class DistributedMAPElites(MAPElites):
             An initialized MAP-Elite repertoire with the initial state of the emitter,
             and a random key.
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # score initial genotypes
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, key)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(genotypes, key)
 
         # gather across all devices
         (
@@ -81,7 +85,10 @@ class DistributedMAPElites(MAPElites):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
+
+        return repertoire, emitter_state, metrics
 
     @partial(jax.jit, static_argnames=("self",))
     def update(
@@ -111,13 +118,19 @@ class DistributedMAPElites(MAPElites):
             metrics about the updated repertoire
             a new jax PRNG key
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # generate offsprings with the emitter
         key, subkey = jax.random.split(key)
         genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
 
         # scores the offsprings
         key, subkey = jax.random.split(key)
-        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, subkey
+        )
 
         # gather across all devices
         (
