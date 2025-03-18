@@ -277,6 +277,10 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
 
     log_freq = 5
 
+    # Custom observations key that will be used to store the observations in the
+    # extra_scores of the repertoire
+    custom_aurora_observations_key = "custom_observations_key"
+
     # Init a random key
     key = jax.random.key(seed)
 
@@ -317,6 +321,7 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
     aurora_scoring_fn = get_aurora_scoring_fn(
         scoring_fn=scoring_fn,
         observation_extractor_fn=observation_extractor_fn,
+        observations_key=custom_aurora_observations_key,
     )
 
     # Define emitter
@@ -366,6 +371,7 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
         metrics_function=metrics_fn,
         encoder_function=encoder_fn,
         training_function=train_fn,
+        observations_key=custom_aurora_observations_key,
     )
 
     # init the model params
