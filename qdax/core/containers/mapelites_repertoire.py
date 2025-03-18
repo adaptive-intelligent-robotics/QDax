@@ -5,11 +5,10 @@ algorithm as well as several variants."""
 from __future__ import annotations
 
 import warnings
-from typing import Callable, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
-from jax.flatten_util import ravel_pytree
 from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
@@ -161,30 +160,6 @@ class MapElitesRepertoire(GARepertoire):
     descriptors: Descriptor
     centroids: Centroid
 
-    def save(self, path: str = "./") -> None:
-        """Saves the repertoire on disk in the form of .npy files.
-
-        Flattens the genotypes to store it with .npy format. Supposes that
-        a user will have access to the reconstruction function when loading
-        the genotypes.
-
-        Args:
-            path: Path where the data will be saved. Defaults to "./".
-        """
-
-        def flatten_genotype(genotype: Genotype) -> jnp.ndarray:
-            flatten_genotype, _ = ravel_pytree(genotype)
-            return flatten_genotype
-
-        # flatten all the genotypes
-        flat_genotypes = jax.vmap(flatten_genotype)(self.genotypes)
-
-        # save data
-        jnp.save(path + "genotypes.npy", flat_genotypes)
-        jnp.save(path + "fitnesses.npy", self.fitnesses)
-        jnp.save(path + "descriptors.npy", self.descriptors)
-        jnp.save(path + "centroids.npy", self.centroids)
-
     def select(
         self,
         key: RNGKey,
@@ -195,33 +170,6 @@ class MapElitesRepertoire(GARepertoire):
             selector = UniformSelector(select_with_replacement=True)
         repertoire = selector.select(self, key, num_samples)
         return repertoire
-
-    @classmethod
-    def load(cls, reconstruction_fn: Callable, path: str = "./") -> MapElitesRepertoire:
-        """Loads a MAP Elites Repertoire.
-
-        Args:
-            reconstruction_fn: Function to reconstruct a PyTree
-                from a flat array.
-            path: Path where the data is saved. Defaults to "./".
-
-        Returns:
-            A MAP Elites Repertoire.
-        """
-
-        flat_genotypes = jnp.load(path + "genotypes.npy")
-        genotypes = jax.vmap(reconstruction_fn)(flat_genotypes)
-
-        fitnesses = jnp.load(path + "fitnesses.npy")
-        descriptors = jnp.load(path + "descriptors.npy")
-        centroids = jnp.load(path + "centroids.npy")
-
-        return cls(
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-        )
 
     @jax.jit
     def add(
