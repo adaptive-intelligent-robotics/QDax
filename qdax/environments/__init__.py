@@ -126,6 +126,7 @@ def create(
     eval_metrics: bool = False,
     fixed_init_state: bool = False,
     qdax_wrappers_kwargs: Optional[List] = None,
+    legacy_spring: bool = True,
     **kwargs: Any,
 ) -> Union[Env, QDEnv]:
     """Creates an Env with a specified brax system.
@@ -134,13 +135,13 @@ def create(
     """
 
     if env_name in _envs.keys():
-        env = _envs[env_name](legacy_spring=True, **kwargs)
+        env = _envs[env_name](legacy_spring=legacy_spring, **kwargs)
     elif env_name in _qdax_envs.keys():
         env = _qdax_envs[env_name](**kwargs)
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
         if base_env_name in _envs.keys():
-            env = _envs[base_env_name](legacy_spring=True, **kwargs)
+            env = _envs[base_env_name](legacy_spring=legacy_spring, **kwargs)
         elif base_env_name in _qdax_envs.keys():
             env = _qdax_envs[base_env_name](**kwargs)  # type: ignore
     else:
