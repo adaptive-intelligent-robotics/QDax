@@ -12,6 +12,7 @@ import jax
 import optax
 from jax import numpy as jnp
 
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.emitters.repertoire_selectors.selector import Selector
@@ -124,7 +125,7 @@ class QualityPGEmitter(Emitter):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -135,10 +136,10 @@ class QualityPGEmitter(Emitter):
 
         Args:
             genotypes: The initial population.
-            random_key: A random key.
+            key: A random key.
 
         Returns:
-            The initial state of the PGAMEEmitter, a new random key.
+            The initial state of the PGAMEEmitter.
         """
 
         observation_size = self._env.observation_size
@@ -146,16 +147,16 @@ class QualityPGEmitter(Emitter):
         descriptor_size = self._env.state_descriptor_length
 
         # Initialise critic, greedy actor and population
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         fake_obs = jnp.zeros(shape=(observation_size,))
         fake_action = jnp.zeros(shape=(action_size,))
         critic_params = self._critic_network.init(
             subkey, obs=fake_obs, actions=fake_action
         )
-        target_critic_params = jax.tree_util.tree_map(lambda x: x, critic_params)
+        target_critic_params = jax.tree.map(lambda x: x, critic_params)
 
-        actor_params = jax.tree_util.tree_map(lambda x: x[0], genotypes)
-        target_actor_params = jax.tree_util.tree_map(lambda x: x[0], genotypes)
+        actor_params = jax.tree.map(lambda x: x[0], genotypes)
+        target_actor_params = jax.tree.map(lambda x: x[0], genotypes)
 
         # Prepare init optimizer states
         critic_optimizer_state = self._critic_optimizer.init(critic_params)
@@ -188,7 +189,7 @@ class QualityPGEmitter(Emitter):
             target_critic_params=target_critic_params,
             target_actor_params=target_actor_params,
             replay_buffer=replay_buffer,
-            key=random_key,
+            key=key,
         )
 
         return emitter_state
@@ -199,7 +200,7 @@ class QualityPGEmitter(Emitter):
     )
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         emitter_state: QualityPGEmitterState,
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores]:
@@ -211,7 +212,7 @@ class QualityPGEmitter(Emitter):
             key: a random key
 
         Returns:
-            A batch of offspring, the new emitter state and a new key.
+            A batch of offspring, a empty dict for signature.
         """
 
         batch_size = self._config.env_batch_size
@@ -229,11 +230,11 @@ class QualityPGEmitter(Emitter):
         offspring_actor = self.emit_actor(emitter_state)
 
         # add dimension for concatenation
-        offspring_actor = jax.tree_util.tree_map(
+        offspring_actor = jax.tree.map(
             lambda x: jnp.expand_dims(x, axis=0), offspring_actor
         )
         # gather offspring
-        genotypes = jax.tree_util.tree_map(
+        genotypes = jax.tree.map(
             lambda x, y: jnp.concatenate([x, y], axis=0),
             offsprings_pg,
             offspring_actor,

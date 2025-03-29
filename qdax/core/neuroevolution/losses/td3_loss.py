@@ -102,7 +102,7 @@ def make_td3_loss_dc_fn(
     noise_clip: float,
     policy_noise: float,
 ) -> Tuple[
-    Callable[[Params, Params, Transition], jnp.ndarray],
+    Callable[[Params, Params, Descriptor, Transition], jnp.ndarray],
     Callable[[Params, Params, Transition], jnp.ndarray],
     Callable[[Params, Params, Params, Transition, RNGKey], jnp.ndarray],
 ]:
@@ -125,7 +125,7 @@ def make_td3_loss_dc_fn(
     def _policy_loss_fn(
         policy_params: Params,
         critic_params: Params,
-        desc_prime: jnp.ndarray,
+        desc_prime: Descriptor,
         transitions: Transition,
     ) -> jnp.ndarray:
         """Policy loss function for TD3 agent"""
@@ -156,12 +156,11 @@ def make_td3_loss_dc_fn(
         target_actor_params: Params,
         target_critic_params: Params,
         transitions: Transition,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> jnp.ndarray:
         """Descriptor-conditioned critic loss function for TD3 agent"""
         noise = (
-            jax.random.normal(random_key, shape=transitions.actions.shape)
-            * policy_noise
+            jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
         ).clip(-noise_clip, noise_clip)
 
         next_action = (

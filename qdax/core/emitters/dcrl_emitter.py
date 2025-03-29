@@ -11,6 +11,7 @@ import jax
 import optax
 from jax import numpy as jnp
 
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.emitters.repertoire_selectors.selector import Selector
@@ -141,7 +142,7 @@ class DCRLEmitter(Emitter):
             key: A random key.
 
         Returns:
-            The initial state of the PGAMEEmitter, a new random key.
+            The initial state of the PGAMEEmitter
         """
 
         observation_size = jax.tree.leaves(genotypes)[1].shape[1]
@@ -274,7 +275,7 @@ class DCRLEmitter(Emitter):
     )
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: MapElitesRepertoire,
         emitter_state: DCRLEmitterState,
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores]:
@@ -286,12 +287,12 @@ class DCRLEmitter(Emitter):
             key: a random key
 
         Returns:
-            A batch of offspring, the new emitter state and a new key.
+            A batch of offspring with intended descs as extra information
         """
         # PG emitter
-        key, subkey = jax.random.split(key)
+        subkey1, subkey2 = jax.random.split(key)
         sub_repertoire = repertoire.select(
-            key, self._config.dcrl_batch_size, selector=self._selector
+            subkey1, self._config.dcrl_batch_size, selector=self._selector
         )
         parents_pg = sub_repertoire.genotypes
         descs_pg = sub_repertoire.descriptors
@@ -299,7 +300,7 @@ class DCRLEmitter(Emitter):
 
         # Actor injection emitter
         descs_ai = repertoire.select(
-            subkey, self._config.ai_batch_size, selector=self._selector
+            subkey2, self._config.ai_batch_size, selector=self._selector
         ).descriptors
         descs_ai = descs_ai.reshape(descs_ai.shape[0], self._env.descriptor_length)
         genotypes_ai = self.emit_ai(emitter_state, descs_ai)
@@ -693,7 +694,7 @@ class DCRLEmitter(Emitter):
         self,
         policy_params: Params,
         policy_opt_state: optax.OptState,
-        desc_prime: jnp.ndarray,
+        desc_prime: Descriptor,
         transitions: DCRLTransition,
         critic_params: Params,
     ) -> Tuple[Params, optax.OptState]:
