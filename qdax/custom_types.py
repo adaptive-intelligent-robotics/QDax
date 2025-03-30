@@ -1,8 +1,11 @@
 """Defines some types used in QDax"""
 
+from __future__ import annotations
+
 from typing import Dict, Generic, TypeVar, Union
 
 import brax.envs
+import flax
 import jax
 import jax.numpy as jnp
 import jumanji
@@ -47,3 +50,42 @@ Mask: TypeAlias = jnp.ndarray
 # Others
 RNGKey: TypeAlias = jax.Array
 Metrics: TypeAlias = Dict[str, jnp.ndarray]
+
+
+class AuroraExtraInfo(flax.struct.PyTreeNode):
+    """
+    Information specific to the AURORA algorithm.
+
+    Args:
+        model_params: the parameters of the dimensionality reduction model
+    """
+
+    model_params: Params
+
+
+class AuroraExtraInfoNormalization(AuroraExtraInfo):
+    """
+    Information specific to the AURORA algorithm. In particular, it contains
+    the normalization parameters for the observations.
+
+    Args:
+        model_params: the parameters of the dimensionality reduction model
+        mean_observations: the mean of observations
+        std_observations: the std of observations
+    """
+
+    mean_observations: jnp.ndarray
+    std_observations: jnp.ndarray
+
+    @classmethod
+    def create(
+        cls,
+        model_params: Params,
+        mean_observations: jnp.ndarray,
+        std_observations: jnp.ndarray,
+    ) -> AuroraExtraInfoNormalization:
+        return cls(
+            model_params=model_params,
+            mean_observations=mean_observations,
+            std_observations=std_observations,
+        )

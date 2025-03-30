@@ -11,11 +11,8 @@ import pytest
 import qdax.tasks.brax.v1 as environments
 from qdax.core.aurora import AURORA
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.custom_types import Observation
-from qdax.tasks.brax.common.descriptor_extractors import (
-    AuroraExtraInfoNormalization,
-    get_aurora_encoding,
-)
+from qdax.custom_types import AuroraExtraInfoNormalization, Observation
+from qdax.tasks.brax.common.descriptor_extractors import get_aurora_encoding
 from qdax.tasks.brax.v1.env_creators import (
     create_default_brax_task_components,
     get_aurora_scoring_fn,
