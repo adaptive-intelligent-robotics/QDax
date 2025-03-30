@@ -13,9 +13,12 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import DCRLTransition
 from qdax.core.neuroevolution.networks.networks import MLP, MLPDC
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.environments import descriptor_extractor
+from qdax.tasks.brax.v1 import descriptor_extractor
 from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs
-from qdax.tasks.brax.v1.wrappers import ClipRewardWrapper, OffsetRewardWrapper
+from qdax.tasks.brax.v1.wrappers.reward_wrappers import (
+    ClipRewardWrapper,
+    OffsetRewardWrapper,
+)
 from qdax.utils.metrics import default_qd_metrics
 
 

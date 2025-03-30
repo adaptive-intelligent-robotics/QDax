@@ -6,7 +6,7 @@ from brax.v1 import jumpy as jp
 from brax.v1.envs import Env, State, Wrapper
 from google.protobuf import text_format  # type: ignore
 
-from qdax.environments import COG_NAMES
+from qdax.tasks.brax.v1.wrappers.locomotion_wrappers import COG_NAMES
 
 # config of the body of the trap following Brax's config style
 TRAP_CONFIG = """bodies {

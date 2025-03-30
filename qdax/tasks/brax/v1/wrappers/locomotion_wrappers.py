@@ -7,7 +7,7 @@ from brax.v1.physics import config_pb2
 from brax.v1.physics.base import QP, Info
 from brax.v1.physics.system import System
 
-from qdax.tasks.brax.v1.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 FEET_NAMES = {
     "ant": ["$ Body 4", "$ Body 7", "$ Body 10", "$ Body 13"],

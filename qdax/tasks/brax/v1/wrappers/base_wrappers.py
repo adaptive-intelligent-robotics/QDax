@@ -1,45 +1,10 @@
-from abc import abstractmethod
 from typing import Any, Tuple
 
 import jax
 from brax.v1 import jumpy as jp
 from brax.v1.envs import Env, State
 
-
-class QDEnv(Env):
-    """
-    Wrapper for all QD environments.
-    """
-
-    @property
-    @abstractmethod
-    def state_descriptor_length(self) -> int:
-        pass
-
-    @property
-    @abstractmethod
-    def state_descriptor_name(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def state_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
-        pass
-
-    @property
-    @abstractmethod
-    def descriptor_length(self) -> int:
-        pass
-
-    @property
-    @abstractmethod
-    def descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
-        pass
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 
 class QDWrapper(QDEnv):

@@ -15,7 +15,7 @@ from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
-from qdax.tasks.brax.v1.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 
 class PBTEmitterState(EmitterState):
