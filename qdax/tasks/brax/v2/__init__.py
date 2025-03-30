@@ -1,26 +1,19 @@
 import functools
 from typing import Any, Callable, List, Optional, Union
 
-from brax.v1.envs import Env, _envs
-from brax.v1.envs.wrappers import (
-    AutoResetWrapper,
-    EpisodeWrapper,
-    EvalWrapper,
-    VectorWrapper,
-)
+import brax
+from brax.envs.base import Env
+from brax.envs.wrappers import training
 
 from qdax.tasks.brax.common.descriptor_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )
-from qdax.tasks.brax.v1.envs.base_env import QDEnv
-from qdax.tasks.brax.v1.envs.humanoidtrap import HumanoidTrap
-from qdax.tasks.brax.v1.envs.pointmaze import PointMaze
-from qdax.tasks.brax.v1.wrappers.base_wrappers import StateDescriptorResetWrapper
-from qdax.tasks.brax.v1.wrappers.eval_metrics_wrapper import CompletedEvalWrapper
-from qdax.tasks.brax.v1.wrappers.exploration_wrappers import MazeWrapper, TrapWrapper
-from qdax.tasks.brax.v1.wrappers.init_state_wrapper import FixedInitialStateWrapper
-from qdax.tasks.brax.v1.wrappers.locomotion_wrappers import (
+from qdax.tasks.brax.v2.envs.base_env import QDEnv
+from qdax.tasks.brax.v2.wrappers.base_wrappers import StateDescriptorResetWrapper
+from qdax.tasks.brax.v2.wrappers.eval_metrics_wrapper import CompletedEvalWrapper
+from qdax.tasks.brax.v2.wrappers.init_state_wrapper import FixedInitialStateWrapper
+from qdax.tasks.brax.v2.wrappers.locomotion_wrappers import (
     FeetContactWrapper,
     NoForwardRewardWrapper,
     XYPositionWrapper,
@@ -29,11 +22,6 @@ from qdax.tasks.brax.v1.wrappers.locomotion_wrappers import (
 # experimentally determined offset (except for antmaze)
 # should be sufficient to have only positive rewards but no guarantee
 reward_offset = {
-    "pointmaze": 2.3431,
-    "anttrap": 3.38,
-    "humanoidtrap": 0.0,
-    "antnotrap": 3.38,
-    "antmaze": 40.32,
     "ant_omni": 3.0,
     "humanoid_omni": 0.0,
     "ant_uni": 3.24,
@@ -44,11 +32,6 @@ reward_offset = {
 }
 
 descriptor_extractor = {
-    "pointmaze": get_final_xy_position,
-    "anttrap": get_final_xy_position,
-    "humanoidtrap": get_final_xy_position,
-    "antnotrap": get_final_xy_position,
-    "antmaze": get_final_xy_position,
     "ant_omni": get_final_xy_position,
     "humanoid_omni": get_final_xy_position,
     "ant_uni": get_feet_contact_proportion,
@@ -58,32 +41,7 @@ descriptor_extractor = {
     "walker2d_uni": get_feet_contact_proportion,
 }
 
-_qdax_envs = {
-    "pointmaze": PointMaze,
-    "humanoid_w_trap": HumanoidTrap,
-}
-
 _qdax_custom_envs = {
-    "anttrap": {
-        "env": "ant",
-        "wrappers": [XYPositionWrapper, TrapWrapper],
-        "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}, {}],
-    },
-    "humanoidtrap": {
-        "env": "humanoid_w_trap",
-        "wrappers": [XYPositionWrapper],
-        "kwargs": [{"minval": [0.0, -8.0], "maxval": [30.0, 8.0]}],
-    },
-    "antnotrap": {
-        "env": "ant",
-        "wrappers": [XYPositionWrapper],
-        "kwargs": [{"minval": [0.0, -8.0], "maxval": [70.0, 8.0]}],
-    },
-    "antmaze": {
-        "env": "ant",
-        "wrappers": [XYPositionWrapper, MazeWrapper],
-        "kwargs": [{"minval": [-5.0, -5.0], "maxval": [40.0, 40.0]}, {}],
-    },
     "ant_omni": {
         "env": "ant",
         "wrappers": [XYPositionWrapper, NoForwardRewardWrapper],
@@ -108,12 +66,12 @@ _qdax_custom_envs = {
     "hopper_uni": {
         "env": "hopper",
         "wrappers": [FeetContactWrapper],
-        "kwargs": [{}, {}],
+        "kwargs": [{}],
     },
     "walker2d_uni": {
         "env": "walker2d",
         "wrappers": [FeetContactWrapper],
-        "kwargs": [{}, {}],
+        "kwargs": [{}],
     },
 }
 
@@ -127,7 +85,7 @@ def create(
     eval_metrics: bool = False,
     fixed_init_state: bool = False,
     qdax_wrappers_kwargs: Optional[List] = None,
-    legacy_spring: bool = True,
+    backend: str = "spring",
     **kwargs: Any,
 ) -> Union[Env, QDEnv]:
     """Creates an Env with a specified brax system.
@@ -135,16 +93,14 @@ def create(
     brax.envs.create.
     """
 
-    if env_name in _envs.keys():
-        env = _envs[env_name](legacy_spring=legacy_spring, **kwargs)
-    elif env_name in _qdax_envs.keys():
-        env = _qdax_envs[env_name](**kwargs)
+    if env_name in brax.envs._envs.keys():
+        env = brax.envs._envs[env_name](backend=backend, **kwargs)
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
-        if base_env_name in _envs.keys():
-            env = _envs[base_env_name](legacy_spring=legacy_spring, **kwargs)
-        elif base_env_name in _qdax_envs.keys():
-            env = _qdax_envs[base_env_name](**kwargs)  # type: ignore
+        if base_env_name in brax.envs._envs.keys():
+            env = brax.envs._envs[base_env_name](backend=backend, **kwargs)
+        else:
+            raise NotImplementedError("This environment name does not exist!")
     else:
         raise NotImplementedError("This environment name does not exist!")
 
@@ -159,9 +115,9 @@ def create(
             env = wrapper(env, base_env_name, **kwargs)  # type: ignore
 
     if episode_length is not None:
-        env = EpisodeWrapper(env, episode_length, action_repeat)
+        env = training.EpisodeWrapper(env, episode_length, action_repeat)
     if batch_size:
-        env = VectorWrapper(env, batch_size)
+        env = training.VmapWrapper(env, batch_size)
     if fixed_init_state:
         # retrieve the base env
         if env_name not in _qdax_custom_envs.keys():
@@ -169,13 +125,13 @@ def create(
         # wrap the env
         env = FixedInitialStateWrapper(env, base_env_name=base_env_name)  # type: ignore
     if auto_reset:
-        env = AutoResetWrapper(env)
+        env = training.AutoResetWrapper(env)
         if env_name in _qdax_custom_envs.keys():
             env = StateDescriptorResetWrapper(env)
-    if eval_metrics:
-        env = EvalWrapper(env)
-        env = CompletedEvalWrapper(env)
 
+    if eval_metrics:
+        env = training.EvalWrapper(env)
+        env = CompletedEvalWrapper(env)
     return env
 
 

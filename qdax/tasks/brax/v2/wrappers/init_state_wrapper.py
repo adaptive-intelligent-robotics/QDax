@@ -1,8 +1,7 @@
 from typing import Callable, Optional
 
-import brax.v1 as brax
-from brax.v1 import jumpy as jp
-from brax.v1.envs import Env, State, Wrapper
+import jax.numpy as jnp
+from brax.envs.base import Env, State, Wrapper
 
 
 class FixedInitialStateWrapper(Wrapper):
@@ -14,16 +13,16 @@ class FixedInitialStateWrapper(Wrapper):
         self,
         env: Env,
         base_env_name: str,
-        get_obs_fn: Optional[
-            Callable[[brax.QP, brax.Info, jp.ndarray], jp.ndarray]
-        ] = None,
+        get_obs_fn: Optional[Callable[[State, jnp.ndarray], jnp.ndarray]] = None,
     ):
         env_get_obs = {
-            "ant": lambda qp, info, action: self._get_obs(qp, info),
-            "halfcheetah": lambda qp, info, action: self._get_obs(qp, info),
-            "walker2d": lambda qp, info, action: self._get_obs(qp),
-            "hopper": lambda qp, info, action: self._get_obs(qp),
-            "humanoid": lambda qp, info, action: self._get_obs(qp, info, action),
+            "hopper": lambda pipeline_state, action: self._get_obs(pipeline_state),
+            "walker2d": lambda pipeline_state, action: self._get_obs(pipeline_state),
+            "halfcheetah": lambda pipeline_state, action: self._get_obs(pipeline_state),
+            "ant": lambda pipeline_state, action: self._get_obs(pipeline_state),
+            "humanoid": lambda pipeline_state, action: self._get_obs(
+                pipeline_state, action
+            ),
         }
 
         super().__init__(env)
@@ -37,7 +36,7 @@ class FixedInitialStateWrapper(Wrapper):
                 f"This wrapper does not support {base_env_name} yet."
             )
 
-    def reset(self, rng: jp.ndarray) -> State:
+    def reset(self, rng: jnp.ndarray) -> State:
         """Reset the state of the environment with a deterministic and fixed
         initial state.
 
@@ -52,13 +51,11 @@ class FixedInitialStateWrapper(Wrapper):
         state = self.env.reset(rng)
 
         # Compute new initial positions and velocities
-        qpos = self.sys.default_angle()
-        qvel = jp.zeros((self.sys.num_joint_dof,))
-
-        # update qd
-        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        q = self.env.sys.init_q
+        qd = jnp.zeros((self.env.sys.qd_size(),))
+        pipeline_state = self.env.pipeline_init(q, qd)
 
         # get the new obs
-        obs = self._get_obs_fn(qp, self.sys.info(qp), jp.zeros(self.action_size))
+        obs = self._get_obs_fn(pipeline_state, jnp.zeros(self.action_size))
 
-        return state.replace(qp=qp, obs=obs)
+        return state.replace(pipeline_state=pipeline_state, obs=obs)

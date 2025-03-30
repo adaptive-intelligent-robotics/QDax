@@ -1,7 +1,5 @@
-from typing import Optional
-
-from brax.v1 import jumpy as jp
-from brax.v1.envs import Env, State, Wrapper
+import jax.numpy as jnp
+from brax.envs.base import Env, State, Wrapper
 
 
 class ClipRewardWrapper(Wrapper):
@@ -12,27 +10,16 @@ class ClipRewardWrapper(Wrapper):
     work like before and will simply clip the reward to be greater than 0.
     """
 
-    def __init__(
-        self,
-        env: Env,
-        clip_min: Optional[float] = None,
-        clip_max: Optional[float] = None,
-    ) -> None:
+    def __init__(self, env: Env) -> None:
         super().__init__(env)
-        self._clip_min = clip_min
-        self._clip_max = clip_max
 
-    def reset(self, rng: jp.ndarray) -> State:
+    def reset(self, rng: jnp.ndarray) -> State:
         state = self.env.reset(rng)
-        return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
-        )
+        return state.replace(reward=jnp.clip(state.reward, a_min=0.0))
 
-    def step(self, state: State, action: jp.ndarray) -> State:
+    def step(self, state: State, action: jnp.ndarray) -> State:
         state = self.env.step(state, action)
-        return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
-        )
+        return state.replace(reward=jnp.clip(state.reward, a_min=0.0))
 
 
 class OffsetRewardWrapper(Wrapper):
@@ -47,10 +34,11 @@ class OffsetRewardWrapper(Wrapper):
         super().__init__(env)
         self._offset = offset
 
-    def reset(self, rng: jp.ndarray) -> State:
-        state = self.env.reset(rng)
-        return state.replace(reward=state.reward + self._offset)
+    @property
+    def name(self) -> str:
+        return str(self._env_name)
 
-    def step(self, state: State, action: jp.ndarray) -> State:
+    def step(self, state: State, action: jnp.ndarray) -> State:
         state = self.env.step(state, action)
-        return state.replace(reward=state.reward + self._offset)
+        new_reward = state.reward + self._offset
+        return state.replace(reward=new_reward)
