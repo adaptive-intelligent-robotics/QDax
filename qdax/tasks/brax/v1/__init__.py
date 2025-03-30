@@ -9,21 +9,21 @@ from brax.v1.envs.wrappers import (
     VectorWrapper,
 )
 
-from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
-from qdax.environments.descriptor_extractors import (
+from qdax.tasks.brax.v1.base_wrappers import QDEnv, StateDescriptorResetWrapper
+from qdax.tasks.brax.v1.descriptor_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )
-from qdax.environments.exploration_wrappers import MazeWrapper, TrapWrapper
-from qdax.environments.humanoidtrap import HumanoidTrap
-from qdax.environments.init_state_wrapper import FixedInitialStateWrapper
-from qdax.environments.locomotion_wrappers import (
+from qdax.tasks.brax.v1.exploration_wrappers import MazeWrapper, TrapWrapper
+from qdax.tasks.brax.v1.humanoidtrap import HumanoidTrap
+from qdax.tasks.brax.v1.init_state_wrapper import FixedInitialStateWrapper
+from qdax.tasks.brax.v1.locomotion_wrappers import (
     FeetContactWrapper,
     NoForwardRewardWrapper,
     XYPositionWrapper,
 )
-from qdax.environments.pointmaze import PointMaze
-from qdax.environments.wrappers import CompletedEvalWrapper
+from qdax.tasks.brax.v1.pointmaze import PointMaze
+from qdax.tasks.brax.v1.wrappers import CompletedEvalWrapper
 
 # experimentally determined offset (except for antmaze)
 # should be sufficient to have only positive rewards but no guarantee

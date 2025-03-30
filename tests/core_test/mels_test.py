@@ -18,7 +18,7 @@ from qdax.core.mels import MELS
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs
 from qdax.utils.sampling import multi_sample_scoring_function
 
 

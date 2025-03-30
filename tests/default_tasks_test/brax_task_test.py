@@ -11,7 +11,7 @@ from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.mdp_utils import init_population_controllers
-from qdax.tasks.brax_envs import create_default_brax_task_components
+from qdax.tasks.brax.v1.env_creators import create_default_brax_task_components
 from qdax.utils.metrics import default_qd_metrics
 
 

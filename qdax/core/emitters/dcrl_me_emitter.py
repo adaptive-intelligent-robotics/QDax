@@ -8,7 +8,7 @@ from qdax.core.emitters.multi_emitter import MultiEmitter
 from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.custom_types import Params, RNGKey
-from qdax.environments.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.base_wrappers import QDEnv
 
 
 @dataclass

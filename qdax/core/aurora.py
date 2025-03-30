@@ -22,7 +22,7 @@ from qdax.custom_types import (
     Params,
     RNGKey,
 )
-from qdax.environments.descriptor_extractors import AuroraExtraInfo
+from qdax.tasks.brax.v1.descriptor_extractors import AuroraExtraInfo
 
 
 class AURORA:

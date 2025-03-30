@@ -12,11 +12,8 @@ from qdax import environments
 from qdax.core.aurora import AURORA
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import Observation
-from qdax.environments.descriptor_extractors import (
-    AuroraExtraInfoNormalization,
-    get_aurora_encoding,
-)
-from qdax.tasks.brax_envs import (
+from qdax.environments import AuroraExtraInfoNormalization, get_aurora_encoding
+from qdax.tasks.brax.v1.env_creators import (
     create_default_brax_task_components,
     get_aurora_scoring_fn,
 )

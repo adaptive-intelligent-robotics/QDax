@@ -29,7 +29,7 @@ from qdax.custom_types import (
     RNGKey,
     StateDescriptor,
 )
-from qdax.environments.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.base_wrappers import QDEnv
 
 
 @dataclass
