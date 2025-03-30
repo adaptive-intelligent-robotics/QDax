@@ -5,7 +5,7 @@ import functools
 import jax
 import pytest
 
-import qdax.environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
@@ -54,7 +54,7 @@ def test_map_elites(env_name: str, batch_size: int, is_task_reset_based: bool) -
     # Define metrics function
     metrics_fn = functools.partial(
         default_qd_metrics,
-        qd_offset=qdax.environments.reward_offset[env_name] * episode_length,
+        qd_offset=environments.reward_offset[env_name] * episode_length,
     )
 
     # Instantiate MAP-Elites

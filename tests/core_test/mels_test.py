@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.containers.mels_repertoire import MELSRepertoire
 from qdax.core.emitters.mutation_operators import isoline_variation

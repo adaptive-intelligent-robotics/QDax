@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.aurora import AURORA
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import Observation

@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import pytest
 from brax.envs import State as EnvState
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.dads import DadsTrainingState
 from qdax.baselines.dads_smerl import DADSSMERL, DadsSmerlConfig
 from qdax.core.neuroevolution.buffers.buffer import QDTransition

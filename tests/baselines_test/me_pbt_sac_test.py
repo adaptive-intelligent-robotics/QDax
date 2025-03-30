@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.sac_pbt import PBTSAC, PBTSacConfig
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.distributed_map_elites import DistributedMAPElites

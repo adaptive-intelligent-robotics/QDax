@@ -7,8 +7,7 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
-import qdax.environments
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.core.neuroevolution.mdp_utils import generate_unroll
 from qdax.core.neuroevolution.networks.networks import MLP
@@ -268,7 +267,7 @@ def create_default_brax_task_components(
         final_activation=jnp.tanh,
     )
 
-    descriptor_extraction_fn = qdax.environments.descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
 
     scoring_fn = create_brax_scoring_fn(
         env,
