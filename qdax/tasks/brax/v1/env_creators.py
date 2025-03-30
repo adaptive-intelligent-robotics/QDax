@@ -284,6 +284,7 @@ def create_default_brax_task_components(
 def get_aurora_scoring_fn(
     scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores]],
     observation_extractor_fn: Callable[[Transition], Observation],
+    observations_key: str,
 ) -> Callable[[Genotype, RNGKey], Tuple[Fitness, Optional[Descriptor], ExtraScores]]:
     """Evaluates policies contained in flatten_variables in parallel
 
@@ -303,8 +304,10 @@ def get_aurora_scoring_fn(
     ) -> Tuple[Fitness, Optional[Descriptor], ExtraScores]:
         fitnesses, _, extra_scores = scoring_fn(params, key)
         data = extra_scores["transitions"]
+
         observation = observation_extractor_fn(data)  # type: ignore
-        extra_scores["last_valid_observations"] = observation
+        extra_scores[observations_key] = observation
+
         return fitnesses, None, extra_scores
 
     return _wrapper

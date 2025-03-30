@@ -51,14 +51,34 @@ class AURORA:
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
         encoder_function: Callable[[Observation, AuroraExtraInfo], Descriptor],
         training_function: Callable[
-            [RNGKey, UnstructuredRepertoire, Params, int], AuroraExtraInfo
+            [UnstructuredRepertoire, Params, int, Observation, RNGKey],
+            AuroraExtraInfo,
         ],
+        observations_key: str = "observations",
     ) -> None:
+        """
+        Args:
+            scoring_function: a function that takes a batch of genotypes and compute
+                their fitnesses and descriptors
+            emitter: an emitter is used to suggest offsprings given a MAPELites
+                repertoire.
+            metrics_function: a function that takes a repertoire and computes
+                any useful metric to track its evolution
+            encoder_function: a function that takes a batch of observations and
+                returns a batch of descriptors
+            training_function: a function that takes a repertoire, a model
+                parameters, an iteration number and a key, and returns an updated
+                AuroraExtraInfo
+            observations_key: the key to use for the observations in the extra_scores
+                of the repertoire
+        """
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
         self._encoder_fn = encoder_function
         self._train_fn = training_function
+
+        self.observations_key = observations_key
 
     def train(
         self,
@@ -67,23 +87,27 @@ class AURORA:
         iteration: int,
         key: RNGKey,
     ) -> Tuple[UnstructuredRepertoire, AuroraExtraInfo]:
+        observations = repertoire.extra_scores[self.observations_key]
+
         key, subkey = jax.random.split(key)
         aurora_extra_info = self._train_fn(
-            key,
             repertoire,
             model_params,
             iteration,
+            observations,
+            subkey,
         )
 
         # re-addition of all the new behavioural descriptors with the new ae
-        new_descriptors = self._encoder_fn(repertoire.observations, aurora_extra_info)
+        new_descriptors = self._encoder_fn(observations, aurora_extra_info)
 
         return (
             repertoire.init(
                 genotypes=repertoire.genotypes,
                 fitnesses=repertoire.fitnesses,
+                extra_scores=repertoire.extra_scores,
+                keys_extra_scores=repertoire.keys_extra_scores,
                 descriptors=new_descriptors,
-                observations=repertoire.observations,
                 l_value=repertoire.l_value,
                 max_size=repertoire.max_size,
             ),
@@ -111,8 +135,9 @@ class AURORA:
         repertoire = repertoire.init(
             genotypes=repertoire.genotypes,
             fitnesses=repertoire.fitnesses,
+            extra_scores=repertoire.extra_scores,
+            keys_extra_scores=repertoire.keys_extra_scores,
             descriptors=repertoire.descriptors,
-            observations=repertoire.observations,
             l_value=l_value,
             max_size=repertoire.max_size,
         )
@@ -178,7 +203,7 @@ class AURORA:
         if extra_scores is None:
             extra_scores = {}
 
-        observations = extra_scores["last_valid_observations"]
+        observations = extra_scores[self.observations_key]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
 
@@ -186,7 +211,8 @@ class AURORA:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            observations=observations,
+            extra_scores=extra_scores,
+            keys_extra_scores=(self.observations_key,),
             l_value=l_value,
             max_size=max_size,
         )
@@ -313,7 +339,7 @@ class AURORA:
         if extra_info is None:
             extra_info = {}
 
-        observations = extra_scores["last_valid_observations"]
+        observations = extra_scores[self.observations_key]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
 
@@ -322,7 +348,7 @@ class AURORA:
             genotypes,
             descriptors,
             fitnesses,
-            observations,
+            extra_scores,
         )
 
         # update emitter state after scoring is made
