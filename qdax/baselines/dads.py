@@ -243,7 +243,6 @@ class DADS(SAC):
 
         return reward
 
-    # @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
     def play_step_fn(
         self,
         env_state: EnvState,
@@ -338,7 +337,6 @@ class DADS(SAC):
 
         return next_env_state, training_state, transition
 
-    # @partial(jax.jit, static_argnames=("self", "play_step_fn", "env_batch_size"))
     def eval_policy_fn(
         self,
         training_state: DadsTrainingState,
