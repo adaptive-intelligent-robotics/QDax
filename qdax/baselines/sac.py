@@ -154,7 +154,6 @@ class SAC:
 
         return training_state
 
-    @partial(jax.jit, static_argnames=("self", "deterministic"))
     def select_action(
         self,
         obs: Observation,
@@ -185,7 +184,6 @@ class SAC:
 
         return actions
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
     def play_step_fn(
         self,
         env_state: EnvState,
@@ -265,7 +263,6 @@ class SAC:
             transition,
         )
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
     def play_qd_step_fn(
         self,
         env_state: EnvState,
@@ -318,7 +315,6 @@ class SAC:
             transition,
         )
 
-    @partial(jax.jit, static_argnames=("self", "play_step_fn"))
     def eval_policy_fn(
         self,
         training_state: SacTrainingState,
@@ -356,14 +352,6 @@ class SAC:
 
         return true_return, true_returns
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-            "descriptor_extraction_fn",
-        ),
-    )
     def eval_qd_policy_fn(
         self,
         training_state: SacTrainingState,
@@ -409,7 +397,6 @@ class SAC:
         mean_descriptor = jnp.mean(descriptors, axis=0)
         return true_return, mean_descriptor, true_returns, descriptors
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_alpha(
         self,
         alpha_lr: float,
@@ -457,7 +444,6 @@ class SAC:
 
         return alpha_params, alpha_optimizer_state, alpha_loss
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_critic(
         self,
         critic_lr: float,
@@ -520,7 +506,6 @@ class SAC:
             critic_loss,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
         self,
         policy_lr: float,
@@ -564,7 +549,6 @@ class SAC:
 
         return policy_params, policy_optimizer_state, policy_loss
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: SacTrainingState,

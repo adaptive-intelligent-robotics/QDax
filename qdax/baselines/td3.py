@@ -135,7 +135,6 @@ class TD3:
 
         return training_state
 
-    @partial(jax.jit, static_argnames=("self", "deterministic"))
     def select_action(
         self,
         obs: Observation,
@@ -166,7 +165,6 @@ class TD3:
             actions = jnp.clip(actions, -1.0, 1.0)
         return actions
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_step_fn(
         self,
         env_state: EnvState,
@@ -213,7 +211,6 @@ class TD3:
         )
         return next_env_state, training_state, transition
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_qd_step_fn(
         self,
         env_state: EnvState,
@@ -259,7 +256,6 @@ class TD3:
             transition,
         )
 
-    @partial(jax.jit, static_argnames=("self", "play_step_fn"))
     def eval_policy_fn(
         self,
         training_state: TD3TrainingState,
@@ -296,14 +292,6 @@ class TD3:
 
         return true_return, true_returns
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-            "descriptor_extraction_fn",
-        ),
-    )
     def eval_qd_policy_fn(
         self,
         training_state: TD3TrainingState,
@@ -348,7 +336,6 @@ class TD3:
         mean_descriptor = jnp.mean(descriptors, axis=0)
         return true_return, mean_descriptor, true_returns, descriptors
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: TD3TrainingState,
