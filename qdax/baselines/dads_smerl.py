@@ -40,7 +40,6 @@ class DADSSMERL(DADS):
         super(DADSSMERL, self).__init__(config, action_size, descriptor_size)
         self._config: DadsSmerlConfig = config
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(
         self,
         transition: QDTransition,
@@ -74,7 +73,6 @@ class DADSSMERL(DADS):
 
         return rewards
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DadsTrainingState,
