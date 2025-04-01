@@ -178,7 +178,7 @@ def test_dads_smerl() -> None:
         env_batch_size=env_batch_size,
         grad_updates_per_step=grad_updates_per_step,
         play_step_fn=play_step,
-        update_fn=jax.jit(dads_smerl.update),
+        update_fn=dads_smerl.update,
     )
 
     @jax.jit

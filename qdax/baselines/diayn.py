@@ -177,7 +177,6 @@ class DIAYN(SAC):
             steps=jnp.array(0),
         )
 
-    @partial(jax.jit, static_argnames=("self", "add_log_p_z"))
     def _compute_diversity_reward(
         self,
         transition: QDTransition,
@@ -212,7 +211,6 @@ class DIAYN(SAC):
             reward += jnp.log(self._config.num_skills)
         return reward
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_step_fn(
         self,
         env_state: EnvState,
@@ -279,7 +277,6 @@ class DIAYN(SAC):
 
         return next_env_state, training_state, transition
 
-    @partial(jax.jit, static_argnames=("self", "play_step_fn", "env_batch_size"))
     def eval_policy_fn(
         self,
         training_state: DiaynTrainingState,
@@ -347,7 +344,6 @@ class DIAYN(SAC):
             transitions.state_desc,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(
         self, transition: QDTransition, training_state: DiaynTrainingState
     ) -> Reward:
@@ -366,7 +362,6 @@ class DIAYN(SAC):
             add_log_p_z=True,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_networks(
         self,
         training_state: DiaynTrainingState,
@@ -469,7 +464,6 @@ class DIAYN(SAC):
 
         return new_training_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DiaynTrainingState,

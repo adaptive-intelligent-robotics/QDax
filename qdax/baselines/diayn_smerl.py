@@ -39,7 +39,6 @@ class DIAYNSMERL(DIAYN):
         super(DIAYNSMERL, self).__init__(config, action_size)
         self._config: DiaynSmerlConfig = config
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(
         self,
         transition: QDTransition,
@@ -81,7 +80,6 @@ class DIAYNSMERL(DIAYN):
 
         return rewards
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DiaynTrainingState,

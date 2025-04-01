@@ -165,7 +165,7 @@ def test_dads() -> None:
         env_batch_size=env_batch_size,
         grad_updates_per_step=grad_updates_per_step,
         play_step_fn=play_step,
-        update_fn=jax.jit(dads.update),
+        update_fn=dads.update,
     )
 
     @jax.jit
