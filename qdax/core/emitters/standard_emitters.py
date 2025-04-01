@@ -25,7 +25,6 @@ class MixingEmitter(Emitter):
         self._batch_size = batch_size
         self._selector = selector
 
-    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: GARepertoire,

@@ -93,7 +93,6 @@ class MultiEmitter(Emitter):
 
         return MultiEmitterState(tuple(emitter_states))
 
-    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[Repertoire],
@@ -139,7 +138,6 @@ class MultiEmitter(Emitter):
         )
         return offsprings, all_extra_info
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: Optional[MultiEmitterState],

@@ -143,7 +143,6 @@ class OMGMEGAEmitter(Emitter):
 
         return OMGMEGAEmitterState(gradients_repertoire=gradients_repertoire)
 
-    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: MapElitesRepertoire,
@@ -213,7 +212,6 @@ class OMGMEGAEmitter(Emitter):
 
         return new_genotypes, {}
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: OMGMEGAEmitterState,

@@ -194,10 +194,6 @@ class QualityPGEmitter(Emitter):
 
         return emitter_state
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def emit(
         self,
         repertoire: GARepertoire,
@@ -242,10 +238,6 @@ class QualityPGEmitter(Emitter):
 
         return genotypes, {}
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def emit_pg(
         self, emitter_state: QualityPGEmitterState, parents: Genotype
     ) -> Genotype:
@@ -301,10 +293,6 @@ class QualityPGEmitter(Emitter):
 
         return final_policy_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def emit_actor(self, emitter_state: QualityPGEmitterState) -> Genotype:
         """Emit the greedy actor.
 
@@ -319,7 +307,6 @@ class QualityPGEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: QualityPGEmitterState,
@@ -367,7 +354,6 @@ class QualityPGEmitter(Emitter):
 
         return final_emitter_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def _scan_update_critic(
         self,
         carry: Tuple[Params, Params, optax.OptState, Params, RNGKey],
@@ -428,7 +414,6 @@ class QualityPGEmitter(Emitter):
         )
         return new_carry, ()
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
         self,
         actor_params: Params,
@@ -476,7 +461,6 @@ class QualityPGEmitter(Emitter):
 
         return new_actor_params, new_target_actor_params, new_actor_opt_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def _scan_actor_critic_training(
         self, carry: QualityPGEmitterState, _: None
     ) -> Tuple[QualityPGEmitterState, Tuple]:
@@ -558,7 +542,6 @@ class QualityPGEmitter(Emitter):
 
         return new_emitter_state, ()
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_policy(
         self,
         policy_params: Params,

@@ -73,7 +73,6 @@ class Emitter(ABC):
         """
         pass
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: Optional[EmitterState],

@@ -33,7 +33,6 @@ class CMARndEmitterState(CMAEmitterState):
 
 
 class CMARndEmitter(CMAEmitter):
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         key: RNGKey,

@@ -108,7 +108,6 @@ class CMAEmitter(Emitter, ABC):
         """
         return self._batch_size
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         key: RNGKey,
@@ -144,7 +143,6 @@ class CMAEmitter(Emitter, ABC):
         )
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
@@ -169,7 +167,6 @@ class CMAEmitter(Emitter, ABC):
 
         return offsprings, {}
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: CMAEmitterState,

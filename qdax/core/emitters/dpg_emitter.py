@@ -134,7 +134,6 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: DiversityPGEmitterState,
@@ -185,7 +184,6 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         return final_emitter_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def _scan_actor_critic_training(
         self, carry: QualityPGEmitterState, _: None
     ) -> Tuple[QualityPGEmitterState, Tuple]:

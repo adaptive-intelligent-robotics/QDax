@@ -206,7 +206,6 @@ class DCRLEmitter(Emitter):
 
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def _similarity(self, descs_1: Descriptor, descs_2: Descriptor) -> jnp.array:
         """Compute the similarity between two batches of descriptors.
         Args:
@@ -219,7 +218,6 @@ class DCRLEmitter(Emitter):
             -jnp.linalg.norm(descs_1 - descs_2, axis=-1) / self._config.lengthscale
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _normalize_desc(self, desc: Descriptor) -> Descriptor:
         return (
             2
@@ -228,7 +226,6 @@ class DCRLEmitter(Emitter):
             - 1
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _unnormalize_desc(self, desc_normalized: Descriptor) -> Descriptor:
         return 0.5 * (
             self._env.descriptor_limits[1] - self._env.descriptor_limits[0]
@@ -236,7 +233,6 @@ class DCRLEmitter(Emitter):
             self._env.descriptor_limits[1] + self._env.descriptor_limits[0]
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_equivalent_kernel_bias_with_desc(
         self, actor_dc_params: Params, desc: Descriptor
     ) -> Tuple[Params, Params]:
@@ -254,7 +250,6 @@ class DCRLEmitter(Emitter):
 
         return equivalent_kernel, equivalent_bias
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_equivalent_params_with_desc(
         self, actor_dc_params: Params, desc: Descriptor
     ) -> Params:
@@ -269,10 +264,6 @@ class DCRLEmitter(Emitter):
         actor_dc_params["params"]["Dense_0"]["bias"] = equivalent_bias
         return actor_dc_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def emit(
         self,
         repertoire: MapElitesRepertoire,
@@ -315,10 +306,6 @@ class DCRLEmitter(Emitter):
             {"desc_prime": jnp.concatenate([descs_pg, descs_ai], axis=0)},
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def emit_pg(
         self,
         emitter_state: DCRLEmitterState,
@@ -384,10 +371,6 @@ class DCRLEmitter(Emitter):
 
         return final_policy_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def emit_ai(self, emitter_state: DCRLEmitterState, descs: Descriptor) -> Genotype:
         """Emit the offsprings generated through pg mutation.
 
@@ -407,7 +390,6 @@ class DCRLEmitter(Emitter):
 
         return offsprings
 
-    @partial(jax.jit, static_argnames=("self",))
     def emit_actor(self, emitter_state: DCRLEmitterState) -> Genotype:
         """Emit the greedy actor.
 
@@ -422,10 +404,6 @@ class DCRLEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def state_update(
         self,
         emitter_state: DCRLEmitterState,
@@ -491,7 +469,6 @@ class DCRLEmitter(Emitter):
 
         return final_emitter_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def _scan_update_critic(
         self,
         carry: Tuple[Params, Params, optax.OptState, Params, RNGKey],
@@ -554,7 +531,6 @@ class DCRLEmitter(Emitter):
 
         return new_carry, ()
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
         self,
         actor_params: Params,
@@ -601,7 +577,6 @@ class DCRLEmitter(Emitter):
         )
         return new_actor_params, new_target_actor_params, new_actor_opt_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def _scan_actor_critic_training(
         self, carry: DCRLEmitterState, _: None
     ) -> Tuple[DCRLEmitterState, Tuple]:
@@ -689,7 +664,6 @@ class DCRLEmitter(Emitter):
 
         return new_emitter_state, ()
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_policy(
         self,
         policy_params: Params,

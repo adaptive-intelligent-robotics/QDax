@@ -45,7 +45,6 @@ class NoveltyArchive(flax.struct.PyTreeNode):
         archive = jnp.zeros((size, num_descriptors))
         return cls(archive=archive, size=size, position=jnp.array(0, dtype=int))
 
-    @jax.jit
     def update(
         self,
         descriptor: Descriptor,
@@ -69,7 +68,6 @@ class NoveltyArchive(flax.struct.PyTreeNode):
             archive=new_archive, size=self.size, position=new_position
         )
 
-    @partial(jax.jit, static_argnames=("num_nearest_neighbors",))
     def novelty(
         self,
         descriptors: Descriptor,
@@ -232,7 +230,6 @@ class MEESEmitter(Emitter):
         """
         return 1
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         key: RNGKey,
@@ -293,7 +290,6 @@ class MEESEmitter(Emitter):
         )
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: MapElitesRepertoire,
@@ -313,7 +309,6 @@ class MEESEmitter(Emitter):
 
         return emitter_state.offspring, {}
 
-    @partial(jax.jit, static_argnames=("self",))
     def _sample_exploit(
         self,
         emitter_state: MEESEmitterState,
@@ -378,7 +373,6 @@ class MEESEmitter(Emitter):
 
         return samples
 
-    @partial(jax.jit, static_argnames=("self",))
     def _sample_explore(
         self,
         emitter_state: MEESEmitterState,
@@ -420,7 +414,6 @@ class MEESEmitter(Emitter):
 
         return samples
 
-    @partial(jax.jit, static_argnames=("self", "scores_fn"))
     def _es_emitter(
         self,
         parent: Genotype,
@@ -546,7 +539,6 @@ class MEESEmitter(Emitter):
 
         return offspring, optimizer_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def _buffers_update(
         self,
         emitter_state: MEESEmitterState,
@@ -621,7 +613,6 @@ class MEESEmitter(Emitter):
             last_updated_position=last_updated_position,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: MEESEmitterState,

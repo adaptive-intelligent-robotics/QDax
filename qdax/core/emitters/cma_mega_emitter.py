@@ -102,7 +102,6 @@ class CMAMEGAEmitter(Emitter):
 
         self._selector = selector
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         key: RNGKey,
@@ -149,7 +148,6 @@ class CMAMEGAEmitter(Emitter):
         )
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
@@ -189,7 +187,6 @@ class CMAMEGAEmitter(Emitter):
 
         return new_thetas, {}
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: CMAMEGAState,
