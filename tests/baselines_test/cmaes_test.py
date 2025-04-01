@@ -40,13 +40,13 @@ def test_cmaes() -> None:
 
         # sample
         key, subkey = jax.random.split(key)
-        samples = cmaes.sample(state, subkey)
+        samples = jax.jit(cmaes.sample)(state, subkey)
 
         # update
-        state = cmaes.update(state, samples)
+        state = jax.jit(cmaes.update)(state, samples)
 
         # check stop condition
-        stop_condition = cmaes.stop_condition(state)
+        stop_condition = jax.jit(cmaes.stop_condition)(state)
 
         if stop_condition:
             break

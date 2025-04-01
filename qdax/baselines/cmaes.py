@@ -165,7 +165,6 @@ class CMAES:
             invsqrt_cov=invsqrt_cov,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def sample(self, cmaes_state: CMAESState, key: RNGKey) -> Genotype:
         """
         Sample a population.
@@ -186,7 +185,6 @@ class CMAES:
         )
         return samples
 
-    @partial(jax.jit, static_argnames=("self",))
     def update_state(
         self,
         cmaes_state: CMAESState,
@@ -198,7 +196,6 @@ class CMAES:
             weights=self._weights,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def update_state_with_mask(
         self, cmaes_state: CMAESState, sorted_candidates: Genotype, mask: Mask
     ) -> CMAESState:
@@ -217,7 +214,6 @@ class CMAES:
             weights=weights,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_state(
         self,
         cmaes_state: CMAESState,
@@ -332,7 +328,6 @@ class CMAES:
 
         return cmaes_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(self, cmaes_state: CMAESState, samples: Genotype) -> CMAESState:
         """Updates the distribution.
 
@@ -352,7 +347,6 @@ class CMAES:
 
         return new_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def stop_condition(self, cmaes_state: CMAESState) -> bool:
         """Determines if the current optimization path must be stopped.
 
