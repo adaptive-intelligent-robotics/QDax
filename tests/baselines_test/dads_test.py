@@ -126,27 +126,27 @@ def test_dads() -> None:
     )
 
     # Make play_step* functions scannable by passing static args beforehand
-    play_eval_step = partial(
+    play_eval_step = jax.jit(partial(
         dads.play_step_fn,
         deterministic=True,
         env=eval_env,
         skills=skills,
         evaluation=True,
-    )
+    ))
 
-    play_step = partial(
+    play_step = jax.jit(partial(
         dads.play_step_fn,
         env=env,
         deterministic=False,
         skills=skills,
-    )
+    ))
 
-    eval_policy = partial(
+    eval_policy = jax.jit(partial(
         dads.eval_policy_fn,
         play_step_fn=play_eval_step,
         eval_env_first_state=eval_env_first_state,
         env_batch_size=env_batch_size,
-    )
+    ))
 
     # warmstart the buffer
     replay_buffer, env_state, training_state = warmstart_buffer(
@@ -165,7 +165,7 @@ def test_dads() -> None:
         env_batch_size=env_batch_size,
         grad_updates_per_step=grad_updates_per_step,
         play_step_fn=play_step,
-        update_fn=dads.update,
+        update_fn=jax.jit(dads.update),
     )
 
     @jax.jit
