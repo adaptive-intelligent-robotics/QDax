@@ -240,13 +240,13 @@ def score_euclidean_novelty(
     Returns:
         The novelty scores of the given state descriptors.
     """
-    values, _indices = knn(archive.data, state_descriptors, num_nearest_neighb)
+    knn_fn = partial(knn, k=num_nearest_neighb)
+    values, _indices = knn_fn(archive.data, state_descriptors)
 
     summed_distances = jnp.mean(jnp.square(values), axis=1)
     return scaling_ratio * summed_distances
 
 
-@partial(jax.jit, static_argnames=("k"))
 def knn(
     data: jnp.ndarray, new_data: jnp.ndarray, k: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -278,12 +278,12 @@ def knn(
     dist = jnp.sqrt(jnp.clip(dist, min=0.0))
 
     # return values, indices
-    values, indices = qdax_top_k(-dist, k)
+    qdax_top_k_fn = partial(qdax_top_k, k=k)
+    values, indices = qdax_top_k_fn(-dist)
 
     return -values, indices
 
 
-@partial(jax.jit, static_argnames=("k"))
 def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Returns the top k elements of an array.
 
