@@ -104,7 +104,6 @@ class GARepertoire(Repertoire):
         }
         return filtered_extra_scores
 
-    @jax.jit
     def add(
         self,
         batch_of_genotypes: Genotype,

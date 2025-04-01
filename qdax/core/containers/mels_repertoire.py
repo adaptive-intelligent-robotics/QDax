@@ -141,7 +141,6 @@ class MELSRepertoire(MapElitesRepertoire):
             spreads=spreads,
         )
 
-    @jax.jit
     def add(
         self,
         batch_of_genotypes: Genotype,

@@ -224,7 +224,6 @@ class MapElitesRepertoire(GARepertoire):
             centroids=centroids,
         )
 
-    @jax.jit
     def add(
         self,
         batch_of_genotypes: Genotype,

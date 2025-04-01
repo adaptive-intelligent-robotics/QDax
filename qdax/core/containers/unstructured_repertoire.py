@@ -219,7 +219,6 @@ class UnstructuredRepertoire(GARepertoire):
             max_size=max_size,
         )
 
-    @jax.jit
     def add(
         self,
         batch_of_genotypes: Genotype,
