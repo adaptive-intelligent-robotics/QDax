@@ -179,7 +179,6 @@ class TrajectoryBuffer(struct.PyTreeNode):
         Scan over 'insert_one_transition', to add multiple transitions.
         """
 
-        @jax.jit
         def insert_one_transition(
             replay_buffer: TrajectoryBuffer, flattened_transitions: jnp.ndarray
         ) -> Tuple[TrajectoryBuffer, Any]:
