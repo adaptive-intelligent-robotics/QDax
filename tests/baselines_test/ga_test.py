@@ -109,13 +109,14 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
     )
 
     key, subkey = jax.random.split(key)
+    init_fn = partial(algo_instance.init, population_size=population_size)
     if isinstance(algo_instance, SPEA2):
-        repertoire, emitter_state, init_metrics = algo_instance.init(
-            genotypes, population_size, num_neighbours, subkey
+        repertoire, emitter_state, init_metrics = jax.jit(init_fn)(
+            genotypes, num_neighbours, subkey
         )
     else:
-        repertoire, emitter_state, init_metrics = algo_instance.init(
-            genotypes, population_size, subkey
+        repertoire, emitter_state, init_metrics = jax.jit(init_fn)(
+            genotypes, subkey
         )
 
     # Run the algorithm

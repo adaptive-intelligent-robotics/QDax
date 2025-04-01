@@ -30,7 +30,6 @@ class SPEA2(GeneticAlgorithm):
     b13724cb54ae4171916f3f969d304b9e9752a57f"
     """
 
-    @partial(jax.jit, static_argnames=("self", "population_size", "num_neighbours"))
     def init(
         self,
         genotypes: Genotype,
