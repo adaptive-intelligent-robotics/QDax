@@ -290,7 +290,7 @@ class MEESEmitter(Emitter):
         )
         return emitter_state
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: MEESEmitterState,
@@ -613,7 +613,7 @@ class MEESEmitter(Emitter):
             last_updated_position=last_updated_position,
         )
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: MEESEmitterState,
         repertoire: MapElitesRepertoire,

@@ -142,7 +142,7 @@ class CMAEmitter(Emitter, ABC):
         )
         return emitter_state
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAEmitterState,
@@ -166,7 +166,7 @@ class CMAEmitter(Emitter, ABC):
 
         return offsprings, {}
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: CMAEmitterState,
         repertoire: MapElitesRepertoire,

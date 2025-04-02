@@ -133,7 +133,7 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         return emitter_state
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: DiversityPGEmitterState,
         repertoire: Optional[Repertoire],

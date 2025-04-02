@@ -264,7 +264,7 @@ class DCRLEmitter(Emitter):
         actor_dc_params["params"]["Dense_0"]["bias"] = equivalent_bias
         return actor_dc_params
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: DCRLEmitterState,
@@ -404,7 +404,7 @@ class DCRLEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: DCRLEmitterState,
         repertoire: Repertoire,

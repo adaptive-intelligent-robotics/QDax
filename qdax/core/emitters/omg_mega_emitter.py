@@ -142,7 +142,7 @@ class OMGMEGAEmitter(Emitter):
 
         return OMGMEGAEmitterState(gradients_repertoire=gradients_repertoire)
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: OMGMEGAEmitterState,
@@ -211,7 +211,7 @@ class OMGMEGAEmitter(Emitter):
 
         return new_genotypes, {}
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: OMGMEGAEmitterState,
         repertoire: MapElitesRepertoire,

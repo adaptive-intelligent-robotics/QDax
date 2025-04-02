@@ -194,7 +194,7 @@ class QualityPGEmitter(Emitter):
 
         return emitter_state
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: GARepertoire,
         emitter_state: QualityPGEmitterState,
@@ -307,7 +307,7 @@ class QualityPGEmitter(Emitter):
         """
         return emitter_state.actor_params
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: QualityPGEmitterState,
         repertoire: Optional[Repertoire],

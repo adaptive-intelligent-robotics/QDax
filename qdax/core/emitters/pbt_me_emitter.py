@@ -168,7 +168,7 @@ class PBTEmitter(Emitter):
 
         return emitter_state
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: GARepertoire,
         emitter_state: PBTEmitterState,
@@ -223,7 +223,7 @@ class PBTEmitter(Emitter):
         mutation_ga_batch_size = self._config.ga_population_size_per_device
         return mutation_pg_batch_size + mutation_ga_batch_size
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: PBTEmitterState,
         repertoire: GARepertoire,

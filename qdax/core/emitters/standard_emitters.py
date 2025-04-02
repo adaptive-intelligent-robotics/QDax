@@ -24,7 +24,7 @@ class MixingEmitter(Emitter):
         self._batch_size = batch_size
         self._selector = selector
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: GARepertoire,
         emitter_state: Optional[EmitterState],

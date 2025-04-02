@@ -147,7 +147,7 @@ class CMAMEGAEmitter(Emitter):
         )
         return emitter_state
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAMEGAState,
@@ -186,7 +186,7 @@ class CMAMEGAEmitter(Emitter):
 
         return new_thetas, {}
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: CMAMEGAState,
         repertoire: MapElitesRepertoire,

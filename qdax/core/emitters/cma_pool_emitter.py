@@ -92,7 +92,7 @@ class CMAPoolEmitter(Emitter):
 
         return emitter_state
 
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAPoolEmitterState,
@@ -121,7 +121,7 @@ class CMAPoolEmitter(Emitter):
 
         return offsprings, extra_info
 
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: CMAPoolEmitterState,
         repertoire: MapElitesRepertoire,
