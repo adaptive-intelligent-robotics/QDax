@@ -63,7 +63,6 @@ def test_trajectory_compute_returns() -> None:
         episode_length=episode_length,
         transition=transition,
     )
-    insert_jitted = jax.jit(traj_buffer.insert)
 
     for i in range(13):
         if i == 2 or i == 4 or i == 7 or i == 10:
@@ -82,7 +81,7 @@ def test_trajectory_compute_returns() -> None:
             state_desc=jnp.zeros(shape=(env_batch_size, 0)),
             next_state_desc=jnp.zeros(shape=(env_batch_size, 0)),
         )
-        traj_buffer = insert_jitted(transition)
+        traj_buffer = jax.jit(traj_buffer.insert)(transition)
         naive_returns = update_returns_naive(traj_buffer)
         traj_buffer = traj_buffer.compute_returns()
         print(naive_returns)
@@ -171,7 +170,6 @@ def test_trajectory_buffer_insert() -> None:
         transition=transition,
     )
 
-    insert_jitted = jax.jit(buffer.insert)
     for i in range(4):
         transitions = Transition(
             obs=obs[i],
@@ -181,7 +179,7 @@ def test_trajectory_buffer_insert() -> None:
             rewards=rewards[i],
             truncations=dones[i],
         )
-        buffer = insert_jitted(transitions)
+        buffer = jax.jit(buffer.insert)(transitions)
 
     dones = jnp.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1])
     dones = dones.reshape((-1, env_batch_size))
@@ -196,7 +194,7 @@ def test_trajectory_buffer_insert() -> None:
             truncations=dones[i],
         )
 
-        buffer = insert_jitted(transitions)
+        buffer = jax.jit(buffer.insert)(transitions)
 
     print(buffer.episodic_data)
 
