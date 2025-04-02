@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Any, Callable, Optional, Tuple
 
 import jax
@@ -55,7 +54,6 @@ class MAPElites:
         self._metrics_function = metrics_function
         self._repertoire_init = repertoire_init
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         genotypes: Genotype,
@@ -95,7 +93,6 @@ class MAPElites:
         )
         return repertoire, emitter_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def init_ask_tell(
         self,
         genotypes: Genotype,
@@ -150,7 +147,6 @@ class MAPElites:
 
         return repertoire, emitter_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         repertoire: MapElitesRepertoire,
@@ -200,7 +196,6 @@ class MAPElites:
         )
         return repertoire, emitter_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def scan_update(
         self,
         carry: Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey],
@@ -231,7 +226,6 @@ class MAPElites:
 
         return (repertoire, emitter_state, key), metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def ask(
         self,
         repertoire: MapElitesRepertoire,
@@ -250,7 +244,6 @@ class MAPElites:
         genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
         return genotypes, extra_info
 
-    @partial(jax.jit, static_argnames=("self",))
     def tell(
         self,
         genotypes: Genotype,
