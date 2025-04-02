@@ -52,7 +52,7 @@ class SPEA2Repertoire(GARepertoire):
 
         return strength_scores
 
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_fitnesses: Fitness,

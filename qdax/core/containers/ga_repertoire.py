@@ -104,7 +104,7 @@ class GARepertoire(Repertoire):
         }
         return filtered_extra_scores
 
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_fitnesses: Fitness,

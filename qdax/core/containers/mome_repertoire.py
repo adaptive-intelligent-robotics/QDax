@@ -210,7 +210,7 @@ class MOMERepertoire(MapElitesRepertoire):
             new_mask,
         )
 
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,

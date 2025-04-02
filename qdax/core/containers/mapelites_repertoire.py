@@ -224,7 +224,7 @@ class MapElitesRepertoire(GARepertoire):
             centroids=centroids,
         )
 
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,

@@ -79,7 +79,7 @@ class NSGA2Repertoire(GARepertoire):
 
             return crowding_distances
 
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_fitnesses: Fitness,
