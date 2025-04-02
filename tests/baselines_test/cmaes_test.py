@@ -33,6 +33,9 @@ def test_cmaes() -> None:
 
     state = cmaes.init()
     key = jax.random.key(0)
+    sample_jitted = jax.jit(cmaes.sample)
+    update_jitted = jax.jit(cmaes.update)
+    stop_condition_jitted = jax.jit(cmaes.stop_condition)
 
     iteration_count = 0
     for _ in range(num_iterations):
@@ -40,13 +43,13 @@ def test_cmaes() -> None:
 
         # sample
         key, subkey = jax.random.split(key)
-        samples = jax.jit(cmaes.sample)(state, subkey)
+        samples = sample_jitted(state, subkey)
 
         # update
-        state = jax.jit(cmaes.update)(state, samples)
+        state = update_jitted(state, samples)
 
         # check stop condition
-        stop_condition = jax.jit(cmaes.stop_condition)(state)
+        stop_condition = stop_condition_jitted(state)
 
         if stop_condition:
             break

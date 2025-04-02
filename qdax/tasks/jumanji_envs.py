@@ -80,7 +80,6 @@ def make_policy_network_play_step_fn_jumanji(
     return default_play_step_fn
 
 
-@partial(jax.jit, static_argnames=("play_step_fn", "episode_length"))
 def generate_jumanji_unroll(
     init_state: JumanjiState,
     init_timestep: JumanjiTimeStep,
@@ -142,7 +141,7 @@ def jumanji_scoring_function(
     init_timesteps: JumanjiTimeStep,
     episode_length: int,
     play_step_fn: Callable[
-        [JumanjiState, JumanjiTimeStep, Params, RNGKey, jumanji.env.Environment],
+        [JumanjiState, JumanjiTimeStep, Params, RNGKey],
         Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition],
     ],
     descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
