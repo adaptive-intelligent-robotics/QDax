@@ -5,7 +5,6 @@ Link to paper: https://ieeexplore.ieee.org/document/996017
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Optional, Tuple
 
 import jax

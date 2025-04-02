@@ -2,7 +2,6 @@
 https://arxiv.org/pdf/1802.09477.pdf"""
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax

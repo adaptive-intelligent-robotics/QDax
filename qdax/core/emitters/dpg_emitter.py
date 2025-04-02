@@ -3,7 +3,6 @@ based on: https://arxiv.org/abs/2006.08505
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import flax.linen as nn

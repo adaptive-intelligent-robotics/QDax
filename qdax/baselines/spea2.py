@@ -7,7 +7,6 @@ b13724cb54ae4171916f3f969d304b9e9752a57f"
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Optional, Tuple
 
 import jax

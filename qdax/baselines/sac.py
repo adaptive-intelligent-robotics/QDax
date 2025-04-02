@@ -4,7 +4,6 @@ A collection of functions and classes that define the algorithm Soft Actor Criti
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax
