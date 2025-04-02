@@ -21,7 +21,7 @@ def test_insert() -> None:
         buffer_size=buffer_size, transition=dummy_transition
     )
 
-    replay_buffer = replay_buffer.insert(dummy_transition)
+    replay_buffer = jax.jit(replay_buffer.insert)(dummy_transition)
     pytest.assume(replay_buffer.current_size == 1)
 
 
@@ -49,7 +49,7 @@ def test_insert_batch() -> None:
         jnp.array_equal(data.rewards, jnp.array([jnp.nan] * 5), equal_nan=True).all()
     )
 
-    replay_buffer = replay_buffer.insert(simple_transition)
+    replay_buffer = jax.jit(replay_buffer.insert)(simple_transition)
     data = QDTransition.from_flatten(replay_buffer.data, dummy_transition)
     pytest.assume(
         jnp.array_equal(
@@ -58,7 +58,7 @@ def test_insert_batch() -> None:
     )
 
     simple_transition_2 = simple_transition.replace(rewards=jnp.arange(3, 6))
-    replay_buffer = replay_buffer.insert(simple_transition_2)
+    replay_buffer = jax.jit(replay_buffer.insert)(simple_transition_2)
     data = QDTransition.from_flatten(replay_buffer.data, dummy_transition)
     pytest.assume(
         jnp.array_equal(data.rewards, jnp.array([1, 2, 3, 4, 5]), equal_nan=True).all()
@@ -86,11 +86,11 @@ def test_sample() -> None:
     simple_transition = jax.tree.map(lambda x: x.repeat(3, axis=0), dummy_transition)
     simple_transition = simple_transition.replace(rewards=jnp.arange(3))
 
-    replay_buffer = replay_buffer.insert(simple_transition)
+    replay_buffer = jax.jit(replay_buffer.insert)(simple_transition)
     key = jax.random.key(0)
 
     key, subkey = jax.random.split(key)
-    samples = replay_buffer.sample(subkey, 3)
+    samples = jax.jit(replay_buffer.sample)(subkey, 3)
 
     samples_shapes = jax.tree.map(lambda x: x.shape, samples)
     transition_shapes = jax.tree.map(lambda x: x.shape, simple_transition)
