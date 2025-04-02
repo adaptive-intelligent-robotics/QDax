@@ -260,8 +260,8 @@ class TD3:
         training_state: TD3TrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, Params, RNGKey, Transition],
+            [EnvState, Params],
+            Tuple[EnvState, Params, Transition],
         ],
     ) -> Tuple[Reward, Reward]:
         """Evaluates the agent's policy over an entire episode, across all batched

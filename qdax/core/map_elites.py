@@ -250,10 +250,10 @@ class MAPElites:
         fitnesses: Fitness,
         descriptors: Descriptor,
         repertoire: MapElitesRepertoire,
-        emitter_state: EmitterState,
+        emitter_state: Optional[EmitterState],
         extra_scores: Optional[ExtraScores] = None,
         extra_info: Optional[ExtraScores] = None,
-    ) -> Tuple[MapElitesRepertoire, EmitterState, Metrics]:
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
         """
         Add new genotypes to the repertoire and update the emitter state.
 

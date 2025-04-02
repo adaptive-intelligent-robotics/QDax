@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -40,7 +40,7 @@ class CMARndEmitter(CMAEmitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[CMARndEmitterState, RNGKey]:
+    ) -> CMARndEmitterState:
         """
         Initializes the CMA-MEGA emitter
 

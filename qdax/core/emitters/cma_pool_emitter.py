@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import partial
 from typing import Any, Optional, Tuple
 
 import jax
@@ -55,7 +54,7 @@ class CMAPoolEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[CMAPoolEmitterState, RNGKey]:
+    ) -> CMAPoolEmitterState:
         """
         Initializes the CMA-MEGA emitter
 

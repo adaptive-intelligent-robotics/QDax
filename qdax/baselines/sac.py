@@ -319,7 +319,7 @@ class SAC:
         training_state: SacTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
+            [EnvState, Params],
             Tuple[EnvState, SacTrainingState, Transition],
         ],
     ) -> Tuple[Reward, Reward]:
@@ -356,7 +356,7 @@ class SAC:
         training_state: SacTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
+            [EnvState, Params],
             Tuple[EnvState, SacTrainingState, QDTransition],
         ],
         descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],

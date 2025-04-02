@@ -238,7 +238,7 @@ class MEESEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[MEESEmitterState, RNGKey]:
+    ) -> MEESEmitterState:
         """Initializes the emitter state.
 
         Args:
