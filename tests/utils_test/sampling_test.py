@@ -98,12 +98,14 @@ def test_sampling() -> None:
     ) -> None:
 
         # Compare scoring against perforing a single sample
-        scoring_1_sample_fn = functools.partial(
-            sampling,
-            scoring_fn=scoring_fn,
-            num_samples=1,
-            fitness_extractor=fitness_extractor,
-            descriptor_extractor=descriptor_extractor,
+        scoring_1_sample_fn = jax.jit(
+            functools.partial(
+                sampling,
+                scoring_fn=scoring_fn,
+                num_samples=1,
+                fitness_extractor=fitness_extractor,
+                descriptor_extractor=descriptor_extractor,
+            )
         )
 
         # Evaluate individuals using the scoring functions
@@ -119,12 +121,14 @@ def test_sampling() -> None:
         pytest.assume(jnp.allclose(fitnesses, sample_fitnesses, rtol=1e-05, atol=1e-08))
 
         # Compare scoring against perforing multiple samples
-        scoring_multi_sample_fn = functools.partial(
-            sampling,
-            scoring_fn=scoring_fn,
-            num_samples=sample_number,
-            fitness_extractor=fitness_extractor,
-            descriptor_extractor=descriptor_extractor,
+        scoring_multi_sample_fn = jax.jit(
+            functools.partial(
+                sampling,
+                scoring_fn=scoring_fn,
+                num_samples=sample_number,
+                fitness_extractor=fitness_extractor,
+                descriptor_extractor=descriptor_extractor,
+            )
         )
 
         # Evaluate individuals using the scoring functions
@@ -147,17 +151,19 @@ def test_sampling() -> None:
     # Test function for different reproducibility extractors
     def sampling_reproducibility_test(
         fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
-        descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+        descriptor_repr_extractor: Callable[[jnp.ndarray], jnp.ndarray],
         key: RNGKey,
     ) -> None:
 
         # Compare scoring against perforing a single sample
-        scoring_1_sample_fn = functools.partial(
-            sampling_reproducibility,
-            scoring_fn=scoring_fn,
-            num_samples=1,
-            fitness_reproducibility_extractor=fitness_reproducibility_extractor,
-            descriptor_reproducibility_extractor=descriptor_reproducibility_extractor,
+        scoring_1_sample_fn = jax.jit(
+            functools.partial(
+                sampling_reproducibility,
+                scoring_fn=scoring_fn,
+                num_samples=1,
+                fitness_reproducibility_extractor=fitness_reproducibility_extractor,
+                descriptor_reproducibility_extractor=descriptor_repr_extractor,
+            )
         )
 
         # Evaluate individuals using the scoring functions
@@ -189,12 +195,14 @@ def test_sampling() -> None:
         )
 
         # Compare scoring against perforing multiple samples
-        scoring_multi_sample_fn = functools.partial(
-            sampling_reproducibility,
-            scoring_fn=scoring_fn,
-            num_samples=sample_number,
-            fitness_reproducibility_extractor=fitness_reproducibility_extractor,
-            descriptor_reproducibility_extractor=descriptor_reproducibility_extractor,
+        scoring_multi_sample_fn = jax.jit(
+            functools.partial(
+                sampling_reproducibility,
+                scoring_fn=scoring_fn,
+                num_samples=sample_number,
+                fitness_reproducibility_extractor=fitness_reproducibility_extractor,
+                descriptor_reproducibility_extractor=descriptor_repr_extractor,
+            )
         )
 
         # Evaluate individuals using the scoring functions

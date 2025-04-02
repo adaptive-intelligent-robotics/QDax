@@ -9,20 +9,17 @@ import jax.numpy as jnp
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
-@jax.jit
 def average(quantities: jnp.ndarray) -> jnp.ndarray:
     """Default expectation extractor using average."""
     return jnp.average(quantities, axis=1)
 
 
-@jax.jit
 def median(quantities: jnp.ndarray) -> jnp.ndarray:
     """Alternative expectation extractor using median.
     More robust to outliers than average."""
     return jnp.median(quantities, axis=1)
 
 
-@jax.jit
 def mode(quantities: jnp.ndarray) -> jnp.ndarray:
     """Alternative expectation extractor using mode.
     More robust to outliers than average.
@@ -49,7 +46,6 @@ def mode(quantities: jnp.ndarray) -> jnp.ndarray:
     return jax.vmap(_mode)(quantities)
 
 
-@jax.jit
 def closest(quantities: jnp.ndarray) -> jnp.ndarray:
     """Alternative expectation extractor selecting individual
     that has the minimum distance to all other individuals. This
@@ -68,13 +64,11 @@ def closest(quantities: jnp.ndarray) -> jnp.ndarray:
     return jax.vmap(_closest)(quantities)
 
 
-@jax.jit
 def std(quantities: jnp.ndarray) -> jnp.ndarray:
     """Default reproducibility extractor using standard deviation."""
     return jnp.std(quantities, axis=1)
 
 
-@jax.jit
 def mad(quantities: jnp.ndarray) -> jnp.ndarray:
     """Alternative reproducibility extractor using Median Absolute Deviation.
     More robust to outliers than standard deviation."""
@@ -85,7 +79,6 @@ def mad(quantities: jnp.ndarray) -> jnp.ndarray:
     return jnp.median(jnp.abs(quantities - median), axis=1)
 
 
-@jax.jit
 def iqr(quantities: jnp.ndarray) -> jnp.ndarray:
     """Alternative reproducibility extractor using Inter-Quartile Range.
     More robust to outliers than standard deviation."""
@@ -94,7 +87,6 @@ def iqr(quantities: jnp.ndarray) -> jnp.ndarray:
     return q4 - q1
 
 
-@partial(jax.jit, static_argnames=("num_samples",))
 def dummy_extra_scores_extractor(
     extra_scores: ExtraScores,
     num_samples: int,
@@ -160,16 +152,6 @@ def multi_sample_scoring_function(
     return all_fitnesses, all_descriptors, all_extra_scores
 
 
-@partial(
-    jax.jit,
-    static_argnames=(
-        "scoring_fn",
-        "num_samples",
-        "extra_scores_extractor",
-        "fitness_extractor",
-        "descriptor_extractor",
-    ),
-)
 def sampling(
     policies_params: Genotype,
     key: RNGKey,
@@ -222,18 +204,6 @@ def sampling(
     return fitnesses, descriptors, extra_scores
 
 
-@partial(
-    jax.jit,
-    static_argnames=(
-        "scoring_fn",
-        "num_samples",
-        "extra_scores_extractor",
-        "fitness_extractor",
-        "descriptor_extractor",
-        "fitness_reproducibility_extractor",
-        "descriptor_reproducibility_extractor",
-    ),
-)
 def sampling_reproducibility(
     policies_params: Genotype,
     key: RNGKey,
