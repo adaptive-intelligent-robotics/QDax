@@ -218,15 +218,13 @@ def test_aurora(env_name: str, batch_size: int) -> None:
     target_repertoire_size = 1024
 
     previous_error = jnp.sum(repertoire.fitnesses != -jnp.inf) - target_repertoire_size
-    container_size_control_jitted = jax.jit(aurora.container_size_control)
-    update_jitted = jax.jit(aurora.update)
 
     iteration = 0
     while iteration < max_iterations:
         # standard MAP-Elites-like loop
         for _ in range(log_freq):
             key, subkey = jax.random.split(key)
-            repertoire, emitter_state, _ = update_jitted(
+            repertoire, emitter_state, _ = jax.jit(aurora.update)(
                 repertoire,
                 emitter_state,
                 subkey,
@@ -246,7 +244,7 @@ def test_aurora(env_name: str, batch_size: int) -> None:
 
         elif iteration % 2 == 0:
             # only CSC
-            repertoire, previous_error = container_size_control_jitted(
+            repertoire, previous_error = jax.jit(aurora.container_size_control)(
                 repertoire,
                 target_size=target_repertoire_size,
                 previous_error=previous_error,
@@ -431,21 +429,20 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
     previous_error = jnp.sum(repertoire.fitnesses != -jnp.inf) - target_repertoire_size
 
     iteration = 0
-    container_size_control_jitted = jax.jit(aurora.container_size_control)
-    ask_jitted = jax.jit(aurora.ask)
-    tell_jitted = jax.jit(aurora.tell)
 
     while iteration < max_iterations:
         # standard MAP-Elites-like loop
         for _ in range(log_freq):
             key, subkey = jax.random.split(key)
-            genotypes, extra_info = ask_jitted(repertoire, emitter_state, subkey)
+            genotypes, extra_info = jax.jit(aurora.ask)(
+                repertoire, emitter_state, subkey
+            )
 
             # scores the offsprings
             key, subkey = jax.random.split(key)
             fitnesses, descriptors, extra_scores = aurora_scoring_fn(genotypes, subkey)
 
-            repertoire, emitter_state, _ = tell_jitted(
+            repertoire, emitter_state, _ = jax.jit(aurora.tell)(
                 genotypes=genotypes,
                 fitnesses=fitnesses,
                 descriptors=descriptors,
@@ -469,7 +466,7 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
 
         elif iteration % 2 == 0:
             # only CSC
-            repertoire, previous_error = container_size_control_jitted(
+            repertoire, previous_error = jax.jit(aurora.container_size_control)(
                 repertoire,
                 target_size=target_repertoire_size,
                 previous_error=previous_error,
