@@ -4,7 +4,6 @@ Need (DIAYN), ref: https://arxiv.org/abs/1802.06070.
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax

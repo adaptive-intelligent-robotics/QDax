@@ -5,7 +5,6 @@ the environment to discover supervised skills. Variants are:
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Optional, Tuple
 
 import jax
