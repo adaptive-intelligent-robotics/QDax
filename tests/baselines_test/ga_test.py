@@ -115,9 +115,7 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
             genotypes, num_neighbours, subkey
         )
     else:
-        repertoire, emitter_state, init_metrics = jax.jit(init_fn)(
-            genotypes, subkey
-        )
+        repertoire, emitter_state, init_metrics = jax.jit(init_fn)(genotypes, subkey)
 
     # Run the algorithm
     (
