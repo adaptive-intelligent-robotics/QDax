@@ -210,7 +210,7 @@ class DIAYN(SAC):
             reward += jnp.log(self._config.num_skills)
         return reward
 
-    def play_step_fn(
+    def play_step_fn(  # type: ignore
         self,
         env_state: EnvState,
         training_state: DiaynTrainingState,
@@ -276,13 +276,13 @@ class DIAYN(SAC):
 
         return next_env_state, training_state, transition
 
-    def eval_policy_fn(
+    def eval_policy_fn(  # type: ignore
         self,
         training_state: DiaynTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, Params, RNGKey, QDTransition],
+            [EnvState, Params],
+            Tuple[EnvState, Params, QDTransition],
         ],
         env_batch_size: int,
     ) -> Tuple[Reward, Reward, Reward, StateDescriptor]:

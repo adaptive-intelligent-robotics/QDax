@@ -296,7 +296,7 @@ class TD3:
         training_state: TD3TrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
+            [EnvState, Params],
             Tuple[EnvState, TD3TrainingState, QDTransition],
         ],
         descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],

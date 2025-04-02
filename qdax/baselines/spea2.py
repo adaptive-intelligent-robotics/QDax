@@ -29,7 +29,7 @@ class SPEA2(GeneticAlgorithm):
     b13724cb54ae4171916f3f969d304b9e9752a57f"
     """
 
-    def init(
+    def init(  # type: ignore
         self,
         genotypes: Genotype,
         population_size: int,

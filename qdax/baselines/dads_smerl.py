@@ -39,7 +39,7 @@ class DADSSMERL(DADS):
         super(DADSSMERL, self).__init__(config, action_size, descriptor_size)
         self._config: DadsSmerlConfig = config
 
-    def _compute_reward(
+    def _compute_reward(  # type: ignore
         self,
         transition: QDTransition,
         training_state: DadsTrainingState,

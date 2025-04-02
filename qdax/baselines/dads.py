@@ -242,7 +242,7 @@ class DADS(SAC):
 
         return reward
 
-    def play_step_fn(
+    def play_step_fn(  # type: ignore
         self,
         env_state: EnvState,
         training_state: DadsTrainingState,
@@ -336,7 +336,7 @@ class DADS(SAC):
 
         return next_env_state, training_state, transition
 
-    def eval_policy_fn(
+    def eval_policy_fn(  # type: ignore
         self,
         training_state: DadsTrainingState,
         eval_env_first_state: EnvState,
