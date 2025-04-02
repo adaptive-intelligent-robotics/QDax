@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 import flax
 import jax
 import jax.numpy as jnp
@@ -466,7 +464,7 @@ class ReplayBuffer(flax.struct.PyTreeNode):
         self,
         key: RNGKey,
         sample_size: int,
-    ) -> Tuple[Transition, RNGKey]:
+    ) -> Transition:
         """
         Sample a batch of transitions in the replay buffer.
         """

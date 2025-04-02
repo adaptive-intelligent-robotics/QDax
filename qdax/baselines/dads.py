@@ -4,7 +4,6 @@ of Skills (DADS), ref: https://arxiv.org/abs/1907.01657.
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax
@@ -342,8 +341,8 @@ class DADS(SAC):
         training_state: DadsTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, Params, RNGKey, QDTransition],
+            [EnvState, Params],
+            Tuple[EnvState, Params, QDTransition],
         ],
         env_batch_size: int,
     ) -> Tuple[Reward, Reward, Reward, StateDescriptor]:
