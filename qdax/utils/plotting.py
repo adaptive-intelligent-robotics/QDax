@@ -1,6 +1,5 @@
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-import jax
 import jax.numpy as jnp
 import matplotlib as mpl
 import matplotlib.cm as cm
@@ -456,9 +455,7 @@ def plot_mome_pareto_fronts(
     axes[1].set_ylim(minval, maxval)
 
     if with_global:
-        global_pareto_front, pareto_bool = jax.jit(
-            repertoire.compute_global_pareto_front
-        )()
+        global_pareto_front, pareto_bool = repertoire.compute_global_pareto_front()
         global_pareto_descriptors = jnp.concatenate(repertoire_descriptors)[pareto_bool]
         axes[0].scatter(
             global_pareto_front[:, 0],
