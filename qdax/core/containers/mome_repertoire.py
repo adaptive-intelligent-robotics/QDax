@@ -418,6 +418,7 @@ class MOMERepertoire(MapElitesRepertoire):
 
         return new_repertoire  # type: ignore
 
+    @jax.jit
     def compute_global_pareto_front(
         self,
     ) -> Tuple[ParetoFront[Fitness], Mask]:
