@@ -7,7 +7,6 @@ b13724cb54ae4171916f3f969d304b9e9752a57f"
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Optional, Tuple
 
 import jax
@@ -30,8 +29,7 @@ class SPEA2(GeneticAlgorithm):
     b13724cb54ae4171916f3f969d304b9e9752a57f"
     """
 
-    @partial(jax.jit, static_argnames=("self", "population_size", "num_neighbours"))
-    def init(
+    def init(  # type: ignore
         self,
         genotypes: Genotype,
         population_size: int,

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax
@@ -102,7 +101,6 @@ class CMAMEGAEmitter(Emitter):
 
         self._selector = selector
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         key: RNGKey,
@@ -149,8 +147,7 @@ class CMAMEGAEmitter(Emitter):
         )
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAMEGAState,
@@ -189,8 +186,7 @@ class CMAMEGAEmitter(Emitter):
 
         return new_thetas, {}
 
-    @partial(jax.jit, static_argnames=("self",))
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: CMAMEGAState,
         repertoire: MapElitesRepertoire,

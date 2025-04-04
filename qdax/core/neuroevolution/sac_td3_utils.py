@@ -62,7 +62,6 @@ def warmstart_buffer(
     return replay_buffer, env_state, training_state
 
 
-@partial(jax.jit, static_argnames=("play_step_fn", "episode_length"))
 def generate_unroll(
     init_state: EnvState,
     training_state: TrainingState,
@@ -96,15 +95,6 @@ def generate_unroll(
     return state, training_state, transitions
 
 
-@partial(
-    jax.jit,
-    static_argnames=(
-        "env_batch_size",
-        "grad_updates_per_step",
-        "play_step_fn",
-        "update_fn",
-    ),
-)
 def do_iteration_fn(
     training_state: TrainingState,
     env_state: EnvState,

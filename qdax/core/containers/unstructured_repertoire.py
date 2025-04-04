@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import flax.struct
@@ -21,7 +20,6 @@ from qdax.custom_types import (
 )
 
 
-@partial(jax.jit, static_argnames=("k_nn",))
 def get_cells_indices(
     batch_of_descriptors: Descriptor, centroids: Centroid, k_nn: int
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -68,7 +66,6 @@ def get_cells_indices(
     return func(batch_of_descriptors, centroids, k_nn)  # type: ignore
 
 
-@jax.jit
 def intra_batch_comp(
     normed: jnp.ndarray,
     current_index: jnp.ndarray,
@@ -219,8 +216,7 @@ class UnstructuredRepertoire(GARepertoire):
             max_size=max_size,
         )
 
-    @jax.jit
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,

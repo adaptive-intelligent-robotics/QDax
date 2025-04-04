@@ -5,7 +5,6 @@ the environment to discover supervised skills. Variants are:
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Optional, Tuple
 
 import jax
@@ -40,8 +39,7 @@ class DADSSMERL(DADS):
         super(DADSSMERL, self).__init__(config, action_size, descriptor_size)
         self._config: DadsSmerlConfig = config
 
-    @partial(jax.jit, static_argnames=("self",))
-    def _compute_reward(
+    def _compute_reward(  # type: ignore
         self,
         transition: QDTransition,
         training_state: DadsTrainingState,
@@ -74,7 +72,6 @@ class DADSSMERL(DADS):
 
         return rewards
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DadsTrainingState,

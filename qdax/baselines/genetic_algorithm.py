@@ -1,6 +1,5 @@
 """Core components of a basic genetic algorithm."""
 
-from functools import partial
 from typing import Any, Callable, Optional, Tuple
 
 import jax
@@ -36,7 +35,6 @@ class GeneticAlgorithm:
         self._emitter = emitter
         self._metrics_function = metrics_function
 
-    @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
         self, genotypes: Genotype, population_size: int, key: RNGKey
     ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics]:
@@ -78,7 +76,6 @@ class GeneticAlgorithm:
 
         return repertoire, emitter_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         repertoire: GARepertoire,
@@ -130,7 +127,6 @@ class GeneticAlgorithm:
 
         return repertoire, emitter_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def scan_update(
         self,
         carry: Tuple[GARepertoire, Optional[EmitterState], RNGKey],

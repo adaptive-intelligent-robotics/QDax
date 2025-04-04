@@ -74,7 +74,6 @@ class MOMERepertoire(MapElitesRepertoire):
         repertoire = selector.select(self, key, num_samples)
         return repertoire
 
-    @jax.jit
     def _update_masked_pareto_front(
         self,
         pareto_front_fitnesses: ParetoFront[Fitness],
@@ -211,8 +210,7 @@ class MOMERepertoire(MapElitesRepertoire):
             new_mask,
         )
 
-    @jax.jit
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,

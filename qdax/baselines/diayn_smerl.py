@@ -5,7 +5,6 @@ the environment to discover supervised skills. Variants are:
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Optional, Tuple
 
 import jax
@@ -39,8 +38,7 @@ class DIAYNSMERL(DIAYN):
         super(DIAYNSMERL, self).__init__(config, action_size)
         self._config: DiaynSmerlConfig = config
 
-    @partial(jax.jit, static_argnames=("self",))
-    def _compute_reward(
+    def _compute_reward(  # type: ignore
         self,
         transition: QDTransition,
         training_state: DiaynTrainingState,
@@ -81,7 +79,6 @@ class DIAYNSMERL(DIAYN):
 
         return rewards
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DiaynTrainingState,

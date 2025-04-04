@@ -20,7 +20,6 @@ class SPEA2Repertoire(GARepertoire):
 
     num_neighbours: int = flax.struct.field(pytree_node=False)
 
-    @jax.jit
     def _compute_strength_scores(self, batch_of_fitnesses: Fitness) -> jnp.ndarray:
         """Compute the strength scores (defined for a solution by the number of
         solutions dominating it plus the inverse of the density of solution in the
@@ -53,8 +52,7 @@ class SPEA2Repertoire(GARepertoire):
 
         return strength_scores
 
-    @jax.jit
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_fitnesses: Fitness,

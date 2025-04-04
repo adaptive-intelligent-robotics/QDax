@@ -18,7 +18,6 @@ class NSGA2Repertoire(GARepertoire):
     including size, save, sample and init.
     """
 
-    @jax.jit
     def _compute_crowding_distances(
         self, fitnesses: Fitness, mask: jnp.ndarray
     ) -> jnp.ndarray:
@@ -80,8 +79,7 @@ class NSGA2Repertoire(GARepertoire):
 
             return crowding_distances
 
-    @jax.jit
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_fitnesses: Fitness,

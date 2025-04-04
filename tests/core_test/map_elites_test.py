@@ -269,12 +269,14 @@ def test_map_elites_ask_tell(env_name: str, batch_size: int) -> None:
         key=key,
         extra_scores=extra_scores,
     )
+    ask_fn = jax.jit(map_elites.ask)
+    tell_fn = jax.jit(map_elites.tell)
 
     # Run the algorithm
     for _ in range(num_iterations):
         key, subkey = jax.random.split(key)
         # Generate solutions
-        genotypes, extra_info = map_elites.ask(repertoire, emitter_state, subkey)
+        genotypes, extra_info = ask_fn(repertoire, emitter_state, subkey)
 
         # Evaluate solutions: get fitness, descriptor and extra scores.
         # This is where custom evaluations on CPU or GPU can be added.
@@ -282,7 +284,7 @@ def test_map_elites_ask_tell(env_name: str, batch_size: int) -> None:
         fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
 
         # Update MAP-Elites
-        repertoire, emitter_state, current_metrics = map_elites.tell(
+        repertoire, emitter_state, current_metrics = tell_fn(
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,

@@ -34,7 +34,6 @@ def make_td3_loss_fn(
         Return the loss functions used to train the policy and the critic in TD3.
     """
 
-    @jax.jit
     def _policy_loss_fn(
         policy_params: Params,
         critic_params: Params,
@@ -50,7 +49,6 @@ def make_td3_loss_fn(
         policy_loss = -jnp.mean(q1_action)
         return policy_loss
 
-    @jax.jit
     def _critic_loss_fn(
         critic_params: Params,
         target_policy_params: Params,
@@ -121,7 +119,6 @@ def make_td3_loss_dc_fn(
         Return the loss functions used to train the policy and the critic in TD3.
     """
 
-    @jax.jit
     def _policy_loss_fn(
         policy_params: Params,
         critic_params: Params,
@@ -135,7 +132,6 @@ def make_td3_loss_dc_fn(
         policy_loss = -jnp.mean(q1_action)
         return policy_loss
 
-    @jax.jit
     def _actor_loss_fn(
         actor_params: Params,
         critic_params: Params,
@@ -150,7 +146,6 @@ def make_td3_loss_dc_fn(
         policy_loss = -jnp.mean(q1_action)
         return policy_loss
 
-    @jax.jit
     def _critic_loss_fn(
         critic_params: Params,
         target_actor_params: Params,

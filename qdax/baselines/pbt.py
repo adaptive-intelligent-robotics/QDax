@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Tuple
 
 import jax
@@ -22,7 +21,6 @@ class PBTTrainingState(PyTreeNode):
     pass
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def resample_hyperparams(
         cls, training_state: "PBTTrainingState"
     ) -> "PBTTrainingState":
@@ -32,7 +30,6 @@ class PBTTrainingState(PyTreeNode):
         raise NotImplementedError()
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def init_optimizers_states(
         cls,
         training_state: "PBTTrainingState",
@@ -43,7 +40,6 @@ class PBTTrainingState(PyTreeNode):
         raise NotImplementedError()
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def empty_optimizers_states(
         cls,
         training_state: "PBTTrainingState",
@@ -85,7 +81,6 @@ class PBT:
         self._num_best_to_replace_from = num_best_to_replace_from
         self._num_worse_to_replace = num_worse_to_replace
 
-    @partial(jax.jit, static_argnames=("self",))
     def update_states_and_buffer(
         self,
         key: RNGKey,
@@ -128,7 +123,6 @@ class PBT:
 
         return training_state, replay_buffer
 
-    @partial(jax.jit, static_argnames=("self",))
     def update_states_and_buffer_pmap(
         self,
         key: RNGKey,

@@ -5,7 +5,6 @@ Link to paper: https://ieeexplore.ieee.org/document/996017
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Optional, Tuple
 
 import jax
@@ -26,7 +25,6 @@ class NSGA2(GeneticAlgorithm):
     Link to paper: https://ieeexplore.ieee.org/document/996017
     """
 
-    @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
         self, genotypes: Genotype, population_size: int, key: RNGKey
     ) -> Tuple[NSGA2Repertoire, Optional[EmitterState], Metrics]:

@@ -54,7 +54,6 @@ class UniformReplacementArchive(Archive):
 
         return archive.replace(key=key)  # type: ignore
 
-    @jax.jit
     def _single_insertion(self, state_descriptor: jnp.ndarray) -> Archive:
         """Insert a single element.
 

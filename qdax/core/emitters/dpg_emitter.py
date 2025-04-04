@@ -3,7 +3,6 @@ based on: https://arxiv.org/abs/2006.08505
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import flax.linen as nn
@@ -134,8 +133,7 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: DiversityPGEmitterState,
         repertoire: Optional[Repertoire],
@@ -185,7 +183,6 @@ class DiversityPGEmitter(QualityPGEmitter):
 
         return final_emitter_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def _scan_actor_critic_training(
         self, carry: QualityPGEmitterState, _: None
     ) -> Tuple[QualityPGEmitterState, Tuple]:

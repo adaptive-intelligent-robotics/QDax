@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Any, Dict, Tuple
 
 import jax
@@ -73,7 +72,6 @@ class Archive(PyTreeNode):
             max_size=max_size,
         )
 
-    @jax.jit
     def _single_insertion(self, state_descriptor: jnp.ndarray) -> Archive:
         """Insert a single element.
 
@@ -99,7 +97,6 @@ class Archive(PyTreeNode):
             current_position=new_current_position, data=new_data
         )
 
-    @jax.jit
     def _conditioned_single_insertion(
         self, condition: bool, state_descriptor: jnp.ndarray
     ) -> Tuple[Archive, jnp.ndarray]:
@@ -130,7 +127,6 @@ class Archive(PyTreeNode):
             condition, true_fun, false_fun, self, state_descriptor
         )
 
-    @jax.jit
     def insert(self, state_descriptors: jnp.ndarray) -> Archive:
         """Tries to insert a batch of state descriptors in the archive.
 
@@ -249,7 +245,6 @@ def score_euclidean_novelty(
     return scaling_ratio * summed_distances
 
 
-@partial(jax.jit, static_argnames=("k"))
 def knn(
     data: jnp.ndarray, new_data: jnp.ndarray, k: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -281,12 +276,11 @@ def knn(
     dist = jnp.sqrt(jnp.clip(dist, min=0.0))
 
     # return values, indices
-    values, indices = qdax_top_k(-dist, k)
+    values, indices = qdax_top_k(-dist, k=k)
 
     return -values, indices
 
 
-@partial(jax.jit, static_argnames=("k"))
 def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Returns the top k elements of an array.
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax
@@ -114,7 +113,6 @@ class AURORA:
             aurora_extra_info,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def container_size_control(
         self,
         repertoire: UnstructuredRepertoire,
@@ -237,7 +235,6 @@ class AURORA:
 
         return repertoire, emitter_state, metrics, updated_aurora_extra_info
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         repertoire: MapElitesRepertoire,
@@ -292,7 +289,6 @@ class AURORA:
         )
         return repertoire, emitter_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def ask(
         self,
         repertoire: MapElitesRepertoire,
@@ -311,18 +307,17 @@ class AURORA:
         genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
         return genotypes, extra_info
 
-    @partial(jax.jit, static_argnames=("self",))
     def tell(
         self,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         repertoire: MapElitesRepertoire,
-        emitter_state: EmitterState,
+        emitter_state: Optional[EmitterState],
         aurora_extra_info: AuroraExtraInfo,
         extra_scores: Optional[ExtraScores] = None,
         extra_info: Optional[ExtraScores] = None,
-    ) -> Tuple[MapElitesRepertoire, EmitterState, Metrics]:
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
         """
         Add new genotypes to the repertoire and update the emitter state.
 

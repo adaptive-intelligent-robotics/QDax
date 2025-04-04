@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import partial
 from typing import Any, Tuple
 
 import jax
@@ -116,7 +115,6 @@ class TrajectoryBuffer(struct.PyTreeNode):
             returns=returns,
         )
 
-    @partial(jax.jit, static_argnames=("sample_size"))
     def sample(
         self,
         key: RNGKey,
@@ -173,13 +171,11 @@ class TrajectoryBuffer(struct.PyTreeNode):
         transitions = self.transition.__class__.from_flatten(samples, self.transition)
         return transitions, returns
 
-    @jax.jit
     def insert(self, transitions: Transition) -> TrajectoryBuffer:
         """
         Scan over 'insert_one_transition', to add multiple transitions.
         """
 
-        @jax.jit
         def insert_one_transition(
             replay_buffer: TrajectoryBuffer, flattened_transitions: jnp.ndarray
         ) -> Tuple[TrajectoryBuffer, Any]:
