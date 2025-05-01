@@ -110,7 +110,7 @@ class FeetContactWrapper(QDEnv):
     def _get_feet_contact(self, state: State) -> jnp.ndarray:
         return jnp.any(
             jax.vmap(
-                lambda x: (state.pipeline_state.contact.link_idx[0] == x)
+                lambda x: (state.pipeline_state.contact.link_idx[1] == x)
                 & (state.pipeline_state.contact.dist <= 0)
             )(self._feet_idx),
             axis=-1,

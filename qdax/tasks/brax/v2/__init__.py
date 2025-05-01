@@ -42,36 +42,50 @@ descriptor_extractor = {
 }
 
 _qdax_custom_envs = {
+    # All omni envs require debug=False as we don't need to check contacts
+    # with the ground
     "ant_omni": {
         "env": "ant",
         "wrappers": [XYPositionWrapper, NoForwardRewardWrapper],
         "kwargs": [{"minval": [-30.0, -30.0], "maxval": [30.0, 30.0]}, {}],
+        "debug": False,
     },
     "humanoid_omni": {
         "env": "humanoid",
         "wrappers": [XYPositionWrapper, NoForwardRewardWrapper],
         "kwargs": [{"minval": [-30.0, -30.0], "maxval": [30.0, 30.0]}, {}],
+        "debug": False,
     },
-    "ant_uni": {"env": "ant", "wrappers": [FeetContactWrapper], "kwargs": [{}, {}]},
+    # All uni envs require debug=True to check contacts with the ground
+    "ant_uni": {
+        "env": "ant",
+        "wrappers": [FeetContactWrapper],
+        "kwargs": [{}],
+        "debug": True,
+    },
     "humanoid_uni": {
         "env": "humanoid",
         "wrappers": [FeetContactWrapper],
-        "kwargs": [{}, {}],
+        "kwargs": [{}],
+        "debug": True,
     },
     "halfcheetah_uni": {
         "env": "halfcheetah",
         "wrappers": [FeetContactWrapper],
-        "kwargs": [{}, {}],
+        "kwargs": [{}],
+        "debug": True,
     },
     "hopper_uni": {
         "env": "hopper",
         "wrappers": [FeetContactWrapper],
         "kwargs": [{}],
+        "debug": True,
     },
     "walker2d_uni": {
         "env": "walker2d",
         "wrappers": [FeetContactWrapper],
         "kwargs": [{}],
+        "debug": True,
     },
 }
 
@@ -97,8 +111,11 @@ def create(
         env = brax.envs._envs[env_name](backend=backend, **kwargs)
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
+        is_debug = _qdax_custom_envs[env_name]["debug"]
         if base_env_name in brax.envs._envs.keys():
-            env = brax.envs._envs[base_env_name](backend=backend, **kwargs)
+            env = brax.envs._envs[base_env_name](
+                backend=backend, debug=is_debug, **kwargs
+            )
         else:
             raise NotImplementedError("This environment name does not exist!")
     else:
