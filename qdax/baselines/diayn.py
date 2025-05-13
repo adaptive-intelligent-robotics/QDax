@@ -4,7 +4,6 @@ Need (DIAYN), ref: https://arxiv.org/abs/1802.06070.
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax
@@ -177,7 +176,6 @@ class DIAYN(SAC):
             steps=jnp.array(0),
         )
 
-    @partial(jax.jit, static_argnames=("self", "add_log_p_z"))
     def _compute_diversity_reward(
         self,
         transition: QDTransition,
@@ -212,8 +210,7 @@ class DIAYN(SAC):
             reward += jnp.log(self._config.num_skills)
         return reward
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
-    def play_step_fn(
+    def play_step_fn(  # type: ignore
         self,
         env_state: EnvState,
         training_state: DiaynTrainingState,
@@ -279,14 +276,13 @@ class DIAYN(SAC):
 
         return next_env_state, training_state, transition
 
-    @partial(jax.jit, static_argnames=("self", "play_step_fn", "env_batch_size"))
-    def eval_policy_fn(
+    def eval_policy_fn(  # type: ignore
         self,
         training_state: DiaynTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, Params, RNGKey, QDTransition],
+            [EnvState, Params],
+            Tuple[EnvState, Params, QDTransition],
         ],
         env_batch_size: int,
     ) -> Tuple[Reward, Reward, Reward, StateDescriptor]:
@@ -347,7 +343,6 @@ class DIAYN(SAC):
             transitions.state_desc,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(
         self, transition: QDTransition, training_state: DiaynTrainingState
     ) -> Reward:
@@ -366,7 +361,6 @@ class DIAYN(SAC):
             add_log_p_z=True,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_networks(
         self,
         training_state: DiaynTrainingState,
@@ -469,7 +463,6 @@ class DIAYN(SAC):
 
         return new_training_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DiaynTrainingState,

@@ -13,7 +13,7 @@ def test_add_to_mels_repertoire() -> None:
     num_descriptors = 2
 
     # create a repertoire instance
-    repertoire = MELSRepertoire(
+    repertoire = MELSRepertoire.init(
         genotypes=jnp.zeros(shape=(num_centroids, genotype_size)),
         fitnesses=jnp.ones(shape=(num_centroids, 1)) * (-jnp.inf),
         descriptors=jnp.zeros(shape=(num_centroids, num_descriptors)),
@@ -25,7 +25,7 @@ def test_add_to_mels_repertoire() -> None:
                 [1.0, 2.0],
             ]
         ),
-        spreads=jnp.full(shape=(num_centroids,), fill_value=jnp.inf),
+        # spreads=jnp.full(shape=(num_centroids,), fill_value=jnp.inf),
     )
 
     #
@@ -187,7 +187,7 @@ def test_add_with_single_eval() -> None:
     num_descriptors = 2
 
     # create a repertoire instance
-    repertoire = MELSRepertoire(
+    repertoire = MELSRepertoire.init(
         genotypes=jnp.zeros(shape=(num_centroids, genotype_size)),
         fitnesses=jnp.ones(shape=(num_centroids, 1)) * (-jnp.inf),
         descriptors=jnp.zeros(shape=(num_centroids, num_descriptors)),
@@ -199,7 +199,6 @@ def test_add_with_single_eval() -> None:
                 [1.0, 2.0],
             ]
         ),
-        spreads=jnp.full(shape=(num_centroids,), fill_value=jnp.inf),
     )
 
     # Insert a single solution with only one eval.

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import partial
 from typing import Any, Optional, Tuple
 
 import jax
@@ -47,7 +46,6 @@ class CMAPoolEmitter(Emitter):
         """
         return self._emitter.batch_size  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         key: RNGKey,
@@ -56,7 +54,7 @@ class CMAPoolEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[CMAPoolEmitterState, RNGKey]:
+    ) -> CMAPoolEmitterState:
         """
         Initializes the CMA-MEGA emitter
 
@@ -94,8 +92,7 @@ class CMAPoolEmitter(Emitter):
 
         return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAPoolEmitterState,
@@ -124,8 +121,7 @@ class CMAPoolEmitter(Emitter):
 
         return offsprings, extra_info
 
-    @partial(jax.jit, static_argnames=("self",))
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: CMAPoolEmitterState,
         repertoire: MapElitesRepertoire,

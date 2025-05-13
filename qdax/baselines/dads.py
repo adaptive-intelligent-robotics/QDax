@@ -4,7 +4,6 @@ of Skills (DADS), ref: https://arxiv.org/abs/1907.01657.
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax
@@ -191,7 +190,6 @@ class DADS(SAC):
             steps=jnp.array(0),
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_diversity_reward(
         self, transition: QDTransition, training_state: DadsTrainingState
     ) -> Reward:
@@ -244,8 +242,7 @@ class DADS(SAC):
 
         return reward
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
-    def play_step_fn(
+    def play_step_fn(  # type: ignore
         self,
         env_state: EnvState,
         training_state: DadsTrainingState,
@@ -339,14 +336,13 @@ class DADS(SAC):
 
         return next_env_state, training_state, transition
 
-    @partial(jax.jit, static_argnames=("self", "play_step_fn", "env_batch_size"))
-    def eval_policy_fn(
+    def eval_policy_fn(  # type: ignore
         self,
         training_state: DadsTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, Params, RNGKey, QDTransition],
+            [EnvState, Params],
+            Tuple[EnvState, Params, QDTransition],
         ],
         env_batch_size: int,
     ) -> Tuple[Reward, Reward, Reward, StateDescriptor]:
@@ -400,7 +396,6 @@ class DADS(SAC):
 
         return true_return, true_returns, diversity_returns, transitions.state_desc
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(
         self, transition: QDTransition, training_state: DadsTrainingState
     ) -> Reward:
@@ -417,7 +412,6 @@ class DADS(SAC):
             transition=transition, training_state=training_state
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_dynamics(
         self, operand: Tuple[DadsTrainingState, QDTransition]
     ) -> Tuple[Params, float, optax.OptState]:
@@ -448,7 +442,6 @@ class DADS(SAC):
             dynamics_optimizer_state,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _not_update_dynamics(
         self, operand: Tuple[DadsTrainingState, QDTransition]
     ) -> Tuple[Params, float, optax.OptState]:
@@ -464,7 +457,6 @@ class DADS(SAC):
             training_state.dynamics_optimizer_state,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_networks(
         self,
         training_state: DadsTrainingState,
@@ -566,7 +558,6 @@ class DADS(SAC):
 
         return new_training_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DadsTrainingState,

@@ -40,7 +40,6 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
     expl_noise: float
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def init_optimizers_states(
         cls,
         training_state: "PBTTD3TrainingState",
@@ -62,7 +61,6 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
         )
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def empty_optimizers_states(
         cls,
         training_state: "PBTTD3TrainingState",
@@ -75,7 +73,6 @@ class PBTTD3TrainingState(PBTTrainingState, TD3TrainingState):
         )
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def resample_hyperparams(
         cls, training_state: "PBTTD3TrainingState"
     ) -> "PBTTD3TrainingState":
@@ -179,7 +176,6 @@ class PBTTD3(TD3):
 
         return training_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_step_fn(
         self,
         env_state: EnvState,
@@ -225,7 +221,6 @@ class PBTTD3(TD3):
         )
         return next_env_state, training_state, transition
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: PBTTD3TrainingState,

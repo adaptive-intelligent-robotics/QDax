@@ -15,7 +15,6 @@ from qdax.custom_types import Centroid, Genotype, Metrics, RNGKey
 
 
 class DistributedMAPElites(MAPElites):
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         genotypes: Genotype,
@@ -90,7 +89,6 @@ class DistributedMAPElites(MAPElites):
 
         return repertoire, emitter_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         repertoire: MapElitesRepertoire,

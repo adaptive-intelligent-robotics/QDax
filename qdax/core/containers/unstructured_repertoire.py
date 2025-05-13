@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import partial
 from typing import Optional, Tuple
 
 import flax.struct
@@ -13,14 +12,13 @@ from qdax.core.emitters.repertoire_selectors.uniform_selector import UniformSele
 from qdax.custom_types import (
     Centroid,
     Descriptor,
+    ExtraScores,
     Fitness,
     Genotype,
-    Observation,
     RNGKey,
 )
 
 
-@partial(jax.jit, static_argnames=("k_nn",))
 def get_cells_indices(
     batch_of_descriptors: Descriptor, centroids: Centroid, k_nn: int
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -67,7 +65,6 @@ def get_cells_indices(
     return func(batch_of_descriptors, centroids, k_nn)  # type: ignore
 
 
-@jax.jit
 def intra_batch_comp(
     normed: jnp.ndarray,
     current_index: jnp.ndarray,
@@ -146,13 +143,11 @@ class UnstructuredRepertoire(GARepertoire):
         descriptors: an array that contains the descriptors of solutions in each cell
             of the repertoire, ordered by centroids. The array shape
             is (num_centroids, num_descriptors).
-        centroids: an array the contains the centroids of the tessellation. The array
-            shape is (num_centroids, num_descriptors).
-        observations: observations that the genotype gathered in the environment.
+        extra_scores: extra scores resulting from the evaluation of the genotypes
+        keys_extra_scores: keys of the extra scores to store in the repertoire
     """
 
     descriptors: Descriptor
-    observations: Observation
     l_value: jnp.ndarray
     max_size: int = flax.struct.field(pytree_node=False)
 
@@ -164,13 +159,12 @@ class UnstructuredRepertoire(GARepertoire):
         """Returns the number of genotypes in the repertoire."""
         return jnp.sum(self.fitnesses != -jnp.inf)
 
-    @jax.jit
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
-        batch_of_observations: Observation,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> UnstructuredRepertoire:
         """Adds a batch of genotypes to the repertoire.
 
@@ -179,12 +173,17 @@ class UnstructuredRepertoire(GARepertoire):
                 for addition in the repertoire.
             batch_of_descriptors: associated descriptors.
             batch_of_fitnesses: associated fitness.
-            batch_of_observations: associated observations.
+            batch_of_extra_scores: associated extra scores.
 
         Returns:
             A new unstructured repertoire where the relevant individuals have been
             added.
         """
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
+        filtered_batch_of_extra_scores = self.filter_extra_scores(batch_of_extra_scores)
+
         batch_of_fitnesses = batch_of_fitnesses.reshape(-1, 1)
 
         # We need to replace all the descriptors that are not filled with jnp inf
@@ -215,7 +214,9 @@ class UnstructuredRepertoire(GARepertoire):
 
         # batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
         # batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
-        batch_of_observations = jnp.expand_dims(batch_of_observations, axis=-1)
+        filtered_batch_of_extra_scores = jax.tree.map(
+            lambda x: jnp.expand_dims(x, axis=-1), filtered_batch_of_extra_scores
+        )
 
         # TODO: Doesn't Work if Archive is full. Need to use the closest individuals
         # in that case.
@@ -253,7 +254,10 @@ class UnstructuredRepertoire(GARepertoire):
             lambda x: x.at[sorted_descriptors].get(), batch_of_genotypes
         )
         batch_of_fitnesses = batch_of_fitnesses.at[sorted_descriptors].get()
-        batch_of_observations = batch_of_observations.at[sorted_descriptors].get()
+
+        filtered_batch_of_extra_scores = jax.tree.map(
+            lambda x: x.at[sorted_descriptors].get(), filtered_batch_of_extra_scores
+        )
         not_novel_enough = not_novel_enough.at[sorted_descriptors].get()
 
         # Check to find Individuals with same descriptor within the Batch
@@ -316,15 +320,18 @@ class UnstructuredRepertoire(GARepertoire):
             batch_of_descriptors.squeeze()
         )
 
-        new_observations = self.observations.at[batch_of_indices.squeeze()].set(
-            batch_of_observations.squeeze()
+        new_extra_scores = jax.tree.map(
+            lambda x, y: x.at[batch_of_indices.squeeze()].set(y.squeeze()).squeeze(),
+            self.extra_scores,
+            filtered_batch_of_extra_scores,
         )
 
         return UnstructuredRepertoire(
             genotypes=new_grid_genotypes,
             fitnesses=new_fitnesses,
             descriptors=new_descriptors.squeeze(),
-            observations=new_observations.squeeze(),
+            extra_scores=new_extra_scores,
+            keys_extra_scores=self.keys_extra_scores,
             l_value=self.l_value,
             max_size=self.max_size,
         )
@@ -352,6 +359,7 @@ class UnstructuredRepertoire(GARepertoire):
         if selector is None:
             selector = UniformSelector(select_with_replacement=True)
 
+        # Explicitly cast return value to UnstructuredRepertoire
         repertoire: UnstructuredRepertoire = selector.select(self, key, num_samples)
 
         return repertoire
@@ -362,9 +370,12 @@ class UnstructuredRepertoire(GARepertoire):
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
-        observations: Observation,
         l_value: jnp.ndarray,
         max_size: int,
+        *args,
+        extra_scores: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
+        **kwargs,
     ) -> UnstructuredRepertoire:
         """Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
@@ -376,13 +387,17 @@ class UnstructuredRepertoire(GARepertoire):
             fitnesses: fitness of the initial genotypes of shape (batch_size,)
             descriptors: descriptors of the initial genotypes
                 of shape (batch_size, num_descriptors)
-            observations: observations experienced in the evaluation task.
             l_value: threshold distance of the repertoire.
             max_size: maximal size of the container
+            extra_scores: extra scores resulting from the evaluation of the genotypes
+            keys_extra_scores: keys of the extra scores to store in the repertoire
 
         Returns:
             an initialized unstructured repertoire.
         """
+
+        if extra_scores is None:
+            extra_scores = {}
 
         # Initialize grid with default values
         default_fitnesses = -jnp.inf * jnp.ones(shape=(max_size, 1))
@@ -392,19 +407,31 @@ class UnstructuredRepertoire(GARepertoire):
         )
         default_descriptors = jnp.zeros(shape=(max_size, descriptors.shape[-1]))
 
-        default_observations = jnp.full(
-            shape=(max_size,) + observations.shape[1:], fill_value=jnp.nan
+        # create default extra scores
+        filtered_extra_scores = {
+            key: value
+            for key, value in extra_scores.items()
+            if key in keys_extra_scores
+        }
+
+        default_extra_scores = jax.tree.map(
+            lambda x: jnp.zeros(shape=(max_size,) + x.shape[1:]),
+            filtered_extra_scores,
         )
 
         repertoire = UnstructuredRepertoire(
             genotypes=default_genotypes,
             fitnesses=default_fitnesses,
             descriptors=default_descriptors,
-            observations=default_observations,
             l_value=jnp.full(shape=(max_size,), fill_value=l_value),
             max_size=max_size,
+            extra_scores=default_extra_scores,
+            keys_extra_scores=keys_extra_scores,
         )
 
         return repertoire.add(  # type: ignore
-            genotypes, descriptors, fitnesses, observations
+            genotypes,
+            descriptors,
+            fitnesses,
+            extra_scores,
         )

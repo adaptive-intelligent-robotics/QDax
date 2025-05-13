@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax
@@ -25,8 +24,7 @@ class MixingEmitter(Emitter):
         self._batch_size = batch_size
         self._selector = selector
 
-    @partial(jax.jit, static_argnames=("self",))
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: GARepertoire,
         emitter_state: Optional[EmitterState],

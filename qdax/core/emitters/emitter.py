@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
-from functools import partial
 from typing import Optional, Tuple
 
-import jax
 from flax.struct import PyTreeNode
 
 from qdax.core.containers.repertoire import Repertoire
@@ -73,7 +71,6 @@ class Emitter(ABC):
         """
         pass
 
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: Optional[EmitterState],

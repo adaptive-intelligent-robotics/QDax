@@ -36,7 +36,6 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
     reward_scaling: float
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def init_optimizers_states(
         cls,
         training_state: "PBTSacTrainingState",
@@ -56,7 +55,6 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
         )
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def empty_optimizers_states(
         cls,
         training_state: "PBTSacTrainingState",
@@ -69,7 +67,6 @@ class PBTSacTrainingState(PBTTrainingState, SacTrainingState):
         )
 
     @classmethod
-    @partial(jax.jit, static_argnames=("cls",))
     def resample_hyperparams(
         cls,
         training_state: "PBTSacTrainingState",
@@ -173,7 +170,6 @@ class PBTSAC(SAC):
 
         return training_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self"))
     def update(
         self,
         training_state: PBTSacTrainingState,

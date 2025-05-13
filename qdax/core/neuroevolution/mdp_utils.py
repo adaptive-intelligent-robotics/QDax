@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Any, Callable, Tuple
 
 import brax.envs
@@ -22,7 +21,6 @@ class TrainingState(PyTreeNode):
     pass
 
 
-@partial(jax.jit, static_argnames=("play_step_fn", "episode_length"))
 def generate_unroll(
     init_state: EnvState,
     policy_params: Params,
@@ -67,7 +65,6 @@ def generate_unroll(
     return state, transitions
 
 
-@jax.jit
 def get_first_episode(transition: Transition) -> Transition:
     """Extracts the first episode from a batch of transitions, returns the batch of
     transitions that is masked with nans except for the first episode.

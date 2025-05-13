@@ -47,7 +47,7 @@ class Repertoire(flax.struct.PyTreeNode, ABC):
         pass
 
     @abstractmethod
-    def add(self) -> Repertoire:
+    def add(self) -> Repertoire:  # noqa: N805
         """Implements the rule to add new genotypes to a
         repertoire.
 

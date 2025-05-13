@@ -233,14 +233,6 @@ def reevaluation_reproducibility_function(
     )
 
 
-@partial(
-    jax.jit,
-    static_argnames=(
-        "scoring_fn",
-        "num_reevals",
-        "scan_size",
-    ),
-)
 def _perform_reevaluation(
     policies_params: Genotype,
     key: RNGKey,
