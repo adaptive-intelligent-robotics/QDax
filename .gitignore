@@ -169,3 +169,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# HTML files
+*.html
