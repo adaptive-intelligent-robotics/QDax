@@ -111,14 +111,16 @@ centroids = compute_euclidean_centroids(
 )
 
 # Initializes repertoire and emitter state
-repertoire, emitter_state, key = map_elites.init(init_variables, centroids, key)
+key, subkey = jax.random.split(key)
+repertoire, emitter_state, metrics = map_elites.init(init_variables, centroids, subkey)
 
 # Run MAP-Elites loop
 for i in range(num_iterations):
-    (repertoire, emitter_state, metrics, key,) = map_elites.update(
+    key, subkey = jax.random.split(key)
+    (repertoire, emitter_state, metrics,) = map_elites.update(
         repertoire,
         emitter_state,
-        key,
+        subkey,
     )
 
 # Get contents of repertoire
