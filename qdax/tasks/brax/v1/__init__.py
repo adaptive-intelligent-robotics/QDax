@@ -9,7 +9,7 @@ from brax.v1.envs.wrappers import (
     VectorWrapper,
 )
 
-from qdax.tasks.brax.common.descriptor_extractors import (
+from qdax.tasks.brax.descriptor_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )

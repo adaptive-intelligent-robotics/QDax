@@ -5,7 +5,7 @@ import brax
 from brax.envs.base import Env
 from brax.envs.wrappers import training
 
-from qdax.tasks.brax.common.descriptor_extractors import (
+from qdax.tasks.brax.descriptor_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )
