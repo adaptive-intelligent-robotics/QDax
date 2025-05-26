@@ -7,7 +7,7 @@ from brax.v1.envs import Env
 
 import qdax
 from qdax.custom_types import EnvState
-from qdax.environments.pointmaze import PointMaze
+from qdax.tasks.brax.v1 import PointMaze
 
 
 def test_pointmaze() -> None:
@@ -21,7 +21,7 @@ def test_pointmaze() -> None:
     pytest.assume(qd_env.state_descriptor_name == "xy_position")
 
     # create env with name
-    qd_env = qdax.environments.create(env_name="pointmaze")  # type: ignore
+    qd_env = qdax.tasks.brax.v1.create(env_name="pointmaze")  # type: ignore
 
     # verify class
     pytest.assume(isinstance(qd_env, Env))
@@ -50,7 +50,7 @@ def test_pointmaze() -> None:
 
     # check coherence with the unwrapped original environment
     # create new envs
-    qd_env = qdax.environments.create(env_name="pointmaze")  # type: ignore
+    qd_env = qdax.tasks.brax.v1.create(env_name="pointmaze")  # type: ignore
 
     # test with jit - only jit the step
     state = qd_env.reset(rng=jp.random_prngkey(seed=0))

@@ -1,58 +1,23 @@
-from abc import abstractmethod
 from typing import Any, Tuple
 
 import jax
-from brax.v1 import jumpy as jp
-from brax.v1.envs import Env, State
+import jax.numpy as jnp
+from brax.envs.base import PipelineEnv, State
 
-
-class QDEnv(Env):
-    """
-    Wrapper for all QD environments.
-    """
-
-    @property
-    @abstractmethod
-    def state_descriptor_length(self) -> int:
-        pass
-
-    @property
-    @abstractmethod
-    def state_descriptor_name(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def state_descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
-        pass
-
-    @property
-    @abstractmethod
-    def descriptor_length(self) -> int:
-        pass
-
-    @property
-    @abstractmethod
-    def descriptor_limits(self) -> Tuple[jax.Array, jax.Array]:
-        pass
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
+from qdax.tasks.brax.v2.envs.base_env import QDEnv
 
 
 class QDWrapper(QDEnv):
     """Wrapper for QD environments."""
 
     def __init__(self, env: QDEnv):
-        super().__init__(config=None)
+        super().__init__(sys=env.sys, backend=env.backend)
         self.env = env
 
-    def reset(self, rng: jp.ndarray) -> State:
+    def reset(self, rng: jnp.ndarray) -> State:
         return self.env.reset(rng)
 
-    def step(self, state: State, action: jp.ndarray) -> State:
+    def step(self, state: State, action: jnp.ndarray) -> State:
         return self.env.step(state, action)
 
     @property
@@ -88,7 +53,7 @@ class QDWrapper(QDEnv):
         return self.env.name
 
     @property
-    def unwrapped(self) -> Env:
+    def unwrapped(self) -> PipelineEnv:
         return self.env.unwrapped
 
     def __getattr__(self, name: str) -> Any:
@@ -100,20 +65,19 @@ class QDWrapper(QDEnv):
 class StateDescriptorResetWrapper(QDWrapper):
     """Automatically resets state descriptors."""
 
-    def reset(self, rng: jp.ndarray) -> State:
+    def reset(self, rng: jnp.ndarray) -> State:
         state = self.env.reset(rng)
         state.info["first_state_descriptor"] = state.info["state_descriptor"]
         return state
 
-    def step(self, state: State, action: jp.ndarray) -> State:
-
+    def step(self, state: State, action: jnp.ndarray) -> State:
         state = self.env.step(state, action)
 
-        def where_done(x: jp.ndarray, y: jp.ndarray) -> jp.ndarray:
+        def where_done(x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
             done = state.done
             if done.shape:
-                done = jp.reshape(done, tuple([x.shape[0]] + [1] * (len(x.shape) - 1)))
-            return jp.where(done, x, y)
+                done = jnp.reshape(done, tuple([x.shape[0]] + [1] * (len(x.shape) - 1)))
+            return jnp.where(done, x, y)
 
         state.info["state_descriptor"] = where_done(
             state.info["first_state_descriptor"], state.info["state_descriptor"]

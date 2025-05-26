@@ -5,6 +5,8 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jumanji
+from chex import ArrayTree
+from typing_extensions import TypeAlias
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.custom_types import (
@@ -12,12 +14,13 @@ from qdax.custom_types import (
     ExtraScores,
     Fitness,
     Genotype,
-    JumanjiState,
-    JumanjiTimeStep,
     Observation,
     Params,
     RNGKey,
 )
+
+JumanjiState: TypeAlias = ArrayTree
+JumanjiTimeStep: TypeAlias = jumanji.types.TimeStep
 
 
 def make_policy_network_play_step_fn_jumanji(

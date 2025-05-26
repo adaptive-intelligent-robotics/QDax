@@ -16,8 +16,7 @@ from flax.training import train_state
 
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
-from qdax.custom_types import Observation, Params, RNGKey
-from qdax.environments.descriptor_extractors import AuroraExtraInfoNormalization
+from qdax.custom_types import AuroraExtraInfoNormalization, Observation, Params, RNGKey
 
 
 def get_model(

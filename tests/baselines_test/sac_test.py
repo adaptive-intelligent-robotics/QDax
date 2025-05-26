@@ -6,7 +6,7 @@ from typing import Any, Tuple
 import jax
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.sac import SAC, SacConfig, TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer

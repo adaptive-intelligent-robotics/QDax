@@ -8,7 +8,7 @@ from brax.v1 import jumpy as jp
 from brax.v1.physics.base import vec_to_arr
 from brax.v1.physics.config_pb2 import Joint
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 
 
 def get_joints_ordered_by_dof_pbd(sys: brax.System) -> List[Joint]:
