@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import pytest
 from brax.envs import State as EnvState
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.dads import DADS, DadsConfig, DadsTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer

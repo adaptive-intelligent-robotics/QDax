@@ -12,6 +12,7 @@ from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.custom_types import (
+    AuroraExtraInfo,
     Descriptor,
     ExtraScores,
     Fitness,
@@ -21,7 +22,6 @@ from qdax.custom_types import (
     Params,
     RNGKey,
 )
-from qdax.environments.descriptor_extractors import AuroraExtraInfo
 
 
 class AURORA:

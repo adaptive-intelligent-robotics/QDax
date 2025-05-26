@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.pbt import PBT
 from qdax.baselines.td3_pbt import PBTTD3, PBTTD3Config
 

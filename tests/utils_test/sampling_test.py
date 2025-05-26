@@ -5,11 +5,13 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import scoring_function_brax_envs as scoring_function
+from qdax.tasks.brax.v1.env_creators import (
+    scoring_function_brax_envs as scoring_function,
+)
 from qdax.utils.sampling import (
     average,
     closest,

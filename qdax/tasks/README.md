@@ -80,7 +80,6 @@ initial_params = jax.random.uniform(
 desc_size = 2
 ```
 
-
 ## Hyper-Volume Functions
 "Hypervolume-based Benchmark Functions for Quality Diversity Algorithms" by Jean-Baptiste Mouret
 
@@ -157,6 +156,11 @@ desc_size = task.get_descriptor_size()
 ```
 
 ## Brax-RL
+QDax provides organized utilities for working with Brax environments in the context of Quality Diversity. The Brax integrations are now structured in a versioned manner to support both Brax v1 and v2 APIs:
+
+- `tasks.brax.v1`: Contains code compatible with Brax v1 API
+- `tasks.brax.v2`: Contains code compatible with Brax v2 API
+
 | Task            | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
 |-----------------|----------------------|------------------|-----------------------|-------------------|-------------|
 | pointmaze       | NN params            | Unbounded        | 2                     | $[-1,1]^2$        |             |
@@ -171,11 +175,44 @@ desc_size = task.get_descriptor_size()
 | antmaze         | NN params            | Unbounded        | 2                     | $[-5,40]\times[-5,40]$ |             |
 
 Notes:
-- the parameter dimensions for default Brax-RL tasks depend on the size and architecture of the neural network used and can be customized and changed easily. If not set, a network size of two hidden layers of size 64 is used.
+- The parameter dimensions for default Brax-RL tasks depend on the size and architecture of the neural network used and can be customized and changed easily. If not set, a network size of two hidden layers of size 64 is used.
+- The Brax environments are now properly versioned to support both Brax v1 and v2 APIs.
 
 ### Example Usage
 
-See [Example in Notebook](../../examples/mapelites.ipynb)
+For Brax v1:
+```python
+import jax
+import qdax.tasks.brax.v1 as environments
+from qdax.tasks.brax.v1.env_creators import create_default_brax_task_components
+
+# Create environment, policy network and scoring function
+env_name = "ant_omni"
+key = jax.random.key(0)
+env, policy_network, scoring_fn = create_default_brax_task_components(
+    env_name=env_name,
+    key=key,
+    episode_length=100
+)
+```
+
+For Brax v2:
+```python
+import jax
+import qdax.tasks.brax.v2 as environments
+from qdax.tasks.brax.v2.env_creators import create_default_brax_task_components
+
+# Create environment, policy network and scoring function
+env_name = "ant_omni"
+key = jax.random.key(0)
+env, policy_network, scoring_fn = create_default_brax_task_components(
+    env_name=env_name,
+    key=key,
+    episode_length=100
+)
+```
+
+See [Brax v1](../../examples/mapelites.ipynb) and [Brax v2](../../examples/mapelites_brax_v2.ipynb) notebooks for more detailed examples.
 
 ## Jumanji-RL
 

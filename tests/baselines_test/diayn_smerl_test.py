@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import pytest
 from brax.envs import State as EnvState
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.diayn_smerl import DIAYNSMERL, DiaynSmerlConfig, DiaynTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer

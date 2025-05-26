@@ -9,7 +9,7 @@ from qdax.core.emitters.qpg_emitter import QualityPGConfig, QualityPGEmitter
 from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.custom_types import Params, RNGKey
-from qdax.environments.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 
 @dataclass
