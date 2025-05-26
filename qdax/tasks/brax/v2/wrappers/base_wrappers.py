@@ -11,7 +11,7 @@ class QDWrapper(QDEnv):
     """Wrapper for QD environments."""
 
     def __init__(self, env: QDEnv):
-        super().__init__(sys=env.sys, backend=env.backend)
+        super().__init__()
         self.env = env
 
     def reset(self, rng: jnp.ndarray) -> State:
@@ -27,6 +27,10 @@ class QDWrapper(QDEnv):
     @property
     def action_size(self) -> int:
         return self.env.action_size  # type: ignore
+
+    @property
+    def backend(self) -> str:
+        return self.env.backend  # type: ignore
 
     @property
     def state_descriptor_length(self) -> int:
