@@ -4,23 +4,18 @@ from __future__ import annotations
 
 from typing import Dict, Generic, TypeVar, Union
 
-import brax.envs
 import flax
 import jax
 import jax.numpy as jnp
-import jumanji
 from chex import ArrayTree
 from typing_extensions import TypeAlias
-
-JumanjiState: TypeAlias = ArrayTree
-JumanjiTimeStep: TypeAlias = jumanji.types.TimeStep
 
 # MDP types
 Observation: TypeAlias = jnp.ndarray
 Action: TypeAlias = jnp.ndarray
 Reward: TypeAlias = jnp.ndarray
 Done: TypeAlias = jnp.ndarray
-EnvState: TypeAlias = brax.envs.State
+EnvState: TypeAlias = ArrayTree
 Params: TypeAlias = ArrayTree
 
 # Evolution types
