@@ -4,11 +4,11 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.custom_types import Fitness, Genotype
 
 
-class SPEA2Repertoire(GARepertoire):
+class SPEA2Repertoire(GAPopulation):
     """Repertoire used for the SPEA2 algorithm.
 
     Inherits from the GARepertoire. The data stored are the genotypes
@@ -101,7 +101,7 @@ class SPEA2Repertoire(GARepertoire):
         fitnesses: Fitness,
         population_size: int,
         num_neighbours: int,
-    ) -> GARepertoire:
+    ) -> GAPopulation:
         """Initializes the repertoire.
 
         Start with default values and adds a first batch of genotypes

@@ -5,7 +5,7 @@ from typing import Any, Callable, Optional, Tuple
 
 import jax
 
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.custom_types import ExtraScores, Fitness, Genotype, Metrics, RNGKey
 
@@ -32,7 +32,7 @@ class GeneticAlgorithm:
             [Genotype, RNGKey], Tuple[Fitness, ExtraScores, RNGKey]
         ],
         emitter: Emitter,
-        metrics_function: Callable[[GARepertoire], Metrics],
+        metrics_function: Callable[[GAPopulation], Metrics],
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
@@ -41,7 +41,7 @@ class GeneticAlgorithm:
     @partial(jax.jit, static_argnames=("self", "population_size"))
     def init(
         self, genotypes: Genotype, population_size: int, random_key: RNGKey
-    ) -> Tuple[GARepertoire, Optional[EmitterState], RNGKey]:
+    ) -> Tuple[GAPopulation, Optional[EmitterState], RNGKey]:
         """Initialize a GARepertoire with an initial population of genotypes.
 
         Args:
@@ -59,7 +59,7 @@ class GeneticAlgorithm:
         )
 
         # init the repertoire
-        repertoire = GARepertoire.init(
+        repertoire = GAPopulation.init(
             genotypes=genotypes,
             fitnesses=fitnesses,
             population_size=population_size,
@@ -80,10 +80,10 @@ class GeneticAlgorithm:
     @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
-        repertoire: GARepertoire,
+        repertoire: GAPopulation,
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
-    ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics, RNGKey]:
+    ) -> Tuple[GAPopulation, Optional[EmitterState], Metrics, RNGKey]:
         """
         Performs one iteration of a Genetic algorithm.
         1. A batch of genotypes is sampled in the repertoire and the genotypes
@@ -134,9 +134,9 @@ class GeneticAlgorithm:
     @partial(jax.jit, static_argnames=("self",))
     def scan_update(
         self,
-        carry: Tuple[GARepertoire, Optional[EmitterState], RNGKey],
+        carry: Tuple[GAPopulation, Optional[EmitterState], RNGKey],
         unused: Any,
-    ) -> Tuple[Tuple[GARepertoire, Optional[EmitterState], RNGKey], Metrics]:
+    ) -> Tuple[Tuple[GAPopulation, Optional[EmitterState], RNGKey], Metrics]:
         """Rewrites the update function in a way that makes it compatible with the
         jax.lax.scan primitive.
 

@@ -5,12 +5,12 @@ from typing import Any, Tuple
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.custom_types import Fitness, Genotype
 from qdax.utils.pareto_front import compute_masked_pareto_front
 
 
-class NSGA2Repertoire(GARepertoire):
+class NSGA2Repertoire(GAPopulation):
     """Repertoire used for the NSGA2 algorithm.
 
     Inherits from the GARepertoire. The data stored are the genotypes

@@ -9,7 +9,7 @@ from typing import Dict, List
 import jax
 from jax import numpy as jnp
 
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.mome_repertoire import MOMERepertoire
 from qdax.custom_types import Metrics
@@ -50,7 +50,7 @@ class CSVLogger:
 
 
 def default_ga_metrics(
-    repertoire: GARepertoire,
+    repertoire: GAPopulation,
 ) -> Metrics:
     """Compute the usual GA metrics that one can retrieve
     from a GA repertoire.
