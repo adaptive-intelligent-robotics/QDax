@@ -8,8 +8,8 @@ repos:
     rev: 24.8.0
     hooks:
     - id: black
-      language_version: python3.11
-      args: ["--target-version", "py311"]
+      language_version: python3.10
+      args: ["--target-version", "py310"]
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.1.1
     hooks:
