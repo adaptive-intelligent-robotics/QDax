@@ -54,7 +54,7 @@ class Emitter(ABC):
     @abstractmethod
     def emit(
         self,
-        repertoire: Optional[Repertoire],
+        repertoire: Optional[GARepertoire],
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
@@ -80,7 +80,7 @@ class Emitter(ABC):
     def state_update(
         self,
         emitter_state: Optional[EmitterState],
-        repertoire: Optional[Repertoire] = None,
+        repertoire: Optional[GARepertoire] = None,
         genotypes: Optional[Genotype] = None,
         fitnesses: Optional[Fitness] = None,
         descriptors: Optional[Descriptor] = None,
