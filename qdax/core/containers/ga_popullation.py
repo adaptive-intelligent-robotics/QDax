@@ -5,15 +5,15 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable, Tuple
 
+import flax
 import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
-import flax
 from qdax.custom_types import Fitness, Genotype, RNGKey
 
 
-class GARepertoire(flax.struct.PyTreeNode):
+class GAPopulation(flax.struct.PyTreeNode):
     """Class for a simple repertoire for a simple genetic
     algorithm.
 
@@ -23,7 +23,7 @@ class GARepertoire(flax.struct.PyTreeNode):
             shape (population_size, num_features).
         fitnesses: an array containing the fitness of the individuals
             in the population. With shape (population_size, fitness_dim).
-            The implementation of GARepertoire was thought for the case
+            The implementation of GAPopulation was thought for the case
             where fitness_dim equals 1 but the class can be herited and
             rules adapted for cases where fitness_dim is greater than 1.
     """
@@ -55,7 +55,7 @@ class GARepertoire(flax.struct.PyTreeNode):
         jnp.save(path + "scores.npy", self.fitnesses)
 
     @classmethod
-    def load(cls, reconstruction_fn: Callable, path: str = "./") -> GARepertoire:
+    def load(cls, reconstruction_fn: Callable, path: str = "./") -> GAPopulation:
         """Loads a GA Repertoire.
 
         Args:
@@ -107,7 +107,7 @@ class GARepertoire(flax.struct.PyTreeNode):
     @jax.jit
     def add(
         self, batch_of_genotypes: Genotype, batch_of_fitnesses: Fitness
-    ) -> GARepertoire:
+    ) -> GAPopulation:
         """Implements the repertoire addition rules.
 
         Parents and offsprings are gathered and only the population_size
@@ -154,7 +154,7 @@ class GARepertoire(flax.struct.PyTreeNode):
         genotypes: Genotype,
         fitnesses: Fitness,
         population_size: int,
-    ) -> GARepertoire:
+    ) -> GAPopulation:
         """Initializes the repertoire.
 
         Start with default values and adds a first batch of genotypes

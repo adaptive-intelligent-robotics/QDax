@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 import jax
 from flax.struct import PyTreeNode
 
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
@@ -32,7 +32,7 @@ class Emitter(ABC):
     def init(
         self,
         random_key: RNGKey,
-        repertoire: GARepertoire,
+        repertoire: GAPopulation,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -54,7 +54,7 @@ class Emitter(ABC):
     @abstractmethod
     def emit(
         self,
-        repertoire: Optional[GARepertoire],
+        repertoire: Optional[GAPopulation],
         emitter_state: Optional[EmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
@@ -80,7 +80,7 @@ class Emitter(ABC):
     def state_update(
         self,
         emitter_state: Optional[EmitterState],
-        repertoire: Optional[GARepertoire] = None,
+        repertoire: Optional[GAPopulation] = None,
         genotypes: Optional[Genotype] = None,
         fitnesses: Optional[Fitness] = None,
         descriptors: Optional[Descriptor] = None,

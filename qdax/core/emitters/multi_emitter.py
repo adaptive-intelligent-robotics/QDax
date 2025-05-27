@@ -6,7 +6,7 @@ import numpy as np
 from chex import ArrayTree
 from jax import numpy as jnp
 
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
@@ -58,7 +58,7 @@ class MultiEmitter(Emitter):
     def init(
         self,
         random_key: RNGKey,
-        repertoire: GARepertoire,
+        repertoire: GAPopulation,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -97,7 +97,7 @@ class MultiEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
-        repertoire: Optional[GARepertoire],
+        repertoire: Optional[GAPopulation],
         emitter_state: Optional[MultiEmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
@@ -145,7 +145,7 @@ class MultiEmitter(Emitter):
     def state_update(
         self,
         emitter_state: Optional[MultiEmitterState],
-        repertoire: Optional[GARepertoire] = None,
+        repertoire: Optional[GAPopulation] = None,
         genotypes: Optional[Genotype] = None,
         fitnesses: Optional[Fitness] = None,
         descriptors: Optional[Descriptor] = None,

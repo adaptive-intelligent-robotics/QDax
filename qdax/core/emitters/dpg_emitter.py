@@ -11,7 +11,7 @@ import jax
 import optax
 
 from qdax.core.containers.archive import Archive
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.core.emitters.qpg_emitter import (
     QualityPGConfig,
     QualityPGEmitter,
@@ -80,7 +80,7 @@ class DiversityPGEmitter(QualityPGEmitter):
     def init(
         self,
         random_key: RNGKey,
-        repertoire: GARepertoire,
+        repertoire: GAPopulation,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -136,7 +136,7 @@ class DiversityPGEmitter(QualityPGEmitter):
     def state_update(
         self,
         emitter_state: DiversityPGEmitterState,
-        repertoire: Optional[GARepertoire],
+        repertoire: Optional[GAPopulation],
         genotypes: Optional[Genotype],
         fitnesses: Optional[Fitness],
         descriptors: Optional[Descriptor],

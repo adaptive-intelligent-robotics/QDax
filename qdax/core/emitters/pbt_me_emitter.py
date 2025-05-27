@@ -9,7 +9,7 @@ from jax import numpy as jnp
 from qdax.baselines.pbt import PBTTrainingState
 from qdax.baselines.sac_pbt import PBTSAC
 from qdax.baselines.td3_pbt import PBTTD3
-from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.core.containers.ga_popullation import GAPopulation
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
@@ -93,7 +93,7 @@ class PBTEmitter(Emitter):
     def init(
         self,
         random_key: RNGKey,
-        repertoire: GARepertoire,
+        repertoire: GAPopulation,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -169,7 +169,7 @@ class PBTEmitter(Emitter):
     )
     def emit(
         self,
-        repertoire: GARepertoire,
+        repertoire: GAPopulation,
         emitter_state: PBTEmitterState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
@@ -221,7 +221,7 @@ class PBTEmitter(Emitter):
     def state_update(
         self,
         emitter_state: PBTEmitterState,
-        repertoire: GARepertoire,
+        repertoire: GAPopulation,
         genotypes: Optional[Genotype],
         fitnesses: Fitness,
         descriptors: Optional[Descriptor],
