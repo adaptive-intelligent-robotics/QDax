@@ -12,7 +12,7 @@ import jax
 import optax
 from jax import numpy as jnp
 
-from qdax.core.containers.repertoire import Repertoire
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
@@ -121,7 +121,7 @@ class QualityPGEmitter(Emitter):
     def init(
         self,
         random_key: RNGKey,
-        repertoire: Repertoire,
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -197,7 +197,7 @@ class QualityPGEmitter(Emitter):
     )
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: MapElitesRepertoire,
         emitter_state: QualityPGEmitterState,
         random_key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
@@ -286,7 +286,7 @@ class QualityPGEmitter(Emitter):
     def state_update(
         self,
         emitter_state: QualityPGEmitterState,
-        repertoire: Optional[Repertoire],
+        repertoire: Optional[MapElitesRepertoire],
         genotypes: Optional[Genotype],
         fitnesses: Optional[Fitness],
         descriptors: Optional[Descriptor],

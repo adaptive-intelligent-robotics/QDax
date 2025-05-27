@@ -9,11 +9,11 @@ import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
-from qdax.core.containers.repertoire import Repertoire
+import flax
 from qdax.custom_types import Fitness, Genotype, RNGKey
 
 
-class GARepertoire(Repertoire):
+class GARepertoire(flax.struct.PyTreeNode):
     """Class for a simple repertoire for a simple genetic
     algorithm.
 

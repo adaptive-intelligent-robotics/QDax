@@ -11,7 +11,7 @@ import jax
 import optax
 from jax import numpy as jnp
 
-from qdax.core.containers.repertoire import Repertoire
+from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.neuroevolution.buffers.buffer import DCRLTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_dc_fn
@@ -128,7 +128,7 @@ class DCRLEmitter(Emitter):
     def init(
         self,
         key: RNGKey,
-        repertoire: Repertoire,
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
@@ -280,7 +280,7 @@ class DCRLEmitter(Emitter):
     )
     def emit(
         self,
-        repertoire: Repertoire,
+        repertoire: MapElitesRepertoire,
         emitter_state: DCRLEmitterState,
         key: RNGKey,
     ) -> Tuple[Genotype, ExtraScores, RNGKey]:
@@ -393,7 +393,7 @@ class DCRLEmitter(Emitter):
     def state_update(
         self,
         emitter_state: DCRLEmitterState,
-        repertoire: Repertoire,
+        repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,

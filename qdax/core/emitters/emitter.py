@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 import jax
 from flax.struct import PyTreeNode
 
-from qdax.core.containers.repertoire import Repertoire
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
@@ -32,7 +32,7 @@ class Emitter(ABC):
     def init(
         self,
         random_key: RNGKey,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
