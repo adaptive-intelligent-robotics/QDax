@@ -203,6 +203,9 @@ QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab
 <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/manon-but-yes" title="Manon Flageat"><img src="https://github.com/manon-but-yes.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/maxencefaldor" title="Maxence Faldor"><img src="https://github.com/maxencefaldor.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/hannah-jan" title="Hannah Janmohamed"><img src="https://github.com/hannah-jan.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/LisaCoiffard" title="Lisa Coiffard"><img src="https://github.com/LisaCoiffard.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/felixchalumeau" title="Felix Chalumeau"><img src="https://github.com/felixchalumeau.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/ranzenTom" title="Thomas Pierrot"><img src="https://github.com/ranzenTom.png" height="auto" width="50" style="border-radius:50%"></a>
