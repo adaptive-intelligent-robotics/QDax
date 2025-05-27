@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from brax.envs.base import Env, State, Wrapper
 
-from qdax.tasks.brax.v2.envs.base_env import QDEnv
+from qdax.tasks.brax.v2.wrappers.base_wrappers import QDWrapper
 
 FEET_NAMES = {
     "hopper": ["foot"],
@@ -15,7 +15,7 @@ FEET_NAMES = {
 }
 
 
-class FeetContactWrapper(QDEnv):
+class FeetContactWrapper(QDWrapper):
     """Wraps gym environments to add the feet contact data.
 
     Utilisation is simple: create an environment with Brax, pass
@@ -57,7 +57,7 @@ class FeetContactWrapper(QDEnv):
         if env_name not in FEET_NAMES.keys():
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
 
-        super().__init__(sys=env.sys, backend=env.backend)
+        super().__init__(env)
         self.env = env
         self._env_name = env_name
 
@@ -136,7 +136,7 @@ COG_NAMES = {
 }
 
 
-class XYPositionWrapper(QDEnv):
+class XYPositionWrapper(QDWrapper):
     """Wraps gym environments to add the position data.
 
     Utilisation is simple: create an environment with Brax, pass
@@ -190,7 +190,7 @@ class XYPositionWrapper(QDEnv):
         if env_name not in COG_NAMES.keys():
             raise NotImplementedError(f"This wrapper does not support {env_name} yet.")
 
-        super().__init__(sys=env.sys, backend=env.backend)
+        super().__init__(env)
         self.env = env
         self._env_name = env_name
 

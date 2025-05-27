@@ -4,11 +4,10 @@ well as several variants."""
 
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -63,7 +62,7 @@ class MELSRepertoire(MapElitesRepertoire):
 
     This class inherits from MapElitesRepertoire. In addition to the stored data in
     MapElitesRepertoire (genotypes, fitnesses, descriptors, centroids), this repertoire
-    also maintains an array of spreads. We overload the save, load, add, and
+    also maintains an array of spreads. We overload the add, and
     init_default methods of MapElitesRepertoire.
 
     Refer to Mace 2023 for more info on MAP-Elites Low-Spread:
@@ -86,60 +85,6 @@ class MELSRepertoire(MapElitesRepertoire):
     """
 
     spreads: Spread
-
-    def save(self, path: str = "./") -> None:
-        """Saves the repertoire on disk in the form of .npy files.
-
-        Flattens the genotypes to store it with .npy format. Supposes that
-        a user will have access to the reconstruction function when loading
-        the genotypes.
-
-        Args:
-            path: Path where the data will be saved. Defaults to "./".
-        """
-
-        def flatten_genotype(genotype: Genotype) -> jnp.ndarray:
-            flatten_genotype, _ = ravel_pytree(genotype)
-            return flatten_genotype
-
-        # flatten all the genotypes
-        flat_genotypes = jax.vmap(flatten_genotype)(self.genotypes)
-
-        # save data
-        jnp.save(path + "genotypes.npy", flat_genotypes)
-        jnp.save(path + "fitnesses.npy", self.fitnesses)
-        jnp.save(path + "descriptors.npy", self.descriptors)
-        jnp.save(path + "centroids.npy", self.centroids)
-        jnp.save(path + "spreads.npy", self.spreads)
-
-    @classmethod
-    def load(cls, reconstruction_fn: Callable, path: str = "./") -> MELSRepertoire:
-        """Loads a MAP-Elites Low-Spread Repertoire.
-
-        Args:
-            reconstruction_fn: Function to reconstruct a PyTree
-                from a flat array.
-            path: Path where the data is saved. Defaults to "./".
-
-        Returns:
-            A MAP-Elites Low-Spread Repertoire.
-        """
-
-        flat_genotypes = jnp.load(path + "genotypes.npy")
-        genotypes = jax.vmap(reconstruction_fn)(flat_genotypes)
-
-        fitnesses = jnp.load(path + "fitnesses.npy")
-        descriptors = jnp.load(path + "descriptors.npy")
-        centroids = jnp.load(path + "centroids.npy")
-        spreads = jnp.load(path + "spreads.npy")
-
-        return cls(
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-            spreads=spreads,
-        )
 
     def add(  # type: ignore
         self,

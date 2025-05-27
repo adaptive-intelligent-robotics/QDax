@@ -15,7 +15,7 @@ class NSGA2Repertoire(GARepertoire):
 
     Inherits from the GARepertoire. The data stored are the genotypes
     and there fitness. Several functions are inherited from GARepertoire,
-    including size, save, sample and init.
+    including size, sample and init.
     """
 
     def _compute_crowding_distances(

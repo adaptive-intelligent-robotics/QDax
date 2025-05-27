@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import flax.struct
 import jax
 import jax.numpy as jnp
-from jax.flatten_util import ravel_pytree
 
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.emitters.repertoire_selectors.selector import Selector
@@ -159,62 +158,6 @@ class UnstructuredRepertoire(GARepertoire):
     def get_number_genotypes(self) -> jnp.ndarray:
         """Returns the number of genotypes in the repertoire."""
         return jnp.sum(self.fitnesses != -jnp.inf)
-
-    def save(self, path: str = "./") -> None:
-        """Saves the grid on disk in the form of .npy files.
-
-        Flattens the genotypes to store it with .npy format. Supposes that
-        a user will have access to the reconstruction function when loading
-        the genotypes.
-
-        Args:
-            path: Path where the data will be saved. Defaults to "./".
-        """
-
-        def flatten_genotype(genotype: Genotype) -> jnp.ndarray:
-            flatten_genotype, _unravel_pytree = ravel_pytree(genotype)
-            return flatten_genotype
-
-        # flatten all the genotypes
-        flat_genotypes = jax.vmap(flatten_genotype)(self.genotypes)
-
-        # save data
-        jnp.save(path + "genotypes.npy", flat_genotypes)
-        jnp.save(path + "fitnesses.npy", self.fitnesses)
-        jnp.save(path + "descriptors.npy", self.descriptors)
-        jnp.save(path + "l_value.npy", self.l_value)
-        jnp.save(path + "max_size.npy", self.max_size)
-
-    @classmethod
-    def load(
-        cls, reconstruction_fn: Callable, path: str = "./"
-    ) -> UnstructuredRepertoire:
-        """Loads an unstructured repertoire.
-
-        Args:
-            reconstruction_fn: Function to reconstruct a PyTree
-                from a flat array.
-            path: Path where the data is saved. Defaults to "./".
-
-        Returns:
-            An unstructured repertoire.
-        """
-
-        flat_genotypes = jnp.load(path + "genotypes.npy")
-        genotypes = jax.vmap(reconstruction_fn)(flat_genotypes)
-
-        fitnesses = jnp.load(path + "fitnesses.npy")
-        descriptors = jnp.load(path + "descriptors.npy")
-        l_value = jnp.load(path + "l_value.npy")
-        max_size = int(jnp.load(path + "max_size.npy").item())
-
-        return UnstructuredRepertoire(
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            l_value=l_value,
-            max_size=max_size,
-        )
 
     def add(  # type: ignore
         self,

@@ -2,10 +2,10 @@ from abc import abstractmethod
 from typing import Tuple
 
 import jax
-from brax.envs.base import PipelineEnv
+from brax.envs.base import Env
 
 
-class QDEnv(PipelineEnv):
+class QDEnv(Env):
     """
     Wrapper for all QD environments.
     """

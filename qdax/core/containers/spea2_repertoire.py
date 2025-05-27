@@ -15,7 +15,7 @@ class SPEA2Repertoire(GARepertoire):
 
     Inherits from the GARepertoire. The data stored are the genotypes
     and there fitness. Several functions are inherited from GARepertoire,
-    including size, save, sample.
+    including size, sample.
     """
 
     num_neighbours: int = flax.struct.field(pytree_node=False)

@@ -47,8 +47,6 @@ class MOMERepertoire(MapElitesRepertoire):
 
     The shape of descriptors and centroids are:
     (num_centroids, num_descriptors, pareto_front_length).
-
-    Inherited functions: save and load.
     """
 
     @property
