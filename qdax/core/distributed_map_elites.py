@@ -15,13 +15,12 @@ from qdax.custom_types import Centroid, Genotype, Metrics, RNGKey
 
 
 class DistributedMAPElites(MAPElites):
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         genotypes: Genotype,
         centroids: Centroid,
-        random_key: RNGKey,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
         """
         Initialize a Map-Elites repertoire with an initial population of genotypes.
         Requires the definition of centroids that can be computed with any method
@@ -34,23 +33,25 @@ class DistributedMAPElites(MAPElites):
             genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
             centroids: tessellation centroids of shape (batch_size, num_descriptors)
-            random_key: a random key used for stochastic operations.
+            key: a random key used for stochastic operations.
 
         Returns:
             An initialized MAP-Elite repertoire with the initial state of the emitter,
             and a random key.
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # score initial genotypes
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
-            genotypes, random_key
-        )
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(genotypes, key)
 
         # gather across all devices
         (
             gathered_genotypes,
             gathered_fitnesses,
             gathered_descriptors,
-        ) = jax.tree_util.tree_map(
+        ) = jax.tree.map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes, fitnesses, descriptors),
         )
@@ -64,8 +65,8 @@ class DistributedMAPElites(MAPElites):
         )
 
         # get initial state of the emitter
-        emitter_state, random_key = self._emitter.init(
-            random_key=random_key,
+        emitter_state = self._emitter.init(
+            key=key,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -83,15 +84,17 @@ class DistributedMAPElites(MAPElites):
             extra_scores=extra_scores,
         )
 
-        return repertoire, emitter_state, random_key
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
 
-    @partial(jax.jit, static_argnames=("self",))
+        return repertoire, emitter_state, metrics
+
     def update(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: Optional[EmitterState],
-        random_key: RNGKey,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
         """Performs one iteration of the MAP-Elites algorithm.
 
         1. A batch of genotypes is sampled in the repertoire and the genotypes
@@ -105,7 +108,7 @@ class DistributedMAPElites(MAPElites):
         Args:
             repertoire: the MAP-Elites repertoire
             emitter_state: state of the emitter
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
 
         Returns:
             the updated MAP-Elites repertoire
@@ -113,13 +116,18 @@ class DistributedMAPElites(MAPElites):
             metrics about the updated repertoire
             a new jax PRNG key
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # generate offsprings with the emitter
-        genotypes, extra_info, random_key = self._emitter.emit(
-            repertoire, emitter_state, random_key
-        )
+        key, subkey = jax.random.split(key)
+        genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
+
         # scores the offsprings
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
-            genotypes, random_key
+        key, subkey = jax.random.split(key)
+        (fitnesses, descriptors, extra_scores) = self._scoring_function(
+            genotypes, subkey
         )
 
         # gather across all devices
@@ -127,7 +135,7 @@ class DistributedMAPElites(MAPElites):
             gathered_genotypes,
             gathered_fitnesses,
             gathered_descriptors,
-        ) = jax.tree_util.tree_map(
+        ) = jax.tree.map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes, fitnesses, descriptors),
         )
@@ -150,12 +158,12 @@ class DistributedMAPElites(MAPElites):
         # update the metrics
         metrics = self._metrics_function(repertoire)
 
-        return repertoire, emitter_state, metrics, random_key
+        return repertoire, emitter_state, metrics
 
     def get_distributed_init_fn(
         self, centroids: Centroid, devices: List[Any]
     ) -> Callable[
-        [Genotype, RNGKey], Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey]
+        [Genotype, RNGKey], Tuple[MapElitesRepertoire, Optional[EmitterState]]
     ]:
         """Create a function that init MAP-Elites in a distributed way.
 
@@ -164,7 +172,8 @@ class DistributedMAPElites(MAPElites):
             devices: hardware devices.
 
         Returns:
-            A callable function that inits the MAP-Elites algorithm in a ditributed way.
+            A callable function that inits the MAP-Elites algorithm in a distributed
+            way.
         """
         return jax.pmap(  # type: ignore
             partial(self.init, centroids=centroids),
@@ -176,7 +185,7 @@ class DistributedMAPElites(MAPElites):
         self, num_iterations: int, devices: List[Any]
     ) -> Callable[
         [MapElitesRepertoire, Optional[EmitterState], RNGKey],
-        Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey, Metrics],
+        Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics],
     ]:
         """Create a function that can do a certain number of updates of
         MAP-Elites in a way that is distributed on several devices.
@@ -193,43 +202,43 @@ class DistributedMAPElites(MAPElites):
         @jax.jit
         def _scan_update(
             carry: Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey],
-            unused: Any,
+            _: Any,
         ) -> Tuple[Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey], Metrics]:
             """Rewrites the update function in a way that makes it compatible with the
             jax.lax.scan primitive."""
             # unwrap the input
-            repertoire, emitter_state, random_key = carry
+            repertoire, emitter_state, key = carry
 
             # apply one step of update
+            key, subkey = jax.random.split(key)
             (
                 repertoire,
                 emitter_state,
                 metrics,
-                random_key,
             ) = self.update(
                 repertoire,
                 emitter_state,
-                random_key,
+                subkey,
             )
 
-            return (repertoire, emitter_state, random_key), metrics
+            return (repertoire, emitter_state, key), metrics
 
         def update_fn(
             repertoire: MapElitesRepertoire,
             emitter_state: Optional[EmitterState],
-            random_key: RNGKey,
-        ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], RNGKey, Metrics]:
+            key: RNGKey,
+        ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
             """Apply num_iterations of update."""
             (
                 repertoire,
                 emitter_state,
-                random_key,
+                key,
             ), metrics = jax.lax.scan(
                 _scan_update,
-                (repertoire, emitter_state, random_key),
+                (repertoire, emitter_state, key),
                 (),
                 length=num_iterations,
             )
-            return repertoire, emitter_state, random_key, metrics
+            return repertoire, emitter_state, metrics
 
         return jax.pmap(update_fn, devices=devices, axis_name="p")  # type: ignore

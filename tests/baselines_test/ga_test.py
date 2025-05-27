@@ -64,15 +64,14 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
 
     scoring_function = partial(rastrigin_scorer, base_lag=base_lag, lag=lag)
 
-    def scoring_fn(
-        genotypes: jnp.ndarray, random_key: RNGKey
-    ) -> Tuple[Fitness, ExtraScores, RNGKey]:
+    def scoring_fn(genotypes: jnp.ndarray, key: RNGKey) -> Tuple[Fitness, ExtraScores]:
         fitnesses, _ = scoring_function(genotypes)
-        return fitnesses, {}, random_key
+        return fitnesses, {}
 
     # initial population
-    random_key = jax.random.PRNGKey(42)
-    random_key, subkey = jax.random.split(random_key)
+    key = jax.random.key(42)
+
+    key, subkey = jax.random.split(key)
     genotypes = jax.random.uniform(
         subkey,
         (batch_size, genotype_dim),
@@ -109,23 +108,24 @@ def test_ga(algorithm_class: Type[GeneticAlgorithm]) -> None:
         metrics_function=default_ga_metrics,
     )
 
+    key, subkey = jax.random.split(key)
     if isinstance(algo_instance, SPEA2):
-        repertoire, emitter_state, random_key = algo_instance.init(
-            genotypes, population_size, num_neighbours, random_key
+        repertoire, emitter_state, init_metrics = algo_instance.init(
+            genotypes, population_size, num_neighbours, subkey
         )
     else:
-        repertoire, emitter_state, random_key = algo_instance.init(
-            genotypes, population_size, random_key
+        repertoire, emitter_state, init_metrics = algo_instance.init(
+            genotypes, population_size, subkey
         )
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         algo_instance.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

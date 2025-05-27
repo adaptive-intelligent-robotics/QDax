@@ -3,7 +3,6 @@ Definition of CMAES class, containing main functions necessary to build
 a CMA optimization script. Link to the paper: https://arxiv.org/abs/1604.00772
 """
 
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import flax
@@ -165,31 +164,26 @@ class CMAES:
             invsqrt_cov=invsqrt_cov,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
-    def sample(
-        self, cmaes_state: CMAESState, random_key: RNGKey
-    ) -> Tuple[Genotype, RNGKey]:
+    def sample(self, cmaes_state: CMAESState, key: RNGKey) -> Genotype:
         """
         Sample a population.
 
         Args:
             cmaes_state: current state of the algorithm
-            random_key: jax random key
+            key: jax random key
 
         Returns:
             A tuple that contains a batch of population size genotypes and
             a new random key.
         """
-        random_key, subkey = jax.random.split(random_key)
         samples = jax.random.multivariate_normal(
-            subkey,
+            key,
             shape=(self._population_size,),
             mean=cmaes_state.mean,
             cov=(cmaes_state.sigma**2) * cmaes_state.cov_matrix,
         )
-        return samples, random_key
+        return samples
 
-    @partial(jax.jit, static_argnames=("self",))
     def update_state(
         self,
         cmaes_state: CMAESState,
@@ -201,7 +195,6 @@ class CMAES:
             weights=self._weights,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def update_state_with_mask(
         self, cmaes_state: CMAESState, sorted_candidates: Genotype, mask: Mask
     ) -> CMAESState:
@@ -220,7 +213,6 @@ class CMAES:
             weights=weights,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_state(
         self,
         cmaes_state: CMAESState,
@@ -262,7 +254,7 @@ class CMAES:
             # unpack data
             cov, num_updates = operand
 
-            # enfore symmetry - did not change anything
+            # enforce symmetry - did not change anything
             cov = jnp.triu(cov) + jnp.triu(cov, 1).T
 
             # get eigen decomposition: eigenvalues, eigenvectors
@@ -335,7 +327,6 @@ class CMAES:
 
         return cmaes_state
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(self, cmaes_state: CMAESState, samples: Genotype) -> CMAESState:
         """Updates the distribution.
 
@@ -355,7 +346,6 @@ class CMAES:
 
         return new_state  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def stop_condition(self, cmaes_state: CMAESState) -> bool:
         """Determines if the current optimization path must be stopped.
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import partial
 from typing import Any, Optional, Tuple
 
 import jax
@@ -45,47 +44,45 @@ class CMAPoolEmitter(Emitter):
         Returns:
             the batch size emitted by the emitter.
         """
-        return self._emitter.batch_size
+        return self._emitter.batch_size  # type: ignore
 
-    @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[CMAPoolEmitterState, RNGKey]:
+    ) -> CMAPoolEmitterState:
         """
         Initializes the CMA-MEGA emitter
 
 
         Args:
             genotypes: initial genotypes to add to the grid.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The initial state of the emitter.
         """
 
-        def scan_emitter_init(
-            carry: RNGKey, unused: Any
-        ) -> Tuple[RNGKey, CMAEmitterState]:
-            random_key = carry
-            emitter_state, random_key = self._emitter.init(
-                random_key,
+        def scan_emitter_init(carry: RNGKey, _: Any) -> Tuple[RNGKey, CMAEmitterState]:
+            key = carry
+            key, subkey = jax.random.split(key)
+            emitter_state = self._emitter.init(
+                subkey,
                 repertoire,
                 genotypes,
                 fitnesses,
                 descriptors,
                 extra_scores,
             )
-            return random_key, emitter_state
+            return key, emitter_state
 
         # init all the emitter states
-        random_key, emitter_states = jax.lax.scan(
-            scan_emitter_init, random_key, (), length=self._num_states
+        key, emitter_states = jax.lax.scan(
+            scan_emitter_init, key, (), length=self._num_states
         )
 
         # define the emitter state of the pool
@@ -93,48 +90,38 @@ class CMAPoolEmitter(Emitter):
             current_index=0, emitter_states=emitter_states
         )
 
-        return (
-            emitter_state,
-            random_key,
-        )
+        return emitter_state
 
-    @partial(jax.jit, static_argnames=("self",))
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: CMAPoolEmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         Emits new individuals.
 
         Args:
             repertoire: a repertoire of genotypes (unused).
             emitter_state: the state of the CMA-MEGA emitter.
-            random_key: a random key to handle random operations.
+            key: a random key to handle random operations.
 
         Returns:
-            New genotypes and a new random key.
+            New genotypes and extra infos.
         """
 
         # retrieve the relevant emitter state
         current_index = emitter_state.current_index
-        used_emitter_state = jax.tree_util.tree_map(
+        used_emitter_state = jax.tree.map(
             lambda x: x[current_index], emitter_state.emitter_states
         )
 
         # use it to emit offsprings
-        offsprings, extra_info, random_key = self._emitter.emit(
-            repertoire, used_emitter_state, random_key
-        )
+        offsprings, extra_info = self._emitter.emit(repertoire, used_emitter_state, key)
 
-        return offsprings, extra_info, random_key
+        return offsprings, extra_info
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: CMAPoolEmitterState,
         repertoire: MapElitesRepertoire,
@@ -162,9 +149,7 @@ class CMAPoolEmitter(Emitter):
         current_index = emitter_state.current_index
         emitter_states = emitter_state.emitter_states
 
-        used_emitter_state = jax.tree_util.tree_map(
-            lambda x: x[current_index], emitter_states
-        )
+        used_emitter_state = jax.tree.map(lambda x: x[current_index], emitter_states)
 
         # update the used emitter state
         used_emitter_state = self._emitter.state_update(
@@ -177,7 +162,7 @@ class CMAPoolEmitter(Emitter):
         )
 
         # update the emitter state
-        emitter_states = jax.tree_util.tree_map(
+        emitter_states = jax.tree.map(
             lambda x, y: x.at[current_index].set(y), emitter_states, used_emitter_state
         )
 

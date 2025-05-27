@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qdax"
+dynamic = ["version"]
+description = "A Python Library for Quality-Diversity and NeuroEvolution"
+readme = "README.md"
+authors = [
+    {name = "AIRL and InstaDeep Ltd", email = "adaptive.intelligent.robotics@gmail.com"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["Quality-Diversity", "NeuroEvolution", "Reinforcement Learning", "JAX"]
+requires-python = ">=3.10"
+dependencies = [
+    "absl-py>=1.0.0",
+    "brax>=0.10.4",
+    "chex>=0.1.86",
+    "flax>=0.8.5",
+    "jax>=0.4.28",
+    "jaxlib>=0.4.28",
+    "jinja2>=3.1.4",
+    "jumanji>=0.3.1",
+    "numpy>=1.26.4",
+    "optax>=0.1.9",
+    "scikit-learn>=1.5.1",
+    "scipy>=1.10.1",
+    "tensorflow-probability>=0.24.0",
+]
+
+[project.optional-dependencies]
+cuda12 = ["jax[cuda12]>=0.4.28"]
+
+[project.urls]
+Homepage = "https://github.com/adaptive-intelligent-robotics/QDax"
+"Bug Tracker" = "https://github.com/adaptive-intelligent-robotics/QDax/issues"
+
+[tool.setuptools]
+packages = {find = {}}
+
+[tool.setuptools.dynamic]
+version = {attr = "qdax.__version__"}

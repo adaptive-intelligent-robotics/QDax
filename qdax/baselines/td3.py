@@ -2,7 +2,6 @@
 https://arxiv.org/pdf/1802.09477.pdf"""
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax
@@ -44,7 +43,7 @@ class TD3TrainingState(TrainingState):
     critic_params: Params
     target_critic_params: Params
     target_policy_params: Params
-    random_key: RNGKey
+    key: RNGKey
     steps: jnp.ndarray
 
 
@@ -86,13 +85,13 @@ class TD3:
         )
 
     def init(
-        self, random_key: RNGKey, action_size: int, observation_size: int
+        self, key: RNGKey, action_size: int, observation_size: int
     ) -> TD3TrainingState:
         """Initialise the training state of the TD3 algorithm, through creation
         of optimizer states and params.
 
         Args:
-            random_key: a random key used for random operations.
+            key: a random key used for random operations.
             action_size: the size of the action array needed to interact with the
                 environment.
             observation_size: the size of the observation array retrieved from the
@@ -105,15 +104,15 @@ class TD3:
         # Initialize critics and policy params
         fake_obs = jnp.zeros(shape=(observation_size,))
         fake_action = jnp.zeros(shape=(action_size,))
-        random_key, subkey_1, subkey_2 = jax.random.split(random_key, num=3)
+        key, subkey_1, subkey_2 = jax.random.split(key, num=3)
         critic_params = self._critic.init(subkey_1, obs=fake_obs, actions=fake_action)
         policy_params = self._policy.init(subkey_2, fake_obs)
 
         # Initialize target networks
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
-        target_policy_params = jax.tree_util.tree_map(
+        target_policy_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), policy_params
         )
 
@@ -129,28 +128,27 @@ class TD3:
             critic_params=critic_params,
             target_policy_params=target_policy_params,
             target_critic_params=target_critic_params,
-            random_key=random_key,
+            key=key,
             steps=jnp.array(0),
         )
 
         return training_state
 
-    @partial(jax.jit, static_argnames=("self", "deterministic"))
     def select_action(
         self,
         obs: Observation,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
         expl_noise: float,
         deterministic: bool = False,
-    ) -> Tuple[Action, RNGKey]:
+    ) -> Action:
         """Selects an action according to TD3 policy. The action can be deterministic
         or stochastic by adding exploration noise.
 
         Args:
             obs: agent observation(s)
             policy_params: parameters of the agent's policy
-            random_key: jax random key
+            key: jax random key
             expl_noise: exploration noise
             deterministic: whether to select action in a deterministic way.
                 Defaults to False.
@@ -161,13 +159,11 @@ class TD3:
 
         actions = self._policy.apply(policy_params, obs)
         if not deterministic:
-            random_key, subkey = jax.random.split(random_key)
-            noise = jax.random.normal(subkey, actions.shape) * expl_noise
+            noise = jax.random.normal(key, actions.shape) * expl_noise
             actions = actions + noise
             actions = jnp.clip(actions, -1.0, 1.0)
-        return actions, random_key
+        return actions
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_step_fn(
         self,
         env_state: EnvState,
@@ -190,16 +186,18 @@ class TD3:
             the new TD3 training state
             the played transition
         """
+        key = training_state.key
 
-        actions, random_key = self.select_action(
+        key, subkey = jax.random.split(key)
+        actions = self.select_action(
             obs=env_state.obs,
             policy_params=training_state.policy_params,
-            random_key=training_state.random_key,
+            key=subkey,
             expl_noise=self._config.expl_noise,
             deterministic=deterministic,
         )
         training_state = training_state.replace(
-            random_key=random_key,
+            key=key,
         )
         next_env_state = env.step(env_state, actions)
         transition = Transition(
@@ -212,7 +210,6 @@ class TD3:
         )
         return next_env_state, training_state, transition
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
     def play_qd_step_fn(
         self,
         env_state: EnvState,
@@ -258,20 +255,13 @@ class TD3:
             transition,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-        ),
-    )
     def eval_policy_fn(
         self,
         training_state: TD3TrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, Params, RNGKey, Transition],
+            [EnvState, Params],
+            Tuple[EnvState, Params, Transition],
         ],
     ) -> Tuple[Reward, Reward]:
         """Evaluates the agent's policy over an entire episode, across all batched
@@ -301,26 +291,18 @@ class TD3:
 
         return true_return, true_returns
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-            "bd_extraction_fn",
-        ),
-    )
     def eval_qd_policy_fn(
         self,
         training_state: TD3TrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
+            [EnvState, Params],
             Tuple[EnvState, TD3TrainingState, QDTransition],
         ],
-        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
+        descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
     ) -> Tuple[Reward, Descriptor, Reward, Descriptor]:
         """Evaluates the agent's policy over an entire episode, across all batched
-        environments for QD environments. Averaged BDs are returned as well.
+        environments for QD environments. Averaged descriptors are returned as well.
 
 
         Args:
@@ -346,16 +328,13 @@ class TD3:
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        transitions = jax.tree_util.tree_map(
-            lambda x: jnp.swapaxes(x, 0, 1), transitions
-        )
+        transitions = jax.tree.map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
         masks = jnp.isnan(transitions.rewards)
-        bds = bd_extraction_fn(transitions, masks)
+        descriptors = descriptor_extraction_fn(transitions, masks)
 
-        mean_bd = jnp.mean(bds, axis=0)
-        return true_return, mean_bd, true_returns, bds
+        mean_descriptor = jnp.mean(descriptors, axis=0)
+        return true_return, mean_descriptor, true_returns, descriptors
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: TD3TrainingState,
@@ -376,13 +355,13 @@ class TD3:
         """
 
         # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-        samples, random_key = replay_buffer.sample(
-            random_key, sample_size=self._config.batch_size
-        )
+        key = training_state.key
+
+        key, subkey = jax.random.split(key)
+        samples = replay_buffer.sample(subkey, sample_size=self._config.batch_size)
 
         # Update Critic
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         critic_loss, critic_gradient = jax.value_and_grad(td3_critic_loss_fn)(
             training_state.critic_params,
             target_policy_params=training_state.target_policy_params,
@@ -394,7 +373,7 @@ class TD3:
             reward_scaling=self._config.reward_scaling,
             discount=self._config.discount,
             transitions=samples,
-            random_key=subkey,
+            key=subkey,
         )
         critic_optimizer = optax.adam(learning_rate=self._config.critic_learning_rate)
         critic_updates, critic_optimizer_state = critic_optimizer.update(
@@ -404,7 +383,7 @@ class TD3:
             training_state.critic_params, critic_updates
         )
         # Soft update of target critic network
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
             + self._config.soft_tau_update * x2,
             training_state.target_critic_params,
@@ -434,7 +413,7 @@ class TD3:
                 training_state.policy_params, policy_updates
             )
             # Soft update of target policy
-            target_policy_params = jax.tree_util.tree_map(
+            target_policy_params = jax.tree.map(
                 lambda x1, x2: (1.0 - self._config.soft_tau_update) * x1
                 + self._config.soft_tau_update * x2,
                 training_state.target_policy_params,
@@ -463,7 +442,7 @@ class TD3:
             policy_optimizer_state=policy_optimizer_state,
             target_critic_params=target_critic_params,
             target_policy_params=target_policy_params,
-            random_key=random_key,
+            key=key,
             steps=training_state.steps + 1,
         )
 

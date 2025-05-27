@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import pytest
 from brax.envs import State as EnvState
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.dads import DADS, DadsConfig, DadsTrainingState
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
@@ -66,15 +66,17 @@ def test_dads() -> None:
         eval_metrics=True,
     )
 
-    key = jax.random.PRNGKey(seed)
-    env_state = jax.jit(env.reset)(rng=key)
-    eval_env_first_state = jax.jit(eval_env.reset)(rng=key)
+    key = jax.random.key(seed)
+
+    key, subkey_1, subkey_2 = jax.random.split(key, 3)
+    env_state = jax.jit(env.reset)(rng=subkey_1)
+    eval_env_first_state = jax.jit(eval_env.reset)(rng=subkey_2)
 
     # Initialize buffer
     dummy_transition = QDTransition.init_dummy(
         observation_dim=env.observation_size + num_skills,
         action_dim=env.action_size,
-        descriptor_dim=env.behavior_descriptor_length,
+        descriptor_dim=env.descriptor_length,
     )
     replay_buffer = ReplayBuffer.init(
         buffer_size=buffer_size, transition=dummy_transition
@@ -83,7 +85,7 @@ def test_dads() -> None:
     if descriptor_full_state:
         descriptor_size = env.observation_size
     else:
-        descriptor_size = env.behavior_descriptor_length
+        descriptor_size = env.descriptor_length
 
     dads_config = DadsConfig(
         # SAC config
@@ -101,7 +103,7 @@ def test_dads() -> None:
         # DADS config
         num_skills=num_skills,
         descriptor_full_state=descriptor_full_state,
-        omit_input_dynamics_dim=env.behavior_descriptor_length,
+        omit_input_dynamics_dim=env.descriptor_length,
         dynamics_update_freq=dynamics_update_freq,
         normalize_target=normalize_target,
     )
@@ -110,8 +112,9 @@ def test_dads() -> None:
         action_size=env.action_size,
         descriptor_size=descriptor_size,
     )
+    key, subkey = jax.random.split(key)
     training_state = dads.init(
-        key,
+        subkey,
         action_size=env.action_size,
         observation_size=env.observation_size,
         descriptor_size=descriptor_size,

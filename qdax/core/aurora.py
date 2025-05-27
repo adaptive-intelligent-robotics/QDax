@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax
@@ -13,7 +12,9 @@ from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.custom_types import (
+    AuroraExtraInfo,
     Descriptor,
+    ExtraScores,
     Fitness,
     Genotype,
     Metrics,
@@ -21,7 +22,6 @@ from qdax.custom_types import (
     Params,
     RNGKey,
 )
-from qdax.environments.bd_extractors import AuroraExtraInfo
 
 
 class AURORA:
@@ -40,54 +40,79 @@ class AURORA:
 
     def __init__(
         self,
-        scoring_function: Callable[
-            [Genotype, RNGKey],
-            Tuple[Fitness, Descriptor, ArrayTree, RNGKey],
+        scoring_function: Optional[
+            Callable[
+                [Genotype, RNGKey],
+                Tuple[Fitness, Descriptor, ArrayTree],
+            ]
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
         encoder_function: Callable[[Observation, AuroraExtraInfo], Descriptor],
         training_function: Callable[
-            [RNGKey, UnstructuredRepertoire, Params, int], AuroraExtraInfo
+            [UnstructuredRepertoire, Params, int, Observation, RNGKey],
+            AuroraExtraInfo,
         ],
+        observations_key: str = "observations",
     ) -> None:
+        """
+        Args:
+            scoring_function: a function that takes a batch of genotypes and compute
+                their fitnesses and descriptors
+            emitter: an emitter is used to suggest offsprings given a MAPELites
+                repertoire.
+            metrics_function: a function that takes a repertoire and computes
+                any useful metric to track its evolution
+            encoder_function: a function that takes a batch of observations and
+                returns a batch of descriptors
+            training_function: a function that takes a repertoire, a model
+                parameters, an iteration number and a key, and returns an updated
+                AuroraExtraInfo
+            observations_key: the key to use for the observations in the extra_scores
+                of the repertoire
+        """
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
         self._encoder_fn = encoder_function
         self._train_fn = training_function
 
+        self.observations_key = observations_key
+
     def train(
         self,
         repertoire: UnstructuredRepertoire,
         model_params: Params,
         iteration: int,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[UnstructuredRepertoire, AuroraExtraInfo]:
-        random_key, subkey = jax.random.split(random_key)
+        observations = repertoire.extra_scores[self.observations_key]
+
+        key, subkey = jax.random.split(key)
         aurora_extra_info = self._train_fn(
-            random_key,
             repertoire,
             model_params,
             iteration,
+            observations,
+            subkey,
         )
 
         # re-addition of all the new behavioural descriptors with the new ae
-        new_descriptors = self._encoder_fn(repertoire.observations, aurora_extra_info)
+        new_descriptors = self._encoder_fn(observations, aurora_extra_info)
 
         return (
             repertoire.init(
                 genotypes=repertoire.genotypes,
                 fitnesses=repertoire.fitnesses,
+                extra_scores=repertoire.extra_scores,
+                keys_extra_scores=repertoire.keys_extra_scores,
                 descriptors=new_descriptors,
-                observations=repertoire.observations,
                 l_value=repertoire.l_value,
                 max_size=repertoire.max_size,
             ),
             aurora_extra_info,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def container_size_control(
         self,
         repertoire: UnstructuredRepertoire,
@@ -108,8 +133,9 @@ class AURORA:
         repertoire = repertoire.init(
             genotypes=repertoire.genotypes,
             fitnesses=repertoire.fitnesses,
+            extra_scores=repertoire.extra_scores,
+            keys_extra_scores=repertoire.keys_extra_scores,
             descriptors=repertoire.descriptors,
-            observations=repertoire.observations,
             l_value=l_value,
             max_size=repertoire.max_size,
         )
@@ -122,8 +148,10 @@ class AURORA:
         aurora_extra_info: AuroraExtraInfo,
         l_value: jnp.ndarray,
         max_size: int,
-        random_key: RNGKey,
-    ) -> Tuple[UnstructuredRepertoire, Optional[EmitterState], AuroraExtraInfo, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[
+        UnstructuredRepertoire, Optional[EmitterState], Metrics, AuroraExtraInfo
+    ]:
         """Initialize an unstructured repertoire with an initial population of
         genotypes. Also performs the first training of the AURORA encoder.
 
@@ -134,18 +162,46 @@ class AURORA:
                 such as the encoder parameters
             l_value: threshold distance for the unstructured repertoire
             max_size: maximum size of the repertoire
-            random_key: a random key used for stochastic operations.
+            key: a random key used for stochastic operations.
 
         Returns:
             an initialized unstructured repertoire, with the initial state of
             the emitter, and the updated information to perform AURORA encodings
         """
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
+        key, subkey = jax.random.split(key)
+        fitnesses, descriptors, extra_scores = self._scoring_function(
             genotypes,
-            random_key,
+            subkey,
+        )  # type: ignore
+
+        return self.init_ask_tell(
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            aurora_extra_info=aurora_extra_info,
+            l_value=l_value,
+            max_size=max_size,
+            key=key,
+            extra_scores=extra_scores,
         )
 
-        observations = extra_scores["last_valid_observations"]
+    def init_ask_tell(
+        self,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        aurora_extra_info: AuroraExtraInfo,
+        l_value: jnp.ndarray,
+        max_size: int,
+        key: RNGKey,
+        extra_scores: Optional[ExtraScores] = None,
+    ) -> Tuple[
+        UnstructuredRepertoire, Optional[EmitterState], Metrics, AuroraExtraInfo
+    ]:
+        if extra_scores is None:
+            extra_scores = {}
+
+        observations = extra_scores[self.observations_key]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
 
@@ -153,14 +209,16 @@ class AURORA:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            observations=observations,
+            extra_scores=extra_scores,
+            keys_extra_scores=(self.observations_key,),
             l_value=l_value,
             max_size=max_size,
         )
 
         # get initial state of the emitter
-        emitter_state, random_key = self._emitter.init(
-            random_key=random_key,
+        key, subkey = jax.random.split(key)
+        emitter_state = self._emitter.init(
+            key=subkey,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -168,21 +226,22 @@ class AURORA:
             extra_scores=extra_scores,
         )
 
-        random_key, subkey = jax.random.split(random_key)
         repertoire, updated_aurora_extra_info = self.train(
-            repertoire, aurora_extra_info.model_params, iteration=0, random_key=subkey
+            repertoire, aurora_extra_info.model_params, iteration=0, key=key
         )
 
-        return repertoire, emitter_state, updated_aurora_extra_info, random_key
+        # calculate the initial metrics
+        metrics = self._metrics_function(repertoire)
 
-    @partial(jax.jit, static_argnames=("self",))
+        return repertoire, emitter_state, metrics, updated_aurora_extra_info
+
     def update(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: Optional[EmitterState],
-        random_key: RNGKey,
+        key: RNGKey,
         aurora_extra_info: AuroraExtraInfo,
-    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics, RNGKey]:
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
         """Main step of the AURORA algorithm.
 
 
@@ -194,7 +253,7 @@ class AURORA:
         Args:
             repertoire: unstructured repertoire
             emitter_state: state of the emitter
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
             aurora_extra_info: extra info for computing encodings
 
         Results:
@@ -203,18 +262,79 @@ class AURORA:
             metrics about the updated repertoire
             a new key
         """
+
+        if self._scoring_function is None:
+            raise ValueError("Scoring function is not set.")
+
         # generate offsprings with the emitter
-        genotypes, extra_info, random_key = self._emitter.emit(
-            repertoire, emitter_state, random_key
-        )
+        key, subkey = jax.random.split(key)
+        genotypes, extra_info = self.ask(repertoire, emitter_state, subkey)
 
         # scores the offsprings
-        fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
+        key, subkey = jax.random.split(key)
+        fitnesses, descriptors, extra_scores = self._scoring_function(
             genotypes,
-            random_key,
+            subkey,
         )
 
-        observations = extra_scores["last_valid_observations"]
+        repertoire, emitter_state, metrics = self.tell(
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            repertoire=repertoire,
+            emitter_state=emitter_state,
+            aurora_extra_info=aurora_extra_info,
+            extra_scores=extra_scores,
+            extra_info=extra_info,
+        )
+        return repertoire, emitter_state, metrics
+
+    def ask(
+        self,
+        repertoire: MapElitesRepertoire,
+        emitter_state: Optional[EmitterState],
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
+        """
+        Ask the emitter to generate a new batch of genotypes.
+
+        Args:
+            repertoire: the MAP-Elites repertoire
+            emitter_state: state of the emitter
+            key: a jax PRNG random key
+        """
+        key, subkey = jax.random.split(key)
+        genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
+        return genotypes, extra_info
+
+    def tell(
+        self,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        repertoire: MapElitesRepertoire,
+        emitter_state: Optional[EmitterState],
+        aurora_extra_info: AuroraExtraInfo,
+        extra_scores: Optional[ExtraScores] = None,
+        extra_info: Optional[ExtraScores] = None,
+    ) -> Tuple[MapElitesRepertoire, Optional[EmitterState], Metrics]:
+        """
+        Add new genotypes to the repertoire and update the emitter state.
+
+        Args:
+            genotypes: new genotypes to add to the repertoire
+            fitnesses: fitnesses of the new genotypes
+            descriptors: descriptors of the new genotypes
+            extra_scores: extra scores of the new genotypes
+            repertoire: the MAP-Elites repertoire
+            emitter_state: state of the emitter
+        """
+        if extra_scores is None:
+            extra_scores = {}
+        if extra_info is None:
+            extra_info = {}
+
+        observations = extra_scores[self.observations_key]
 
         descriptors = self._encoder_fn(observations, aurora_extra_info)
 
@@ -223,7 +343,7 @@ class AURORA:
             genotypes,
             descriptors,
             fitnesses,
-            observations,
+            extra_scores,
         )
 
         # update emitter state after scoring is made
@@ -233,10 +353,10 @@ class AURORA:
             genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
-            extra_scores=extra_scores | extra_info,
+            extra_scores={**extra_scores, **extra_info},
         )
 
         # update the metrics
         metrics = self._metrics_function(repertoire)
 
-        return repertoire, emitter_state, metrics, random_key
+        return repertoire, emitter_state, metrics

@@ -1,14 +1,14 @@
 """Implementation of an updated version of the algorithm QDPG presented in the
 paper https://arxiv.org/abs/2006.08505.
 
-QDPG has been udpated to enter in the container+emitter framework of QD. Furthermore,
-it has been updated to work better with Jax in term of time cost. Those changes have
+QDPG has been updated to enter in the container+emitter framework of QD. Furthermore,
+it has been updated to work better with JAX in term of time cost. Those changes have
 been made in accordance with the authors of this algorithm.
 """
 
 import functools
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 import flax.linen as nn
 
@@ -17,9 +17,10 @@ from qdax.core.emitters.dpg_emitter import DiversityPGConfig, DiversityPGEmitter
 from qdax.core.emitters.multi_emitter import MultiEmitter
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.qpg_emitter import QualityPGConfig, QualityPGEmitter
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.custom_types import Reward, StateDescriptor
-from qdax.environments.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 
 @dataclass
@@ -38,6 +39,7 @@ class QDPGEmitter(MultiEmitter):
         policy_network: nn.Module,
         env: QDEnv,
         score_novelty: Callable[[Archive, StateDescriptor], Reward],
+        selector: Optional[Selector] = None,
     ) -> None:
 
         self._config = config
@@ -46,7 +48,10 @@ class QDPGEmitter(MultiEmitter):
 
         # define the quality emitter
         q_emitter = QualityPGEmitter(
-            config=config.qpg_config, policy_network=policy_network, env=env
+            config=config.qpg_config,
+            policy_network=policy_network,
+            env=env,
+            selector=selector,
         )
         # define the diversity emitter
         d_emitter = DiversityPGEmitter(
@@ -65,6 +70,7 @@ class QDPGEmitter(MultiEmitter):
             variation_fn=variation_fn,
             variation_percentage=1.0,
             batch_size=config.ga_batch_size,
+            selector=selector,
         )
 
         super().__init__(emitters=(q_emitter, d_emitter, ga_emitter))

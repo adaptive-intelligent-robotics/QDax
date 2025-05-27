@@ -31,7 +31,7 @@ class CMAOptimizingEmitter(CMAEmitter):
             fitnesses: corresponding fitnesses.
             descriptors: corresponding fitnesses.
             extra_scores: corresponding extra scores.
-            improvements: improvments of the emitted genotypes. This corresponds
+            improvements: improvements of the emitted genotypes. This corresponds
                 to the difference between their fitness and the fitness of the
                 individual occupying the cell of corresponding fitness.
 

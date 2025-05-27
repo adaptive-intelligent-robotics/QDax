@@ -7,7 +7,7 @@ from brax.v1.physics import config_pb2
 from brax.v1.physics.base import QP, Info
 from brax.v1.physics.system import System
 
-from qdax.environments.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 FEET_NAMES = {
     "ant": ["$ Body 4", "$ Body 7", "$ Body 10", "$ Body 13"],
@@ -96,7 +96,7 @@ class FeetContactWrapper(QDEnv):
 
     @property
     def state_descriptor_length(self) -> int:
-        return self.behavior_descriptor_length
+        return self.descriptor_length
 
     @property
     def state_descriptor_name(self) -> str:
@@ -104,16 +104,16 @@ class FeetContactWrapper(QDEnv):
 
     @property
     def state_descriptor_limits(self) -> Tuple[List, List]:
-        return self.behavior_descriptor_limits
+        return self.descriptor_limits
 
     @property
-    def behavior_descriptor_length(self) -> int:
+    def descriptor_length(self) -> int:
         return len(self._feet_contact_idx)
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List, List]:
-        bd_length = self.behavior_descriptor_length
-        return (jnp.zeros((bd_length,)), jnp.ones((bd_length,)))
+    def descriptor_limits(self) -> Tuple[List, List]:
+        descriptor_length = self.descriptor_length
+        return (jnp.zeros((descriptor_length,)), jnp.ones((descriptor_length,)))
 
     @property
     def name(self) -> str:
@@ -246,11 +246,11 @@ class XYPositionWrapper(QDEnv):
         return self._minval, self._maxval
 
     @property
-    def behavior_descriptor_length(self) -> int:
+    def descriptor_length(self) -> int:
         return self.state_descriptor_length
 
     @property
-    def behavior_descriptor_limits(self) -> Tuple[List[float], List[float]]:
+    def descriptor_limits(self) -> Tuple[List[float], List[float]]:
         return self.state_descriptor_limits
 
     @property

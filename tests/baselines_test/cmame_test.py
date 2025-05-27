@@ -32,8 +32,8 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
     sigma_g = 0.5
     minval = -5.12
     maxval = 5.12
-    min_bd = -5.12 * 0.5 * num_dimensions
-    max_bd = 5.12 * 0.5 * num_dimensions
+    min_descriptor = -5.12 * 0.5 * num_dimensions
+    max_descriptor = 5.12 * 0.5 * num_dimensions
     pool_size = 3
 
     def sphere_scoring(x: jnp.ndarray) -> jnp.ndarray:
@@ -45,24 +45,24 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         in_bound = (x <= maxval) * (x >= minval)
         return jnp.where(in_bound, x, (maxval / x))
 
-    def _behavior_descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
+    def _descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
         return jnp.sum(clip(x[: x.shape[-1] // 2]))
 
-    def _behavior_descriptor_2(x: jnp.ndarray) -> jnp.ndarray:
+    def _descriptor_2(x: jnp.ndarray) -> jnp.ndarray:
         return jnp.sum(clip(x[x.shape[-1] // 2 :]))
 
-    def _behavior_descriptors(x: jnp.ndarray) -> jnp.ndarray:
-        return jnp.array([_behavior_descriptor_1(x), _behavior_descriptor_2(x)])
+    def _descriptors(x: jnp.ndarray) -> jnp.ndarray:
+        return jnp.array([_descriptor_1(x), _descriptor_2(x)])
 
     def scoring_function(x: jnp.ndarray) -> Tuple[Fitness, Descriptor, Dict]:
-        scores, descriptors = fitness_scoring(x), _behavior_descriptors(x)
+        scores, descriptors = fitness_scoring(x), _descriptors(x)
         return scores, descriptors, {}
 
     def scoring_fn(
-        x: jnp.ndarray, random_key: RNGKey
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+        x: jnp.ndarray, key: RNGKey
+    ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors, extra_scores = jax.vmap(scoring_function)(x)
-        return fitnesses, descriptors, extra_scores, random_key
+        return fitnesses, descriptors, extra_scores
 
     worst_objective = fitness_scoring(-jnp.ones(num_dimensions) * 5.12)
     best_objective = fitness_scoring(jnp.ones(num_dimensions) * 5.12 * 0.4)
@@ -81,15 +81,17 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         max_fitness = jnp.max(adjusted_fitness)
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    random_key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
+
+    key, subkey = jax.random.split(key)
     initial_population = (
-        jax.random.uniform(random_key, shape=(batch_size, num_dimensions)) * 0.0
+        jax.random.uniform(subkey, shape=(batch_size, num_dimensions)) * 0.0
     )
 
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     emitter_kwargs = {
@@ -109,17 +111,18 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
         scoring_function=scoring_fn, emitter=emitter, metrics_function=metrics_fn
     )
 
-    repertoire, emitter_state, random_key = map_elites.init(
-        initial_population, centroids, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        initial_population, centroids, subkey
     )
 
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

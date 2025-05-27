@@ -1,13 +1,14 @@
 from dataclasses import dataclass
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import flax.linen as nn
 
 from qdax.core.emitters.dcrl_emitter import DCRLConfig, DCRLEmitter
 from qdax.core.emitters.multi_emitter import MultiEmitter
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.custom_types import Params, RNGKey
-from qdax.environments.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 
 @dataclass
@@ -44,6 +45,7 @@ class DCRLMEEmitter(MultiEmitter):
         actor_network: nn.Module,
         env: QDEnv,
         variation_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
+        selector: Optional[Selector] = None,
     ) -> None:
         self._config = config
         self._env = env
@@ -75,6 +77,7 @@ class DCRLMEEmitter(MultiEmitter):
             policy_network=policy_network,
             actor_network=actor_network,
             env=env,
+            selector=selector,
         )
 
         # define the GA emitter
@@ -83,6 +86,7 @@ class DCRLMEEmitter(MultiEmitter):
             variation_fn=variation_fn,
             variation_percentage=1.0,
             batch_size=config.ga_batch_size,
+            selector=selector,
         )
 
         super().__init__(emitters=(dcrl_emitter, ga_emitter))

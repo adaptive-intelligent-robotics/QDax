@@ -5,10 +5,12 @@ algorithm as well as several variants."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Optional
 
-import flax
+import flax.struct
 
-from qdax.custom_types import Genotype, RNGKey
+from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.custom_types import RNGKey
 
 
 class Repertoire(flax.struct.PyTreeNode, ABC):
@@ -26,28 +28,30 @@ class Repertoire(flax.struct.PyTreeNode, ABC):
         pass
 
     @abstractmethod
-    def sample(
+    def select(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         num_samples: int,
-    ) -> Genotype:
-        """Sample genotypes from the repertoire.
+        selector: Optional[Selector] = None,
+    ) -> Repertoire:
+        """Selects individuals from the repertoire.
 
         Args:
-            random_key: a random key to handle stochasticity.
-            num_samples: the number of genotypes to sample.
+            key: The random key to use for the selection.
+            num_samples: The number of individuals to select.
+            selector: The selector to use for the selection.
 
         Returns:
-            The sample of genotypes.
+            A repertoire containing the selected individuals.
         """
         pass
 
     @abstractmethod
-    def add(self) -> Repertoire:
+    def add(self) -> Repertoire:  # noqa: N805
         """Implements the rule to add new genotypes to a
         repertoire.
 
         Returns:
-            The udpated repertoire.
+            The updated repertoire.
         """
         pass

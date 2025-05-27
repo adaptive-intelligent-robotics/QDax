@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import partial
 from typing import Any, Dict, Tuple
 
 import jax
@@ -15,9 +14,9 @@ class Archive(PyTreeNode):
 
     An example of use of the archive is the algorithm QDPG: state
     descriptors are stored in this archive and a novelty scorer compares
-    new state desciptors to the state descriptors stored in this archive.
+    new state descriptors to the state descriptors stored in this archive.
 
-    Note: notations suppose that the elements are called state desciptors.
+    Note: notations suppose that the elements are called state descriptors.
     If we where to use this structure for another application, it would be
     better to change the variables name for another one. Does not seem
     necessary at the moment though.
@@ -73,7 +72,6 @@ class Archive(PyTreeNode):
             max_size=max_size,
         )
 
-    @jax.jit
     def _single_insertion(self, state_descriptor: jnp.ndarray) -> Archive:
         """Insert a single element.
 
@@ -99,7 +97,6 @@ class Archive(PyTreeNode):
             current_position=new_current_position, data=new_data
         )
 
-    @jax.jit
     def _conditioned_single_insertion(
         self, condition: bool, state_descriptor: jnp.ndarray
     ) -> Tuple[Archive, jnp.ndarray]:
@@ -130,7 +127,6 @@ class Archive(PyTreeNode):
             condition, true_fun, false_fun, self, state_descriptor
         )
 
-    @jax.jit
     def insert(self, state_descriptors: jnp.ndarray) -> Archive:
         """Tries to insert a batch of state descriptors in the archive.
 
@@ -157,7 +153,7 @@ class Archive(PyTreeNode):
         """
         state_descriptors = state_descriptors.reshape((-1, state_descriptors.shape[-1]))
 
-        # get nearest neigbor for each new state descriptor
+        # get nearest neighbor for each new state descriptor
         values, _indices = knn(self.data, state_descriptors, 1)
 
         # get indices where distance bigger than threshold
@@ -185,7 +181,7 @@ class Archive(PyTreeNode):
             state_descriptor = condition_data["state_descriptor"]
 
             # do the filtering among the added elements
-            # get nearest neigbor for each new state descriptor
+            # get nearest neighbor for each new state descriptor
             values, _indices = knn(new_elements, state_descriptor.reshape(1, -1), 1)
 
             # get indices where distance bigger than threshold
@@ -249,11 +245,10 @@ def score_euclidean_novelty(
     return scaling_ratio * summed_distances
 
 
-@partial(jax.jit, static_argnames=("k"))
 def knn(
     data: jnp.ndarray, new_data: jnp.ndarray, k: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """K nearest neigbors - Brute force implementation.
+    """K nearest neighbors - Brute force implementation.
     Using euclidean distance.
 
     Code from https://www.kernel-operations.io/keops/_auto_benchmarks/
@@ -262,7 +257,7 @@ def knn(
     Args:
         data: given reference data.
         new_data: data to be compared to the reference data.
-        k: number of neigbors to consider.
+        k: number of neighbors to consider.
 
     Returns:
         The distances and indices of the nearest neighbors.
@@ -281,12 +276,11 @@ def knn(
     dist = jnp.sqrt(jnp.clip(dist, min=0.0))
 
     # return values, indices
-    values, indices = qdax_top_k(-dist, k)
+    values, indices = qdax_top_k(-dist, k=k)
 
     return -values, indices
 
 
-@partial(jax.jit, static_argnames=("k"))
 def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Returns the top k elements of an array.
 
@@ -311,7 +305,7 @@ def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         return data, value, indice
 
     def scannable_top_1(
-        carry: jnp.ndarray, unused: Any
+        carry: jnp.ndarray, _: Any
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
         data = carry
         data, value, indice = top_1(data)

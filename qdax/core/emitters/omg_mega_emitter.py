@@ -1,11 +1,11 @@
-from functools import partial
-from typing import Tuple
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.custom_types import (
     Centroid,
     Descriptor,
@@ -22,7 +22,7 @@ class OMGMEGAEmitterState(EmitterState):
 
     Args:
         gradients_repertoire: MapElites repertoire containing the gradients
-            of the indivuals.
+            of the individuals.
     """
 
     gradients_repertoire: MapElitesRepertoire
@@ -46,11 +46,11 @@ class OMGMEGAEmitter(Emitter):
     sampling.
     - in the state_update, we have to insert the gradients in the gradients
     repertoire in the same way the individuals were inserted. Once again, this is
-    slightly unoptimal because the same addition mecanism has to be computed two
+    slightly unoptimal because the same addition mechanism has to be computed two
     times. One solution that we are discussing and that is very similar to the first
-    solution discussed above, would be to decompose the addition mecanism in two
-    phases: one outputing the indices at which individuals will be added, and then
-    the actual insertion step. This would enable to re-use the same indices to add
+    solution discussed above, would be to decompose the addition mechanism in two
+    phases: one outputting the indices at which individuals will be added, and then
+    the actual insertion step. This would enable to reuse the same indices to add
     the gradients instead of having to recompute them.
 
     The two design choices seem acceptable and enable to have OMG MEGA compatible
@@ -67,6 +67,7 @@ class OMGMEGAEmitter(Emitter):
         sigma_g: float,
         num_descriptors: int,
         centroids: Centroid,
+        selector: Optional[Selector] = None,
     ):
         """Creates an instance of the OMGMEGAEmitter class.
 
@@ -90,30 +91,32 @@ class OMGMEGAEmitter(Emitter):
         self._centroids = centroids
         self._num_descriptors = num_descriptors
 
+        self._selector = selector
+
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[OMGMEGAEmitterState, RNGKey]:
+    ) -> OMGMEGAEmitterState:
         """Initialises the state of the emitter. Creates an empty repertoire
         that will later contain the gradients of the individuals.
 
         Args:
             genotypes: The genotypes of the initial population.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The initial emitter state.
         """
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
+        first_genotype = jax.tree.map(lambda x: x[0], genotypes)
 
         # add a dimension of size num descriptors + 1
-        gradient_genotype = jax.tree_util.tree_map(
+        gradient_genotype = jax.tree.map(
             lambda x: jnp.repeat(
                 jnp.expand_dims(x, axis=-1), repeats=self._num_descriptors + 1, axis=-1
             ),
@@ -137,21 +140,14 @@ class OMGMEGAEmitter(Emitter):
             extra_scores,
         )
 
-        return (
-            OMGMEGAEmitterState(gradients_repertoire=gradients_repertoire),
-            random_key,
-        )
+        return OMGMEGAEmitterState(gradients_repertoire=gradients_repertoire)
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
-    def emit(
+    def emit(  # type: ignore
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: OMGMEGAEmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         OMG emitter function that samples elements in the repertoire and does a gradient
         update with random coefficients to create new candidates.
@@ -159,28 +155,29 @@ class OMGMEGAEmitter(Emitter):
         Args:
             repertoire: current repertoire
             emitter_state: current emitter state, contains the gradients
-            random_key: random key
+            key: random key
 
         Returns:
             new_genotypes: new candidates to be added to the grid
-            random_key: updated random key
         """
         # sample genotypes
-        (
-            genotypes,
-            _,
-        ) = repertoire.sample(random_key, num_samples=self._batch_size)
+        key, subkey = jax.random.split(key)
 
-        # sample gradients - use the same random key for sampling
-        # See class docstrings for discussion about this choice
-        gradients, random_key = emitter_state.gradients_repertoire.sample(
-            random_key, num_samples=self._batch_size
+        size_repertoire = repertoire.fitnesses.shape[0]
+        repertoire_indexes = repertoire.replace(genotypes=jnp.arange(size_repertoire))
+        indexes_selected = repertoire_indexes.select(
+            subkey, num_samples=self._batch_size, selector=self._selector
+        ).genotypes
+
+        genotypes = jax.tree.map(lambda x: x[indexes_selected], repertoire.genotypes)
+        gradients = jax.tree.map(
+            lambda x: x[indexes_selected], emitter_state.gradients_repertoire.genotypes
         )
 
-        fitness_gradients = jax.tree_util.tree_map(
+        fitness_gradients = jax.tree.map(
             lambda x: jnp.expand_dims(x[:, :, 0], axis=-1), gradients
         )
-        descriptors_gradients = jax.tree_util.tree_map(lambda x: x[:, :, 1:], gradients)
+        descriptors_gradients = jax.tree.map(lambda x: x[:, :, 1:], gradients)
 
         # Normalize the gradients
         norm_fitness_gradients = jnp.linalg.norm(
@@ -195,15 +192,14 @@ class OMGMEGAEmitter(Emitter):
         descriptors_gradients = descriptors_gradients / norm_descriptors_gradients
 
         # Draw random coefficients
-        random_key, subkey = jax.random.split(random_key)
         coeffs = jax.random.multivariate_normal(
-            subkey,
+            key,
             shape=(self._batch_size,),
             mean=self._mu,
             cov=self._sigma,
         )
         coeffs = coeffs.at[:, 0].set(jnp.abs(coeffs[:, 0]))
-        grads = jax.tree_util.tree_map(
+        grads = jax.tree.map(
             lambda x, y: jnp.concatenate((x, y), axis=-1),
             fitness_gradients,
             descriptors_gradients,
@@ -211,17 +207,11 @@ class OMGMEGAEmitter(Emitter):
         update_grad = jnp.sum(jax.vmap(lambda x, y: x * y)(coeffs, grads), axis=-1)
 
         # update the genotypes
-        new_genotypes = jax.tree_util.tree_map(
-            lambda x, y: x + y, genotypes, update_grad
-        )
+        new_genotypes = jax.tree.map(lambda x, y: x + y, genotypes, update_grad)
 
-        return new_genotypes, {}, random_key
+        return new_genotypes, {}
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: OMGMEGAEmitterState,
         repertoire: MapElitesRepertoire,

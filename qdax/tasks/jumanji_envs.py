@@ -5,6 +5,8 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jumanji
+from chex import ArrayTree
+from typing_extensions import TypeAlias
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.custom_types import (
@@ -12,12 +14,13 @@ from qdax.custom_types import (
     ExtraScores,
     Fitness,
     Genotype,
-    JumanjiState,
-    JumanjiTimeStep,
     Observation,
     Params,
     RNGKey,
 )
+
+JumanjiState: TypeAlias = ArrayTree
+JumanjiTimeStep: TypeAlias = jumanji.types.TimeStep
 
 
 def make_policy_network_play_step_fn_jumanji(
@@ -47,7 +50,7 @@ def make_policy_network_play_step_fn_jumanji(
         env_state: JumanjiState,
         timestep: JumanjiTimeStep,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition]:
         """Play an environment step and return the updated state and the transition.
         Everything is deterministic in this simple example.
@@ -75,17 +78,16 @@ def make_policy_network_play_step_fn_jumanji(
             next_state_desc=next_state_desc,
         )
 
-        return next_state, next_timestep, policy_params, random_key, transition
+        return next_state, next_timestep, policy_params, key, transition
 
     return default_play_step_fn
 
 
-@partial(jax.jit, static_argnames=("play_step_fn", "episode_length"))
 def generate_jumanji_unroll(
     init_state: JumanjiState,
     init_timestep: JumanjiTimeStep,
     policy_params: Params,
-    random_key: RNGKey,
+    key: RNGKey,
     episode_length: int,
     play_step_fn: Callable[
         [JumanjiState, JumanjiTimeStep, Params, RNGKey],
@@ -104,7 +106,7 @@ def generate_jumanji_unroll(
     Args:
         init_state: first state of the rollout.
         policy_params: params of the individual.
-        random_key: random key for stochasiticity handling.
+        key: random key for stochasiticity handling.
         episode_length: length of the rollout.
         play_step_fn: function describing how a step need to be taken.
 
@@ -115,14 +117,12 @@ def generate_jumanji_unroll(
     def _scan_play_step_fn(
         carry: Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey], unused_arg: Any
     ) -> Tuple[Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey], Transition]:
-        env_state, timestep, policy_params, random_key, transitions = play_step_fn(
-            *carry
-        )
-        return (env_state, timestep, policy_params, random_key), transitions
+        env_state, timestep, policy_params, key, transitions = play_step_fn(*carry)
+        return (env_state, timestep, policy_params, key), transitions
 
     (state, timestep, _, _), transitions = jax.lax.scan(
         _scan_play_step_fn,
-        (init_state, init_timestep, policy_params, random_key),
+        (init_state, init_timestep, policy_params, key),
         (),
         length=episode_length,
     )
@@ -134,57 +134,46 @@ def generate_jumanji_unroll(
     static_argnames=(
         "episode_length",
         "play_step_fn",
-        "behavior_descriptor_extractor",
+        "descriptor_extractor",
     ),
 )
 def jumanji_scoring_function(
     policies_params: Genotype,
-    random_key: RNGKey,
+    key: RNGKey,
     init_states: JumanjiState,
     init_timesteps: JumanjiTimeStep,
     episode_length: int,
     play_step_fn: Callable[
-        [JumanjiState, JumanjiTimeStep, Params, RNGKey, jumanji.env.Environment],
+        [JumanjiState, JumanjiTimeStep, Params, RNGKey],
         Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition],
     ],
-    behavior_descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.
 
     This rollout is only deterministic when all the init states are the same.
-    If the init states are fixed but different, as a policy is not necessarly
-    evaluated with the same environment everytime, this won't be determinist.
+    If the init states are fixed but different, as a policy is not necessary
+    evaluated with the same environment every time, this won't be deterministic.
     When the init states are different, this is not purely stochastic.
     """
 
-    # Perform rollouts with each policy
-    random_key, subkey = jax.random.split(random_key)
+    # Step environments
     unroll_fn = partial(
         generate_jumanji_unroll,
         episode_length=episode_length,
         play_step_fn=play_step_fn,
-        random_key=subkey,
     )
+    keys = jax.random.split(key, jax.tree.leaves(policies_params)[0].shape[0])
+    _, _, data = jax.vmap(unroll_fn)(init_states, init_timesteps, policies_params, keys)
 
-    _final_state, _final_timestep, data = jax.vmap(unroll_fn)(
-        init_states, init_timesteps, policies_params
-    )
-
-    # create a mask to extract data properly
+    # Create a mask to extract data properly
     is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
     mask = jnp.roll(is_done, 1, axis=1)
     mask = mask.at[:, 0].set(0)
 
-    # scores
+    # Evaluate
     fitnesses = jnp.sum(data.rewards * (1.0 - mask), axis=1)
-    descriptors = behavior_descriptor_extractor(data, mask)
+    descriptors = descriptor_extractor(data, mask)
 
-    return (
-        fitnesses,
-        descriptors,
-        {
-            "transitions": data,
-        },
-        random_key,
-    )
+    return fitnesses, descriptors, {"transitions": data}

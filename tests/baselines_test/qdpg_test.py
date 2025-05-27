@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.containers.archive import score_euclidean_novelty
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -18,7 +18,9 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.tasks.brax.v1.env_creators import (
+    scoring_function_brax_envs as scoring_function,
+)
 
 
 def test_qdpg() -> None:
@@ -29,8 +31,8 @@ def test_qdpg() -> None:
     policy_hidden_layer_sizes = (64, 64)
     num_init_cvt_samples = 1000
     num_centroids = 50
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptor = 0.0
+    max_descriptor = 1.0
 
     # mutations size
     quality_pg_batch_size = 3
@@ -67,9 +69,10 @@ def test_qdpg() -> None:
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
+    reset_fn = jax.jit(env.reset)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init policy network
     policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)
@@ -80,16 +83,16 @@ def test_qdpg() -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jax.random.split(subkey, num=env_batch_size)
     fake_batch = jnp.zeros(shape=(env_batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
-    # Define the fonction to play a step with the policy in the environment
+    # Define the function to play a step with the policy in the environment
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
         """
         Play an environment step and return the updated state and the transition.
@@ -111,7 +114,7 @@ def test_qdpg() -> None:
             next_state_desc=next_state.info["state_descriptor"],
         )
 
-        return next_state, policy_params, random_key, transition
+        return next_state, policy_params, key, transition
 
     # Get minimum reward value to make sure qd_score are positive
     reward_offset = environments.reward_offset[env_name]
@@ -194,30 +197,25 @@ def test_qdpg() -> None:
         score_novelty=score_novelty,
     )
 
-    # Create the initial environment states
-    random_key, subkey = jax.random.split(random_key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=env_batch_size, axis=0)
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    init_states = reset_fn(keys)
-
     # Prepare the scoring function
-    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function_brax_envs,
-        init_states=init_states,
+        scoring_function,
         episode_length=episode_length,
+        play_reset_fn=reset_fn,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Compute the centroids
-    centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
-        minval=min_bd,
-        maxval=max_bd,
-        random_key=random_key,
+        minval=min_descriptor,
+        maxval=max_descriptor,
+        key=subkey,
     )
 
     # Instantiate MAP Elites
@@ -227,25 +225,29 @@ def test_qdpg() -> None:
         metrics_function=metrics_function,
     )
 
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_variables, centroids, subkey
     )
 
     @jax.jit
-    def update_scan_fn(carry: Any, unused: Any) -> Any:
+    def update_scan_fn(carry: Any, _: Any) -> Any:
         # iterate over grid
-        repertoire, emitter_state, metrics, random_key = map_elites.update(*carry)
-
-        return (repertoire, emitter_state, random_key), metrics
+        repertoire, emitter_state, key = carry
+        key, subkey = jax.random.split(key)
+        repertoire, emitter_state, metrics = map_elites.update(
+            repertoire, emitter_state, subkey
+        )
+        return (repertoire, emitter_state, key), metrics
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), _metrics = jax.lax.scan(
         update_scan_fn,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

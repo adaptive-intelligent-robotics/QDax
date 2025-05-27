@@ -1,9 +1,9 @@
-from typing import Dict, Optional
+from typing import Dict
 
 import flax.struct
 import jax
 from brax.v1 import jumpy as jp
-from brax.v1.envs import Env, State, Wrapper
+from brax.v1.envs import State, Wrapper
 
 
 class CompletedEvalMetrics(flax.struct.PyTreeNode):
@@ -22,10 +22,8 @@ class CompletedEvalWrapper(Wrapper):
         reset_state = self.env.reset(rng)
         reset_state.metrics["reward"] = reset_state.reward
         eval_metrics = CompletedEvalMetrics(
-            current_episode_metrics=jax.tree_util.tree_map(
-                jp.zeros_like, reset_state.metrics
-            ),
-            completed_episodes_metrics=jax.tree_util.tree_map(
+            current_episode_metrics=jax.tree.map(jp.zeros_like, reset_state.metrics),
+            completed_episodes_metrics=jax.tree.map(
                 lambda x: jp.zeros_like(jp.sum(x)), reset_state.metrics
             ),
             completed_episodes=jp.zeros(()),
@@ -46,16 +44,16 @@ class CompletedEvalWrapper(Wrapper):
         completed_episodes_steps = state_metrics.completed_episodes_steps + jp.sum(
             nstate.info["steps"] * nstate.done
         )
-        current_episode_metrics = jax.tree_util.tree_map(
+        current_episode_metrics = jax.tree.map(
             lambda a, b: a + b, state_metrics.current_episode_metrics, nstate.metrics
         )
         completed_episodes = state_metrics.completed_episodes + jp.sum(nstate.done)
-        completed_episodes_metrics = jax.tree_util.tree_map(
+        completed_episodes_metrics = jax.tree.map(
             lambda a, b: a + jp.sum(b * nstate.done),
             state_metrics.completed_episodes_metrics,
             current_episode_metrics,
         )
-        current_episode_metrics = jax.tree_util.tree_map(
+        current_episode_metrics = jax.tree.map(
             lambda a, b: a * (1 - nstate.done) + b * nstate.done,
             current_episode_metrics,
             nstate.metrics,
@@ -69,55 +67,3 @@ class CompletedEvalWrapper(Wrapper):
         )
         nstate.info[self.STATE_INFO_KEY] = eval_metrics
         return nstate
-
-
-class ClipRewardWrapper(Wrapper):
-    """Wraps gym environments to clip the reward to be greater than 0.
-
-    Utilisation is simple: create an environment with Brax, pass
-    it to the wrapper with the name of the environment, and it will
-    work like before and will simply clip the reward to be greater than 0.
-    """
-
-    def __init__(
-        self,
-        env: Env,
-        clip_min: Optional[float] = None,
-        clip_max: Optional[float] = None,
-    ) -> None:
-        super().__init__(env)
-        self._clip_min = clip_min
-        self._clip_max = clip_max
-
-    def reset(self, rng: jp.ndarray) -> State:
-        state = self.env.reset(rng)
-        return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
-        )
-
-    def step(self, state: State, action: jp.ndarray) -> State:
-        state = self.env.step(state, action)
-        return state.replace(
-            reward=jp.clip(state.reward, a_min=self._clip_min, a_max=self._clip_max)
-        )
-
-
-class OffsetRewardWrapper(Wrapper):
-    """Wraps gym environments to offset the reward to be greater than 0.
-
-    Utilisation is simple: create an environment with Brax, pass
-    it to the wrapper with the name of the environment, and it will
-    work like before and will simply clip the reward to be greater than 0.
-    """
-
-    def __init__(self, env: Env, offset: float = 0.0) -> None:
-        super().__init__(env)
-        self._offset = offset
-
-    def reset(self, rng: jp.ndarray) -> State:
-        state = self.env.reset(rng)
-        return state.replace(reward=state.reward + self._offset)
-
-    def step(self, state: State, action: jp.ndarray) -> State:
-        state = self.env.step(state, action)
-        return state.replace(reward=state.reward + self._offset)

@@ -4,7 +4,6 @@ Need (DIAYN), ref: https://arxiv.org/abs/1802.06070.
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax
@@ -35,7 +34,7 @@ class DiaynTrainingState(TrainingState):
     target_critic_params: Params
     discriminator_optimizer_state: optax.OptState
     discriminator_params: Params
-    random_key: RNGKey
+    key: RNGKey
     steps: jnp.ndarray
 
 
@@ -64,7 +63,7 @@ class DIAYN(SAC):
     Since we are using categorical skills, the current loss function used
     to train the discriminator is the categorical cross entropy loss.
 
-    We plan to add continous skill as an option in the future. We also plan
+    We plan to add continuous skill as an option in the future. We also plan
     to release the current constraint on the number of batched environments
     by sampling from the skills rather than having this fixed setting.
     """
@@ -116,7 +115,7 @@ class DIAYN(SAC):
 
     def init(  # type: ignore
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         action_size: int,
         observation_size: int,
         descriptor_size: int,
@@ -124,7 +123,7 @@ class DIAYN(SAC):
         """Initialise the training state of the algorithm.
 
         Args:
-            random_key: a jax random key
+            key: a jax random key
             action_size: the size of the environment's action space
             observation_size: the size of the environment's observation space
             descriptor_size: the size of the environment's descriptor space (i.e. the
@@ -139,17 +138,17 @@ class DIAYN(SAC):
         dummy_action = jnp.zeros((1, action_size))
         dummy_discriminator_obs = jnp.zeros((1, descriptor_size))
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         policy_params = self._policy.init(subkey, dummy_obs)
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         discriminator_params = self._discriminator.init(
             subkey, obs=dummy_discriminator_obs
         )
@@ -173,11 +172,10 @@ class DIAYN(SAC):
             target_critic_params=target_critic_params,
             discriminator_optimizer_state=discriminator_optimizer_state,
             discriminator_params=discriminator_params,
-            random_key=random_key,
+            key=key,
             steps=jnp.array(0),
         )
 
-    @partial(jax.jit, static_argnames=("self", "add_log_p_z"))
     def _compute_diversity_reward(
         self,
         transition: QDTransition,
@@ -212,8 +210,7 @@ class DIAYN(SAC):
             reward += jnp.log(self._config.num_skills)
         return reward
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic"))
-    def play_step_fn(
+    def play_step_fn(  # type: ignore
         self,
         env_state: EnvState,
         training_state: DiaynTrainingState,
@@ -239,7 +236,8 @@ class DIAYN(SAC):
             the played transition
         """
 
-        random_key = training_state.random_key
+        key = training_state.key
+
         policy_params = training_state.policy_params
         obs = jnp.concatenate([env_state.obs, skills], axis=1)
 
@@ -249,10 +247,11 @@ class DIAYN(SAC):
         else:
             state_desc = jnp.zeros((env_state.obs.shape[0], 2))
 
-        actions, random_key = self.select_action(
+        key, subkey = jax.random.split(key)
+        actions = self.select_action(
             obs=obs,
             policy_params=policy_params,
-            random_key=random_key,
+            key=subkey,
             deterministic=deterministic,
         )
 
@@ -273,25 +272,17 @@ class DIAYN(SAC):
             actions=actions,
             truncations=truncations,
         )
-        training_state = training_state.replace(random_key=random_key)
+        training_state = training_state.replace(key=key)
 
         return next_env_state, training_state, transition
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-            "env_batch_size",
-        ),
-    )
-    def eval_policy_fn(
+    def eval_policy_fn(  # type: ignore
         self,
         training_state: DiaynTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
-            Tuple[EnvState, Params, RNGKey, QDTransition],
+            [EnvState, Params],
+            Tuple[EnvState, Params, QDTransition],
         ],
         env_batch_size: int,
     ) -> Tuple[Reward, Reward, Reward, StateDescriptor]:
@@ -324,7 +315,7 @@ class DIAYN(SAC):
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        reshaped_transitions = jax.tree_util.tree_map(
+        reshaped_transitions = jax.tree.map(
             lambda x: x.reshape((self._config.episode_length * env_batch_size, -1)),
             transitions,
         )
@@ -352,7 +343,6 @@ class DIAYN(SAC):
             transitions.state_desc,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _compute_reward(
         self, transition: QDTransition, training_state: DiaynTrainingState
     ) -> Reward:
@@ -371,7 +361,6 @@ class DIAYN(SAC):
             add_log_p_z=True,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_networks(
         self,
         training_state: DiaynTrainingState,
@@ -382,12 +371,12 @@ class DIAYN(SAC):
         Args:
             training_state: the current training state.
             transitions: transitions sampled from the replay buffer.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The update training state, metrics and a new random key.
         """
-        random_key = training_state.random_key
+        key = training_state.key
 
         # Compute discriminator loss and gradients
         discriminator_loss, discriminator_gradient = jax.value_and_grad(
@@ -408,49 +397,50 @@ class DIAYN(SAC):
             training_state.discriminator_params, discriminator_updates
         )
 
-        # udpate alpha
+        # update alpha
+        key, subkey = jax.random.split(key)
         (
             alpha_params,
             alpha_optimizer_state,
             alpha_loss,
-            random_key,
         ) = self._update_alpha(
             alpha_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update critic
+        key, subkey = jax.random.split(key)
         (
             critic_params,
             target_critic_params,
             critic_optimizer_state,
             critic_loss,
-            random_key,
         ) = self._update_critic(
             critic_lr=self._config.learning_rate,
             reward_scaling=self._config.reward_scaling,
             discount=self._config.discount,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update actor
+        key, subkey = jax.random.split(key)
         (
             policy_params,
             policy_optimizer_state,
             policy_loss,
-            random_key,
         ) = self._update_actor(
             policy_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # Create new training state
+        key, subkey = jax.random.split(key)
         new_training_state = DiaynTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -461,7 +451,7 @@ class DIAYN(SAC):
             target_critic_params=target_critic_params,
             discriminator_optimizer_state=discriminator_optimizer_state,
             discriminator_params=discriminator_params,
-            random_key=random_key,
+            key=subkey,
             steps=training_state.steps + 1,
         )
         metrics = {
@@ -473,7 +463,6 @@ class DIAYN(SAC):
 
         return new_training_state, metrics
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DiaynTrainingState,
@@ -492,9 +481,11 @@ class DIAYN(SAC):
             the training metrics
         """
         # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-        transitions, random_key = replay_buffer.sample(
-            random_key,
+        key = training_state.key
+
+        key, subkey = jax.random.split(key)
+        transitions = replay_buffer.sample(
+            subkey,
             sample_size=self._config.batch_size,
         )
 

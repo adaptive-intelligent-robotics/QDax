@@ -61,11 +61,9 @@ def test_omg_mega() -> None:
         gradients = jnp.nan_to_num(gradients)
         return fitnesses, descriptors, {"gradients": gradients}
 
-    def scoring_fn(
-        x: Genotype, random_key: RNGKey
-    ) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    def scoring_fn(x: Genotype, key: RNGKey) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors, extra_scores = jax.vmap(scoring_function)(x)
-        return fitnesses, descriptors, extra_scores, random_key
+        return fitnesses, descriptors, extra_scores
 
     worst_objective = rastrigin_scoring(-jnp.ones(num_dimensions) * maxval)
     best_objective = rastrigin_scoring(jnp.ones(num_dimensions) * maxval * 0.4)
@@ -82,10 +80,10 @@ def test_omg_mega() -> None:
         max_fitness = jnp.max(adjusted_fitness)
         return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
 
-    random_key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
 
     # defines the population
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     initial_population = jax.random.uniform(subkey, shape=(100, num_dimensions))
 
     sqrt_centroids = int(math.sqrt(num_centroids))  # 2-D grid
@@ -109,17 +107,18 @@ def test_omg_mega() -> None:
         scoring_function=scoring_fn, emitter=emitter, metrics_function=metrics_fn
     )
 
-    repertoire, emitter_state, random_key = map_elites.init(
-        initial_population, centroids, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        initial_population, centroids, subkey
     )
 
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

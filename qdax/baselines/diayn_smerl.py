@@ -5,7 +5,6 @@ the environment to discover supervised skills. Variants are:
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Optional, Tuple
 
 import jax
@@ -39,8 +38,7 @@ class DIAYNSMERL(DIAYN):
         super(DIAYNSMERL, self).__init__(config, action_size)
         self._config: DiaynSmerlConfig = config
 
-    @partial(jax.jit, static_argnames=("self",))
-    def _compute_reward(
+    def _compute_reward(  # type: ignore
         self,
         transition: QDTransition,
         training_state: DiaynTrainingState,
@@ -81,7 +79,6 @@ class DIAYNSMERL(DIAYN):
 
         return rewards
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: DiaynTrainingState,
@@ -99,13 +96,16 @@ class DIAYNSMERL(DIAYN):
             the replay buffer
             the training metrics
         """
-        # Sample a batch of transitions in the buffer
-        random_key = training_state.random_key
+        key = training_state.key
 
-        samples, returns, random_key = replay_buffer.sample_with_returns(
-            random_key,
+        # Sample a batch of transitions in the buffer
+        key, subkey = jax.random.split(key)
+        samples, returns = replay_buffer.sample_with_returns(
+            subkey,
             sample_size=self._config.batch_size,
         )
+
+        training_state = training_state.replace(key=key)
 
         # Optionally replace the state descriptor by the observation
         if self._config.descriptor_full_state:

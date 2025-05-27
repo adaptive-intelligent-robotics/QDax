@@ -71,7 +71,7 @@ def sac_policy_loss_fn(
     critic_params: Params,
     alpha: jnp.ndarray,
     transitions: Transition,
-    random_key: RNGKey,
+    key: RNGKey,
 ) -> jnp.ndarray:
     """
     Creates the policy loss used in SAC.
@@ -84,16 +84,14 @@ def sac_policy_loss_fn(
         critic_params: parameters of the critic
         alpha: entropy coefficient value
         transitions: transitions collected by the agent
-        random_key: random key
+        key: random key
 
     Returns:
         the loss of the policy
     """
 
     dist_params = policy_fn(policy_params, transitions.obs)
-    action = parametric_action_distribution.sample_no_postprocessing(
-        dist_params, random_key
-    )
+    action = parametric_action_distribution.sample_no_postprocessing(dist_params, key)
     log_prob = parametric_action_distribution.log_prob(dist_params, action)
     action = parametric_action_distribution.postprocess(action)
     q_action = critic_fn(critic_params, transitions.obs, action)
@@ -114,7 +112,7 @@ def sac_critic_loss_fn(
     target_critic_params: Params,
     alpha: jnp.ndarray,
     transitions: Transition,
-    random_key: RNGKey,
+    key: RNGKey,
 ) -> jnp.ndarray:
     """
     Creates the critic loss used in SAC.
@@ -128,7 +126,7 @@ def sac_critic_loss_fn(
         target_critic_params: parameters of the target critic
         alpha: entropy coefficient value
         transitions: transitions collected by the agent
-        random_key: random key
+        key: random key
         reward_scaling: a multiplicative factor to the reward
         discount: the discount factor
 
@@ -139,7 +137,7 @@ def sac_critic_loss_fn(
     q_old_action = critic_fn(critic_params, transitions.obs, transitions.actions)
     next_dist_params = policy_fn(policy_params, transitions.next_obs)
     next_action = parametric_action_distribution.sample_no_postprocessing(
-        next_dist_params, random_key
+        next_dist_params, key
     )
     next_log_prob = parametric_action_distribution.log_prob(
         next_dist_params, next_action
@@ -168,7 +166,7 @@ def sac_alpha_loss_fn(
     action_size: int,
     policy_params: Params,
     transitions: Transition,
-    random_key: RNGKey,
+    key: RNGKey,
 ) -> jnp.ndarray:
     """
     Creates the alpha loss used in SAC.
@@ -180,7 +178,7 @@ def sac_alpha_loss_fn(
         parametric_action_distribution: the distribution over actions
         policy_params: parameters of the policy
         transitions: transitions collected by the agent
-        random_key: random key
+        key: random key
         action_size: the size of the environment's action space
 
     Returns:
@@ -190,9 +188,7 @@ def sac_alpha_loss_fn(
     target_entropy = -0.5 * action_size
 
     dist_params = policy_fn(policy_params, transitions.obs)
-    action = parametric_action_distribution.sample_no_postprocessing(
-        dist_params, random_key
-    )
+    action = parametric_action_distribution.sample_no_postprocessing(dist_params, key)
     log_prob = parametric_action_distribution.log_prob(dist_params, action)
     alpha = jnp.exp(log_alpha)
     alpha_loss = alpha * jax.lax.stop_gradient(-log_prob - target_entropy)

@@ -9,11 +9,13 @@ from jax import numpy as jnp
 from qdax.baselines.pbt import PBTTrainingState
 from qdax.baselines.sac_pbt import PBTSAC
 from qdax.baselines.td3_pbt import PBTTD3
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
-from qdax.environments.base_wrappers import QDEnv
+from qdax.tasks.brax.v1.envs.base_env import QDEnv
 
 
 class PBTEmitterState(EmitterState):
@@ -25,7 +27,7 @@ class PBTEmitterState(EmitterState):
     replay_buffers: ReplayBuffer
     env_states: EnvState
     training_states: PBTTrainingState
-    random_key: RNGKey
+    key: RNGKey
 
 
 class PBTEmitterConfig(PyTreeNode):
@@ -61,6 +63,7 @@ class PBTEmitter(Emitter):
         config: PBTEmitterConfig,
         env: QDEnv,
         variation_fn: Callable[[Params, Params, RNGKey], Tuple[Params, RNGKey]],
+        selector: Optional[Selector] = None,
     ) -> None:
 
         # Parameters internalization
@@ -90,23 +93,25 @@ class PBTEmitter(Emitter):
             config.pg_population_size_per_device * config.fraction_sort_exchange
         )
 
+        self._selector = selector
+
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: Repertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,
-    ) -> Tuple[PBTEmitterState, RNGKey]:
+    ) -> PBTEmitterState:
         """Initializes the emitter state.
 
         Args:
             genotypes: The initial population.
-            random_key: A random key.
+            key: A random key.
 
         Returns:
-            The initial state of the PGAMEEmitter, a new random key.
+            The initial state of the PGAMEEmitter.
         """
 
         observation_size = self._env.observation_size
@@ -131,11 +136,11 @@ class PBTEmitter(Emitter):
         replay_buffers = replay_buffer_init(transition=dummy_transitions)
 
         # Initialise env states
-        (random_key, subkey1, subkey2) = jax.random.split(random_key, num=3)
-        env_states = jax.jit(self._env.reset)(rng=subkey1)
+        key, subkey = jax.random.split(key)
+        env_states = jax.jit(self._env.reset)(rng=subkey)
 
         reshape_fn = jax.jit(
-            lambda tree: jax.tree_util.tree_map(
+            lambda tree: jax.tree.map(
                 lambda x: jnp.reshape(
                     x,
                     (
@@ -151,28 +156,24 @@ class PBTEmitter(Emitter):
 
         # Create emitter state
         # keep only pg population size training states if more are provided
-        genotypes = jax.tree_util.tree_map(
+        genotypes = jax.tree.map(
             lambda x: x[: self._config.pg_population_size_per_device], genotypes
         )
         emitter_state = PBTEmitterState(
             replay_buffers=replay_buffers,
             env_states=env_states,
             training_states=genotypes,
-            random_key=subkey2,
+            key=key,
         )
 
-        return emitter_state, random_key
+        return emitter_state
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
-    def emit(
+    def emit(  # type: ignore
         self,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         emitter_state: PBTEmitterState,
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """Do a single PGA-ME iteration: train critics and greedy policy,
         make mutations (evo and pg), score solution, fill replay buffer and insert back
         in the MAP-Elites grid.
@@ -180,7 +181,7 @@ class PBTEmitter(Emitter):
         Args:
             repertoire: the current repertoire of genotypes
             emitter_state: the state of the emitter used
-            random_key: a random key
+            key: a random key
 
         Returns:
             A batch of offspring, the new emitter state and a new key.
@@ -192,12 +193,17 @@ class PBTEmitter(Emitter):
         # Mutation evo
         if self._config.ga_population_size_per_device > 0:
             mutation_ga_batch_size = self._config.ga_population_size_per_device
-            x1, random_key = repertoire.sample(random_key, mutation_ga_batch_size)
-            x2, random_key = repertoire.sample(random_key, mutation_ga_batch_size)
-            x_mutation_ga, random_key = self._variation_fn(x1, x2, random_key)
+            sample_key_1, sample_key_2, variation_key = jax.random.split(key, 3)
+            x1 = repertoire.select(
+                sample_key_1, mutation_ga_batch_size, selector=self._selector
+            ).genotypes
+            x2 = repertoire.select(
+                sample_key_2, mutation_ga_batch_size, selector=self._selector
+            ).genotypes
+            x_mutation_ga = self._variation_fn(x1, x2, variation_key)
 
             # Gather offspring
-            genotypes = jax.tree_util.tree_map(
+            genotypes = jax.tree.map(
                 lambda x, y: jnp.concatenate([x, y], axis=0),
                 x_mutation_ga,
                 x_mutation_pg,
@@ -205,7 +211,7 @@ class PBTEmitter(Emitter):
         else:
             genotypes = x_mutation_pg
 
-        return genotypes, {}, random_key
+        return genotypes, {}
 
     @property
     def batch_size(self) -> int:
@@ -217,11 +223,10 @@ class PBTEmitter(Emitter):
         mutation_ga_batch_size = self._config.ga_population_size_per_device
         return mutation_pg_batch_size + mutation_ga_batch_size
 
-    @partial(jax.jit, static_argnames=("self",))
-    def state_update(
+    def state_update(  # type: ignore
         self,
         emitter_state: PBTEmitterState,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         genotypes: Optional[Genotype],
         fitnesses: Fitness,
         descriptors: Optional[Descriptor],
@@ -259,10 +264,10 @@ class PBTEmitter(Emitter):
             * self._config.fraction_best_to_replace_from
         )
         indices_to_share = indices_to_share[:num_best_local]
-        genotypes_to_share, fitnesses_to_share = jax.tree_util.tree_map(
+        genotypes_to_share, fitnesses_to_share = jax.tree.map(
             lambda x: x[indices_to_share], (genotypes, fitnesses)
         )
-        gathered_genotypes, gathered_fitnesses = jax.tree_util.tree_map(
+        gathered_genotypes, gathered_fitnesses = jax.tree.map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             (genotypes_to_share, fitnesses_to_share),
         )
@@ -270,7 +275,7 @@ class PBTEmitter(Emitter):
         genotypes_stacked, fitnesses_stacked = gathered_genotypes, gathered_fitnesses
         best_indices_stacked = jnp.argsort(-fitnesses_stacked)
         best_indices_stacked = best_indices_stacked[: self._num_best_to_replace_from]
-        best_genotypes_local, best_fitnesses_local = jax.tree_util.tree_map(
+        best_genotypes_local, best_fitnesses_local = jax.tree.map(
             lambda x: x[best_indices_stacked], (genotypes_stacked, fitnesses_stacked)
         )
 
@@ -282,15 +287,15 @@ class PBTEmitter(Emitter):
                 [i * self._num_to_exchange],
                 [self._num_to_exchange],
             )
-            genotypes_to_share, fitnesses_to_share = jax.tree_util.tree_map(
+            genotypes_to_share, fitnesses_to_share = jax.tree.map(
                 lambda x: x[indices_to_share], (genotypes, fitnesses)
             )
-            gathered_genotypes, gathered_fitnesses = jax.tree_util.tree_map(
+            gathered_genotypes, gathered_fitnesses = jax.tree.map(
                 lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
                 (genotypes_to_share, fitnesses_to_share),
             )
 
-            genotypes_stacked, fitnesses_stacked = jax.tree_util.tree_map(
+            genotypes_stacked, fitnesses_stacked = jax.tree.map(
                 lambda x, y: jnp.concatenate([x, y], axis=0),
                 (gathered_genotypes, gathered_fitnesses),
                 (best_genotypes_local, best_fitnesses_local),
@@ -300,7 +305,7 @@ class PBTEmitter(Emitter):
             best_indices_stacked = best_indices_stacked[
                 : self._num_best_to_replace_from
             ]
-            best_genotypes_local, best_fitnesses_local = jax.tree_util.tree_map(
+            best_genotypes_local, best_fitnesses_local = jax.tree.map(
                 lambda x: x[best_indices_stacked],
                 (genotypes_stacked, fitnesses_stacked),
             )
@@ -316,17 +321,17 @@ class PBTEmitter(Emitter):
         )
 
         # Gather fitnesses from all devices to rank locally against it
-        all_fitnesses = jax.tree_util.tree_map(
+        all_fitnesses = jax.tree.map(
             lambda x: jnp.concatenate(jax.lax.all_gather(x, axis_name="p"), axis=0),
             fitnesses,
         )
         all_fitnesses = jnp.ravel(all_fitnesses)
         all_fitnesses = -jnp.sort(-all_fitnesses)
-        random_key = emitter_state.random_key
-        random_key, sub_key = jax.random.split(random_key)
-        best_genotypes = jax.tree_util.tree_map(
+        key = emitter_state.key
+        key, subkey = jax.random.split(key)
+        best_genotypes = jax.tree.map(
             lambda x: jax.random.choice(
-                sub_key, x, shape=(len(fitnesses),), replace=True
+                subkey, x, shape=(len(fitnesses),), replace=True
             ),
             best_genotypes_local,
         )
@@ -341,7 +346,7 @@ class PBTEmitter(Emitter):
         lower_bound = all_fitnesses[-self._num_to_replace_from_best]
         cond = fitnesses <= lower_bound
 
-        training_states = jax.tree_util.tree_map(
+        training_states = jax.tree.map(
             lambda x, y: jnp.where(
                 jnp.expand_dims(
                     cond, axis=tuple([-(i + 1) for i in range(x.ndim - 1)])
@@ -352,7 +357,7 @@ class PBTEmitter(Emitter):
             best_training_states,
             training_states,
         )
-        replay_buffers = jax.tree_util.tree_map(
+        replay_buffers = jax.tree.map(
             lambda x, y: jnp.where(
                 jnp.expand_dims(
                     cond, axis=tuple([-(i + 1) for i in range(x.ndim - 1)])
@@ -366,16 +371,19 @@ class PBTEmitter(Emitter):
 
         # Replacing with samples from the ME repertoire
         if self._num_to_replace_from_samples > 0:
-            me_samples, random_key = repertoire.sample(
-                random_key, self._config.pg_population_size_per_device
-            )
+            key, subkey = jax.random.split(key)
+            me_samples = repertoire.select(
+                subkey,
+                self._config.pg_population_size_per_device,
+                selector=self._selector,
+            ).genotypes
             # Resample hyper-params
             me_samples = jax.vmap(me_samples.__class__.resample_hyperparams)(me_samples)
             upper_bound = all_fitnesses[
                 -self._num_to_replace_from_best - self._num_to_replace_from_samples
             ]
             cond = jnp.logical_and(fitnesses <= upper_bound, fitnesses >= lower_bound)
-            training_states = jax.tree_util.tree_map(
+            training_states = jax.tree.map(
                 lambda x, y: jnp.where(
                     jnp.expand_dims(
                         cond, axis=tuple([-(i + 1) for i in range(x.ndim - 1)])
@@ -407,6 +415,6 @@ class PBTEmitter(Emitter):
             training_states=training_states,
             replay_buffers=replay_buffers,
             env_states=env_states,
-            random_key=random_key,
+            key=key,
         )
         return emitter_state  # type: ignore

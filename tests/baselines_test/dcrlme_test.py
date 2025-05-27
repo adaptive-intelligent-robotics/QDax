@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.dcrl_me_emitter import DCRLMEConfig, DCRLMEEmitter
 from qdax.core.emitters.mutation_operators import isoline_variation
@@ -13,9 +13,12 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import DCRLTransition
 from qdax.core.neuroevolution.networks.networks import MLP, MLPDC
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.environments import behavior_descriptor_extractor
-from qdax.environments.wrappers import ClipRewardWrapper, OffsetRewardWrapper
-from qdax.tasks.brax_envs import reset_based_scoring_function_brax_envs
+from qdax.tasks.brax.v1 import descriptor_extractor
+from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs
+from qdax.tasks.brax.v1.wrappers.reward_wrappers import (
+    ClipRewardWrapper,
+    OffsetRewardWrapper,
+)
 from qdax.utils.metrics import default_qd_metrics
 
 
@@ -28,17 +31,17 @@ def test_dcrlme() -> None:
     max_bd = 30.0
 
     num_iterations = 5
-    batch_size = 256
+    batch_size = 128
 
     # Archive
     num_init_cvt_samples = 50000
     num_centroids = 1024
-    policy_hidden_layer_sizes = (128, 128)
+    policy_hidden_layer_sizes = (64, 64)
 
     # DCRL-ME
-    ga_batch_size = 128
-    dcrl_batch_size = 64
-    ai_batch_size = 64
+    ga_batch_size = 64
+    dcrl_batch_size = 32
+    ai_batch_size = 32
     lengthscale = 0.1
 
     # GA emitter
@@ -46,7 +49,7 @@ def test_dcrlme() -> None:
     line_sigma = 0.05
 
     # DCRL emitter
-    critic_hidden_layer_size = (256, 256)
+    critic_hidden_layer_size = (64, 64)
     num_critic_training_steps = 3000
     num_pg_training_steps = 150
     replay_buffer_size = 1_000_000
@@ -61,7 +64,7 @@ def test_dcrlme() -> None:
     policy_delay = 2
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
@@ -76,13 +79,14 @@ def test_dcrlme() -> None:
     reset_fn = jax.jit(env.reset)
 
     # Compute the centroids
-    centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
         minval=min_bd,
         maxval=max_bd,
-        random_key=random_key,
+        key=subkey,
     )
 
     # Init policy network
@@ -99,14 +103,14 @@ def test_dcrlme() -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jax.random.split(subkey, num=batch_size)
     fake_batch_obs = jnp.zeros(shape=(batch_size, env.observation_size))
     init_params = jax.vmap(policy_network.init)(keys, fake_batch_obs)
 
-    # Define the fonction to play a step with the policy in the environment
+    # Define the function to play a step with the policy in the environment
     def play_step_fn(
-        env_state: EnvState, policy_params: Params, random_key: RNGKey
+        env_state: EnvState, policy_params: Params, key: RNGKey
     ) -> Tuple[EnvState, Params, RNGKey, DCRLTransition]:
         actions = policy_network.apply(policy_params, env_state.obs)
         state_desc = env_state.info["state_descriptor"]
@@ -122,25 +126,25 @@ def test_dcrlme() -> None:
             state_desc=state_desc,
             next_state_desc=next_state.info["state_descriptor"],
             desc=jnp.zeros(
-                env.behavior_descriptor_length,
+                env.descriptor_length,
             )
             * jnp.nan,
             desc_prime=jnp.zeros(
-                env.behavior_descriptor_length,
+                env.descriptor_length,
             )
             * jnp.nan,
         )
 
-        return next_state, policy_params, random_key, transition
+        return next_state, policy_params, key, transition
 
     # Prepare the scoring function
-    bd_extraction_fn = behavior_descriptor_extractor[env_name]
+    bd_extraction_fn = descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        reset_based_scoring_function_brax_envs,
+        scoring_function_brax_envs,
         episode_length=episode_length,
         play_reset_fn=reset_fn,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        descriptor_extractor=bd_extraction_fn,
     )
 
     # Get minimum reward value to make sure qd_score are positive
@@ -195,26 +199,31 @@ def test_dcrlme() -> None:
     )
 
     # compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_params, centroids, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_params, centroids, subkey
     )
 
     @jax.jit
-    def update_scan_fn(carry: Any, unused: Any) -> Any:
-        # iterate over grid
-        repertoire, emitter_state, metrics, random_key = map_elites.update(*carry)
+    def update_scan_fn(carry: Any, key: RNGKey) -> Any:
+        repertoire, emitter_state = carry
 
-        return (repertoire, emitter_state, random_key), metrics
+        # iterate over grid
+        repertoire, emitter_state, metrics = map_elites.update(
+            repertoire, emitter_state, key
+        )
+
+        return (repertoire, emitter_state), metrics
 
     # Run the algorithm
+    keys = jax.random.split(key, num=num_iterations)
     (
         repertoire,
         emitter_state,
-        random_key,
     ), metrics = jax.lax.scan(
         update_scan_fn,
-        (repertoire, emitter_state, random_key),
-        (),
+        (repertoire, emitter_state),
+        keys,
         length=num_iterations,
     )
 

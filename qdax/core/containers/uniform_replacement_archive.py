@@ -18,7 +18,7 @@ class UniformReplacementArchive(Archive):
     Most methods are inherited from Archive.
     """
 
-    random_key: RNGKey
+    key: RNGKey
 
     @classmethod
     def create(  # type: ignore
@@ -26,7 +26,7 @@ class UniformReplacementArchive(Archive):
         acceptance_threshold: float,
         state_descriptor_size: int,
         max_size: int,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Archive:
         """Create an Archive instance.
 
@@ -39,7 +39,7 @@ class UniformReplacementArchive(Archive):
             state_descriptor_size: the number of elements in a state descriptor.
             max_size: the maximal size of the archive. In case of overflow, previous
                 elements are replaced by new ones. Defaults to 80000.
-            random_key: a key to handle random operations. Defaults to key with
+            key: a key to handle random operations. Defaults to key with
                 seed = 0.
 
         Returns:
@@ -52,9 +52,8 @@ class UniformReplacementArchive(Archive):
             max_size,
         )
 
-        return archive.replace(random_key=random_key)  # type: ignore
+        return archive.replace(key=key)  # type: ignore
 
-    @jax.jit
     def _single_insertion(self, state_descriptor: jnp.ndarray) -> Archive:
         """Insert a single element.
 
@@ -69,7 +68,7 @@ class UniformReplacementArchive(Archive):
         new_current_position = self.current_position + 1
         is_full = new_current_position >= self.max_size
 
-        random_key, subkey = jax.random.split(self.random_key)
+        key, subkey = jax.random.split(self.key)
         random_index = jax.random.randint(
             subkey, shape=(1,), minval=0, maxval=self.max_size
         )
@@ -79,5 +78,5 @@ class UniformReplacementArchive(Archive):
         new_data = self.data.at[index].set(state_descriptor)
 
         return self.replace(  # type: ignore
-            current_position=new_current_position, data=new_data, random_key=random_key
+            current_position=new_current_position, data=new_data, key=key
         )

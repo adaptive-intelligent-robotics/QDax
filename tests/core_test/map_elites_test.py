@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
@@ -15,7 +15,9 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax_envs import scoring_function_brax_envs
+from qdax.tasks.brax.v1.env_creators import (
+    scoring_function_brax_envs as scoring_function,
+)
 from qdax.utils.metrics import default_qd_metrics
 
 
@@ -44,14 +46,15 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     policy_hidden_layer_sizes = (64, 64)
     num_init_cvt_samples = 1000
     num_centroids = 50
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptor = 0.0
+    max_descriptor = 1.0
 
     # Init environment
     env = environments.create(env_name, episode_length=episode_length)
+    reset_fn = jax.jit(env.reset)
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init policy network
     policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)
@@ -62,22 +65,16 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     )
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     keys = jax.random.split(subkey, num=batch_size)
     fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
     init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
 
-    # Create the initial environment states
-    random_key, subkey = jax.random.split(random_key)
-    keys = jnp.repeat(jnp.expand_dims(subkey, axis=0), repeats=batch_size, axis=0)
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    init_states = reset_fn(keys)
-
-    # Define the fonction to play a step with the policy in the environment
+    # Define the function to play a step with the policy in the environment
     def play_step_fn(
         env_state: EnvState,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
         """
         Play an environment step and return the updated state and the transition.
@@ -99,16 +96,16 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
             next_state_desc=next_state.info["state_descriptor"],
         )
 
-        return next_state, policy_params, random_key, transition
+        return next_state, policy_params, key, transition
 
     # Prepare the scoring function
-    bd_extraction_fn = environments.behavior_descriptor_extractor[env_name]
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
     scoring_fn = functools.partial(
-        scoring_function_brax_envs,
-        init_states=init_states,
+        scoring_function,
         episode_length=episode_length,
+        play_reset_fn=reset_fn,
         play_step_fn=play_step_fn,
-        behavior_descriptor_extractor=bd_extraction_fn,
+        descriptor_extractor=descriptor_extraction_fn,
     )
 
     # Define emitter
@@ -128,28 +125,30 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     )
 
     # Compute the centroids
-    centroids, random_key = compute_cvt_centroids(
-        num_descriptors=env.behavior_descriptor_length,
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
+        num_descriptors=env.descriptor_length,
         num_init_cvt_samples=num_init_cvt_samples,
         num_centroids=num_centroids,
-        minval=min_bd,
-        maxval=max_bd,
-        random_key=random_key,
+        minval=min_descriptor,
+        maxval=max_descriptor,
+        key=subkey,
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_variables, centroids, subkey
     )
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )
@@ -157,5 +156,149 @@ def test_map_elites(env_name: str, batch_size: int) -> None:
     pytest.assume(repertoire is not None)
 
 
+@pytest.mark.parametrize(
+    "env_name, batch_size",
+    [("walker2d_uni", 1), ("walker2d_uni", 10), ("hopper_uni", 10)],
+)
+def test_map_elites_ask_tell(env_name: str, batch_size: int) -> None:
+    batch_size = batch_size
+    env_name = env_name
+    episode_length = 100
+    num_iterations = 5
+    seed = 42
+    policy_hidden_layer_sizes = (64, 64)
+    num_init_cvt_samples = 1000
+    num_centroids = 50
+    min_descriptor = 0.0
+    max_descriptor = 1.0
+
+    # Init environment
+    env = environments.create(env_name, episode_length=episode_length)
+    reset_fn = jax.jit(env.reset)
+
+    # Init a random key
+    key = jax.random.key(seed)
+
+    # Init policy network
+    policy_layer_sizes = policy_hidden_layer_sizes + (env.action_size,)
+    policy_network = MLP(
+        layer_sizes=policy_layer_sizes,
+        kernel_init=jax.nn.initializers.lecun_uniform(),
+        final_activation=jnp.tanh,
+    )
+
+    # Init population of controllers
+    key, subkey = jax.random.split(key)
+    keys = jax.random.split(subkey, num=batch_size)
+    fake_batch = jnp.zeros(shape=(batch_size, env.observation_size))
+    init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
+
+    # Define the function to play a step with the policy in the environment
+    def play_step_fn(
+        env_state: EnvState,
+        policy_params: Params,
+        key: RNGKey,
+    ) -> Tuple[EnvState, Params, RNGKey, QDTransition]:
+        """
+        Play an environment step and return the updated state and the transition.
+        """
+
+        actions = policy_network.apply(policy_params, env_state.obs)
+
+        state_desc = env_state.info["state_descriptor"]
+        next_state = env.step(env_state, actions)
+
+        transition = QDTransition(
+            obs=env_state.obs,
+            next_obs=next_state.obs,
+            rewards=next_state.reward,
+            dones=next_state.done,
+            actions=actions,
+            truncations=next_state.info["truncation"],
+            state_desc=state_desc,
+            next_state_desc=next_state.info["state_descriptor"],
+        )
+
+        return next_state, policy_params, key, transition
+
+    # Prepare the scoring function
+    descriptor_extraction_fn = environments.descriptor_extractor[env_name]
+    scoring_fn = functools.partial(
+        scoring_function,
+        episode_length=episode_length,
+        play_reset_fn=reset_fn,
+        play_step_fn=play_step_fn,
+        descriptor_extractor=descriptor_extraction_fn,
+    )
+
+    # Define emitter
+    mixing_emitter = get_mixing_emitter(batch_size)
+
+    # Get minimum reward value to make sure qd_score are positive
+    reward_offset = environments.reward_offset[env_name]
+
+    # Define a metrics function
+    metrics_fn = functools.partial(default_qd_metrics, qd_offset=reward_offset)
+
+    # Instantiate MAP-Elites
+    map_elites = MAPElites(
+        scoring_function=None,
+        emitter=mixing_emitter,
+        metrics_function=metrics_fn,
+    )
+
+    # Compute the centroids
+    key, subkey = jax.random.split(key)
+    centroids = compute_cvt_centroids(
+        num_descriptors=env.descriptor_length,
+        num_init_cvt_samples=num_init_cvt_samples,
+        num_centroids=num_centroids,
+        minval=min_descriptor,
+        maxval=max_descriptor,
+        key=subkey,
+    )
+
+    # Evaluate the initial population
+    key, subkey = jax.random.split(key)
+    fitnesses, descriptors, extra_scores = scoring_fn(init_variables, subkey)
+
+    # Compute initial repertoire and emitter state
+    repertoire, emitter_state, init_metrics = map_elites.init_ask_tell(
+        genotypes=init_variables,
+        fitnesses=fitnesses,
+        descriptors=descriptors,
+        centroids=centroids,
+        key=key,
+        extra_scores=extra_scores,
+    )
+    ask_fn = jax.jit(map_elites.ask)
+    tell_fn = jax.jit(map_elites.tell)
+
+    # Run the algorithm
+    for _ in range(num_iterations):
+        key, subkey = jax.random.split(key)
+        # Generate solutions
+        genotypes, extra_info = ask_fn(repertoire, emitter_state, subkey)
+
+        # Evaluate solutions: get fitness, descriptor and extra scores.
+        # This is where custom evaluations on CPU or GPU can be added.
+        key, subkey = jax.random.split(key)
+        fitnesses, descriptors, extra_scores = scoring_fn(genotypes, subkey)
+
+        # Update MAP-Elites
+        repertoire, emitter_state, current_metrics = tell_fn(
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            repertoire=repertoire,
+            emitter_state=emitter_state,
+            extra_scores=extra_scores,
+            extra_info=extra_info,
+        )
+
+    pytest.assume(repertoire is not None)
+
+
 if __name__ == "__main__":
     test_map_elites(env_name="pointmaze", batch_size=10)
+    test_map_elites_ask_tell(env_name="pointmaze", batch_size=10)

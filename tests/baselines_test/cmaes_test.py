@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax.core.cmaes import CMAES
+from qdax.baselines.cmaes import CMAES
 
 
 def test_cmaes() -> None:
@@ -32,20 +32,24 @@ def test_cmaes() -> None:
     )
 
     state = cmaes.init()
-    random_key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
+    sample_jitted = jax.jit(cmaes.sample)
+    update_jitted = jax.jit(cmaes.update)
+    stop_condition_jitted = jax.jit(cmaes.stop_condition)
 
     iteration_count = 0
     for _ in range(num_iterations):
         iteration_count += 1
 
         # sample
-        samples, random_key = cmaes.sample(state, random_key)
+        key, subkey = jax.random.split(key)
+        samples = sample_jitted(state, subkey)
 
-        # udpate
-        state = cmaes.update(state, samples)
+        # update
+        state = update_jitted(state, samples)
 
         # check stop condition
-        stop_condition = cmaes.stop_condition(state)
+        stop_condition = stop_condition_jitted(state)
 
         if stop_condition:
             break

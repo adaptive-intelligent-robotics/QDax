@@ -37,14 +37,14 @@ def test_arm(task_name: str, batch_size: int) -> None:
     grid_shape = (100, 100)
     min_param = 0.0
     max_param = 1.0
-    min_bd = 0.0
-    max_bd = 1.0
+    min_descriptor = 0.0
+    max_descriptor = 1.0
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init population of controllers
-    random_key, subkey = jax.random.split(random_key)
+    key, subkey = jax.random.split(key)
     init_variables = jax.random.uniform(
         subkey,
         shape=(init_batch_size, num_param_dimensions),
@@ -86,23 +86,24 @@ def test_arm(task_name: str, batch_size: int) -> None:
     # Compute the centroids
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_variables, centroids, subkey
     )
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )
@@ -114,9 +115,9 @@ def test_arm_scoring_function() -> None:
 
     # Init a random key
     seed = 42
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
-    # arm has xy BD centered at 0.5 0.5 and min max range is [0,1]
+    # arm has xy descriptor centered at 0.5 0.5 and min max range is [0,1]
     # 0 params of first genotype is horizontal and points towards negative x axis
     # angles move in anticlockwise direction
     genotypes_1 = jnp.ones(shape=(1, 4)) * 0.5  # 0.5
@@ -131,27 +132,13 @@ def test_arm_scoring_function() -> None:
     genotypes_6 = jnp.array([[0.5, 0.5]])
     genotypes_7 = jnp.array([[0.75, 0.5]])
 
-    fitness_1, descriptors_1, _, random_key = arm_scoring_function(
-        genotypes_1, random_key
-    )
-    fitness_2, descriptors_2, _, random_key = arm_scoring_function(
-        genotypes_2, random_key
-    )
-    fitness_3, descriptors_3, _, random_key = arm_scoring_function(
-        genotypes_3, random_key
-    )
-    fitness_4, descriptors_4, _, random_key = arm_scoring_function(
-        genotypes_4, random_key
-    )
-    fitness_5, descriptors_5, _, random_key = arm_scoring_function(
-        genotypes_5, random_key
-    )
-    fitness_6, descriptors_6, _, random_key = arm_scoring_function(
-        genotypes_6, random_key
-    )
-    fitness_7, descriptors_7, _, random_key = arm_scoring_function(
-        genotypes_7, random_key
-    )
+    fitness_1, descriptors_1, _ = arm_scoring_function(genotypes_1, key)
+    fitness_2, descriptors_2, _ = arm_scoring_function(genotypes_2, key)
+    fitness_3, descriptors_3, _ = arm_scoring_function(genotypes_3, key)
+    fitness_4, descriptors_4, _ = arm_scoring_function(genotypes_4, key)
+    fitness_5, descriptors_5, _ = arm_scoring_function(genotypes_5, key)
+    fitness_6, descriptors_6, _ = arm_scoring_function(genotypes_6, key)
+    fitness_7, descriptors_7, _ = arm_scoring_function(genotypes_7, key)
 
     # use rounding to avoid some numerical floating point errors
     pytest.assume(

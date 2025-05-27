@@ -8,7 +8,7 @@ from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 def rastrigin(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    2-D BD
+    2-D descriptor
     """
     x = params * 10 - 5  # scaling to [-5, 5]
     f = jnp.asarray(10.0 * x.shape[0]) + jnp.sum(x * x - 10 * jnp.cos(2 * jnp.pi * x))
@@ -17,7 +17,7 @@ def rastrigin(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def sphere(params: Genotype) -> Tuple[Fitness, Descriptor]:
     """
-    2-D BD
+    2-D descriptor
     """
     x = params * 10 - 5  # scaling to [-5, 5]
     f = (x * x).sum()
@@ -26,26 +26,26 @@ def sphere(params: Genotype) -> Tuple[Fitness, Descriptor]:
 
 def rastrigin_scoring_function(
     params: Genotype,
-    random_key: RNGKey,
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    key: RNGKey,
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """
     Scoring function for the rastrigin function
     """
     fitnesses, descriptors = jax.vmap(rastrigin)(params)
 
-    return fitnesses, descriptors, {}, random_key
+    return fitnesses, descriptors, {}
 
 
 def sphere_scoring_function(
     params: Genotype,
-    random_key: RNGKey,
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    key: RNGKey,
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """
     Scoring function for the sphere function
     """
     fitnesses, descriptors = jax.vmap(sphere)(params)
 
-    return fitnesses, descriptors, {}, random_key
+    return fitnesses, descriptors, {}
 
 
 def _rastrigin_proj_scoring(
@@ -105,8 +105,8 @@ def _rastrigin_proj_scoring(
 
 
 def rastrigin_proj_scoring_function(
-    params: Genotype, random_key: RNGKey, minval: float = -5.12, maxval: float = 5.12
-) -> Tuple[Fitness, Descriptor, ExtraScores, RNGKey]:
+    params: Genotype, key: RNGKey, minval: float = -5.12, maxval: float = 5.12
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """
     Scoring function for the rastrigin function with
     a folding of the behaviour space.
@@ -117,4 +117,4 @@ def rastrigin_proj_scoring_function(
         _rastrigin_proj_scoring, in_axes=(0, None, None)
     )(params, minval, maxval)
 
-    return fitnesses, descriptors, extra_scores, random_key
+    return fitnesses, descriptors, extra_scores

@@ -16,11 +16,7 @@ from flax.training import train_state
 
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
 from qdax.core.neuroevolution.networks.seq2seq_networks import Seq2seq
-from qdax.custom_types import Params, RNGKey
-from qdax.environments.bd_extractors import AuroraExtraInfoNormalization
-
-Array = Any
-PRNGKey = Any
+from qdax.custom_types import AuroraExtraInfoNormalization, Observation, Params, RNGKey
 
 
 def get_model(
@@ -40,17 +36,17 @@ def get_model(
 
 
 def get_initial_params(
-    model: Seq2seq, random_key: PRNGKey, encoder_input_shape: Tuple[int, ...]
+    model: Seq2seq, key: RNGKey, encoder_input_shape: Tuple[int, ...]
 ) -> Dict[str, Any]:
     """
     Returns the initial parameters of a seq2seq model.
 
     Args:
         model: the seq2seq model.
-        random_key: the random number generator.
+        key: the random number generator.
         encoder_input_shape: the shape of the encoder input.
     """
-    random_key, rng1, rng2, rng3 = jax.random.split(random_key, 4)
+    key, rng1, rng2, rng3 = jax.random.split(key, 4)
     variables = model.init(
         {"params": rng1, "lstm": rng2, "dropout": rng3},
         jnp.ones(encoder_input_shape, jnp.float32),
@@ -62,8 +58,8 @@ def get_initial_params(
 @jax.jit
 def train_step(
     state: train_state.TrainState,
-    batch: Array,
-    lstm_random_key: PRNGKey,
+    batch: jax.Array,
+    key: RNGKey,
 ) -> Tuple[train_state.TrainState, Dict[str, float]]:
     """
     Trains for one step.
@@ -71,12 +67,12 @@ def train_step(
     Args:
         state: the training state.
         batch: the batch of data.
-        lstm_random_key: the random number key.
+        key: a random key.
     """
 
     """Trains one step."""
-    lstm_key = jax.random.fold_in(lstm_random_key, state.step)
-    dropout_key, lstm_key = jax.random.split(lstm_key, 2)
+    key = jax.random.fold_in(key, state.step)
+    dropout_key, lstm_key = jax.random.split(key)
 
     # Shift input by one to avoid leakage
     batch_decoder = jnp.roll(batch, shift=1, axis=1)
@@ -112,13 +108,31 @@ def train_step(
 
 
 def lstm_ae_train(
-    random_key: RNGKey,
     repertoire: UnstructuredRepertoire,
     params: Params,
     epoch: int,
+    observations: Observation,
+    key: RNGKey,
+    *,
     model: Seq2seq,
     batch_size: int = 128,
 ) -> AuroraExtraInfoNormalization:
+    """
+    Train the seq2seq model for the AURORA algorithm.
+
+    Args:
+        repertoire: The repertoire containing genotypes, fitnesses, and extra scores.
+        params: The parameters of the seq2seq model to be trained.
+        epoch: The training epoch number, used to determine training hyperparameters.
+        observations: The observations extracted from the environment.
+        key: JAX random number generator key.
+        model: The seq2seq model architecture to be trained, typically an LSTM.
+        batch_size: The number of samples to process in each training batch.
+
+    Returns:
+        AuroraExtraInfoNormalization: An object containing the trained model parameters,
+                                      along with observation normalization statistics.
+    """
 
     if epoch > 100:
         num_epochs = 25
@@ -128,8 +142,8 @@ def lstm_ae_train(
         alpha = 0.0001
 
     # compute mean/std of the obs for normalization
-    mean_obs = jnp.nanmean(repertoire.observations, axis=(0, 1))
-    std_obs = jnp.nanstd(repertoire.observations, axis=(0, 1))
+    mean_obs = jnp.nanmean(observations, axis=(0, 1))
+    std_obs = jnp.nanstd(observations, axis=(0, 1))
     # the std where they were NaNs was set to zero. But here we divide by the
     # std, so we replace the zeros by inf here.
     std_obs = jnp.where(std_obs == 0, jnp.inf, std_obs)
@@ -153,7 +167,7 @@ def lstm_ae_train(
     # select repertoire_size indexes going from 0 to the total number of
     # valid individuals. Those indexes will be used to select the individuals
     # in the training dataset.
-    random_key, key_select_p1 = jax.random.split(random_key, 2)
+    key, key_select_p1 = jax.random.split(key, 2)
     idx_p1 = jax.random.randint(
         key_select_p1, shape=(repertoire_size,), minval=0, maxval=num_indivs
     )
@@ -173,16 +187,16 @@ def lstm_ae_train(
     valid_indexes = indiv_indices.at[idx_p1].get()
 
     # Normalising Dataset
-    steps_per_epoch = repertoire.observations.shape[0] // batch_size
+    steps_per_epoch = observations.shape[0] // batch_size
 
     loss_val = 0.0
     for epoch in range(num_epochs):
-        random_key, shuffle_key = jax.random.split(random_key, 2)
+        key, shuffle_key = jax.random.split(key, 2)
         valid_indexes = jax.random.permutation(shuffle_key, valid_indexes, axis=0)
 
         # create dataset with the observation from the sample of valid indexes
         training_dataset = (
-            repertoire.observations.at[valid_indexes, ...].get() - mean_obs
+            observations.at[valid_indexes, ...].get() - mean_obs
         ) / std_obs
         training_dataset = training_dataset.at[valid_indexes].get()
 
@@ -197,7 +211,7 @@ def lstm_ae_train(
                 # print(batch.shape)
                 continue
 
-            state, loss_val = train_step(state, batch, random_key)
+            state, loss_val = train_step(state, batch, key)
 
         # To see the actual value we cannot jit this function (i.e. the _one_es_epoch
         # function nor the train function)

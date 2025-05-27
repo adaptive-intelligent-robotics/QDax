@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 import pytest
 
@@ -80,7 +81,7 @@ def test_trajectory_compute_returns() -> None:
             state_desc=jnp.zeros(shape=(env_batch_size, 0)),
             next_state_desc=jnp.zeros(shape=(env_batch_size, 0)),
         )
-        traj_buffer = traj_buffer.insert(transition)
+        traj_buffer = jax.jit(traj_buffer.insert)(transition)
         naive_returns = update_returns_naive(traj_buffer)
         traj_buffer = traj_buffer.compute_returns()
         print(naive_returns)
@@ -178,10 +179,11 @@ def test_trajectory_buffer_insert() -> None:
             rewards=rewards[i],
             truncations=dones[i],
         )
-        buffer = buffer.insert(transitions)
+        buffer = jax.jit(buffer.insert)(transitions)
 
     dones = jnp.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1])
     dones = dones.reshape((-1, env_batch_size))
+
     for i in range(4):
         transitions = Transition(
             obs=obs[i],
@@ -192,7 +194,7 @@ def test_trajectory_buffer_insert() -> None:
             truncations=dones[i],
         )
 
-        buffer = buffer.insert(transitions)
+        buffer = jax.jit(buffer.insert)(transitions)
 
     print(buffer.episodic_data)
 
@@ -202,8 +204,8 @@ def test_trajectory_buffer_insert() -> None:
             multy_step_episodic_data,
             equal_nan=True,
         ),
-        "Episodic data when transitions are added sequentially is not consistent to \
-        when they are added as batch.",
+        "Episodic data when transitions are added sequentially is not consistent to "
+        "when they are added as batch.",
     )
 
     pytest.assume(

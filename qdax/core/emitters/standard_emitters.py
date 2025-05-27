@@ -1,11 +1,11 @@
-from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 
-from qdax.core.containers.repertoire import Repertoire
+from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.custom_types import ExtraScores, Genotype, RNGKey
 
 
@@ -16,22 +16,20 @@ class MixingEmitter(Emitter):
         variation_fn: Callable[[Genotype, Genotype, RNGKey], Tuple[Genotype, RNGKey]],
         variation_percentage: float,
         batch_size: int,
+        selector: Optional[Selector] = None,
     ) -> None:
         self._mutation_fn = mutation_fn
         self._variation_fn = variation_fn
         self._variation_percentage = variation_percentage
         self._batch_size = batch_size
+        self._selector = selector
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
-    def emit(
+    def emit(  # type: ignore
         self,
-        repertoire: Repertoire,
+        repertoire: GARepertoire,
         emitter_state: Optional[EmitterState],
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, ExtraScores, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         Emitter that performs both mutation and variation. Two batches of
         variation_percentage * batch_size genotypes are sampled in the repertoire,
@@ -45,37 +43,43 @@ class MixingEmitter(Emitter):
         Params:
             repertoire: the MAP-Elites repertoire to sample from
             emitter_state: void
-            random_key: a jax PRNG random key
+            key: a jax PRNG random key
 
         Returns:
             a batch of offsprings
-            a new jax PRNG key
         """
         n_variation = int(self._batch_size * self._variation_percentage)
         n_mutation = self._batch_size - n_variation
 
         if n_variation > 0:
-            x1, random_key = repertoire.sample(random_key, n_variation)
-            x2, random_key = repertoire.sample(random_key, n_variation)
-
-            x_variation, random_key = self._variation_fn(x1, x2, random_key)
+            sample_key_1, sample_key_2, variation_key = jax.random.split(key, 3)
+            x1 = repertoire.select(
+                sample_key_1, n_variation, selector=self._selector
+            ).genotypes
+            x2 = repertoire.select(
+                sample_key_2, n_variation, selector=self._selector
+            ).genotypes
+            x_variation = self._variation_fn(x1, x2, variation_key)
 
         if n_mutation > 0:
-            x1, random_key = repertoire.sample(random_key, n_mutation)
-            x_mutation, random_key = self._mutation_fn(x1, random_key)
+            sample_key, mutation_key = jax.random.split(key)
+            x1 = repertoire.select(
+                sample_key, n_mutation, selector=self._selector
+            ).genotypes
+            x_mutation = self._mutation_fn(x1, mutation_key)
 
         if n_variation == 0:
             genotypes = x_mutation
         elif n_mutation == 0:
             genotypes = x_variation
         else:
-            genotypes = jax.tree_util.tree_map(
+            genotypes = jax.tree.map(
                 lambda x_1, x_2: jnp.concatenate([x_1, x_2], axis=0),
                 x_variation,
                 x_mutation,
             )
 
-        return genotypes, {}, random_key
+        return genotypes, {}
 
     @property
     def batch_size(self) -> int:

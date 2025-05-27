@@ -55,20 +55,20 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
     batch_size = batch_size
     num_iterations = 5
     min_param, max_param = task.get_min_max_params()
-    min_bd, max_bd = task.get_bounded_min_max_descriptor()
-    bd_size = task.get_descriptor_size()
+    min_descriptor, max_descriptor = task.get_bounded_min_max_descriptor()
+    descriptor_size = task.get_descriptor_size()
 
     grid_shape: Tuple[int, ...]
-    if bd_size == 1:
+    if descriptor_size == 1:
         grid_shape = (100,)
-    elif bd_size == 2:
+    elif descriptor_size == 2:
         grid_shape = (100, 100)
     else:
-        resolution_per_axis = math.floor(math.pow(10000.0, 1.0 / bd_size))
-        grid_shape = tuple([resolution_per_axis for _ in range(bd_size)])
+        resolution_per_axis = math.floor(math.pow(10000.0, 1.0 / descriptor_size))
+        grid_shape = tuple([resolution_per_axis for _ in range(descriptor_size)])
 
     # Init a random key
-    random_key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
 
     # Init population of parameters
     init_variables = task.get_initial_parameters(init_batch_size)
@@ -107,23 +107,24 @@ def test_qd_suite(task_name: str, batch_size: int) -> None:
     # Compute the centroids
     centroids = compute_euclidean_centroids(
         grid_shape=grid_shape,
-        minval=min_bd,
-        maxval=max_bd,
+        minval=min_descriptor,
+        maxval=max_descriptor,
     )
 
     # Compute initial repertoire
-    repertoire, emitter_state, random_key = map_elites.init(
-        init_variables, centroids, random_key
+    key, subkey = jax.random.split(key)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_variables, centroids, subkey
     )
 
     # Run the algorithm
     (
         repertoire,
         emitter_state,
-        random_key,
+        key,
     ), metrics = jax.lax.scan(
         map_elites.scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=num_iterations,
     )

@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from qdax import environments
+import qdax.tasks.brax.v1 as environments
 from qdax.baselines.pbt import PBT
 from qdax.baselines.td3_pbt import PBTTD3, PBTTD3Config
 
@@ -52,12 +52,12 @@ def test_pbt_td3() -> None:
     )
 
     @jax.jit
-    def init_environments(random_key):  # type: ignore
-        env_states = jax.jit(env.reset)(rng=random_key)
-        eval_env_first_states = jax.jit(eval_env.reset)(rng=random_key)
+    def init_environments(key):  # type: ignore
+        env_states = jax.jit(env.reset)(rng=key)
+        eval_env_first_states = jax.jit(eval_env.reset)(rng=key)
 
         reshape_fn = jax.jit(
-            lambda tree: jax.tree_util.tree_map(
+            lambda tree: jax.tree.map(
                 lambda x: jnp.reshape(
                     x,
                     (
@@ -74,7 +74,7 @@ def test_pbt_td3() -> None:
 
         return env_states, eval_env_first_states
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.key(seed)
     key, *keys = jax.random.split(key, num=1 + num_devices)
     keys = jnp.stack(keys)
     env_states, eval_env_first_states = jax.pmap(
@@ -100,7 +100,10 @@ def test_pbt_td3() -> None:
         observation_size=env.observation_size,
         buffer_size=buffer_size,
     )
-    keys, training_states, replay_buffers = jax.pmap(
+
+    # Need to convert to PRNGKey because of github.com/jax-ml/jax/issues/23647
+    keys = jax.random.key_data(keys)
+    training_states, replay_buffers = jax.pmap(
         agent_init_fn, axis_name="p", devices=devices
     )(keys)
 
@@ -145,7 +148,7 @@ def test_pbt_td3() -> None:
 
         # PBT selection
         if i < (num_loops - 1):
-            keys, training_states, replay_buffers = select_fn(
+            training_states, replay_buffers = select_fn(
                 keys, population_returns, training_states, replay_buffers
             )
 

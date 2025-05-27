@@ -4,7 +4,6 @@ A collection of functions and classes that define the algorithm Soft Actor Criti
 """
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Callable, Tuple
 
 import jax
@@ -54,7 +53,7 @@ class SacTrainingState(TrainingState):
     alpha_optimizer_state: optax.OptState
     alpha_params: Params
     target_critic_params: Params
-    random_key: RNGKey
+    key: RNGKey
     steps: jnp.ndarray
     normalization_running_stats: RunningMeanStdState
 
@@ -95,12 +94,12 @@ class SAC:
         self._sample_action_fn = self._parametric_action_distribution.sample
 
     def init(
-        self, random_key: RNGKey, action_size: int, observation_size: int
+        self, key: RNGKey, action_size: int, observation_size: int
     ) -> SacTrainingState:
         """Initialise the training state of the algorithm.
 
         Args:
-            random_key: a jax random key
+            key: a jax random key
             action_size: the size of the environment's action space
             observation_size: the size of the environment's observation space
 
@@ -112,13 +111,13 @@ class SAC:
         dummy_obs = jnp.zeros((1, observation_size))
         dummy_action = jnp.zeros((1, action_size))
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         policy_params = self._policy.init(subkey, dummy_obs)
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         critic_params = self._critic.init(subkey, dummy_obs, dummy_action)
 
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x: jnp.asarray(x.copy()), critic_params
         )
 
@@ -148,26 +147,25 @@ class SAC:
                 ),
                 count=jnp.zeros(()),
             ),
-            random_key=random_key,
+            key=key,
             steps=jnp.array(0),
         )
 
         return training_state
 
-    @partial(jax.jit, static_argnames=("self", "deterministic"))
     def select_action(
         self,
         obs: Observation,
         policy_params: Params,
-        random_key: RNGKey,
+        key: RNGKey,
         deterministic: bool = False,
-    ) -> Tuple[Action, RNGKey]:
-        """Selects an action acording to SAC policy.
+    ) -> Action:
+        """Selects an action according to SAC policy.
 
         Args:
             obs: agent observation(s)
             policy_params: parameters of the agent's policy
-            random_key: jax random key
+            key: jax random key
             deterministic: whether to select action in a deterministic way.
                 Defaults to False.
 
@@ -177,16 +175,14 @@ class SAC:
 
         dist_params = self._policy.apply(policy_params, obs)
         if not deterministic:
-            random_key, key_sample = jax.random.split(random_key)
-            actions = self._sample_action_fn(dist_params, key_sample)
+            actions = self._sample_action_fn(dist_params, key)
 
         else:
             # The first half of parameters is for mean and the second half for variance
             actions = jax.nn.tanh(dist_params[..., : dist_params.shape[-1] // 2])
 
-        return actions, random_key
+        return actions
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
     def play_step_fn(
         self,
         env_state: EnvState,
@@ -212,7 +208,7 @@ class SAC:
             the new SAC training state
             the played transition
         """
-        random_key = training_state.random_key
+        key = training_state.key
         policy_params = training_state.policy_params
         obs = env_state.obs
 
@@ -228,21 +224,23 @@ class SAC:
             normalized_obs = obs
             normalization_running_stats = training_state.normalization_running_stats
 
-        actions, random_key = self.select_action(
+        key, subkey = jax.random.split(key)
+        actions = self.select_action(
             obs=normalized_obs,
             policy_params=policy_params,
-            random_key=random_key,
+            key=subkey,
             deterministic=deterministic,
         )
 
+        key, subkey = jax.random.split(key)
         if not evaluation:
             training_state = training_state.replace(
-                random_key=random_key,
+                key=subkey,
                 normalization_running_stats=normalization_running_stats,
             )
         else:
             training_state = training_state.replace(
-                random_key=random_key,
+                key=subkey,
             )
 
         next_env_state = env.step(env_state, actions)
@@ -264,7 +262,6 @@ class SAC:
             transition,
         )
 
-    @partial(jax.jit, static_argnames=("self", "env", "deterministic", "evaluation"))
     def play_qd_step_fn(
         self,
         env_state: EnvState,
@@ -317,19 +314,12 @@ class SAC:
             transition,
         )
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-        ),
-    )
     def eval_policy_fn(
         self,
         training_state: SacTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
+            [EnvState, Params],
             Tuple[EnvState, SacTrainingState, Transition],
         ],
     ) -> Tuple[Reward, Reward]:
@@ -361,27 +351,19 @@ class SAC:
 
         return true_return, true_returns
 
-    @partial(
-        jax.jit,
-        static_argnames=(
-            "self",
-            "play_step_fn",
-            "bd_extraction_fn",
-        ),
-    )
     def eval_qd_policy_fn(
         self,
         training_state: SacTrainingState,
         eval_env_first_state: EnvState,
         play_step_fn: Callable[
-            [EnvState, Params, RNGKey],
+            [EnvState, Params],
             Tuple[EnvState, SacTrainingState, QDTransition],
         ],
-        bd_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
+        descriptor_extraction_fn: Callable[[QDTransition, Mask], Descriptor],
     ) -> Tuple[Reward, Descriptor, Reward, Descriptor]:
         """
         Evaluates the agent's policy over an entire episode, across all batched
-        environments for QD environments. Averaged BDs are returned as well.
+        environments for QD environments. Averaged descriptors are returned as well.
 
 
         Args:
@@ -407,23 +389,20 @@ class SAC:
         true_returns = jnp.nansum(transitions.rewards, axis=0)
         true_return = jnp.mean(true_returns, axis=-1)
 
-        transitions = jax.tree_util.tree_map(
-            lambda x: jnp.swapaxes(x, 0, 1), transitions
-        )
+        transitions = jax.tree.map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
         masks = jnp.isnan(transitions.rewards)
-        bds = bd_extraction_fn(transitions, masks)
+        descriptors = descriptor_extraction_fn(transitions, masks)
 
-        mean_bd = jnp.mean(bds, axis=0)
-        return true_return, mean_bd, true_returns, bds
+        mean_descriptor = jnp.mean(descriptors, axis=0)
+        return true_return, mean_descriptor, true_returns, descriptors
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_alpha(
         self,
         alpha_lr: float,
         training_state: SacTrainingState,
         transitions: Transition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Params, optax.OptState, jnp.ndarray]:
         """Updates the alpha parameter if necessary. Else, it keeps the
         current value.
 
@@ -431,14 +410,13 @@ class SAC:
             alpha_lr: alpha learning rate
             training_state: the current training state.
             transitions: a sample of transitions from the replay buffer.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
-            New alpha params, optimizer state, loss and a new random key.
+            New alpha params, optimizer state, and loss.
         """
         if not self._config.fix_alpha:
             # update alpha
-            random_key, subkey = jax.random.split(random_key)
             alpha_loss, alpha_gradient = jax.value_and_grad(sac_alpha_loss_fn)(
                 training_state.alpha_params,
                 policy_fn=self._policy.apply,
@@ -446,7 +424,7 @@ class SAC:
                 action_size=self._action_size,
                 policy_params=training_state.policy_params,
                 transitions=transitions,
-                random_key=subkey,
+                key=key,
             )
             alpha_optimizer = optax.adam(learning_rate=alpha_lr)
             (
@@ -463,9 +441,8 @@ class SAC:
             alpha_optimizer_state = training_state.alpha_optimizer_state
             alpha_loss = jnp.array(0.0)
 
-        return alpha_params, alpha_optimizer_state, alpha_loss, random_key
+        return alpha_params, alpha_optimizer_state, alpha_loss
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_critic(
         self,
         critic_lr: float,
@@ -473,8 +450,8 @@ class SAC:
         discount: float,
         training_state: SacTrainingState,
         transitions: Transition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, Params, optax.OptState, jnp.ndarray, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Params, Params, optax.OptState, jnp.ndarray]:
         """Updates the critic following the method described in the
         Soft Actor Critic paper.
 
@@ -484,14 +461,14 @@ class SAC:
             discount: discount factor
             training_state: the current training state.
             transitions: a batch of transitions sampled from the replay buffer.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             New parameters of the critic and its target. New optimizer state,
             loss and a new random key.
         """
         # update critic
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         critic_loss, critic_gradient = jax.value_and_grad(sac_critic_loss_fn)(
             training_state.critic_params,
             policy_fn=self._policy.apply,
@@ -503,7 +480,7 @@ class SAC:
             target_critic_params=training_state.target_critic_params,
             alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
-            random_key=subkey,
+            key=subkey,
         )
         critic_optimizer = optax.adam(learning_rate=critic_lr)
         (
@@ -515,7 +492,7 @@ class SAC:
         critic_params = optax.apply_updates(
             training_state.critic_params, critic_updates
         )
-        target_critic_params = jax.tree_util.tree_map(
+        target_critic_params = jax.tree.map(
             lambda x1, x2: (1.0 - self._config.tau) * x1 + self._config.tau * x2,
             training_state.target_critic_params,
             critic_params,
@@ -526,17 +503,15 @@ class SAC:
             target_critic_params,
             critic_optimizer_state,
             critic_loss,
-            random_key,
         )
 
-    @partial(jax.jit, static_argnames=("self",))
     def _update_actor(
         self,
         policy_lr: float,
         training_state: SacTrainingState,
         transitions: Transition,
-        random_key: RNGKey,
-    ) -> Tuple[Params, optax.OptState, jnp.ndarray, RNGKey]:
+        key: RNGKey,
+    ) -> Tuple[Params, optax.OptState, jnp.ndarray]:
         """Updates the actor parameters following the stochastic
         policy gradient theorem with the method introduced in SAC.
 
@@ -545,12 +520,11 @@ class SAC:
             training_state: the current training state.
             transitions: a batch of transitions sampled from the replay
                 buffer.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
-            New params and optimizer state. Current loss. New random key.
+            New params and optimizer state. Current loss.
         """
-        random_key, subkey = jax.random.split(random_key)
         policy_loss, policy_gradient = jax.value_and_grad(sac_policy_loss_fn)(
             training_state.policy_params,
             policy_fn=self._policy.apply,
@@ -559,7 +533,7 @@ class SAC:
             critic_params=training_state.critic_params,
             alpha=jnp.exp(training_state.alpha_params),
             transitions=transitions,
-            random_key=subkey,
+            key=key,
         )
         policy_optimizer = optax.adam(learning_rate=policy_lr)
         (
@@ -572,9 +546,8 @@ class SAC:
             training_state.policy_params, policy_updates
         )
 
-        return policy_params, policy_optimizer_state, policy_loss, random_key
+        return policy_params, policy_optimizer_state, policy_loss
 
-    @partial(jax.jit, static_argnames=("self",))
     def update(
         self,
         training_state: SacTrainingState,
@@ -593,9 +566,11 @@ class SAC:
         """
 
         # sample a batch of transitions in the buffer
-        random_key = training_state.random_key
-        transitions, random_key = replay_buffer.sample(
-            random_key,
+        key = training_state.key
+
+        key, subkey = jax.random.split(key)
+        transitions = replay_buffer.sample(
+            subkey,
             sample_size=self._config.batch_size,
         )
 
@@ -613,48 +588,49 @@ class SAC:
             )
 
         # update alpha
+        key, subkey = jax.random.split(key)
         (
             alpha_params,
             alpha_optimizer_state,
             alpha_loss,
-            random_key,
         ) = self._update_alpha(
             alpha_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update critic
+        key, subkey = jax.random.split(key)
         (
             critic_params,
             target_critic_params,
             critic_optimizer_state,
             critic_loss,
-            random_key,
         ) = self._update_critic(
             critic_lr=self._config.learning_rate,
             reward_scaling=self._config.reward_scaling,
             discount=self._config.discount,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # update actor
+        key, subkey = jax.random.split(key)
         (
             policy_params,
             policy_optimizer_state,
             policy_loss,
-            random_key,
         ) = self._update_actor(
             policy_lr=self._config.learning_rate,
             training_state=training_state,
             transitions=transitions,
-            random_key=random_key,
+            key=subkey,
         )
 
         # create new training state
+        key, subkey = jax.random.split(key)
         new_training_state = SacTrainingState(
             policy_optimizer_state=policy_optimizer_state,
             policy_params=policy_params,
@@ -664,7 +640,7 @@ class SAC:
             alpha_params=alpha_params,
             normalization_running_stats=training_state.normalization_running_stats,
             target_critic_params=target_critic_params,
-            random_key=random_key,
+            key=subkey,
             steps=training_state.steps + 1,
         )
         metrics = {
