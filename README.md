@@ -114,10 +114,14 @@ centroids = compute_euclidean_centroids(
 key, subkey = jax.random.split(key)
 repertoire, emitter_state, metrics = map_elites.init(init_variables, centroids, subkey)
 
+# Jit the update function for faster iterations
+update_fn = jax.jit(map_elites.update)
+
 # Run MAP-Elites loop
 for i in range(num_iterations):
     key, subkey = jax.random.split(key)
-    (repertoire, emitter_state, metrics,) = map_elites.update(
+
+    (repertoire, emitter_state, metrics,) = update_fn(
         repertoire,
         emitter_state,
         subkey,
@@ -146,7 +150,7 @@ QDax currently supports the following algorithms:
 | [Multi-Objective MAP-Elites (MOME)](https://arxiv.org/abs/2202.03057)                                                         | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mome.ipynb)       |
 | [MAP-Elites Evolution Strategies (MEES)](https://dl.acm.org/doi/pdf/10.1145/3377930.3390217)                                  | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mees.ipynb)       |
 | [MAP-Elites PBT (ME-PBT)](https://openreview.net/forum?id=CBfYffLqWqb)                                                        | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/me_sac_pbt.ipynb) |
-| [MAP-Elites Low-Spread (ME-LS)](https://dl.acm.org/doi/abs/10.1145/3583131.3590433)                                           | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/me_ls.ipynb)      |
+| [MAP-Elites Low-Spread (ME-LS)](https://dl.acm.org/doi/abs/10.1145/3583131.3590433)                                           | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mels.ipynb)      |
 
 
 ## QDax baseline algorithms
@@ -200,6 +204,9 @@ QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab
 <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/manon-but-yes" title="Manon Flageat"><img src="https://github.com/manon-but-yes.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/maxencefaldor" title="Maxence Faldor"><img src="https://github.com/maxencefaldor.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/hannah-jan" title="Hannah Janmohamed"><img src="https://github.com/hannah-jan.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/LisaCoiffard" title="Lisa Coiffard"><img src="https://github.com/LisaCoiffard.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/felixchalumeau" title="Felix Chalumeau"><img src="https://github.com/felixchalumeau.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/ranzenTom" title="Thomas Pierrot"><img src="https://github.com/ranzenTom.png" height="auto" width="50" style="border-radius:50%"></a>
