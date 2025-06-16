@@ -206,6 +206,7 @@ QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab
 <a href="https://github.com/maxencefaldor" title="Maxence Faldor"><img src="https://github.com/maxencefaldor.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/hannah-jan" title="Hannah Janmohamed"><img src="https://github.com/hannah-jan.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/LisaCoiffard" title="Lisa Coiffard"><img src="https://github.com/LisaCoiffard.png" height="auto" width="50" style="border-radius:50%"></a>
+<a href="https://github.com/TemplierPaul" title="Paul Templier"><img src="https://github.com/TemplierPaul.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/felixchalumeau" title="Felix Chalumeau"><img src="https://github.com/felixchalumeau.png" height="auto" width="50" style="border-radius:50%"></a>
 <a href="https://github.com/ranzenTom" title="Thomas Pierrot"><img src="https://github.com/ranzenTom.png" height="auto" width="50" style="border-radius:50%"></a>
