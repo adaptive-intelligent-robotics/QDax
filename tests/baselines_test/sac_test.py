@@ -115,7 +115,7 @@ def test_sac() -> None:
     )
 
     # Evaluate untrained policy
-    true_return, true_returns = eval_policy(training_state=training_state)
+    true_return, _ = eval_policy(training_state=training_state)
 
     total_num_iterations = num_steps // env_batch_size
 
@@ -141,7 +141,7 @@ def test_sac() -> None:
         return (training_state, env_state, replay_buffer), metrics
 
     # Training part
-    (training_state, env_state, replay_buffer), (metrics) = jax.lax.scan(
+    (training_state, env_state, replay_buffer), _ = jax.lax.scan(
         _scan_do_iteration,
         (training_state, env_state, replay_buffer),
         (),
@@ -149,7 +149,7 @@ def test_sac() -> None:
     )
 
     # Policy evaluation
-    final_true_return, final_true_returns = eval_policy(training_state=training_state)
+    final_true_return, _ = eval_policy(training_state=training_state)
 
     pytest.assume(final_true_return > true_return)
 

@@ -1,5 +1,5 @@
 default_language_version:
-  python: python3.11
+  python: python3.13
 repos:
 -   repo: https://github.com/pycqa/isort
     rev: 5.13.2
@@ -10,8 +10,8 @@ repos:
     rev: 24.8.0
     hooks:
     - id: black
-      language_version: python3.11
-      args: ["--target-version", "py311"]
+      language_version: python3.13
+      args: ["--target-version", "py313"]
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.1.1
     hooks:

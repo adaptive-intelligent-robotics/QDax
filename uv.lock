@@ -2672,6 +2672,7 @@ dependencies = [
     { name = "distrax" },
     { name = "flax" },
     { name = "jax" },
+    { name = "numpy" },
     { name = "optax" },
     { name = "scikit-learn" },
     { name = "scipy" },
@@ -2697,6 +2698,7 @@ examples = [
     { name = "ipywidgets" },
     { name = "jumanji" },
     { name = "mediapy" },
+    { name = "requests" },
     { name = "tqdm" },
 ]
 
@@ -2717,10 +2719,12 @@ requires-dist = [
     { name = "mkdocs-material", marker = "extra == 'docs'" },
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'" },
     { name = "mypy", marker = "extra == 'dev'" },
+    { name = "numpy", specifier = ">=2.3" },
     { name = "optax", specifier = ">=0.1.9" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-assume", marker = "extra == 'dev'" },
+    { name = "requests", marker = "extra == 'examples'" },
     { name = "scikit-learn", specifier = ">=1.5.1" },
     { name = "scipy", specifier = ">=1.10.1" },
     { name = "tqdm", marker = "extra == 'examples'" },

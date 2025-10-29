@@ -51,7 +51,7 @@ class GARepertoire(Repertoire):
         selector: Optional[Selector[GARepertoireT]] = None,
     ) -> GARepertoireT:
         if selector is None:
-            selector = UniformSelector(select_with_replacement=False)
+            selector = UniformSelector(select_with_replacement=True)
         repertoire = selector.select(self, key, num_samples)
         return repertoire
 

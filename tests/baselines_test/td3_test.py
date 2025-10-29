@@ -17,7 +17,7 @@ def test_td3() -> None:
     env_batch_size = 8
     num_steps = 10_000
     warmup_steps = 1_000
-    buffer_size = 1_000_000
+    buffer_size = 100_000
 
     episode_length = 1000
     grad_updates_per_step = 8

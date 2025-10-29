@@ -31,7 +31,7 @@ def get_voronoi_finite_polygons_2d(
 
     center = voronoi_diagram.points.mean(axis=0)
     if radius is None:
-        radius = voronoi_diagram.points.ptp().max()
+        radius = np.ptp(voronoi_diagram.points).max()
 
     # Construct a map containing all ridges for a given point
     all_ridges: Dict[jax.Array, jax.Array] = {}
