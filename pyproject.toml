@@ -43,9 +43,10 @@ dev = [
 	"mypy",
 ]
 examples = [
-	"ipykernel>=6.29.0",
-	"ipywidgets>=8.1.0",
-	"mediapy>=1.2.0",
+	"tqdm",
+	"ipykernel",
+	"ipywidgets",
+	"mediapy",
 	"jumanji>=0.3.1",
 ]
 
