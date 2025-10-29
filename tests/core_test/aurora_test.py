@@ -8,12 +8,12 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.core.aurora import AURORA
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import AuroraExtraInfoNormalization, Observation
 from qdax.tasks.brax.descriptor_extractors import get_aurora_encoding
-from qdax.tasks.brax.v1.env_creators import (
+from qdax.tasks.brax.env_creators import (
     create_default_brax_task_components,
     get_aurora_scoring_fn,
 )
@@ -478,5 +478,5 @@ def test_aurora_ask_tell(env_name: str, batch_size: int) -> None:
 
 
 if __name__ == "__main__":
-    test_aurora(env_name="pointmaze", batch_size=10)
-    test_aurora_ask_tell(env_name="pointmaze", batch_size=10)
+    test_aurora(env_name="walker2d_uni", batch_size=10)
+    test_aurora_ask_tell(env_name="walker2d_uni", batch_size=10)

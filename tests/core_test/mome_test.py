@@ -52,8 +52,8 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
     key = jax.random.key(42)
 
     def rastrigin_scorer(
-        genotypes: jnp.ndarray, base_lag: float, lag: float
-    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        genotypes: jax.Array, base_lag: float, lag: float
+    ) -> Tuple[jax.Array, jax.Array]:
         """
         Rastrigin Scorer with first two dimensions as descriptors
         """
@@ -81,7 +81,7 @@ def test_mome(num_descriptors: int, custom_repertoire: bool) -> None:
     scoring_function = partial(rastrigin_scorer, base_lag=base_lag, lag=lag)
 
     def scoring_fn(
-        genotypes: jnp.ndarray, key: RNGKey
+        genotypes: jax.Array, key: RNGKey
     ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors = scoring_function(genotypes)
         return fitnesses, descriptors, {}
@@ -225,8 +225,8 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
     key = jax.random.key(42)
 
     def rastrigin_scorer(
-        genotypes: jnp.ndarray, base_lag: float, lag: float
-    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        genotypes: jax.Array, base_lag: float, lag: float
+    ) -> Tuple[jax.Array, jax.Array]:
         """
         Rastrigin Scorer with first two dimensions as descriptors
         """
@@ -254,7 +254,7 @@ def test_mome_ask_tell(num_descriptors: int, custom_repertoire: bool) -> None:
     scoring_function = partial(rastrigin_scorer, base_lag=base_lag, lag=lag)
 
     def scoring_fn(
-        genotypes: jnp.ndarray, key: RNGKey
+        genotypes: jax.Array, key: RNGKey
     ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors = scoring_function(genotypes)
         return fitnesses, descriptors, {}

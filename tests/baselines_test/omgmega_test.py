@@ -25,7 +25,7 @@ def test_omg_mega() -> None:
     maxval = 5.12
     batch_size = 36
 
-    def rastrigin_scoring(x: jnp.ndarray) -> Fitness:
+    def rastrigin_scoring(x: jax.Array) -> Fitness:
         return -(
             10 * x.shape[-1]
             + jnp.sum(
@@ -33,23 +33,23 @@ def test_omg_mega() -> None:
             )
         )
 
-    def clip(x: jnp.ndarray) -> jnp.ndarray:
+    def clip(x: jax.Array) -> jax.Array:
         return x * (x <= maxval) * (x >= minval) + maxval / x * (
             (x > maxval) + (x < minval)
         )
 
-    def _rastrigin_descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
+    def _rastrigin_descriptor_1(x: jax.Array) -> jax.Array:
         return jnp.mean(clip(x[: x.shape[0] // 2]))
 
-    def _rastrigin_descriptor_2(x: jnp.ndarray) -> jnp.ndarray:
+    def _rastrigin_descriptor_2(x: jax.Array) -> jax.Array:
         return jnp.mean(clip(x[x.shape[0] // 2 :]))
 
-    def rastrigin_descriptors(x: jnp.ndarray) -> jnp.ndarray:
+    def rastrigin_descriptors(x: jax.Array) -> jax.Array:
         return jnp.array([_rastrigin_descriptor_1(x), _rastrigin_descriptor_2(x)])
 
     rastrigin_grad_scores = jax.grad(rastrigin_scoring)
 
-    def scoring_function(x: jnp.ndarray) -> Tuple[Fitness, Descriptor, ExtraScores]:
+    def scoring_function(x: jax.Array) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors = rastrigin_scoring(x), rastrigin_descriptors(x)
         gradients = jnp.array(
             [
@@ -68,7 +68,7 @@ def test_omg_mega() -> None:
     worst_objective = rastrigin_scoring(-jnp.ones(num_dimensions) * maxval)
     best_objective = rastrigin_scoring(jnp.ones(num_dimensions) * maxval * 0.4)
 
-    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict[str, jnp.ndarray]:
+    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict[str, jax.Array]:
 
         # get metrics
         grid_empty = repertoire.fitnesses == -jnp.inf

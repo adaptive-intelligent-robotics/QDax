@@ -6,7 +6,7 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from chex import ArrayTree
+from qdax.custom_types import PyTree
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
@@ -43,7 +43,7 @@ class AURORA:
         scoring_function: Optional[
             Callable[
                 [Genotype, RNGKey],
-                Tuple[Fitness, Descriptor, ArrayTree],
+                Tuple[Fitness, Descriptor, PyTree],
             ]
         ],
         emitter: Emitter,
@@ -117,8 +117,8 @@ class AURORA:
         self,
         repertoire: UnstructuredRepertoire,
         target_size: int,
-        previous_error: jnp.ndarray,
-    ) -> Tuple[UnstructuredRepertoire, jnp.ndarray]:
+        previous_error: jax.Array,
+    ) -> Tuple[UnstructuredRepertoire, jax.Array]:
         # update the l value
         num_indivs = jnp.sum(repertoire.fitnesses != -jnp.inf)
 
@@ -146,7 +146,7 @@ class AURORA:
         self,
         genotypes: Genotype,
         aurora_extra_info: AuroraExtraInfo,
-        l_value: jnp.ndarray,
+        l_value: jax.Array,
         max_size: int,
         key: RNGKey,
     ) -> Tuple[
@@ -191,7 +191,7 @@ class AURORA:
         fitnesses: Fitness,
         descriptors: Descriptor,
         aurora_extra_info: AuroraExtraInfo,
-        l_value: jnp.ndarray,
+        l_value: jax.Array,
         max_size: int,
         key: RNGKey,
         extra_scores: Optional[ExtraScores] = None,

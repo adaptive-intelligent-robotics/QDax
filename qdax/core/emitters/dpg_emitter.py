@@ -26,7 +26,7 @@ from qdax.custom_types import (
     RNGKey,
     StateDescriptor,
 )
-from qdax.tasks.brax.v1.envs.base_env import QDEnv
+from qdax.tasks.brax.envs.base_env import QDEnv
 
 
 @dataclass

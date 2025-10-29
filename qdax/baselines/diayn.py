@@ -35,7 +35,7 @@ class DiaynTrainingState(TrainingState):
     discriminator_optimizer_state: optax.OptState
     discriminator_params: Params
     key: RNGKey
-    steps: jnp.ndarray
+    steps: jax.Array
 
 
 @dataclass

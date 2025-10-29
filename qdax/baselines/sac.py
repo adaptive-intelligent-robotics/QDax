@@ -54,7 +54,7 @@ class SacTrainingState(TrainingState):
     alpha_params: Params
     target_critic_params: Params
     key: RNGKey
-    steps: jnp.ndarray
+    steps: jax.Array
     normalization_running_stats: RunningMeanStdState
 
 
@@ -402,7 +402,7 @@ class SAC:
         training_state: SacTrainingState,
         transitions: Transition,
         key: RNGKey,
-    ) -> Tuple[Params, optax.OptState, jnp.ndarray]:
+    ) -> Tuple[Params, optax.OptState, jax.Array]:
         """Updates the alpha parameter if necessary. Else, it keeps the
         current value.
 
@@ -451,7 +451,7 @@ class SAC:
         training_state: SacTrainingState,
         transitions: Transition,
         key: RNGKey,
-    ) -> Tuple[Params, Params, optax.OptState, jnp.ndarray]:
+    ) -> Tuple[Params, Params, optax.OptState, jax.Array]:
         """Updates the critic following the method described in the
         Soft Actor Critic paper.
 
@@ -511,7 +511,7 @@ class SAC:
         training_state: SacTrainingState,
         transitions: Transition,
         key: RNGKey,
-    ) -> Tuple[Params, optax.OptState, jnp.ndarray]:
+    ) -> Tuple[Params, optax.OptState, jax.Array]:
         """Updates the actor parameters following the stochastic
         policy gradient theorem with the method introduced in SAC.
 

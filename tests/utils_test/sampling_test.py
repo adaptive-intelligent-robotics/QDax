@@ -5,11 +5,11 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax.v1.env_creators import (
+from qdax.tasks.brax.env_creators import (
     scoring_function_brax_envs as scoring_function,
 )
 from qdax.utils.sampling import (
@@ -95,8 +95,8 @@ def test_sampling() -> None:
 
     # Test function for different extractors
     def sampling_test(
-        fitness_extractor: Callable[[jnp.ndarray], jnp.ndarray],
-        descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+        fitness_extractor: Callable[[jax.Array], jax.Array],
+        descriptor_extractor: Callable[[jax.Array], jax.Array],
     ) -> None:
 
         # Compare scoring against perforing a single sample
@@ -152,8 +152,8 @@ def test_sampling() -> None:
 
     # Test function for different reproducibility extractors
     def sampling_reproducibility_test(
-        fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray],
-        descriptor_repr_extractor: Callable[[jnp.ndarray], jnp.ndarray],
+        fitness_reproducibility_extractor: Callable[[jax.Array], jax.Array],
+        descriptor_repr_extractor: Callable[[jax.Array], jax.Array],
         key: RNGKey,
     ) -> None:
 

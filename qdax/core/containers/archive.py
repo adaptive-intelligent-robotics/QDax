@@ -10,7 +10,7 @@ from flax.struct import PyTreeNode
 
 
 class Archive(PyTreeNode):
-    """Stores jnp.ndarray in a way that makes insertion jittable.
+    """Stores jax.Array in a way that makes insertion jittable.
 
     An example of use of the archive is the algorithm QDPG: state
     descriptors are stored in this archive and a novelty scorer compares
@@ -22,7 +22,7 @@ class Archive(PyTreeNode):
     necessary at the moment though.
     """
 
-    data: jnp.ndarray  # initialised with nan everywhere
+    data: jax.Array  # initialised with nan everywhere
     current_position: int
     acceptance_threshold: float
     state_descriptor_size: int
@@ -72,7 +72,7 @@ class Archive(PyTreeNode):
             max_size=max_size,
         )
 
-    def _single_insertion(self, state_descriptor: jnp.ndarray) -> Archive:
+    def _single_insertion(self, state_descriptor: jax.Array) -> Archive:
         """Insert a single element.
 
         If the archive is not full yet, the new element replaces a fake
@@ -98,8 +98,8 @@ class Archive(PyTreeNode):
         )
 
     def _conditioned_single_insertion(
-        self, condition: bool, state_descriptor: jnp.ndarray
-    ) -> Tuple[Archive, jnp.ndarray]:
+        self, condition: bool, state_descriptor: jax.Array
+    ) -> Tuple[Archive, jax.Array]:
         """Inserts a single element under a condition.
 
         The function also retrieves the added elements.
@@ -114,20 +114,20 @@ class Archive(PyTreeNode):
         """
 
         def true_fun(
-            archive: Archive, state_descriptor: jnp.ndarray
-        ) -> Tuple[Archive, jnp.ndarray]:
+            archive: Archive, state_descriptor: jax.Array
+        ) -> Tuple[Archive, jax.Array]:
             return archive._single_insertion(state_descriptor), state_descriptor
 
         def false_fun(
-            archive: Archive, state_descriptor: jnp.ndarray
-        ) -> Tuple[Archive, jnp.ndarray]:
+            archive: Archive, state_descriptor: jax.Array
+        ) -> Tuple[Archive, jax.Array]:
             return archive, jnp.ones_like(state_descriptor) * jnp.nan
 
         return jax.lax.cond(  # type: ignore
             condition, true_fun, false_fun, self, state_descriptor
         )
 
-    def insert(self, state_descriptors: jnp.ndarray) -> Archive:
+    def insert(self, state_descriptors: jax.Array) -> Archive:
         """Tries to insert a batch of state descriptors in the archive.
 
         1. First, look at the distance of each new state descriptor with the
@@ -160,8 +160,8 @@ class Archive(PyTreeNode):
         relevant_indices = jnp.where(values.squeeze() > self.acceptance_threshold, 0, 1)
 
         def iterate_fn(
-            carry: Tuple[Archive, jnp.ndarray, int], condition_data: Dict
-        ) -> Tuple[Tuple[Archive, jnp.ndarray, int], Any]:
+            carry: Tuple[Archive, jax.Array, int], condition_data: Dict
+        ) -> Tuple[Tuple[Archive, jax.Array, int], Any]:
             """Iterates over the archive to add elements one after the other.
 
             Args:
@@ -219,11 +219,11 @@ class Archive(PyTreeNode):
 
 def score_euclidean_novelty(
     archive: Archive,
-    state_descriptors: jnp.ndarray,
+    state_descriptors: jax.Array,
     num_nearest_neighb: int,
     scaling_ratio: float,
-) -> jnp.ndarray:
-    """Scores the novelty of a jnp.ndarray with respect to the elements of an archive.
+) -> jax.Array:
+    """Scores the novelty of a jax.Array with respect to the elements of an archive.
 
     Typical use case in the construction of the diversity rewards
     in QDPG.
@@ -246,8 +246,8 @@ def score_euclidean_novelty(
 
 
 def knn(
-    data: jnp.ndarray, new_data: jnp.ndarray, k: jnp.ndarray
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    data: jax.Array, new_data: jax.Array, k: jax.Array
+) -> Tuple[jax.Array, jax.Array]:
     """K nearest neighbors - Brute force implementation.
     Using euclidean distance.
 
@@ -281,7 +281,7 @@ def knn(
     return -values, indices
 
 
-def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def qdax_top_k(data: jax.Array, k: int) -> Tuple[jax.Array, jax.Array]:
     """Returns the top k elements of an array.
 
     Interestingly, this naive implementation is faster than the native implementation
@@ -297,7 +297,7 @@ def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         The values of the elements and their indices in the array.
     """
 
-    def top_1(data: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    def top_1(data: jax.Array) -> Tuple[jax.Array, jax.Array, jax.Array]:
         indice = jnp.argmax(data, axis=1)
         value = jax.vmap(lambda x, y: x[y])(data, indice)
         data = jax.vmap(lambda x, y: x.at[y].set(-jnp.inf))(data, indice)
@@ -305,8 +305,8 @@ def qdax_top_k(data: jnp.ndarray, k: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         return data, value, indice
 
     def scannable_top_1(
-        carry: jnp.ndarray, _: Any
-    ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
+        carry: jax.Array, _: Any
+    ) -> Tuple[jax.Array, Tuple[jax.Array, jax.Array]]:
         data = carry
         data, value, indice = top_1(data)
         return data, (value, indice)

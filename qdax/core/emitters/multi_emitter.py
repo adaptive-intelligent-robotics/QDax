@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 import jax
 import numpy as np
-from chex import ArrayTree
+from qdax.custom_types import PyTree
 from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
@@ -166,7 +166,7 @@ class MultiEmitter(Emitter):
         # update all the sub emitter states
         emitter_states = []
 
-        def _get_sub_pytree(pytree: ArrayTree, start: int, end: int) -> ArrayTree:
+        def _get_sub_pytree(pytree: PyTree, start: int, end: int) -> PyTree:
             return jax.tree.map(lambda x: x[start:end], pytree)
 
         for emitter, sub_emitter_state, index_start, index_end in zip(

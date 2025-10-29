@@ -10,16 +10,16 @@ from qdax.custom_types import Action, Observation, Params, RNGKey
 
 
 def make_sac_loss_fn(
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     reward_scaling: float,
     discount: float,
     action_size: int,
 ) -> Tuple[
-    Callable[[jnp.ndarray, Params, Transition, RNGKey], jnp.ndarray],
-    Callable[[Params, Params, jnp.ndarray, Transition, RNGKey], jnp.ndarray],
-    Callable[[Params, Params, Params, Transition, RNGKey], jnp.ndarray],
+    Callable[[jax.Array, Params, Transition, RNGKey], jax.Array],
+    Callable[[Params, Params, jax.Array, Transition, RNGKey], jax.Array],
+    Callable[[Params, Params, Params, Transition, RNGKey], jax.Array],
 ]:
     """Creates the loss used in SAC.
 
@@ -65,14 +65,14 @@ def make_sac_loss_fn(
 
 def sac_policy_loss_fn(
     policy_params: Params,
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     critic_params: Params,
-    alpha: jnp.ndarray,
+    alpha: jax.Array,
     transitions: Transition,
     key: RNGKey,
-) -> jnp.ndarray:
+) -> jax.Array:
     """
     Creates the policy loss used in SAC.
 
@@ -103,17 +103,17 @@ def sac_policy_loss_fn(
 
 def sac_critic_loss_fn(
     critic_params: Params,
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     reward_scaling: float,
     discount: float,
     policy_params: Params,
     target_critic_params: Params,
-    alpha: jnp.ndarray,
+    alpha: jax.Array,
     transitions: Transition,
     key: RNGKey,
-) -> jnp.ndarray:
+) -> jax.Array:
     """
     Creates the critic loss used in SAC.
 
@@ -160,14 +160,14 @@ def sac_critic_loss_fn(
 
 
 def sac_alpha_loss_fn(
-    log_alpha: jnp.ndarray,
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
+    log_alpha: jax.Array,
+    policy_fn: Callable[[Params, Observation], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     action_size: int,
     policy_params: Params,
     transitions: Transition,
     key: RNGKey,
-) -> jnp.ndarray:
+) -> jax.Array:
     """
     Creates the alpha loss used in SAC.
     Eq 18 from https://arxiv.org/pdf/1812.05905.pdf.

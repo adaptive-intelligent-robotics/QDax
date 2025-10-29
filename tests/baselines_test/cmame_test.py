@@ -36,30 +36,30 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
     max_descriptor = 5.12 * 0.5 * num_dimensions
     pool_size = 3
 
-    def sphere_scoring(x: jnp.ndarray) -> jnp.ndarray:
+    def sphere_scoring(x: jax.Array) -> jax.Array:
         return -jnp.sum((x + minval * 0.4) * (x + minval * 0.4), axis=-1)
 
     fitness_scoring = sphere_scoring
 
-    def clip(x: jnp.ndarray) -> jnp.ndarray:
+    def clip(x: jax.Array) -> jax.Array:
         in_bound = (x <= maxval) * (x >= minval)
         return jnp.where(in_bound, x, (maxval / x))
 
-    def _descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
+    def _descriptor_1(x: jax.Array) -> jax.Array:
         return jnp.sum(clip(x[: x.shape[-1] // 2]))
 
-    def _descriptor_2(x: jnp.ndarray) -> jnp.ndarray:
+    def _descriptor_2(x: jax.Array) -> jax.Array:
         return jnp.sum(clip(x[x.shape[-1] // 2 :]))
 
-    def _descriptors(x: jnp.ndarray) -> jnp.ndarray:
+    def _descriptors(x: jax.Array) -> jax.Array:
         return jnp.array([_descriptor_1(x), _descriptor_2(x)])
 
-    def scoring_function(x: jnp.ndarray) -> Tuple[Fitness, Descriptor, Dict]:
+    def scoring_function(x: jax.Array) -> Tuple[Fitness, Descriptor, Dict]:
         scores, descriptors = fitness_scoring(x), _descriptors(x)
         return scores, descriptors, {}
 
     def scoring_fn(
-        x: jnp.ndarray, key: RNGKey
+        x: jax.Array, key: RNGKey
     ) -> Tuple[Fitness, Descriptor, ExtraScores]:
         fitnesses, descriptors, extra_scores = jax.vmap(scoring_function)(x)
         return fitnesses, descriptors, extra_scores
@@ -67,7 +67,7 @@ def test_cma_me(emitter_type: Type[CMAEmitter]) -> None:
     worst_objective = fitness_scoring(-jnp.ones(num_dimensions) * 5.12)
     best_objective = fitness_scoring(jnp.ones(num_dimensions) * 5.12 * 0.4)
 
-    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict[str, jnp.ndarray]:
+    def metrics_fn(repertoire: MapElitesRepertoire) -> Dict[str, jax.Array]:
 
         # get metrics
         grid_empty = repertoire.fitnesses == -jnp.inf

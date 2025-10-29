@@ -19,7 +19,7 @@ from qdax.core.neuroevolution.buffers.buffer import DCRLTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_dc_fn
 from qdax.core.neuroevolution.networks.networks import QModuleDC
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
-from qdax.tasks.brax.v1.envs.base_env import QDEnv
+from qdax.tasks.brax.envs.base_env import QDEnv
 
 
 @dataclass
@@ -339,9 +339,9 @@ class DCRLEmitter(Emitter):
         )
 
         def scan_update_policies(
-            carry: Tuple[Params, optax.OptState, jnp.ndarray, RNGKey],
+            carry: Tuple[Params, optax.OptState, jax.Array, RNGKey],
             _: None,
-        ) -> Tuple[Tuple[Params, optax.OptState, jnp.ndarray, RNGKey], Any]:
+        ) -> Tuple[Tuple[Params, optax.OptState, jax.Array, RNGKey], Any]:
 
             (policy_params, policy_opt_state, desc_prime, key) = carry
             key, subkey = jax.random.split(key)

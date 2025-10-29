@@ -44,7 +44,7 @@ class TD3TrainingState(TrainingState):
     target_critic_params: Params
     target_policy_params: Params
     key: RNGKey
-    steps: jnp.ndarray
+    steps: jax.Array
 
 
 @dataclass

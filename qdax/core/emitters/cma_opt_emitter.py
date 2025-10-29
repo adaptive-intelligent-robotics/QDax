@@ -18,8 +18,8 @@ class CMAOptimizingEmitter(CMAEmitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores],
-        improvements: jnp.ndarray,
-    ) -> jnp.ndarray:
+        improvements: jax.Array,
+    ) -> jax.Array:
         """Defines how the genotypes should be sorted. Impacts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter
         used (optimizing, random direction or improvement).

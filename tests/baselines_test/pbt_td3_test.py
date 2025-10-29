@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.baselines.pbt import PBT
 from qdax.baselines.td3_pbt import PBTTD3, PBTTD3Config
 
@@ -13,7 +13,7 @@ def test_pbt_td3() -> None:
     devices = jax.devices("cpu")
     num_devices = len(devices)
 
-    env_name = "pointmaze"
+    env_name = "walker2d_uni"
     seed = 0
     env_batch_size = 25
     population_size_per_device = 10

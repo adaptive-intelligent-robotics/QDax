@@ -1,6 +1,4 @@
 """Utils to handle pareto fronts."""
-
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -8,8 +6,8 @@ from qdax.custom_types import Mask, ParetoFront
 
 
 def compute_pareto_dominance(
-    criteria_point: jnp.ndarray, batch_of_criteria: jnp.ndarray
-) -> jnp.ndarray:
+    criteria_point: jax.Array, batch_of_criteria: jax.Array
+) -> jax.Array:
     """Returns if a point is pareto dominated given a set of points or not.
     We use maximization convention here.
 
@@ -30,7 +28,7 @@ def compute_pareto_dominance(
     return jnp.any(jnp.logical_and(diff_greater_than_zero, diff_geq_than_zero))
 
 
-def compute_pareto_front(batch_of_criteria: jnp.ndarray) -> jnp.ndarray:
+def compute_pareto_front(batch_of_criteria: jax.Array) -> jax.Array:
     """Returns an array of boolean that states for each element if it is
     in the pareto front or not.
 
@@ -46,8 +44,8 @@ def compute_pareto_front(batch_of_criteria: jnp.ndarray) -> jnp.ndarray:
 
 
 def compute_masked_pareto_dominance(
-    criteria_point: jnp.ndarray, batch_of_criteria: jnp.ndarray, mask: Mask
-) -> jnp.ndarray:
+    criteria_point: jax.Array, batch_of_criteria: jax.Array, mask: Mask
+) -> jax.Array:
     """Returns if a point is pareto dominated given a set of points or not.
     We use maximization convention here.
 
@@ -77,8 +75,8 @@ def compute_masked_pareto_dominance(
 
 
 def compute_masked_pareto_front(
-    batch_of_criteria: jnp.ndarray, mask: Mask
-) -> jnp.ndarray:
+    batch_of_criteria: jax.Array, mask: Mask
+) -> jax.Array:
     """Returns an array of boolean that states for each element if it is to be
     considered or not. This function is to be used with batches of constant size
     criteria, thus a mask is used to know which values are padded.
@@ -97,8 +95,8 @@ def compute_masked_pareto_front(
 
 
 def compute_hypervolume(
-    pareto_front: ParetoFront[jnp.ndarray], reference_point: jnp.ndarray
-) -> jnp.ndarray:
+    pareto_front: ParetoFront[jax.Array], reference_point: jax.Array
+) -> jax.Array:
     """Compute hypervolume of a pareto front.
 
     Args:
@@ -113,12 +111,8 @@ def compute_hypervolume(
     custom_message = (
         "Hypervolume calculation for more than" " 2 objectives not yet supported."
     )
-    chex.assert_axis_dimension(
-        tensor=pareto_front,
-        axis=1,
-        expected=2,
-        custom_message=custom_message,
-    )
+    if pareto_front.ndim < 2 or pareto_front.shape[1] != 2:
+        raise ValueError(custom_message)
 
     # concatenate the reference point to prepare for the area computation
     pareto_front = jnp.concatenate(  # type: ignore

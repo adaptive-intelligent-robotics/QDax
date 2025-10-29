@@ -11,19 +11,19 @@ from qdax.custom_types import Action, Observation, Params, RNGKey, StateDescript
 
 
 def make_diayn_loss_fn(
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
-    discriminator_fn: Callable[[Params, StateDescriptor], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
+    discriminator_fn: Callable[[Params, StateDescriptor], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     reward_scaling: float,
     discount: float,
     action_size: int,
     num_skills: int,
 ) -> Tuple[
-    Callable[[jnp.ndarray, Params, QDTransition, RNGKey], jnp.ndarray],
-    Callable[[Params, Params, jnp.ndarray, QDTransition, RNGKey], jnp.ndarray],
-    Callable[[Params, Params, Params, QDTransition, RNGKey], jnp.ndarray],
-    Callable[[Params, QDTransition, RNGKey], jnp.ndarray],
+    Callable[[jax.Array, Params, QDTransition, RNGKey], jax.Array],
+    Callable[[Params, Params, jax.Array, QDTransition, RNGKey], jax.Array],
+    Callable[[Params, Params, Params, QDTransition, RNGKey], jax.Array],
+    Callable[[Params, QDTransition, RNGKey], jax.Array],
 ]:
     """Creates the loss used in DIAYN.
 
@@ -64,10 +64,10 @@ def make_diayn_loss_fn(
 
 def diayn_discriminator_loss_fn(
     discriminator_params: Params,
-    discriminator_fn: Callable[[Params, StateDescriptor], jnp.ndarray],
+    discriminator_fn: Callable[[Params, StateDescriptor], jax.Array],
     num_skills: int,
     transitions: QDTransition,
-) -> jnp.ndarray:
+) -> jax.Array:
     """Computes the loss used to train the discriminator. The
     discriminator is trained to predict the skill that has been
     used to generate transitions. In our case, skills are one

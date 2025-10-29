@@ -39,7 +39,7 @@ def empty_circle(params: Genotype) -> Tuple[Fitness, Descriptor]:
     Descriptor space should be [0,1]^n
     """
 
-    def _gaussian(x: jnp.ndarray, mu: float, sig: float) -> jnp.ndarray:
+    def _gaussian(x: jax.Array, mu: float, sig: float) -> jax.Array:
         return jnp.exp(-jnp.power(x - mu, 2.0) / (2 * jnp.power(sig, 2.0)))
 
     freq = 40

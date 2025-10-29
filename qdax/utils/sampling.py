@@ -9,31 +9,31 @@ import jax.numpy as jnp
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 
-def average(quantities: jnp.ndarray) -> jnp.ndarray:
+def average(quantities: jax.Array) -> jax.Array:
     """Default expectation extractor using average."""
     return jnp.average(quantities, axis=1)
 
 
-def median(quantities: jnp.ndarray) -> jnp.ndarray:
+def median(quantities: jax.Array) -> jax.Array:
     """Alternative expectation extractor using median.
     More robust to outliers than average."""
     return jnp.median(quantities, axis=1)
 
 
-def mode(quantities: jnp.ndarray) -> jnp.ndarray:
+def mode(quantities: jax.Array) -> jax.Array:
     """Alternative expectation extractor using mode.
     More robust to outliers than average.
     WARNING: for multidimensional objects such as descriptor, do
     dimension-wise selection.
     """
 
-    def _mode(quantity: jnp.ndarray) -> jnp.ndarray:
+    def _mode(quantity: jax.Array) -> jax.Array:
 
         # Ensure correct dimensions for both single and multi-dimension
         quantity = jnp.reshape(quantity, (quantity.shape[0], -1))
 
         # Dimension-wise voting in case of multi-dimension
-        def _dim_mode(dim_quantity: jnp.ndarray) -> jnp.ndarray:
+        def _dim_mode(dim_quantity: jax.Array) -> jax.Array:
             unique_vals, counts = jnp.unique(
                 dim_quantity, return_counts=True, size=dim_quantity.size
             )
@@ -46,14 +46,14 @@ def mode(quantities: jnp.ndarray) -> jnp.ndarray:
     return jax.vmap(_mode)(quantities)
 
 
-def closest(quantities: jnp.ndarray) -> jnp.ndarray:
+def closest(quantities: jax.Array) -> jax.Array:
     """Alternative expectation extractor selecting individual
     that has the minimum distance to all other individuals. This
     is an approximation of the geometric median.
     More robust to outliers than average."""
 
-    def _closest(values: jnp.ndarray) -> jnp.ndarray:
-        def distance(x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
+    def _closest(values: jax.Array) -> jax.Array:
+        def distance(x: jax.Array, y: jax.Array) -> jax.Array:
             return jnp.sqrt(jnp.sum(jnp.square(x - y)))
 
         distances = jax.vmap(
@@ -64,12 +64,12 @@ def closest(quantities: jnp.ndarray) -> jnp.ndarray:
     return jax.vmap(_closest)(quantities)
 
 
-def std(quantities: jnp.ndarray) -> jnp.ndarray:
+def std(quantities: jax.Array) -> jax.Array:
     """Default reproducibility extractor using standard deviation."""
     return jnp.std(quantities, axis=1)
 
 
-def mad(quantities: jnp.ndarray) -> jnp.ndarray:
+def mad(quantities: jax.Array) -> jax.Array:
     """Alternative reproducibility extractor using Median Absolute Deviation.
     More robust to outliers than standard deviation."""
     num_samples = quantities.shape[1]
@@ -79,7 +79,7 @@ def mad(quantities: jnp.ndarray) -> jnp.ndarray:
     return jnp.median(jnp.abs(quantities - median), axis=1)
 
 
-def iqr(quantities: jnp.ndarray) -> jnp.ndarray:
+def iqr(quantities: jax.Array) -> jax.Array:
     """Alternative reproducibility extractor using Inter-Quartile Range.
     More robust to outliers than standard deviation."""
     q1 = jnp.quantile(quantities, 0.25, axis=1)
@@ -163,8 +163,8 @@ def sampling(
     extra_scores_extractor: Callable[
         [ExtraScores, int], ExtraScores
     ] = dummy_extra_scores_extractor,
-    fitness_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
-    descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
+    fitness_extractor: Callable[[jax.Array], jax.Array] = average,
+    descriptor_extractor: Callable[[jax.Array], jax.Array] = average,
 ) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """Wrap scoring_function to perform sampling.
 
@@ -215,10 +215,10 @@ def sampling_reproducibility(
     extra_scores_extractor: Callable[
         [ExtraScores, int], ExtraScores
     ] = dummy_extra_scores_extractor,
-    fitness_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
-    descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray] = average,
-    fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
-    descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
+    fitness_extractor: Callable[[jax.Array], jax.Array] = average,
+    descriptor_extractor: Callable[[jax.Array], jax.Array] = average,
+    fitness_reproducibility_extractor: Callable[[jax.Array], jax.Array] = std,
+    descriptor_reproducibility_extractor: Callable[[jax.Array], jax.Array] = std,
 ) -> Tuple[Fitness, Descriptor, ExtraScores, Fitness, Descriptor]:
     """Wrap scoring_function to perform sampling and compute the
     expectation and reproducibility.

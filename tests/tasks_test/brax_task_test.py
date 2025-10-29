@@ -5,15 +5,14 @@ import functools
 import jax
 import pytest
 
-import qdax.tasks.brax.v1 as environments
-import qdax.tasks.brax.v2 as environments_v2
+import qdax.tasks.brax as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.mutation_operators import isoline_variation
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.mdp_utils import init_population_controllers
-from qdax.tasks.brax.v1.env_creators import create_default_brax_task_components
-from qdax.tasks.brax.v2.env_creators import (
+from qdax.tasks.brax.env_creators import create_default_brax_task_components
+from qdax.tasks.brax.env_creators import (
     create_default_brax_task_components as create_default_brax_task_components_v2,
 )
 from qdax.utils.metrics import default_qd_metrics
@@ -155,7 +154,7 @@ def test_map_elites_v2(
     metrics_fn = functools.partial(
         default_qd_metrics,
         # Use v2 reward offset
-        qd_offset=environments_v2.reward_offset[env_name] * episode_length,
+        qd_offset=environments.reward_offset[env_name] * episode_length,
     )
 
     # Instantiate MAP-Elites

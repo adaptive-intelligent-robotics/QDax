@@ -23,14 +23,14 @@ from qdax.custom_types import (
 )
 
 
-def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
+def _dispersion(descriptors: jax.Array) -> jax.Array:
     """Computes dispersion of a batch of num_samples descriptors.
 
     Args:
         descriptors: (num_samples, num_descriptors) array of descriptors.
     Returns:
         The float dispersion of the descriptors (this is represented as a scalar
-        jnp.ndarray).
+        jax.Array).
     """
 
     # Pairwise distances between the descriptors.
@@ -48,7 +48,7 @@ def _dispersion(descriptors: jnp.ndarray) -> jnp.ndarray:
     return jnp.sum(dists) / n_pairwise
 
 
-def _mode(x: jnp.ndarray) -> jnp.ndarray:
+def _mode(x: jax.Array) -> jax.Array:
     """Computes mode (most common item) of an array.
 
     The return type is a scalar ndarray.

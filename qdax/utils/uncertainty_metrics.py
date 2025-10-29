@@ -34,8 +34,8 @@ def reevaluation_function(
         Tuple[Fitness, Descriptor, ExtraScores],
     ],
     num_reevals: int,
-    fitness_extractor: Callable[[jnp.ndarray], jnp.ndarray] = median,
-    descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray] = median,
+    fitness_extractor: Callable[[jax.Array], jax.Array] = median,
+    descriptor_extractor: Callable[[jax.Array], jax.Array] = median,
     extra_scores_extractor: Callable[
         [ExtraScores, int], ExtraScores
     ] = dummy_extra_scores_extractor,
@@ -122,10 +122,10 @@ def reevaluation_reproducibility_function(
         Tuple[Fitness, Descriptor, ExtraScores],
     ],
     num_reevals: int,
-    fitness_extractor: Callable[[jnp.ndarray], jnp.ndarray] = median,
-    fitness_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
-    descriptor_extractor: Callable[[jnp.ndarray], jnp.ndarray] = median,
-    descriptor_reproducibility_extractor: Callable[[jnp.ndarray], jnp.ndarray] = std,
+    fitness_extractor: Callable[[jax.Array], jax.Array] = median,
+    fitness_reproducibility_extractor: Callable[[jax.Array], jax.Array] = std,
+    descriptor_extractor: Callable[[jax.Array], jax.Array] = median,
+    descriptor_reproducibility_extractor: Callable[[jax.Array], jax.Array] = std,
     extra_scores_extractor: Callable[
         [ExtraScores, int], ExtraScores
     ] = dummy_extra_scores_extractor,

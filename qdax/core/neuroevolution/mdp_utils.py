@@ -73,7 +73,7 @@ def get_first_episode(transition: Transition) -> Transition:
     dones = jnp.roll(transition.dones, 1, axis=0).at[0].set(0)
     mask = 1 - jnp.clip(jnp.cumsum(dones, axis=0), 0, 1)
 
-    def mask_episodes(x: jnp.ndarray) -> jnp.ndarray:
+    def mask_episodes(x: jax.Array) -> jax.Array:
         # the double transpose trick is here to allow easy broadcasting
         return jnp.where(mask.T, x.T, jnp.nan * jnp.ones_like(x).T).T
 

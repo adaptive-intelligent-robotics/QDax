@@ -5,34 +5,34 @@ import jax
 import pytest
 from brax.envs import State as EnvState
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.baselines.td3 import TD3, TD3Config, TD3TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 
 
 def test_td3() -> None:
-    env_name = "pointmaze"
+    env_name = "walker2d_uni"
     seed = 0
-    env_batch_size = 10
-    num_steps = 10000
-    warmup_steps = 1000
-    buffer_size = 10000
+    env_batch_size = 8
+    num_steps = 10_000
+    warmup_steps = 1_000
+    buffer_size = 1_000_000
 
     episode_length = 1000
-    grad_updates_per_step = 1
+    grad_updates_per_step = 8
     soft_tau_update = 0.005
     expl_noise = 0.1
-    batch_size = 256
+    batch_size = 128
     policy_delay = 2
-    discount = 0.95
+    discount = 0.99
     noise_clip = 0.5
     policy_noise = 0.2
     reward_scaling = 1.0
     critic_hidden_layer_size = (256, 256)
     policy_hidden_layer_size = (256, 256)
-    critic_learning_rate = 3e-4
-    policy_learning_rate = 3e-4
+    critic_learning_rate = 1e-3
+    policy_learning_rate = 1e-3
 
     key = jax.random.key(seed)
 
@@ -137,7 +137,7 @@ def test_td3() -> None:
     )
 
     # Evaluate untrained policy
-    true_return, true_returns = eval_policy(training_state=training_state)
+    true_return, _ = eval_policy(training_state=training_state)
 
     total_num_iterations = num_steps // env_batch_size
 
@@ -150,8 +150,10 @@ def test_td3() -> None:
     )
 
     # Evaluate
-    final_true_return, final_true_returns = eval_policy(training_state=training_state)
+    final_true_return, _ = eval_policy(training_state=training_state)
 
+    print(f"Final true return: {final_true_return}")
+    print(f"True return: {true_return}")
     pytest.assume(final_true_return > true_return)
 
 

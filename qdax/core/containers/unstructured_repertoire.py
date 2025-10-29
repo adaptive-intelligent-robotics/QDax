@@ -21,7 +21,7 @@ from qdax.custom_types import (
 
 def get_cells_indices(
     batch_of_descriptors: Descriptor, centroids: Centroid, k_nn: int
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+) -> Tuple[jax.Array, jax.Array]:
     """Returns the array of cells indices for a batch of descriptors
     given the centroids of the grid.
 
@@ -36,10 +36,10 @@ def get_cells_indices(
     """
 
     def _get_cells_indices(
-        _descriptors: jnp.ndarray,
-        _centroids: jnp.ndarray,
+        _descriptors: jax.Array,
+        _centroids: jax.Array,
         _k_nn: int,
-    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    ) -> Tuple[jax.Array, jax.Array]:
         """Inner function.
 
         descriptors of shape (1, num_descriptors)
@@ -66,12 +66,12 @@ def get_cells_indices(
 
 
 def intra_batch_comp(
-    normed: jnp.ndarray,
-    current_index: jnp.ndarray,
-    normed_all: jnp.ndarray,
-    eval_scores: jnp.ndarray,
-    l_value: jnp.ndarray,
-) -> jnp.ndarray:
+    normed: jax.Array,
+    current_index: jax.Array,
+    normed_all: jax.Array,
+    eval_scores: jax.Array,
+    l_value: jax.Array,
+) -> jax.Array:
     """Function to know if an individual should be kept or not."""
 
     # Check for individuals that are Nans, we remove them at the end
@@ -148,14 +148,14 @@ class UnstructuredRepertoire(GARepertoire):
     """
 
     descriptors: Descriptor
-    l_value: jnp.ndarray
+    l_value: jax.Array
     max_size: int = flax.struct.field(pytree_node=False)
 
     def get_maximal_size(self) -> int:
         """Returns the maximal number of individuals in the repertoire."""
         return self.max_size
 
-    def get_number_genotypes(self) -> jnp.ndarray:
+    def get_number_genotypes(self) -> jax.Array:
         """Returns the number of genotypes in the repertoire."""
         return jnp.sum(self.fitnesses != -jnp.inf)
 
@@ -370,7 +370,7 @@ class UnstructuredRepertoire(GARepertoire):
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
-        l_value: jnp.ndarray,
+        l_value: jax.Array,
         max_size: int,
         *args,
         extra_scores: Optional[ExtraScores] = None,

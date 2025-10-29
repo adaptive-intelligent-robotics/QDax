@@ -6,7 +6,7 @@ from typing import Any, Tuple
 import jax
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.baselines.sac import SAC, SacConfig, TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
@@ -14,7 +14,7 @@ from qdax.custom_types import EnvState
 
 
 def test_sac() -> None:
-    env_name = "pointmaze"
+    env_name = "walker2d_uni"
     env_batch_size = 128
     seed = 0
     num_steps = 10000

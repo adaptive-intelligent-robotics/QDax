@@ -6,7 +6,7 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.core.neuroevolution.buffers.trajectory_buffer import TrajectoryBuffer
 
 
-def update_returns_naive(buffer: TrajectoryBuffer) -> jnp.ndarray:
+def update_returns_naive(buffer: TrajectoryBuffer) -> jax.Array:
     """Loops over the episodic_data of the buffer to compute the per_episode_reward and
     to assign to each transition its per_episode_reward. It is tested to compute the
     same returns vector than trajectory_buffer.compute_returns().

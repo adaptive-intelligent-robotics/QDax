@@ -20,25 +20,24 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-keywords = ["Quality-Diversity", "Open-endedness", "Neuroevolution", "Reinforcement Learning"]
+keywords = ["quality-diversity", "open-endedness", "neuroevolution", "reinforcement learning"]
 requires-python = ">=3.11"
 dependencies = [
     "jax>=0.8.0",
     "flax>=0.12.0",
-    "brax>=0.10.4",
-    "chex>=0.1.86",
+    "distrax>=0.1.7",
     "optax>=0.1.9",
     "scikit-learn>=1.5.1",
     "scipy>=1.10.1",
-    "tensorflow-probability>=0.24.0",
+    "brax>=0.11.0",
 ]
 
 [project.optional-dependencies]
 dev = [
 	"coverage",
-	"pre-commit==2.12.1",
-	"pytest==6.2.5",
-	"pytest-assume==2.4.3",
+	"pre-commit",
+	"pytest",
+	"pytest-assume",
 	"mypy",
 ]
 docs = [
@@ -53,7 +52,7 @@ examples = [
 	"ipykernel",
 	"ipywidgets",
 	"mediapy",
-	"jumanji>=0.3.1",
+	"jumanji>=1.0.0",
 ]
 
 [project.urls]
