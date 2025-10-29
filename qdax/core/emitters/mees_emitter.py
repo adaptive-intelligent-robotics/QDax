@@ -298,13 +298,13 @@ class MEESEmitter(Emitter):
     ) -> Tuple[Genotype, ExtraScores]:
         """Return the offspring generated through gradient update.
 
-        Params:
-            repertoire: the MAP-Elites repertoire to sample from
-            emitter_state
-            key: a jax PRNG random key
+        Args:
+            repertoire: The MAP-Elites repertoire to sample from.
+            emitter_state: The current emitter state.
+            key: A JAX PRNG random key.
 
         Returns:
-            a new gradient offspring
+            The next gradient-based offspring and empty extra scores.
         """
 
         return emitter_state.offspring, {}

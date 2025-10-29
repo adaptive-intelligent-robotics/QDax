@@ -33,7 +33,23 @@ or with `pip`:
 pip install cax
 ```
 
+### Build the documentation
+
+To install the documentation toolchain and build the site:
+
+```bash
+pip install .[docs]
+mkdocs build
+```
+
+For local preview with live reload:
+
+```bash
+mkdocs serve
+```
+
 ## Basic API Usage
+
 For a full and interactive example to see how QDax works, we recommend starting with the tutorial-style [Colab notebook](./examples/mapelites.ipynb). It is an example of the MAP-Elites algorithm used to evolve a population of controllers on a chosen Brax environment (Walker by default).
 
 However, a summary of the main API usage is provided below:
@@ -128,8 +144,8 @@ repertoire.genotypes, repertoire.fitnesses, repertoire.descriptors
 
 
 ## QDax core algorithms
-QDax currently supports the following algorithms:
 
+QDax currently supports the following algorithms:
 
 | Algorithm                                                                                                                     | Example                                                                                                                                                                                         |
 |-------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -149,6 +165,7 @@ QDax currently supports the following algorithms:
 
 
 ## QDax baseline algorithms
+
 The QDax library also provides implementations for some useful baseline algorithms:
 
 | Algorithm  | Example |
@@ -160,19 +177,27 @@ The QDax library also provides implementations for some useful baseline algorith
 | [SPEA2](https://www.semanticscholar.org/paper/SPEA2%3A-Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/b13724cb54ae4171916f3f969d304b9e9752a57f) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/nsga2_spea2.ipynb) |
 | [Population Based Training (PBT)](https://arxiv.org/abs/1711.09846)                                                           | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/sac_pbt.ipynb)    |
 
+
 ## QDax Tasks
+
 The QDax library also provides numerous implementations for several standard Quality-Diversity tasks.
 
-All those implementations, and their descriptions are provided in the [tasks directory](./qdax/tasks).
+All those implementations, and their descriptions are provided in the [Tasks page](https://qdax.readthedocs.io/en/latest/api_documentation/tasks/).
+
 
 ## Contributing
+
 Issues and contributions are welcome. Please refer to the [contribution guide](https://qdax.readthedocs.io/en/latest/guides/CONTRIBUTING/) in the documentation for more details.
 
+
 ## Related Projects
+
 - [EvoJAX: Hardware-Accelerated Neuroevolution](https://github.com/google/evojax). EvoJAX is a scalable, general purpose, hardware-accelerated neuroevolution toolkit. [Paper](https://arxiv.org/abs/2202.05008)
 - [evosax: JAX-Based Evolution Strategies](https://github.com/RobertTLange/evosax)
 
+
 ## Citing QDax
+
 If you use QDax in your research and want to cite it in your work, please use:
 ```
 @article{chalumeau2024qdax,
@@ -185,6 +210,7 @@ If you use QDax in your research and want to cite it in your work, please use:
   year={2024}
 }
 ```
+
 
 ## Contributors
 

@@ -212,7 +212,7 @@ env, policy_network, scoring_fn = create_default_brax_task_components(
 )
 ```
 
-See [Brax v1](../../examples/mapelites.ipynb) and [Brax v2](../../examples/mapelites_brax_v2.ipynb) notebooks for more detailed examples.
+See [Brax v1](../examples/mapelites.ipynb) and [Brax v2](../examples/mapelites_brax_v2.ipynb) notebooks for more detailed examples.
 
 ## Jumanji-RL
 
@@ -220,4 +220,4 @@ QDax provide utils to interact easily with the suite of environments implemented
 
 ### Example Usage
 
-See [Example in Notebook](../../examples/jumanji_snake.ipynb)
+See [Example in Notebook](../examples/jumanji_snake.ipynb)

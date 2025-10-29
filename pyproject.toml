@@ -13,7 +13,6 @@ authors = [
 license = "MIT"
 license-files = ["LICENSE"]
 classifiers = [
-    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -41,6 +40,13 @@ dev = [
 	"pytest==6.2.5",
 	"pytest-assume==2.4.3",
 	"mypy",
+]
+docs = [
+	"mkdocs",
+	"mkdocs-material",
+	"mkdocstrings[python]",
+	"mkdocs-jupyter",
+	"mkdocs-autorefs",
 ]
 examples = [
 	"tqdm",
