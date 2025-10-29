@@ -20,9 +20,7 @@ from qdax.custom_types import (
 def make_dads_loss_fn(
     policy_fn: Callable[[Params, Observation], jax.Array],
     critic_fn: Callable[[Params, Observation, Action], jax.Array],
-    dynamics_fn: Callable[
-        [Params, StateDescriptor, Skill, StateDescriptor], jax.Array
-    ],
+    dynamics_fn: Callable[[Params, StateDescriptor, Skill, StateDescriptor], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     reward_scaling: float,
     discount: float,
@@ -71,9 +69,7 @@ def make_dads_loss_fn(
 
 def dads_dynamics_loss_fn(
     dynamics_params: Params,
-    dynamics_fn: Callable[
-        [Params, StateDescriptor, Skill, StateDescriptor], jax.Array
-    ],
+    dynamics_fn: Callable[[Params, StateDescriptor, Skill, StateDescriptor], jax.Array],
     num_skills: int,
     transitions: QDTransition,
 ) -> jax.Array:

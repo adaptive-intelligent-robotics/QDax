@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import jax
 import jax.numpy as jnp
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire

@@ -122,9 +122,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         )
         return new_inf, new_sup, target_angle_length
 
-    def _approximate_angle_from_arc_length(
-        self, target_arc_length: float
-    ) -> jax.Array:
+    def _approximate_angle_from_arc_length(self, target_arc_length: float) -> jax.Array:
         """
         The function approximate_angle_from_arc_length is the function that
         approximates the angle from the arc length.

@@ -125,9 +125,7 @@ def get_cells_indices(
             in the batch with shape (batch_size,)
     """
 
-    def _get_cells_indices(
-        descriptors: jax.Array, centroids: jax.Array
-    ) -> jax.Array:
+    def _get_cells_indices(descriptors: jax.Array, centroids: jax.Array) -> jax.Array:
         """Set_of_descriptors of shape (1, num_descriptors)
         centroids of shape (num_centroids, num_descriptors)
         """

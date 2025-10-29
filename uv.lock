@@ -607,6 +607,23 @@ wheels = [
 ]
 
 [[package]]
+name = "distrax"
+version = "0.1.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "absl-py" },
+    { name = "chex" },
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "numpy" },
+    { name = "tfp-nightly" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/21/a1/eb2086d2fc27ddf627f47af392d67e7e023a153d1b00087d3d12eab0465a/distrax-0.1.7.tar.gz", hash = "sha256:78deec181894e811d416b34e6b500f5e8f6d39bc850bd6f3152ee9e2164c9bef", size = 183672, upload-time = "2025-09-01T23:06:00.108Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/3e/e67008a232c37f98f1563469e206b1f2820f01c9cce1118c02215f1bf361/distrax-0.1.7-py3-none-any.whl", hash = "sha256:cf502d64022c7a682882ae6f07aea35206c6a3d8ddfb1e3beb006723baf283fd", size = 312680, upload-time = "2025-09-01T23:05:58.175Z" },
+]
+
+[[package]]
 name = "dm-env"
 version = "1.6"
 source = { registry = "https://pypi.org/simple" }
@@ -2652,12 +2669,12 @@ name = "qdax"
 source = { editable = "." }
 dependencies = [
     { name = "brax" },
+    { name = "distrax" },
     { name = "flax" },
     { name = "jax" },
     { name = "optax" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "tensorflow-probability" },
 ]
 
 [package.optional-dependencies]
@@ -2687,6 +2704,7 @@ examples = [
 requires-dist = [
     { name = "brax", specifier = ">=0.11.0" },
     { name = "coverage", marker = "extra == 'dev'" },
+    { name = "distrax", specifier = ">=0.1.7" },
     { name = "flax", specifier = ">=0.12.0" },
     { name = "ipykernel", marker = "extra == 'examples'" },
     { name = "ipywidgets", marker = "extra == 'examples'" },
@@ -2705,7 +2723,6 @@ requires-dist = [
     { name = "pytest-assume", marker = "extra == 'dev'" },
     { name = "scikit-learn", specifier = ">=1.5.1" },
     { name = "scipy", specifier = ">=1.10.1" },
-    { name = "tensorflow-probability", specifier = ">=0.24.0" },
     { name = "tqdm", marker = "extra == 'examples'" },
 ]
 provides-extras = ["dev", "docs", "examples"]
@@ -3083,23 +3100,6 @@ wheels = [
 ]
 
 [[package]]
-name = "tensorflow-probability"
-version = "0.25.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "absl-py" },
-    { name = "cloudpickle" },
-    { name = "decorator" },
-    { name = "dm-tree" },
-    { name = "gast" },
-    { name = "numpy" },
-    { name = "six" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/b6/e116761ceeb880b7ad4c6a7e1203538754dd7dda42538f08d6daaf8dfa4d/tensorflow_probability-0.25.0-py2.py3-none-any.whl", hash = "sha256:f3f4d6431656c0122906888afe1b67b4400e82bd7f254b45b92e6c5b84ea8e3e", size = 6979403, upload-time = "2024-11-08T16:25:57.238Z" },
-]
-
-[[package]]
 name = "tensorstore"
 version = "0.1.78"
 source = { registry = "https://pypi.org/simple" }
@@ -3124,6 +3124,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e2/3b/b0bb4440a9d67859b1abb367e436c62b0a27991dd7109f20be9dabff488f/tensorstore-0.1.78-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:630538a66eb9964bd2975c4e09ae83be9984f2e4ebd5f7969983137bfda92071", size = 18157269, upload-time = "2025-10-06T17:44:23.743Z" },
     { url = "https://files.pythonhosted.org/packages/68/d6/d95cde18ca2475bf317051b2be168cc963c5cfcd67e9c59786326ccdca53/tensorstore-0.1.78-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6886bec93b8ba22f83c4dc9e7c1ee20b11025ea9a5a839de21d0cbf7fd7aada2", size = 20060053, upload-time = "2025-10-06T17:44:25.942Z" },
     { url = "https://files.pythonhosted.org/packages/db/a2/dbd1af0e97d5d549051309d72c6e3f2fe81fae636f9db3692d21adc9c731/tensorstore-0.1.78-cp313-cp313-win_amd64.whl", hash = "sha256:e0073de8fa3074bc4cc92ced0210310fd89851899faf42a5ba256f0ba87d095c", size = 12711250, upload-time = "2025-10-06T17:44:27.926Z" },
+]
+
+[[package]]
+name = "tfp-nightly"
+version = "0.26.0.dev20251029"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "absl-py" },
+    { name = "cloudpickle" },
+    { name = "decorator" },
+    { name = "dm-tree" },
+    { name = "gast" },
+    { name = "numpy" },
+    { name = "six" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/a9/8de8278ab3e3b8286b0cc2b3bc5f7c6ed07dd6f46f5956f0221b6ea95593/tfp_nightly-0.26.0.dev20251029-py2.py3-none-any.whl", hash = "sha256:0bdcaf70837160553bb5cbebe43e361a31796f2de6bbe78006cbaad9ed0c54dc", size = 6975609, upload-time = "2025-10-29T08:43:39.849Z" },
 ]
 
 [[package]]

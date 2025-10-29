@@ -3,12 +3,11 @@ from typing import Optional, Tuple
 
 import jax
 import numpy as np
-from qdax.custom_types import PyTree
 from jax import numpy as jnp
 
 from qdax.core.containers.repertoire import Repertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, PyTree, RNGKey
 
 
 class MultiEmitterState(EmitterState):

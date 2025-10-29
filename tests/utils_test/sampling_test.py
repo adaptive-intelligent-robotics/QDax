@@ -9,9 +9,7 @@ import qdax.tasks.brax as environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax.env_creators import (
-    scoring_function_brax_envs as scoring_function,
-)
+from qdax.tasks.brax.env_creators import scoring_function_brax_envs as scoring_function
 from qdax.utils.sampling import (
     average,
     closest,

@@ -5,7 +5,6 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jumanji
-from qdax.custom_types import PyTree
 from typing_extensions import TypeAlias
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
@@ -16,6 +15,7 @@ from qdax.custom_types import (
     Genotype,
     Observation,
     Params,
+    PyTree,
     RNGKey,
 )
 

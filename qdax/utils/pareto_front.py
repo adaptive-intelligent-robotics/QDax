@@ -1,4 +1,5 @@
 """Utils to handle pareto fronts."""
+
 import jax
 import jax.numpy as jnp
 
@@ -74,9 +75,7 @@ def compute_masked_pareto_dominance(
     return jnp.any(jnp.logical_and(diff_greater_than_zero, diff_geq_than_zero))
 
 
-def compute_masked_pareto_front(
-    batch_of_criteria: jax.Array, mask: Mask
-) -> jax.Array:
+def compute_masked_pareto_front(batch_of_criteria: jax.Array, mask: Mask) -> jax.Array:
     """Returns an array of boolean that states for each element if it is to be
     considered or not. This function is to be used with batches of constant size
     criteria, thus a mask is used to know which values are padded.
@@ -107,13 +106,6 @@ def compute_hypervolume(
     Returns:
         The hypervolume of the pareto front.
     """
-    # check the number of objectives
-    custom_message = (
-        "Hypervolume calculation for more than" " 2 objectives not yet supported."
-    )
-    if pareto_front.ndim < 2 or pareto_front.shape[1] != 2:
-        raise ValueError(custom_message)
-
     # concatenate the reference point to prepare for the area computation
     pareto_front = jnp.concatenate(  # type: ignore
         (pareto_front, jnp.expand_dims(reference_point, axis=0)), axis=0

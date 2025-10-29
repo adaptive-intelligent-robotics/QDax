@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-import jax.numpy as jnp
+import jax
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState

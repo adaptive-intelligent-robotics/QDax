@@ -40,9 +40,7 @@ class GaussianMixture(nn.Module):
         else:
             scales = jnp.ones_like(locs)
 
-        components = distrax.MultivariateNormalDiag(
-            loc=locs, scale_diag=scales
-        )
+        components = distrax.MultivariateNormalDiag(loc=locs, scale_diag=scales)
         mixture = distrax.Categorical(logits=logits)
         return distrax.MixtureSameFamily(
             mixture_distribution=mixture, components_distribution=components

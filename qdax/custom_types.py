@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Generic, TypeVar, Union, Any
+from typing import Any, Dict, Generic, TypeVar, Union
 
 import flax
 import jax

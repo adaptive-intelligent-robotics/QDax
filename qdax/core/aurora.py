@@ -6,7 +6,6 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from qdax.custom_types import PyTree
 
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.unstructured_repertoire import UnstructuredRepertoire
@@ -20,6 +19,7 @@ from qdax.custom_types import (
     Metrics,
     Observation,
     Params,
+    PyTree,
     RNGKey,
 )
 
