@@ -206,7 +206,7 @@ class DCRLEmitter(Emitter):
 
         return emitter_state
 
-    def _similarity(self, descs_1: Descriptor, descs_2: Descriptor) -> jnp.array:
+    def _similarity(self, descs_1: Descriptor, descs_2: Descriptor) -> jax.Array:
         """Compute the similarity between two batches of descriptors.
         Args:
             descs_1: batch of descriptors.
