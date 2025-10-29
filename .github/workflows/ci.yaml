@@ -18,19 +18,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            ffmpeg \
-            libgl1-mesa-dev \
-            libgl1-mesa-glx \
-            libglfw3 \
-            libosmesa6-dev \
-            patchelf \
-            python3-opengl \
-            xvfb
-
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -38,7 +25,7 @@ jobs:
 
       - name: Install project (dev)
         run: |
-          uv pip install .[dev]
+          uv pip install --system .[dev]
 
       - name: Run pre-commit
         run: |
@@ -59,19 +46,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            ffmpeg \
-            libgl1-mesa-dev \
-            libgl1-mesa-glx \
-            libglfw3 \
-            libosmesa6-dev \
-            patchelf \
-            python3-opengl \
-            xvfb
-
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -79,7 +53,7 @@ jobs:
 
       - name: Install project (dev + examples)
         run: |
-          uv pip install .[dev,examples]
+          uv pip install --system .[dev,examples]
 
       - name: Run tests (coverage)
         run: |

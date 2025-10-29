@@ -52,6 +52,7 @@ examples = [
 	"ipykernel",
 	"ipywidgets",
 	"mediapy",
+	"requests",
 	"jumanji>=1.0.0",
 ]
 
