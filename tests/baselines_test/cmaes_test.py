@@ -16,7 +16,7 @@ def test_cmaes() -> None:
     sigma_g = 0.5
     minval = -5.12
 
-    def sphere_scoring(x: jnp.ndarray) -> jnp.ndarray:
+    def sphere_scoring(x: jax.Array) -> jax.Array:
         return -jnp.sum((x + minval * 0.4) * (x + minval * 0.4), axis=-1)
 
     fitness_fn = sphere_scoring

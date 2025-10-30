@@ -10,13 +10,13 @@ from qdax.custom_types import Genotype, RNGKey
 
 
 def _polynomial_mutation(
-    x: jnp.ndarray,
+    x: jax.Array,
     key: RNGKey,
     proportion_to_mutate: float,
     eta: float,
     minval: float,
     maxval: float,
-) -> jnp.ndarray:
+) -> jax.Array:
     """Base polynomial mutation for one genotype.
 
     Proportion to mutate between 0 and 1
@@ -118,11 +118,11 @@ def polynomial_mutation(
 
 
 def _polynomial_crossover(
-    x1: jnp.ndarray,
-    x2: jnp.ndarray,
+    x1: jax.Array,
+    x2: jax.Array,
     key: RNGKey,
     proportion_var_to_change: float,
-) -> jnp.ndarray:
+) -> jax.Array:
     """
     Base crossover for one pair of genotypes.
 
@@ -206,7 +206,7 @@ def isoline_variation(
     batch_size = jax.tree.leaves(x1)[0].shape[0]
     line_noise = jax.random.normal(key_line_noise, shape=(batch_size,)) * line_sigma
 
-    def _variation_fn(x1: jnp.ndarray, x2: jnp.ndarray, key: RNGKey) -> jnp.ndarray:
+    def _variation_fn(x1: jax.Array, x2: jax.Array, key: RNGKey) -> jax.Array:
         iso_noise = jax.random.normal(key, shape=x1.shape) * iso_sigma
         x = (x1 + iso_noise) + jax.vmap(jnp.multiply)((x2 - x1), line_noise)
 

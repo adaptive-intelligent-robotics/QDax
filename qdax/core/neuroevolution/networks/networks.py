@@ -11,14 +11,14 @@ class MLP(nn.Module):
     """MLP module."""
 
     layer_sizes: Tuple[int, ...]
-    activation: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
+    activation: Callable[[jax.Array], jax.Array] = nn.relu
     kernel_init: Callable[..., Any] = jax.nn.initializers.lecun_uniform()
-    final_activation: Optional[Callable[[jnp.ndarray], jnp.ndarray]] = None
+    final_activation: Optional[Callable[[jax.Array], jax.Array]] = None
     bias: bool = True
     kernel_init_final: Optional[Callable[..., Any]] = None
 
     @nn.compact
-    def __call__(self, obs: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, obs: jax.Array) -> jax.Array:
         hidden = obs
         for i, hidden_size in enumerate(self.layer_sizes):
 
@@ -52,14 +52,14 @@ class MLPDC(nn.Module):
     """Descriptor-conditioned MLP module."""
 
     layer_sizes: Tuple[int, ...]
-    activation: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
+    activation: Callable[[jax.Array], jax.Array] = nn.relu
     kernel_init: Callable[..., Any] = jax.nn.initializers.lecun_uniform()
-    final_activation: Optional[Callable[[jnp.ndarray], jnp.ndarray]] = None
+    final_activation: Optional[Callable[[jax.Array], jax.Array]] = None
     bias: bool = True
     kernel_init_final: Optional[Callable[..., Any]] = None
 
     @nn.compact
-    def __call__(self, obs: jnp.ndarray, desc: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, obs: jax.Array, desc: jax.Array) -> jax.Array:
         hidden = jnp.concatenate([obs, desc], axis=-1)
         for i, hidden_size in enumerate(self.layer_sizes):
 
@@ -96,7 +96,7 @@ class QModule(nn.Module):
     n_critics: int = 2
 
     @nn.compact
-    def __call__(self, obs: jnp.ndarray, actions: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, obs: jax.Array, actions: jax.Array) -> jax.Array:
         hidden = jnp.concatenate([obs, actions], axis=-1)
         res = []
         for _ in range(self.n_critics):
@@ -117,8 +117,8 @@ class QModuleDC(nn.Module):
 
     @nn.compact
     def __call__(
-        self, obs: jnp.ndarray, actions: jnp.ndarray, desc: jnp.ndarray
-    ) -> jnp.ndarray:
+        self, obs: jax.Array, actions: jax.Array, desc: jax.Array
+    ) -> jax.Array:
         hidden = jnp.concatenate([obs, actions], axis=-1)
         res = []
         for _ in range(self.n_critics):

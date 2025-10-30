@@ -5,7 +5,6 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jumanji
-from chex import ArrayTree
 from typing_extensions import TypeAlias
 
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
@@ -16,10 +15,11 @@ from qdax.custom_types import (
     Genotype,
     Observation,
     Params,
+    PyTree,
     RNGKey,
 )
 
-JumanjiState: TypeAlias = ArrayTree
+JumanjiState: TypeAlias = PyTree
 JumanjiTimeStep: TypeAlias = jumanji.types.TimeStep
 
 
@@ -147,7 +147,7 @@ def jumanji_scoring_function(
         [JumanjiState, JumanjiTimeStep, Params, RNGKey],
         Tuple[JumanjiState, JumanjiTimeStep, Params, RNGKey, QDTransition],
     ],
-    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extractor: Callable[[QDTransition, jax.Array], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """Evaluates policies contained in policies_params in parallel in
     deterministic or pseudo-deterministic environments.

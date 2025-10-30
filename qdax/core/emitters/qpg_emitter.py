@@ -20,7 +20,7 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition, ReplayBuffer
 from qdax.core.neuroevolution.losses.td3_loss import make_td3_loss_fn
 from qdax.core.neuroevolution.networks.networks import QModule
 from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, Params, RNGKey
-from qdax.tasks.brax.v1.envs.base_env import QDEnv
+from qdax.tasks.brax.envs.base_env import QDEnv
 
 
 @dataclass

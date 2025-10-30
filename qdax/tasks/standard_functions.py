@@ -66,7 +66,7 @@ def _rastrigin_proj_scoring(
             fitnesses and descriptors)
     """
 
-    def rastrigin_scoring(x: jnp.ndarray) -> jnp.ndarray:
+    def rastrigin_scoring(x: jax.Array) -> jax.Array:
         return -(
             jnp.asarray(10 * x.shape[-1])
             + jnp.sum(
@@ -74,18 +74,18 @@ def _rastrigin_proj_scoring(
             )
         )
 
-    def clip(x: jnp.ndarray) -> jnp.ndarray:
+    def clip(x: jax.Array) -> jax.Array:
         return x * (x <= maxval) * (x >= +minval) + maxval / x * (
             (x > maxval) + (x < +minval)
         )
 
-    def _rastrigin_descriptor_1(x: jnp.ndarray) -> jnp.ndarray:
+    def _rastrigin_descriptor_1(x: jax.Array) -> jax.Array:
         return jnp.mean(clip(x[: x.shape[0] // 2]))
 
-    def _rastrigin_descriptor_2(x: jnp.ndarray) -> jnp.ndarray:
+    def _rastrigin_descriptor_2(x: jax.Array) -> jax.Array:
         return jnp.mean(clip(x[x.shape[0] // 2 :]))
 
-    def rastrigin_descriptors(x: jnp.ndarray) -> jnp.ndarray:
+    def rastrigin_descriptors(x: jax.Array) -> jax.Array:
         return jnp.array([_rastrigin_descriptor_1(x), _rastrigin_descriptor_2(x)])
 
     # gradient function

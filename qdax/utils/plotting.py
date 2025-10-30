@@ -1,5 +1,6 @@
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import jax
 import jax.numpy as jnp
 import matplotlib as mpl
 import matplotlib.cm as cm
@@ -30,10 +31,10 @@ def get_voronoi_finite_polygons_2d(
 
     center = voronoi_diagram.points.mean(axis=0)
     if radius is None:
-        radius = voronoi_diagram.points.ptp().max()
+        radius = np.ptp(voronoi_diagram.points).max()
 
     # Construct a map containing all ridges for a given point
-    all_ridges: Dict[jnp.ndarray, jnp.ndarray] = {}
+    all_ridges: Dict[jax.Array, jax.Array] = {}
     for (p1, p2), (v1, v2) in zip(
         voronoi_diagram.ridge_points, voronoi_diagram.ridge_vertices
     ):
@@ -85,11 +86,11 @@ def get_voronoi_finite_polygons_2d(
 
 
 def plot_2d_map_elites_repertoire(
-    centroids: jnp.ndarray,
-    repertoire_fitnesses: jnp.ndarray,
-    minval: jnp.ndarray,
-    maxval: jnp.ndarray,
-    repertoire_descriptors: Optional[jnp.ndarray] = None,
+    centroids: jax.Array,
+    repertoire_fitnesses: jax.Array,
+    minval: jax.Array,
+    maxval: jax.Array,
+    repertoire_descriptors: Optional[jax.Array] = None,
     ax: Optional[plt.Axes] = None,
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
@@ -217,11 +218,11 @@ def plot_2d_map_elites_repertoire(
 
 
 def plot_map_elites_results(
-    env_steps: jnp.ndarray,
+    env_steps: jax.Array,
     metrics: Dict,
     repertoire: MapElitesRepertoire,
-    min_descriptor: jnp.ndarray,
-    max_descriptor: jnp.ndarray,
+    min_descriptor: jax.Array,
+    max_descriptor: jax.Array,
     x_label: str = "Environment steps",
 ) -> Tuple[Optional[Figure], Axes]:
     """Plots three usual QD metrics, namely the coverage, the maximum fitness
@@ -329,10 +330,10 @@ def multiline(
 
 
 def plot_skills_trajectory(
-    trajectories: jnp.ndarray,
-    skills: jnp.ndarray,
-    min_values: jnp.ndarray,
-    max_values: jnp.ndarray,
+    trajectories: jax.Array,
+    skills: jax.Array,
+    min_values: jax.Array,
+    max_values: jax.Array,
 ) -> Tuple[Figure, Axes]:
     """Plots skills trajectories on a single plot with
     different colors to recognize the skills.
@@ -380,7 +381,7 @@ def plot_skills_trajectory(
 
 
 def plot_mome_pareto_fronts(
-    centroids: jnp.ndarray,
+    centroids: jax.Array,
     repertoire: MOMERepertoire,
     maxval: float,
     minval: float,
@@ -513,7 +514,7 @@ def vector_to_rgb(angle: float, absolute: float) -> Any:
 
 
 def plot_global_pareto_front(
-    pareto_front: jnp.ndarray,
+    pareto_front: jax.Array,
     ax: Optional[plt.Axes] = None,
     label: Optional[str] = None,
     color: Optional[str] = None,
@@ -541,7 +542,7 @@ def plot_global_pareto_front(
 
 
 def _get_projection_in_1d(
-    integer_coordinates: jnp.ndarray, bases_tuple: Tuple[int, ...]
+    integer_coordinates: jax.Array, bases_tuple: Tuple[int, ...]
 ) -> int:
     """Converts an integer vector into a single integer,
     given tuple of bases to consider for conversion.
@@ -575,7 +576,7 @@ def _get_projection_in_1d(
 
 
 def _get_projection_in_2d(
-    integer_coordinates: jnp.ndarray, bases: Tuple[int, ...]
+    integer_coordinates: jax.Array, bases: Tuple[int, ...]
 ) -> Tuple[int, int]:
     """Projects an integer vector into a pair of integers,
     (given tuple of bases to consider for conversion).
@@ -600,8 +601,8 @@ def _get_projection_in_2d(
 
 def plot_multidimensional_map_elites_grid(
     repertoire: MapElitesRepertoire,
-    minval: jnp.ndarray,
-    maxval: jnp.ndarray,
+    minval: jax.Array,
+    maxval: jax.Array,
     grid_shape: Tuple[int, ...],
     ax: Optional[plt.Axes] = None,
     vmin: Optional[float] = None,
@@ -729,7 +730,7 @@ def plot_multidimensional_map_elites_grid(
 
     def _get_ticks_positions(
         total_size_grid_axis: int, step_ticks_on_axis: int
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         """
         Get the positions of the ticks on the grid axis.
         Args:

@@ -10,15 +10,15 @@ from qdax.custom_types import Action, Descriptor, Observation, Params, RNGKey
 
 
 def make_td3_loss_fn(
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
     reward_scaling: float,
     discount: float,
     noise_clip: float,
     policy_noise: float,
 ) -> Tuple[
-    Callable[[Params, Params, Transition], jnp.ndarray],
-    Callable[[Params, Params, Params, Transition, RNGKey], jnp.ndarray],
+    Callable[[Params, Params, Transition], jax.Array],
+    Callable[[Params, Params, Params, Transition, RNGKey], jax.Array],
 ]:
     """Creates the loss functions for TD3.
 
@@ -38,7 +38,7 @@ def make_td3_loss_fn(
         policy_params: Params,
         critic_params: Params,
         transitions: Transition,
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         """Policy loss function for TD3 agent"""
 
         action = policy_fn(policy_params, transitions.obs)
@@ -55,7 +55,7 @@ def make_td3_loss_fn(
         target_critic_params: Params,
         transitions: Transition,
         key: RNGKey,
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         """Critics loss function for TD3 agent"""
         noise = (
             jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
@@ -92,17 +92,17 @@ def make_td3_loss_fn(
 
 
 def make_td3_loss_dc_fn(
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    actor_fn: Callable[[Params, Observation, Descriptor], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action, Descriptor], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    actor_fn: Callable[[Params, Observation, Descriptor], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action, Descriptor], jax.Array],
     reward_scaling: float,
     discount: float,
     noise_clip: float,
     policy_noise: float,
 ) -> Tuple[
-    Callable[[Params, Params, Descriptor, Transition], jnp.ndarray],
-    Callable[[Params, Params, Transition], jnp.ndarray],
-    Callable[[Params, Params, Params, Transition, RNGKey], jnp.ndarray],
+    Callable[[Params, Params, Descriptor, Transition], jax.Array],
+    Callable[[Params, Params, Transition], jax.Array],
+    Callable[[Params, Params, Params, Transition, RNGKey], jax.Array],
 ]:
     """Creates the loss functions for TD3.
     Args:
@@ -124,7 +124,7 @@ def make_td3_loss_dc_fn(
         critic_params: Params,
         desc_prime: Descriptor,
         transitions: Transition,
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         """Policy loss function for TD3 agent"""
         action = policy_fn(policy_params, transitions.obs)
         q_value = critic_fn(critic_params, transitions.obs, action, desc_prime)
@@ -136,7 +136,7 @@ def make_td3_loss_dc_fn(
         actor_params: Params,
         critic_params: Params,
         transitions: Transition,
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         """Descriptor-conditioned policy loss function for TD3 agent"""
         action = actor_fn(actor_params, transitions.obs, transitions.desc_prime)
         q_value = critic_fn(
@@ -152,7 +152,7 @@ def make_td3_loss_dc_fn(
         target_critic_params: Params,
         transitions: Transition,
         key: RNGKey,
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         """Descriptor-conditioned critic loss function for TD3 agent"""
         noise = (
             jax.random.normal(key, shape=transitions.actions.shape) * policy_noise
@@ -193,10 +193,10 @@ def make_td3_loss_dc_fn(
 def td3_policy_loss_fn(
     policy_params: Params,
     critic_params: Params,
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
     transitions: Transition,
-) -> jnp.ndarray:
+) -> jax.Array:
     """Policy loss function for TD3 agent.
 
     Args:
@@ -221,15 +221,15 @@ def td3_critic_loss_fn(
     critic_params: Params,
     target_policy_params: Params,
     target_critic_params: Params,
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
     policy_noise: float,
     noise_clip: float,
     reward_scaling: float,
     discount: float,
     transitions: Transition,
     key: RNGKey,
-) -> jnp.ndarray:
+) -> jax.Array:
     """Critics loss function for TD3 agent.
 
     Args:

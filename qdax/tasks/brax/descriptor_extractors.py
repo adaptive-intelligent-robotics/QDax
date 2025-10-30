@@ -8,7 +8,7 @@ from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.custom_types import AuroraExtraInfoNormalization, Descriptor
 
 
-def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
+def get_final_xy_position(data: QDTransition, mask: jax.Array) -> Descriptor:
     """Compute final xy position.
 
     This function suppose that state descriptor is the xy position, as it
@@ -25,7 +25,7 @@ def get_final_xy_position(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
     return descriptors.squeeze(axis=1)
 
 
-def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descriptor:
+def get_feet_contact_proportion(data: QDTransition, mask: jax.Array) -> Descriptor:
     """Compute feet contact time proportion.
 
     This function suppose that state descriptor is the feet contact, as it
@@ -42,7 +42,7 @@ def get_feet_contact_proportion(data: QDTransition, mask: jnp.ndarray) -> Descri
 
 
 def get_aurora_encoding(
-    observations: jnp.ndarray,
+    observations: jax.Array,
     aurora_extra_info: AuroraExtraInfoNormalization,
     model: flax.linen.Module,
 ) -> Descriptor:

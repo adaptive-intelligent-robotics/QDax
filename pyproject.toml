@@ -1,55 +1,84 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "qdax"
 dynamic = ["version"]
-description = "A Python Library for Quality-Diversity and NeuroEvolution"
+description = "QDax: Accelerated Quality-Diversity"
 readme = "README.md"
 authors = [
     {name = "AIRL and InstaDeep Ltd", email = "adaptive.intelligent.robotics@gmail.com"}
 ]
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Environment :: Console",
-    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-keywords = ["Quality-Diversity", "NeuroEvolution", "Reinforcement Learning", "JAX"]
-requires-python = ">=3.10"
+keywords = ["quality-diversity", "open-endedness", "neuroevolution", "reinforcement learning"]
+requires-python = ">=3.11"
 dependencies = [
-    "absl-py>=1.0.0",
-    "brax>=0.10.4",
-    "chex>=0.1.86",
-    "flax>=0.8.5",
-    "jax>=0.4.28",
-    "jaxlib>=0.4.28",
-    "jinja2>=3.1.4",
-    "jumanji>=0.3.1",
-    "numpy>=1.26.4",
+	"numpy>=2.3",
+    "jax>=0.8.0",
+    "flax>=0.12.0",
+    "distrax>=0.1.7",
     "optax>=0.1.9",
     "scikit-learn>=1.5.1",
     "scipy>=1.10.1",
-    "tensorflow-probability>=0.24.0",
+    "brax>=0.11.0",
 ]
 
 [project.optional-dependencies]
-cuda12 = ["jax[cuda12]>=0.4.28"]
+dev = [
+	"coverage",
+	"pre-commit",
+	"pytest",
+	"pytest-assume",
+	"mypy",
+]
+docs = [
+	"mkdocs",
+	"mkdocs-material",
+	"mkdocstrings[python]",
+	"mkdocs-jupyter",
+	"mkdocs-autorefs",
+]
+examples = [
+	"tqdm",
+	"ipykernel",
+	"ipywidgets",
+	"mediapy",
+	"requests",
+	"jumanji>=1.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/adaptive-intelligent-robotics/QDax"
-"Bug Tracker" = "https://github.com/adaptive-intelligent-robotics/QDax/issues"
 
-[tool.setuptools]
-packages = {find = {}}
+[tool.hatch.version]
+path = "qdax/__init__.py"
 
-[tool.setuptools.dynamic]
-version = {attr = "qdax.__version__"}
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+incremental = false
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = false
+allow_redefinition = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+strict_optional = true
+strict_equality = true
+explicit_package_bases = true
+follow_imports = "skip"
+ignore_missing_imports = true

@@ -8,7 +8,7 @@ from qdax.custom_types import RNGKey
 
 
 class UniformReplacementArchive(Archive):
-    """Stores jnp.ndarray and use a uniform replacement when the
+    """Stores jax.Array and use a uniform replacement when the
     maximum size is reached.
 
     Instead of replacing elements in a FIFO manner, like the Archive,
@@ -54,7 +54,7 @@ class UniformReplacementArchive(Archive):
 
         return archive.replace(key=key)  # type: ignore
 
-    def _single_insertion(self, state_descriptor: jnp.ndarray) -> Archive:
+    def _single_insertion(self, state_descriptor: jax.Array) -> Archive:
         """Insert a single element.
 
         If the archive is not full yet, the new element replaces a fake

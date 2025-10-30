@@ -20,7 +20,7 @@ from qdax.core.emitters.qpg_emitter import QualityPGConfig, QualityPGEmitter
 from qdax.core.emitters.repertoire_selectors.selector import Selector
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.custom_types import Reward, StateDescriptor
-from qdax.tasks.brax.v1.envs.base_env import QDEnv
+from qdax.tasks.brax.envs.base_env import QDEnv
 
 
 @dataclass

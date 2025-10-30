@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.baselines.sac_pbt import PBTSAC, PBTSacConfig
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.distributed_map_elites import DistributedMAPElites
@@ -19,7 +19,7 @@ def test_me_pbt_sac() -> None:
     devices = jax.devices("cpu")
     num_devices = len(devices)
 
-    env_name = "pointmaze"
+    env_name = "walker2d_uni"
     seed = 0
 
     # SAC config

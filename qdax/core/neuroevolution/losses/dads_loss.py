@@ -1,6 +1,7 @@
 import functools
 from typing import Callable, Tuple
 
+import jax
 import jax.numpy as jnp
 from brax.training.distribution import ParametricDistribution
 
@@ -17,21 +18,19 @@ from qdax.custom_types import (
 
 
 def make_dads_loss_fn(
-    policy_fn: Callable[[Params, Observation], jnp.ndarray],
-    critic_fn: Callable[[Params, Observation, Action], jnp.ndarray],
-    dynamics_fn: Callable[
-        [Params, StateDescriptor, Skill, StateDescriptor], jnp.ndarray
-    ],
+    policy_fn: Callable[[Params, Observation], jax.Array],
+    critic_fn: Callable[[Params, Observation, Action], jax.Array],
+    dynamics_fn: Callable[[Params, StateDescriptor, Skill, StateDescriptor], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     reward_scaling: float,
     discount: float,
     action_size: int,
     num_skills: int,
 ) -> Tuple[
-    Callable[[jnp.ndarray, Params, QDTransition, RNGKey], jnp.ndarray],
-    Callable[[Params, Params, jnp.ndarray, QDTransition, RNGKey], jnp.ndarray],
-    Callable[[Params, Params, Params, QDTransition, RNGKey], jnp.ndarray],
-    Callable[[Params, QDTransition, RNGKey], jnp.ndarray],
+    Callable[[jax.Array, Params, QDTransition, RNGKey], jax.Array],
+    Callable[[Params, Params, jax.Array, QDTransition, RNGKey], jax.Array],
+    Callable[[Params, Params, Params, QDTransition, RNGKey], jax.Array],
+    Callable[[Params, QDTransition, RNGKey], jax.Array],
 ]:
     """Creates the loss used in DADS.
 
@@ -70,12 +69,10 @@ def make_dads_loss_fn(
 
 def dads_dynamics_loss_fn(
     dynamics_params: Params,
-    dynamics_fn: Callable[
-        [Params, StateDescriptor, Skill, StateDescriptor], jnp.ndarray
-    ],
+    dynamics_fn: Callable[[Params, StateDescriptor, Skill, StateDescriptor], jax.Array],
     num_skills: int,
     transitions: QDTransition,
-) -> jnp.ndarray:
+) -> jax.Array:
     """Computes the loss used to train the dynamics network.
 
     Args:

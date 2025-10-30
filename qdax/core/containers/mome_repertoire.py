@@ -246,7 +246,7 @@ class MOMERepertoire(MapElitesRepertoire):
 
         def _add_one(
             carry: MOMERepertoire,
-            data: Tuple[Genotype, Descriptor, Fitness, ExtraScores, jnp.ndarray],
+            data: Tuple[Genotype, Descriptor, Fitness, ExtraScores, jax.Array],
         ) -> Tuple[MOMERepertoire, Any]:
             # unwrap data
             genotype, descriptors, fitness, extra_scores, index = data

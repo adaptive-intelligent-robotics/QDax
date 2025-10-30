@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import flax.linen as nn
+import jax
 import jax.numpy as jnp
 
 from qdax.core.neuroevolution.networks.networks import MLP
@@ -12,7 +13,7 @@ class Actor(nn.Module):
     hidden_layer_size: Tuple[int, ...]
 
     @nn.compact
-    def __call__(self, obs: Observation) -> jnp.ndarray:
+    def __call__(self, obs: Observation) -> jax.Array:
         return MLP(
             layer_sizes=self.hidden_layer_size + (2 * self.action_size,),
             kernel_init=nn.initializers.variance_scaling(1.0, "fan_in", "uniform"),
@@ -23,7 +24,7 @@ class Critic(nn.Module):
     hidden_layer_size: Tuple[int, ...]
 
     @nn.compact
-    def __call__(self, obs: Observation, action: Action) -> jnp.ndarray:
+    def __call__(self, obs: Observation, action: Action) -> jax.Array:
         input_ = jnp.concatenate([obs, action], axis=-1)
 
         kernel_init = nn.initializers.variance_scaling(1.0, "fan_in", "uniform")

@@ -7,7 +7,7 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.core.neuroevolution.buffers.buffer import QDTransition, Transition
 from qdax.core.neuroevolution.mdp_utils import generate_unroll
 from qdax.core.neuroevolution.networks.networks import MLP
@@ -86,7 +86,7 @@ def make_policy_network_play_step_fn_brax(
 
 def get_mask_from_transitions(
     data: Transition,
-) -> jnp.ndarray:
+) -> jax.Array:
     is_done = jnp.clip(jnp.cumsum(data.dones, axis=1), 0, 1)
     mask = jnp.roll(is_done, 1, axis=1)
     mask = mask.at[:, 0].set(0)
@@ -110,7 +110,7 @@ def scoring_function_brax_envs(
     play_step_fn: Callable[
         [EnvState, Params, RNGKey], Tuple[EnvState, Params, RNGKey, QDTransition]
     ],
-    descriptor_extractor: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extractor: Callable[[QDTransition, jax.Array], Descriptor],
 ) -> Tuple[Fitness, Descriptor, ExtraScores]:
     """Evaluates policies contained in policies_params in parallel.
     The play_reset_fn function allows for a more general scoring_function that can be
@@ -165,7 +165,7 @@ def scoring_function_brax_envs(
 def create_brax_scoring_fn(
     env: brax.envs.Env,
     policy_network: nn.Module,
-    descriptor_extraction_fn: Callable[[QDTransition, jnp.ndarray], Descriptor],
+    descriptor_extraction_fn: Callable[[QDTransition, jax.Array], Descriptor],
     key: RNGKey,
     play_step_fn: Optional[
         Callable[

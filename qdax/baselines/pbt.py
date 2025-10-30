@@ -84,7 +84,7 @@ class PBT:
     def update_states_and_buffer(
         self,
         key: RNGKey,
-        population_returns: jnp.ndarray,
+        population_returns: jax.Array,
         training_state: PBTTrainingState,
         replay_buffer: ReplayBuffer,
     ) -> Tuple[PBTTrainingState, ReplayBuffer]:
@@ -126,7 +126,7 @@ class PBT:
     def update_states_and_buffer_pmap(
         self,
         key: RNGKey,
-        population_returns: jnp.ndarray,
+        population_returns: jax.Array,
         training_state: PBTTrainingState,
         replay_buffer: ReplayBuffer,
     ) -> Tuple[PBTTrainingState, ReplayBuffer]:

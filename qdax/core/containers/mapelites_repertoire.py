@@ -76,7 +76,7 @@ def compute_euclidean_centroids(
     grid_shape: Tuple[int, ...],
     minval: Union[float, List[float]],
     maxval: Union[float, List[float]],
-) -> jnp.ndarray:
+) -> jax.Array:
     """Compute centroids for square Euclidean tessellation.
 
     Args:
@@ -109,8 +109,8 @@ def compute_euclidean_centroids(
 
 
 def get_cells_indices(
-    batch_of_descriptors: jnp.ndarray, centroids: jnp.ndarray
-) -> jnp.ndarray:
+    batch_of_descriptors: jax.Array, centroids: jax.Array
+) -> jax.Array:
     """
     Returns the array of cells indices for a batch of descriptors
     given the centroids of the repertoire.
@@ -125,9 +125,7 @@ def get_cells_indices(
             in the batch with shape (batch_size,)
     """
 
-    def _get_cells_indices(
-        descriptors: jnp.ndarray, centroids: jnp.ndarray
-    ) -> jnp.ndarray:
+    def _get_cells_indices(descriptors: jax.Array, centroids: jax.Array) -> jax.Array:
         """Set_of_descriptors of shape (1, num_descriptors)
         centroids of shape (num_centroids, num_descriptors)
         """

@@ -79,9 +79,7 @@ class MAPElites:
 
         # score initial genotypes
         key, subkey = jax.random.split(key)
-        (fitnesses, descriptors, extra_scores) = self._scoring_function(
-            genotypes, subkey
-        )
+        fitnesses, descriptors, extra_scores = self._scoring_function(genotypes, subkey)
 
         repertoire, emitter_state, metrics = self.init_ask_tell(
             genotypes=genotypes,

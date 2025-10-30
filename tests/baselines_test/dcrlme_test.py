@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.dcrl_me_emitter import DCRLMEConfig, DCRLMEEmitter
 from qdax.core.emitters.mutation_operators import isoline_variation
@@ -13,9 +13,9 @@ from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import DCRLTransition
 from qdax.core.neuroevolution.networks.networks import MLP, MLPDC
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax.v1 import descriptor_extractor
-from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs
-from qdax.tasks.brax.v1.wrappers.reward_wrappers import (
+from qdax.tasks.brax import descriptor_extractor
+from qdax.tasks.brax.env_creators import scoring_function_brax_envs
+from qdax.tasks.brax.wrappers.reward_wrappers import (
     ClipRewardWrapper,
     OffsetRewardWrapper,
 )
@@ -71,10 +71,7 @@ def test_dcrlme() -> None:
     env = OffsetRewardWrapper(
         env, offset=environments.reward_offset[env_name]
     )  # apply reward offset as DCRL needs positive rewards
-    env = ClipRewardWrapper(
-        env,
-        clip_min=0.0,
-    )  # apply reward clip as DCRL needs positive rewards
+    env = ClipRewardWrapper(env, clip_min=0.0)
 
     reset_fn = jax.jit(env.reset)
 

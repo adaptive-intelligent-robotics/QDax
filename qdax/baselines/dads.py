@@ -40,7 +40,7 @@ class DadsTrainingState(TrainingState):
     dynamics_optimizer_state: optax.OptState
     dynamics_params: Params
     key: RNGKey
-    steps: jnp.ndarray
+    steps: jax.Array
     normalization_running_stats: RunningMeanStdState
 
 

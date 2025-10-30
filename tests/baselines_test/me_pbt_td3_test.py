@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.baselines.td3_pbt import PBTTD3, PBTTD3Config
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.distributed_map_elites import DistributedMAPElites
@@ -19,7 +19,7 @@ def test_me_pbt_td3() -> None:
     devices = jax.devices("cpu")
     num_devices = len(devices)
 
-    env_name = "pointmaze"
+    env_name = "walker2d_uni"
     seed = 0
 
     # TD3 config

@@ -31,15 +31,15 @@ class CMAESState(flax.struct.PyTreeNode):
         invsqrt_cov: latest inv sqrt value of the cov matrix.
     """
 
-    mean: jnp.ndarray
-    cov_matrix: jnp.ndarray
+    mean: jax.Array
+    cov_matrix: jax.Array
     num_updates: int
     sigma: float
-    p_c: jnp.ndarray
-    p_s: jnp.ndarray
+    p_c: jax.Array
+    p_s: jax.Array
     eigen_updates: int
-    eigenvalues: jnp.ndarray
-    invsqrt_cov: jnp.ndarray
+    eigenvalues: jax.Array
+    invsqrt_cov: jax.Array
 
 
 class CMAES:
@@ -54,7 +54,7 @@ class CMAES:
         fitness_function: Callable[[Genotype], Fitness],
         num_best: Optional[int] = None,
         init_sigma: float = 1e-3,
-        mean_init: Optional[jnp.ndarray] = None,
+        mean_init: Optional[jax.Array] = None,
         bias_weights: bool = True,
         delay_eigen_decomposition: bool = False,
     ):
@@ -217,7 +217,7 @@ class CMAES:
         self,
         cmaes_state: CMAESState,
         sorted_candidates: Genotype,
-        weights: jnp.ndarray,
+        weights: jax.Array,
     ) -> CMAESState:
         """Updates the state when candidates have already been
         sorted and selected.
@@ -248,8 +248,8 @@ class CMAES:
         mean = weights @ sorted_candidates
 
         def update_eigen(
-            operand: Tuple[jnp.ndarray, int]
-        ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
+            operand: Tuple[jax.Array, int]
+        ) -> Tuple[int, jax.Array, jax.Array]:
 
             # unpack data
             cov, num_updates = operand

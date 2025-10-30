@@ -2,37 +2,37 @@
 
 from __future__ import annotations
 
-from typing import Dict, Generic, TypeVar, Union
+from typing import Any, Dict, Generic, TypeVar, Union
 
 import flax
 import jax
-import jax.numpy as jnp
-from chex import ArrayTree
 from typing_extensions import TypeAlias
 
+PyTree: TypeAlias = Any
+
 # MDP types
-Observation: TypeAlias = jnp.ndarray
-Action: TypeAlias = jnp.ndarray
-Reward: TypeAlias = jnp.ndarray
-Done: TypeAlias = jnp.ndarray
-EnvState: TypeAlias = ArrayTree
-Params: TypeAlias = ArrayTree
+Observation: TypeAlias = jax.Array
+Action: TypeAlias = jax.Array
+Reward: TypeAlias = jax.Array
+Done: TypeAlias = jax.Array
+EnvState: TypeAlias = PyTree
+Params: TypeAlias = PyTree
 
 # Evolution types
-StateDescriptor: TypeAlias = jnp.ndarray
-Fitness: TypeAlias = jnp.ndarray
-Genotype: TypeAlias = ArrayTree
-Descriptor: TypeAlias = jnp.ndarray
-Centroid: TypeAlias = jnp.ndarray
-Spread: TypeAlias = jnp.ndarray
-Gradient: TypeAlias = jnp.ndarray
+StateDescriptor: TypeAlias = jax.Array
+Fitness: TypeAlias = jax.Array
+Genotype: TypeAlias = PyTree
+Descriptor: TypeAlias = jax.Array
+Centroid: TypeAlias = jax.Array
+Spread: TypeAlias = jax.Array
+Gradient: TypeAlias = jax.Array
 
-Skill: TypeAlias = jnp.ndarray
+Skill: TypeAlias = jax.Array
 
-ExtraScores: TypeAlias = Dict[str, ArrayTree]
+ExtraScores: TypeAlias = Dict[str, PyTree]
 
 # Pareto fronts
-T = TypeVar("T", bound=Union[Fitness, Genotype, Descriptor, jnp.ndarray])
+T = TypeVar("T", bound=Union[Fitness, Genotype, Descriptor, jax.Array])
 
 
 class ParetoFront(Generic[T]):
@@ -40,11 +40,11 @@ class ParetoFront(Generic[T]):
         super().__init__()
 
 
-Mask: TypeAlias = jnp.ndarray
+Mask: TypeAlias = jax.Array
 
 # Others
 RNGKey: TypeAlias = jax.Array
-Metrics: TypeAlias = Dict[str, jnp.ndarray]
+Metrics: TypeAlias = Dict[str, jax.Array]
 
 
 class AuroraExtraInfo(flax.struct.PyTreeNode):
@@ -69,15 +69,15 @@ class AuroraExtraInfoNormalization(AuroraExtraInfo):
         std_observations: the std of observations
     """
 
-    mean_observations: jnp.ndarray
-    std_observations: jnp.ndarray
+    mean_observations: jax.Array
+    std_observations: jax.Array
 
     @classmethod
     def create(
         cls,
         model_params: Params,
-        mean_observations: jnp.ndarray,
-        std_observations: jnp.ndarray,
+        mean_observations: jax.Array,
+        std_observations: jax.Array,
     ) -> AuroraExtraInfoNormalization:
         return cls(
             model_params=model_params,

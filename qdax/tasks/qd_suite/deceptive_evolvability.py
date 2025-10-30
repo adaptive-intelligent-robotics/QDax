@@ -9,9 +9,9 @@ from qdax.tasks.qd_suite.qd_suite_task import QDSuiteTask
 
 def multivariate_normal(
     params: Genotype,
-    mu: jnp.ndarray,
+    mu: jax.Array,
     sigma: float,
-) -> jnp.ndarray:
+) -> jax.Array:
     """
     Compute the un-normalised multivariate normal density.
     """

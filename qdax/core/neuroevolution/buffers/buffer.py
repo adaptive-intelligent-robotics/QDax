@@ -22,7 +22,7 @@ class Transition(flax.struct.PyTreeNode):
     next_obs: Observation
     rewards: Reward
     dones: Done
-    truncations: jnp.ndarray  # Indicates if an episode has reached max time step
+    truncations: jax.Array  # Indicates if an episode has reached max time step
     actions: Action
 
     @property
@@ -51,10 +51,10 @@ class Transition(flax.struct.PyTreeNode):
         flatten_dim = 2 * self.observation_dim + self.action_dim + 3
         return flatten_dim
 
-    def flatten(self) -> jnp.ndarray:
+    def flatten(self) -> jax.Array:
         """
         Returns:
-            a jnp.ndarray that corresponds to the flattened transition.
+            a jax.Array that corresponds to the flattened transition.
         """
         flatten_transition = jnp.concatenate(
             [
@@ -72,14 +72,14 @@ class Transition(flax.struct.PyTreeNode):
     @classmethod
     def from_flatten(
         cls,
-        flattened_transition: jnp.ndarray,
+        flattened_transition: jax.Array,
         transition: Transition,
     ) -> Transition:
         """
-        Creates a transition from a flattened transition in a jnp.ndarray.
+        Creates a transition from a flattened transition in a jax.Array.
 
         Args:
-            flattened_transition: flattened transition in a jnp.ndarray of shape
+            flattened_transition: flattened transition in a jax.Array of shape
                 (batch_size, flatten_dim)
             transition: a transition object (might be a dummy one) to
                 get the dimensions right
@@ -164,10 +164,10 @@ class QDTransition(Transition):
         )
         return flatten_dim
 
-    def flatten(self) -> jnp.ndarray:
+    def flatten(self) -> jax.Array:
         """
         Returns:
-            a jnp.ndarray that corresponds to the flattened transition.
+            a jax.Array that corresponds to the flattened transition.
         """
         flatten_transition = jnp.concatenate(
             [
@@ -187,14 +187,14 @@ class QDTransition(Transition):
     @classmethod
     def from_flatten(
         cls,
-        flattened_transition: jnp.ndarray,
+        flattened_transition: jax.Array,
         transition: QDTransition,
     ) -> QDTransition:
         """
-        Creates a transition from a flattened transition in a jnp.ndarray.
+        Creates a transition from a flattened transition in a jax.Array.
 
         Args:
-            flattened_transition: flattened transition in a jnp.ndarray of shape
+            flattened_transition: flattened transition in a jax.Array of shape
                 (batch_size, flatten_dim)
             transition: a transition object (might be a dummy one) to
                 get the dimensions right
@@ -296,10 +296,10 @@ class DCRLTransition(QDTransition):
         )
         return flatten_dim
 
-    def flatten(self) -> jnp.ndarray:
+    def flatten(self) -> jax.Array:
         """
         Returns:
-            a jnp.ndarray that corresponds to the flattened transition.
+            a jax.Array that corresponds to the flattened transition.
         """
         flatten_transition = jnp.concatenate(
             [
@@ -321,13 +321,13 @@ class DCRLTransition(QDTransition):
     @classmethod
     def from_flatten(
         cls,
-        flattened_transition: jnp.ndarray,
+        flattened_transition: jax.Array,
         transition: DCRLTransition,
     ) -> DCRLTransition:
         """
-        Creates a transition from a flattened transition in a jnp.ndarray.
+        Creates a transition from a flattened transition in a jax.Array.
         Args:
-            flattened_transition: flattened transition in a jnp.ndarray of shape
+            flattened_transition: flattened transition in a jax.Array of shape
                 (batch_size, flatten_dim)
             transition: a transition object (might be a dummy one) to
                 get the dimensions right
@@ -423,12 +423,12 @@ class ReplayBuffer(flax.struct.PyTreeNode):
     data shape: (buffer_size, transition_concat_shape)
     """
 
-    data: jnp.ndarray
+    data: jax.Array
     buffer_size: int = flax.struct.field(pytree_node=False)
     transition: Transition
 
-    current_position: jnp.ndarray = flax.struct.field()
-    current_size: jnp.ndarray = flax.struct.field()
+    current_position: jax.Array = flax.struct.field()
+    current_size: jax.Array = flax.struct.field()
 
     @classmethod
     def init(

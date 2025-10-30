@@ -1,5 +1,6 @@
 from typing import Callable, Optional
 
+import jax
 import jax.numpy as jnp
 from brax.envs.base import Env, State, Wrapper
 
@@ -13,7 +14,7 @@ class FixedInitialStateWrapper(Wrapper):
         self,
         env: Env,
         base_env_name: str,
-        get_obs_fn: Optional[Callable[[State, jnp.ndarray], jnp.ndarray]] = None,
+        get_obs_fn: Optional[Callable[[State, jax.Array], jax.Array]] = None,
     ):
         env_get_obs = {
             "hopper": lambda pipeline_state, action: self._get_obs(pipeline_state),
@@ -36,7 +37,7 @@ class FixedInitialStateWrapper(Wrapper):
                 f"This wrapper does not support {base_env_name} yet."
             )
 
-    def reset(self, rng: jnp.ndarray) -> State:
+    def reset(self, rng: jax.Array) -> State:
         """Reset the state of the environment with a deterministic and fixed
         initial state.
 

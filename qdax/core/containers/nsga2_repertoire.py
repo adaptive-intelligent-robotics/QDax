@@ -19,8 +19,8 @@ class NSGA2Repertoire(GARepertoire):
     """
 
     def _compute_crowding_distances(
-        self, fitnesses: Fitness, mask: jnp.ndarray
-    ) -> jnp.ndarray:
+        self, fitnesses: Fitness, mask: jax.Array
+    ) -> jax.Array:
         """Compute crowding distances.
 
         The crowding distance is the Manhatten Distance in the objective
@@ -124,8 +124,8 @@ class NSGA2Repertoire(GARepertoire):
         num_candidates = first_leaf.shape[0]
 
         def compute_current_front(
-            val: Tuple[jnp.ndarray, jnp.ndarray]
-        ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+            val: Tuple[jax.Array, jax.Array]
+        ) -> Tuple[jax.Array, jax.Array]:
             """Body function for the while loop. Computes the successive
             pareto fronts in the data.
 
@@ -152,7 +152,7 @@ class NSGA2Repertoire(GARepertoire):
             # Update front & number of solutions
             return to_keep_index, front_index
 
-        def condition_fn_1(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
+        def condition_fn_1(val: Tuple[jax.Array, jax.Array]) -> bool:
             """Gives condition to stop the while loop. Makes sure the
             the number of solution is smaller than the maximum size
             of the population.
@@ -192,7 +192,7 @@ class NSGA2Repertoire(GARepertoire):
         crowding_distances = crowding_distances * (front_index)
         highest_dist = jnp.argsort(crowding_distances)
 
-        def add_to_front(val: Tuple[jnp.ndarray, float]) -> Tuple[jnp.ndarray, Any]:
+        def add_to_front(val: Tuple[jax.Array, float]) -> Tuple[jax.Array, Any]:
             """Add the individual with a given distance to the front.
             A index is incremented to get the highest from the non
             selected individuals.
@@ -212,7 +212,7 @@ class NSGA2Repertoire(GARepertoire):
             val = front_index, num
             return val
 
-        def condition_fn_2(val: Tuple[jnp.ndarray, jnp.ndarray]) -> bool:
+        def condition_fn_2(val: Tuple[jax.Array, jax.Array]) -> bool:
             """Gives condition to stop the while loop. Makes sure the
             the number of solution is smaller than the maximum size
             of the population."""

@@ -1,5 +1,5 @@
 <div align="center">
-<img src="docs/img/qdax_logo.png" alt="qdax_logo" width="140"></img>
+    <img src="docs/img/qdax_logo.png" alt="qdax_logo" width="140"></img>
 </div>
 
 
@@ -20,25 +20,36 @@ QDax has been developed as a research framework: it is flexible and easy to exte
 
 
 ## Installation
-QDax is available on PyPI and can be installed with:
+
+You will need Python 3.11 or later, and a working JAX installation installed in a virtual environment.
+
+Then, install QDax from PyPi with uv:
 ```bash
-pip install qdax
+uv pip install QDax
 ```
 
-To install QDax with CUDA 12 support, use:
+or with `pip`:
 ```bash
-pip install qdax[cuda12]
+pip install QDax
 ```
 
-Alternatively, the latest commit of QDax can be installed directly from source with:
-```bash
-pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main
-```
-Installing QDax via ```pip``` installs a CPU-only version of JAX by default. To use QDax with NVidia GPUs, you must first install [CUDA, CuDNN, and JAX with GPU support](https://github.com/google/jax#installation).
+### Build the documentation
 
-However, we also provide and recommend using either Docker or conda environments to use the repository which by default provides GPU support. Detailed steps to do so are available in the [documentation](https://qdax.readthedocs.io/en/latest/installation/).
+To build the documentation:
+
+```bash
+pip install .[docs]
+mkdocs build
+```
+
+For local preview with live reload:
+
+```bash
+mkdocs serve
+```
 
 ## Basic API Usage
+
 For a full and interactive example to see how QDax works, we recommend starting with the tutorial-style [Colab notebook](./examples/mapelites.ipynb). It is an example of the MAP-Elites algorithm used to evolve a population of controllers on a chosen Brax environment (Walker by default).
 
 However, a summary of the main API usage is provided below:
@@ -120,6 +131,7 @@ update_fn = jax.jit(map_elites.update)
 # Run MAP-Elites loop
 for i in range(num_iterations):
     key, subkey = jax.random.split(key)
+
     (repertoire, emitter_state, metrics,) = update_fn(
         repertoire,
         emitter_state,
@@ -132,12 +144,13 @@ repertoire.genotypes, repertoire.fitnesses, repertoire.descriptors
 
 
 ## QDax core algorithms
-QDax currently supports the following algorithms:
 
+QDax currently supports the following algorithms:
 
 | Algorithm                                                                                                                     | Example                                                                                                                                                                                         |
 |-------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [MAP-Elites](https://arxiv.org/abs/1504.04909)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)  |
+| [Dominated Novelty Search](https://arxiv.org/abs/2502.00593)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/dns.ipynb)  |
 | [AURORA](https://arxiv.org/abs/2106.05648)                                                                                | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/aurora.ipynb)  |
 | [CVT MAP-Elites](https://arxiv.org/abs/1610.05729)                                                                            | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/mapelites.ipynb)  |
 | [Policy Gradient Assisted MAP-Elites (PGA-ME)](https://hal.archives-ouvertes.fr/hal-03135723v2/file/PGA_MAP_Elites_GECCO.pdf) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/pgame.ipynb)      |
@@ -153,6 +166,7 @@ QDax currently supports the following algorithms:
 
 
 ## QDax baseline algorithms
+
 The QDax library also provides implementations for some useful baseline algorithms:
 
 | Algorithm  | Example |
@@ -164,57 +178,57 @@ The QDax library also provides implementations for some useful baseline algorith
 | [SPEA2](https://www.semanticscholar.org/paper/SPEA2%3A-Improving-the-strength-pareto-evolutionary-Zitzler-Laumanns/b13724cb54ae4171916f3f969d304b9e9752a57f) | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/nsga2_spea2.ipynb) |
 | [Population Based Training (PBT)](https://arxiv.org/abs/1711.09846)                                                           | [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/adaptive-intelligent-robotics/QDax/blob/main/examples/sac_pbt.ipynb)    |
 
+
 ## QDax Tasks
+
 The QDax library also provides numerous implementations for several standard Quality-Diversity tasks.
 
-All those implementations, and their descriptions are provided in the [tasks directory](./qdax/tasks).
+All those implementations, and their descriptions are provided in the [Tasks page](https://qdax.readthedocs.io/en/latest/api_documentation/tasks/).
+
 
 ## Contributing
+
 Issues and contributions are welcome. Please refer to the [contribution guide](https://qdax.readthedocs.io/en/latest/guides/CONTRIBUTING/) in the documentation for more details.
 
-## Related Projects
-- [EvoJAX: Hardware-Accelerated Neuroevolution](https://github.com/google/evojax). EvoJAX is a scalable, general purpose, hardware-accelerated neuroevolution toolkit. [Paper](https://arxiv.org/abs/2202.05008)
-- [evosax: JAX-Based Evolution Strategies](https://github.com/RobertTLange/evosax)
 
 ## Citing QDax
+
 If you use QDax in your research and want to cite it in your work, please use:
 ```
 @article{chalumeau2024qdax,
-  title={Qdax: A library for quality-diversity and population-based algorithms with hardware acceleration},
-  author={Chalumeau, Felix and Lim, Bryan and Boige, Raphael and Allard, Maxime and Grillotti, Luca and Flageat, Manon and Mac{\'e}, Valentin and Richard, Guillaume and Flajolet, Arthur and Pierrot, Thomas and others},
-  journal={Journal of Machine Learning Research},
-  volume={25},
-  number={108},
-  pages={1--16},
-  year={2024}
+    title={Qdax: A library for quality-diversity and population-based algorithms with hardware acceleration},
+    author={Chalumeau, Felix and Lim, Bryan and Boige, Raphael and Allard, Maxime and Grillotti, Luca and Flageat, Manon and Mac{\'e}, Valentin and Richard, Guillaume and Flajolet, Arthur and Pierrot, Thomas and others},
+    journal={Journal of Machine Learning Research},
+    volume={25},
+    number={108},
+    pages={1--16},
+    year={2024}
 }
 ```
+
 
 ## Contributors
 
 QDax was developed and is maintained by the [Adaptive & Intelligent Robotics Lab (AIRL)](https://www.imperial.ac.uk/adaptive-intelligent-robotics/) and [InstaDeep](https://www.instadeep.com/).
 
 <div align="center">
-<img align="center" src="docs/img/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/img/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
+    <img align="center" src="docs/img/AIRL_logo.png" alt="AIRL_Logo" width="220"/> <img align="center" src="docs/img/instadeep_logo.png" alt="InstaDeep_Logo" width="220"/>
 </div>
 
 <div align="center">
-<a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/manon-but-yes" title="Manon Flageat"><img src="https://github.com/manon-but-yes.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/maxencefaldor" title="Maxence Faldor"><img src="https://github.com/maxencefaldor.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/hannah-jan" title="Hannah Janmohamed"><img src="https://github.com/hannah-jan.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/LisaCoiffard" title="Lisa Coiffard"><img src="https://github.com/LisaCoiffard.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/TemplierPaul" title="Paul Templier"><img src="https://github.com/TemplierPaul.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/MartinMao2023" title="Runjun Mao"><img src="https://github.com/MartinMao2023.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/konstantinosmitsides" title="Konstantinos Mitsides"><img src="https://github.com/konstantinosmitsides.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/felixchalumeau" title="Felix Chalumeau"><img src="https://github.com/felixchalumeau.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/ranzenTom" title="Thomas Pierrot"><img src="https://github.com/ranzenTom.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/Egiob" title="Raphael Boige"><img src="https://github.com/Egiob.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/valentinmace" title="Valentin Mace"><img src="https://github.com/valentinmace.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/GRichard513" title="Guillaume Richard"><img src="https://github.com/GRichard513.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/flajolet" title="Arthur Flajolet"><img src="https://github.com/flajolet.png" height="auto" width="50" style="border-radius:50%"></a>
-<a href="https://github.com/remidebette" title="Rémi Debette"><img src="https://github.com/remidebette.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/limbryan" title="Bryan Lim"><img src="https://github.com/limbryan.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/maxiallard" title="Maxime Allard"><img src="https://github.com/maxiallard.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/Lookatator" title="Luca Grilloti"><img src="https://github.com/Lookatator.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/manon-but-yes" title="Manon Flageat"><img src="https://github.com/manon-but-yes.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/maxencefaldor" title="Maxence Faldor"><img src="https://github.com/maxencefaldor.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/hannah-jan" title="Hannah Janmohamed"><img src="https://github.com/hannah-jan.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/LisaCoiffard" title="Lisa Coiffard"><img src="https://github.com/LisaCoiffard.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/Aneoshun" title="Antoine Cully"><img src="https://github.com/Aneoshun.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/felixchalumeau" title="Felix Chalumeau"><img src="https://github.com/felixchalumeau.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/ranzenTom" title="Thomas Pierrot"><img src="https://github.com/ranzenTom.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/Egiob" title="Raphael Boige"><img src="https://github.com/Egiob.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/valentinmace" title="Valentin Mace"><img src="https://github.com/valentinmace.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/GRichard513" title="Guillaume Richard"><img src="https://github.com/GRichard513.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/flajolet" title="Arthur Flajolet"><img src="https://github.com/flajolet.png" height="auto" width="50" style="border-radius:50%"></a>
+    <a href="https://github.com/remidebette" title="Rémi Debette"><img src="https://github.com/remidebette.png" height="auto" width="50" style="border-radius:50%"></a>
 </div>

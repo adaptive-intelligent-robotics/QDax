@@ -50,7 +50,7 @@ class TrajectoryBuffer(struct.PyTreeNode):
             [0. 0. 0.] # All timestep counters have been reset
     """
 
-    data: jnp.ndarray
+    data: jax.Array
     buffer_size: int = struct.field(pytree_node=False)
     transition: Transition
 
@@ -58,13 +58,13 @@ class TrajectoryBuffer(struct.PyTreeNode):
     env_batch_size: int = struct.field(pytree_node=False)
     num_trajectories: int = struct.field(pytree_node=False)
 
-    current_position: jnp.ndarray = struct.field()
-    current_size: jnp.ndarray = struct.field()
-    trajectory_positions: jnp.ndarray = struct.field()
-    timestep_positions: jnp.ndarray = struct.field()
-    episodic_data: jnp.ndarray = struct.field()
-    current_episodic_data_size: jnp.ndarray = struct.field()
-    returns: jnp.ndarray = struct.field()
+    current_position: jax.Array = struct.field()
+    current_size: jax.Array = struct.field()
+    trajectory_positions: jax.Array = struct.field()
+    timestep_positions: jax.Array = struct.field()
+    episodic_data: jax.Array = struct.field()
+    current_episodic_data_size: jax.Array = struct.field()
+    returns: jax.Array = struct.field()
 
     @classmethod
     def init(  # type: ignore
@@ -177,7 +177,7 @@ class TrajectoryBuffer(struct.PyTreeNode):
         """
 
         def insert_one_transition(
-            replay_buffer: TrajectoryBuffer, flattened_transitions: jnp.ndarray
+            replay_buffer: TrajectoryBuffer, flattened_transitions: jax.Array
         ) -> Tuple[TrajectoryBuffer, Any]:
             """
             Insert a batch (one step over all envs) of transitions in the buffer.

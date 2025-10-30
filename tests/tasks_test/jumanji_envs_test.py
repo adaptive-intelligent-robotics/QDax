@@ -34,14 +34,14 @@ def test_jumanji_utils() -> None:
     state, _timestep = jax.jit(env.reset)(key)
 
     # Interact with the (jit-able) environment
-    action = env.action_spec().generate_value()  # Action selection (dummy value here)
+    action = env.action_spec.generate_value()  # Action selection (dummy value here)
     state, _timestep = jax.jit(env.step)(state, action)
 
     # Init a random key
     key = jax.random.key(seed)
 
     # get number of actions
-    num_actions = env.action_spec().maximum + 1
+    num_actions = env.action_spec.maximum + 1
 
     policy_layer_sizes = policy_hidden_layer_sizes + (num_actions,)
     policy_network = MLP(
@@ -73,7 +73,7 @@ def test_jumanji_utils() -> None:
     keys = jax.random.split(subkey, num=batch_size)
 
     # compute observation size from observation spec
-    obs_spec = env.observation_spec()
+    obs_spec = env.observation_spec
     observation_size = int(
         np.prod(obs_spec.grid.shape)
         + np.prod(obs_spec.step_count.shape)
@@ -92,7 +92,7 @@ def test_jumanji_utils() -> None:
 
     # Prepare the scoring function
     def descriptor_extraction(
-        data: QDTransition, mask: jnp.ndarray, linear_projection: jnp.ndarray
+        data: QDTransition, mask: jax.Array, linear_projection: jax.Array
     ) -> Descriptor:
         """Extract a descriptor from a trajectory.
 

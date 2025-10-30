@@ -47,7 +47,7 @@ class QDSuiteTask(abc.ABC):
     @abc.abstractmethod
     def get_min_max_descriptor(
         self,
-    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
+    ) -> Tuple[Union[float, jax.Array], Union[float, jax.Array]]:
         """
         Get the minimum and maximum descriptor values.
 
@@ -58,7 +58,7 @@ class QDSuiteTask(abc.ABC):
 
     def get_bounded_min_max_descriptor(
         self,
-    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
+    ) -> Tuple[Union[float, jax.Array], Union[float, jax.Array]]:
         """
         Returns:
             The minimum and maximum descriptor assuming that
@@ -75,7 +75,7 @@ class QDSuiteTask(abc.ABC):
     @abc.abstractmethod
     def get_min_max_params(
         self,
-    ) -> Tuple[Union[float, jnp.ndarray], Union[float, jnp.ndarray]]:
+    ) -> Tuple[Union[float, jax.Array], Union[float, jax.Array]]:
         """
         Get the minimum and maximum parameter values.
 

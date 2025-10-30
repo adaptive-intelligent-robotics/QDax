@@ -1,8 +1,9 @@
 from typing import Optional, Tuple
 
+import distrax
 import flax.linen as nn
+import jax
 import jax.numpy as jnp
-import tensorflow_probability.substrates.jax as tfp
 from jax.nn import initializers
 
 from qdax.core.neuroevolution.networks.networks import MLP
@@ -17,7 +18,7 @@ class GaussianMixture(nn.Module):
     initializer: Optional[initializers.Initializer] = None
 
     @nn.compact
-    def __call__(self, inputs: jnp.ndarray) -> tfp.distributions.Distribution:
+    def __call__(self, inputs: jax.Array) -> distrax.Distribution:
         if self.initializer is None:
             init = initializers.variance_scaling(1.0, "fan_in", "uniform")
         else:
@@ -39,11 +40,9 @@ class GaussianMixture(nn.Module):
         else:
             scales = jnp.ones_like(locs)
 
-        components = tfp.distributions.MultivariateNormalDiag(
-            loc=locs, scale_diag=scales
-        )
-        mixture = tfp.distributions.Categorical(logits=logits)
-        return tfp.distributions.MixtureSameFamily(
+        components = distrax.MultivariateNormalDiag(loc=locs, scale_diag=scales)
+        mixture = distrax.Categorical(logits=logits)
+        return distrax.MixtureSameFamily(
             mixture_distribution=mixture, components_distribution=components
         )
 
@@ -58,7 +57,7 @@ class DynamicsNetwork(nn.Module):
     @nn.compact
     def __call__(
         self, obs: StateDescriptor, skill: Skill, target: StateDescriptor
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         if self.initializer is None:
             init = initializers.variance_scaling(1.0, "fan_in", "uniform")
         else:
@@ -91,7 +90,7 @@ class Actor(nn.Module):
     hidden_layer_sizes: Tuple[int, ...]
 
     @nn.compact
-    def __call__(self, obs: Observation) -> jnp.ndarray:
+    def __call__(self, obs: Observation) -> jax.Array:
         init = initializers.variance_scaling(1.0, "fan_in", "uniform")
 
         return MLP(
@@ -105,7 +104,7 @@ class Critic(nn.Module):
     hidden_layer_sizes: Tuple[int, ...]
 
     @nn.compact
-    def __call__(self, obs: Observation, action: Action) -> jnp.ndarray:
+    def __call__(self, obs: Observation, action: Action) -> jax.Array:
         init = initializers.variance_scaling(1.0, "fan_in", "uniform")
         input_ = jnp.concatenate([obs, action], axis=-1)
 

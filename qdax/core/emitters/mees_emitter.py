@@ -32,9 +32,9 @@ class NoveltyArchive(flax.struct.PyTreeNode):
         position: current position in the archive
     """
 
-    archive: jnp.ndarray
+    archive: jax.Array
     size: int = flax.struct.field(pytree_node=False)
-    position: jnp.ndarray = flax.struct.field()
+    position: jax.Array = flax.struct.field()
 
     @classmethod
     def init(
@@ -72,7 +72,7 @@ class NoveltyArchive(flax.struct.PyTreeNode):
         self,
         descriptors: Descriptor,
         num_nearest_neighbors: int,
-    ) -> jnp.ndarray:
+    ) -> jax.Array:
         """Compute the novelty of the given descriptors as the average distance
         to the k nearest neighbours in the archive.
 
@@ -84,7 +84,7 @@ class NoveltyArchive(flax.struct.PyTreeNode):
         """
 
         # Compute all distances with archive content
-        def distance(x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
+        def distance(x: jax.Array, y: jax.Array) -> jax.Array:
             return jnp.sqrt(jnp.sum(jnp.square(x - y)))
 
         distances = jax.vmap(
@@ -168,7 +168,7 @@ class MEESEmitterState(EmitterState):
     novelty_archive: NoveltyArchive
     last_updated_genotypes: Genotype
     last_updated_fitnesses: Fitness
-    last_updated_position: jnp.ndarray
+    last_updated_position: jax.Array
     key: RNGKey
 
 
@@ -298,13 +298,13 @@ class MEESEmitter(Emitter):
     ) -> Tuple[Genotype, ExtraScores]:
         """Return the offspring generated through gradient update.
 
-        Params:
-            repertoire: the MAP-Elites repertoire to sample from
-            emitter_state
-            key: a jax PRNG random key
+        Args:
+            repertoire: The MAP-Elites repertoire to sample from.
+            emitter_state: The current emitter state.
+            key: A JAX PRNG random key.
 
         Returns:
-            a new gradient offspring
+            The next gradient-based offspring and empty extra scores.
         """
 
         return emitter_state.offspring, {}
@@ -419,7 +419,7 @@ class MEESEmitter(Emitter):
         parent: Genotype,
         optimizer_state: optax.OptState,
         key: RNGKey,
-        scores_fn: Callable[[Fitness, Descriptor], jnp.ndarray],
+        scores_fn: Callable[[Fitness, Descriptor], jax.Array],
     ) -> Tuple[Genotype, optax.OptState]:
         """Main es component, given a parent and a way to infer the score from
         the fitnesses and descriptors of its es-samples, return its
@@ -687,7 +687,7 @@ class MEESEmitter(Emitter):
         # Define scores for es process
         def exploration_exploitation_scores(
             fitnesses: Fitness, descriptors: Descriptor
-        ) -> jnp.ndarray:
+        ) -> jax.Array:
             scores = jax.lax.cond(
                 use_exploration,
                 lambda fitnesses, descriptors: emitter_state.novelty_archive.novelty(

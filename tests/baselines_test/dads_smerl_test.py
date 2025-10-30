@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import pytest
 from brax.envs import State as EnvState
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.baselines.dads import DadsTrainingState
 from qdax.baselines.dads_smerl import DADSSMERL, DadsSmerlConfig
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
@@ -19,7 +19,7 @@ from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_bu
 def test_dads_smerl() -> None:
     """Launches and monitors the training of the agent."""
 
-    env_name = "pointmaze"
+    env_name = "walker2d_uni"
     seed = 0
     env_batch_size = 100
     num_steps = 10000

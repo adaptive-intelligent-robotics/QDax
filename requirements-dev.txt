@@ -1,4 +1,0 @@
-coverage
-pre-commit==2.12.1
-pytest==6.2.5
-pytest-assume==2.4.3

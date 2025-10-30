@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from brax.envs.base import PipelineEnv, State
 
-from qdax.tasks.brax.v2.envs.base_env import QDEnv
+from qdax.tasks.brax.envs.base_env import QDEnv
 
 
 class QDWrapper(QDEnv):
@@ -14,10 +14,10 @@ class QDWrapper(QDEnv):
         super().__init__()
         self.env = env
 
-    def reset(self, rng: jnp.ndarray) -> State:
+    def reset(self, rng: jax.Array) -> State:
         return self.env.reset(rng)
 
-    def step(self, state: State, action: jnp.ndarray) -> State:
+    def step(self, state: State, action: jax.Array) -> State:
         return self.env.step(state, action)
 
     @property
@@ -69,15 +69,15 @@ class QDWrapper(QDEnv):
 class StateDescriptorResetWrapper(QDWrapper):
     """Automatically resets state descriptors."""
 
-    def reset(self, rng: jnp.ndarray) -> State:
+    def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
         state.info["first_state_descriptor"] = state.info["state_descriptor"]
         return state
 
-    def step(self, state: State, action: jnp.ndarray) -> State:
+    def step(self, state: State, action: jax.Array) -> State:
         state = self.env.step(state, action)
 
-        def where_done(x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
+        def where_done(x: jax.Array, y: jax.Array) -> jax.Array:
             done = state.done
             if done.shape:
                 done = jnp.reshape(done, tuple([x.shape[0]] + [1] * (len(x.shape) - 1)))

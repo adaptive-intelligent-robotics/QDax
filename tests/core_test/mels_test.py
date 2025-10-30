@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.containers.mels_repertoire import MELSRepertoire
 from qdax.core.emitters.mutation_operators import isoline_variation
@@ -18,7 +18,7 @@ from qdax.core.mels import MELS
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
 from qdax.core.neuroevolution.networks.networks import MLP
 from qdax.custom_types import EnvState, Params, RNGKey
-from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs
+from qdax.tasks.brax.env_creators import scoring_function_brax_envs
 from qdax.utils.sampling import multi_sample_scoring_function
 
 
@@ -361,5 +361,5 @@ def test_mels_ask_tell(env_name: str, batch_size: int, custom_repertoire: bool) 
 
 
 if __name__ == "__main__":
-    test_mels(env_name="pointmaze", batch_size=10)
-    test_mels_ask_tell(env_name="pointmaze", batch_size=10)
+    test_mels(env_name="walker2d_uni", batch_size=10)
+    test_mels_ask_tell(env_name="walker2d_uni", batch_size=10)

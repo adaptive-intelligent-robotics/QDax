@@ -80,7 +80,7 @@ def train_step(
     # Large number as zero token
     batch_decoder = batch_decoder.at[:, 0, :].set(-1000)
 
-    def loss_fn(params: Params) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def loss_fn(params: Params) -> Tuple[jax.Array, jax.Array]:
         logits, _ = state.apply_fn(
             {"params": params},
             batch,
@@ -88,7 +88,7 @@ def train_step(
             rngs={"lstm": lstm_key, "dropout": dropout_key},
         )
 
-        def mean_squared_error(x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
+        def mean_squared_error(x: jax.Array, y: jax.Array) -> jax.Array:
             return jnp.inner(y - x, y - x) / x.shape[-1]
 
         res = jax.vmap(mean_squared_error)(

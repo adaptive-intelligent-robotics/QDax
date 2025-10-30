@@ -2,6 +2,7 @@
 
 from typing import NamedTuple
 
+import jax
 import jax.numpy as jnp
 
 from qdax.custom_types import Observation
@@ -10,9 +11,9 @@ from qdax.custom_types import Observation
 class RunningMeanStdState(NamedTuple):
     """Running statistics for observtations/rewards"""
 
-    mean: jnp.ndarray
-    var: jnp.ndarray
-    count: jnp.ndarray
+    mean: jax.Array
+    var: jax.Array
+    count: jax.Array
 
 
 def update_running_mean_std(
@@ -39,12 +40,12 @@ def update_running_mean_std(
 
 
 def normalize_with_rmstd(
-    obs: jnp.ndarray,
+    obs: jax.Array,
     rmstd: RunningMeanStdState,
     std_min_value: float = 1e-6,
     std_max_value: float = 1e6,
     apply_clipping: bool = True,
-) -> jnp.ndarray:
+) -> jax.Array:
     """Normalize input with provided running statistics"""
 
     running_mean, running_variance, normalization_steps = rmstd

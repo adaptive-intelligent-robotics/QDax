@@ -155,15 +155,11 @@ initial_params = task.get_initial_parameters(batch_size=...)
 desc_size = task.get_descriptor_size()
 ```
 
-## Brax-RL
-QDax provides organized utilities for working with Brax environments in the context of Quality Diversity. The Brax integrations are now structured in a versioned manner to support both Brax v1 and v2 APIs:
-
-- `tasks.brax.v1`: Contains code compatible with Brax v1 API
-- `tasks.brax.v2`: Contains code compatible with Brax v2 API
+## Brax
+QDax provides organized utilities for working with Brax environments in the context of Quality-Diversity.
 
 | Task            | Parameter Dimensions | Parameter Bounds | Descriptor Dimensions | Descriptor Bounds | Description |
 |-----------------|----------------------|------------------|-----------------------|-------------------|-------------|
-| pointmaze       | NN params            | Unbounded        | 2                     | $[-1,1]^2$        |             |
 | hopper_uni      | NN params            | Unbounded        | 1                     | $[0,1]$           |             |
 | walker2d_uni    | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
 | halfcheetah_uni | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
@@ -171,8 +167,6 @@ QDax provides organized utilities for working with Brax environments in the cont
 | humanoid_uni    | NN params            | Unbounded        | 2                     | $[0,1]^2$         |             |
 | ant_omni        | NN params            | Unbounded        | 2                     | $[-30,30]^2$      |             |
 | humanoid_omni   | NN params            | Unbounded        | 2                     | $[-30,30]^2$      |             |
-| anttrap         | NN params            | Unbounded        | 2                     | $[-8,8]\times[0,30]$   |             |
-| antmaze         | NN params            | Unbounded        | 2                     | $[-5,40]\times[-5,40]$ |             |
 
 Notes:
 - The parameter dimensions for default Brax-RL tasks depend on the size and architecture of the neural network used and can be customized and changed easily. If not set, a network size of two hidden layers of size 64 is used.
@@ -183,8 +177,8 @@ Notes:
 For Brax v1:
 ```python
 import jax
-import qdax.tasks.brax.v1 as environments
-from qdax.tasks.brax.v1.env_creators import create_default_brax_task_components
+import qdax.tasks.brax as environments
+from qdax.tasks.brax.env_creators import create_default_brax_task_components
 
 # Create environment, policy network and scoring function
 env_name = "ant_omni"
@@ -199,8 +193,8 @@ env, policy_network, scoring_fn = create_default_brax_task_components(
 For Brax v2:
 ```python
 import jax
-import qdax.tasks.brax.v2 as environments
-from qdax.tasks.brax.v2.env_creators import create_default_brax_task_components
+import qdax.tasks.brax as environments
+from qdax.tasks.brax.env_creators import create_default_brax_task_components
 
 # Create environment, policy network and scoring function
 env_name = "ant_omni"
@@ -212,7 +206,7 @@ env, policy_network, scoring_fn = create_default_brax_task_components(
 )
 ```
 
-See [Brax v1](../../examples/mapelites.ipynb) and [Brax v2](../../examples/mapelites_brax_v2.ipynb) notebooks for more detailed examples.
+See [Brax v1](../examples/mapelites.ipynb) and [Brax v2](../examples/mapelites_brax_v2.ipynb) notebooks for more detailed examples.
 
 ## Jumanji-RL
 
@@ -220,4 +214,4 @@ QDax provide utils to interact easily with the suite of environments implemented
 
 ### Example Usage
 
-See [Example in Notebook](../../examples/jumanji_snake.ipynb)
+See [Example in Notebook](../examples/jumanji_snake.ipynb)

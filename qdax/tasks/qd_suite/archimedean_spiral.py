@@ -50,7 +50,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
             self.precision = precision
         self.alpha = alpha
 
-    def _gamma(self, angle: Union[float, jnp.ndarray]) -> jnp.ndarray:
+    def _gamma(self, angle: Union[float, jax.Array]) -> jax.Array:
         """
         The function gamma is the function that maps the angle to the euclidean
         coordinates of the Archimedean spiral.
@@ -68,7 +68,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
             ]
         )
 
-    def get_arc_length(self, angle: Union[float, jnp.ndarray]) -> jnp.ndarray:
+    def get_arc_length(self, angle: Union[float, jax.Array]) -> jax.Array:
         """
         The function arc_length is the function that maps the angle to the arc
         length of the Archimedean spiral.
@@ -122,9 +122,7 @@ class ArchimedeanSpiralV0(QDSuiteTask):
         )
         return new_inf, new_sup, target_angle_length
 
-    def _approximate_angle_from_arc_length(
-        self, target_arc_length: float
-    ) -> jnp.ndarray:
+    def _approximate_angle_from_arc_length(self, target_arc_length: float) -> jax.Array:
         """
         The function approximate_angle_from_arc_length is the function that
         approximates the angle from the arc length.
