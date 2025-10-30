@@ -25,12 +25,12 @@ You will need Python 3.11 or later, and a working JAX installation installed in 
 
 Then, install QDax from PyPi with uv:
 ```bash
-uv pip install cax
+uv pip install QDax
 ```
 
 or with `pip`:
 ```bash
-pip install cax
+pip install QDax
 ```
 
 ### Build the documentation
