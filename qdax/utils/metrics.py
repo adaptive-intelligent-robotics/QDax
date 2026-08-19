@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 from functools import partial
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import jax
 from jax import numpy as jnp
@@ -12,6 +12,7 @@ from jax import numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 from qdax.core.containers.mome_repertoire import MOMERepertoire
+from qdax.core.containers.mtmb_repertoire import MTMBRepertoire
 from qdax.custom_types import Metrics
 from qdax.utils.pareto_front import compute_hypervolume
 
@@ -96,6 +97,70 @@ def default_qd_metrics(repertoire: MapElitesRepertoire, qd_offset: float) -> Met
     max_fitness = jnp.max(repertoire.fitnesses)
 
     return {"qd_score": qd_score, "max_fitness": max_fitness, "coverage": coverage}
+
+
+def default_mtmb_metrics(
+    repertoire: MTMBRepertoire,
+    qd_offset: float,
+    fitness_threshold: Optional[float] = None,
+) -> Metrics:
+    """Compute the usual QD metrics as well as multi-task metrics from a
+    Multi-Task Multi-Behavior MAP-Elites repertoire.
+
+    Args:
+        repertoire: an MTMB repertoire
+        qd_offset: an offset used to ensure that the QD score
+            will be positive and increasing with the number
+            of individuals.
+        fitness_threshold: an optional fitness value above which an elite is
+            considered a solution of its task, following the MTMB MAP-Elites
+            paper. When provided, the percentage of solved tasks and the
+            number of solutions per solved task are also computed.
+
+    Returns:
+        a dictionary containing the QD score (sum of fitnesses modified to
+            be all positive), the max fitness of the repertoire, the
+            coverage (fraction of cells filled in the repertoire), the task
+            coverage (fraction of tasks with at least one elite) and the
+            mean number of elites of the covered tasks.
+    """
+    num_tasks = repertoire.task_descriptors.shape[0]
+    num_centroids = repertoire.centroids.shape[0]
+
+    # get standard QD metrics
+    repertoire_empty = repertoire.fitnesses == -jnp.inf
+    qd_score = jnp.sum(repertoire.fitnesses, where=~repertoire_empty)
+    qd_score += qd_offset * jnp.sum(1.0 - repertoire_empty)
+    coverage = 100 * jnp.mean(1.0 - repertoire_empty)
+    max_fitness = jnp.max(repertoire.fitnesses)
+
+    # get multi-task metrics
+    occupancy = (~repertoire_empty[:, 0]).reshape(num_tasks, num_centroids)
+    task_has_elite = jnp.any(occupancy, axis=1)
+    task_coverage = 100 * jnp.mean(task_has_elite)
+    elites_per_covered_task = jnp.sum(occupancy) / jnp.maximum(
+        jnp.sum(task_has_elite), 1
+    )
+
+    metrics = {
+        "qd_score": qd_score,
+        "max_fitness": max_fitness,
+        "coverage": coverage,
+        "task_coverage": task_coverage,
+        "elites_per_covered_task": elites_per_covered_task,
+    }
+
+    if fitness_threshold is not None:
+        solutions = (repertoire.fitnesses[:, 0] >= fitness_threshold).reshape(
+            num_tasks, num_centroids
+        )
+        task_solved = jnp.any(solutions, axis=1)
+        metrics["tasks_solved"] = 100 * jnp.mean(task_solved)
+        metrics["solutions_per_solved_task"] = jnp.sum(solutions) / jnp.maximum(
+            jnp.sum(task_solved), 1
+        )
+
+    return metrics
 
 
 def default_moqd_metrics(

@@ -3,6 +3,8 @@ from .ga_repertoire import GARepertoire
 from .mapelites_repertoire import MapElitesRepertoire
 from .mels_repertoire import MELSRepertoire
 from .mome_repertoire import MOMERepertoire
+from .monet_repertoire import MONETRepertoire
+from .mtmb_repertoire import MTMBRepertoire
 from .nsga2_repertoire import NSGA2Repertoire
 from .repertoire import Repertoire
 from .spea2_repertoire import SPEA2Repertoire
@@ -16,6 +18,8 @@ __all__ = [
     "DominatedNoveltyRepertoire",
     "UnstructuredRepertoire",
     "MOMERepertoire",
+    "MONETRepertoire",
+    "MTMBRepertoire",
     "MELSRepertoire",
     "NSGA2Repertoire",
     "SPEA2Repertoire",

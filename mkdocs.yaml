@@ -116,6 +116,9 @@ nav:
     - PBT: examples/sac_pbt.ipynb
     - MAPElites PBT: examples/me_sac_pbt.ipynb
     - MAPElites Low Spread: examples/mels.ipynb
+    - Multi-task MAPElites: examples/mtme.ipynb
+    - MTMB MAPElites: examples/mtmb_me.ipynb
+    - MONET: examples/monet.ipynb
     - Jumanji Snake: examples/jumanji_snake.ipynb
   - API documentation:
     - Core:
@@ -133,6 +136,9 @@ nav:
         - PGA AURORA: api_documentation/core/pga_aurora.md
         - ME PBT: api_documentation/core/me_pbt.md
         - ME LS: api_documentation/core/mels.md
+        - MT ME: api_documentation/core/mtme.md
+        - MTMB ME: api_documentation/core/mtmb_me.md
+        - MONET: api_documentation/core/monet.md
       - Baseline algorithms:
         - SMERL: api_documentation/core/smerl.md
         - DIAYN: api_documentation/core/diayn.md
