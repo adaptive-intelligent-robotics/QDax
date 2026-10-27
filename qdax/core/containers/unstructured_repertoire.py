@@ -186,9 +186,11 @@ class UnstructuredRepertoire(GARepertoire):
 
         batch_of_fitnesses = batch_of_fitnesses.reshape(-1, 1)
 
-        # We need to replace all the descriptors that are not filled with jnp inf
+        # We need to replace all the descriptors that are not filled with jnp inf.
+        # self.fitnesses has shape (max_size, 1), so the mask broadcasts against
+        # the descriptors of shape (max_size, num_descriptors) as it is.
         filtered_descriptors = jnp.where(
-            jnp.expand_dims((self.fitnesses == -jnp.inf), axis=-1),
+            self.fitnesses == -jnp.inf,
             jnp.full(self.descriptors.shape[-1], fill_value=jnp.inf),
             self.descriptors,
         )
